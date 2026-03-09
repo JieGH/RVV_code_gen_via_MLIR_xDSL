@@ -115,7 +115,7 @@ else
     cd OpenBLAS
     # If the previous build failed, clean might be necessary
     make clean || true
-    make TARGET=RISCV64_ZVL${VLEN_BITS}B CC=gcc-14 FC=gfortran-14 BINARY=64 USE_THREAD=1 NUM_THREADS=8 MAKE_NB_JOBS=1
+    make TARGET=RISCV64_ZVL${VLEN_BITS}B CC=gcc-14 FC=gfortran-14 BINARY=64 USE_THREAD=1 NUM_THREADS=4 MAKE_NB_JOBS=1
     make PREFIX=${OPENBLAS_DIR_ENV} install
     echo "✅ OpenBLAS installation complete."
 fi
