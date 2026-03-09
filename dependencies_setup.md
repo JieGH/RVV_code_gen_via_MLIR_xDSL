@@ -72,7 +72,7 @@ make TARGET=RISCV64_ZVL256B \
      NUM_THREADS=8
 
 # Install OpenBLAS into a local directory
-make PREFIX=$HOME/.local/openblas_zvl256b install
+make PREFIX=$HOME/.local/openblas_install install
 ```
 
 ### 2.2 Compiling BLIS

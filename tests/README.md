@@ -44,7 +44,7 @@ Before compiling kernels, you must set up the environment on the remote board. T
 
 ### What it does:
 1. **Local Check:** Verifies `mlir-translate` is available locally.
-2. **OpenBLAS (Remote):** Checks for OpenBLAS `~/.local/openblas_zvlXXXb`. If missing, clones branch `0.3.31` and builds it.
+2. **OpenBLAS (Remote):** Checks for OpenBLAS `~/.local/openblas_install`. If missing, clones branch `0.3.31` and builds it.
 3. **BLIS (Remote):** Checks for BLIS `~/opt/blis`. If missing, clones tag `2.0` and builds it.
 
 ### Usage:

@@ -40,7 +40,7 @@ RISCV_WORKSPACE="xdsl_rvv_microkernel_07032026"
 # At RISCV machine, Remote software paths
 # RISCV_OPENBLAS_DIR_ENV="\$HOME/.local/openblas_zvl256b"
 # RISCV_BLIS_DIR_ENV="\$HOME/opt/blis"
-RISCV_OPENBLAS_DIR_ENV="\$HOME/${RISCV_WORKSPACE}/openblas_zvl${VLEN_BITS}b"
+RISCV_OPENBLAS_DIR_ENV="\$HOME/${RISCV_WORKSPACE}/openblas_install"
 RISCV_BLIS_DIR_ENV="\$HOME/${RISCV_WORKSPACE}/blis_install"
 
 # ============================================================

@@ -83,7 +83,7 @@ fi
 if [ "$REMOTE_ONLY" = true ] || [ "$LOCAL_MLIR_ONLY" = false ]; then
     # Set defaults if not provided via arguments
     if [ -z "$OPENBLAS_DIR_ENV" ]; then
-        OPENBLAS_DIR_ENV="$HOME/${RISCV_WORKSPACE}/openblas_zvl${VLEN_BITS}b"
+        OPENBLAS_DIR_ENV="$HOME/${RISCV_WORKSPACE}/openblas_install"
     fi
 
     if [ -z "$BLIS_DIR_ENV" ]; then
