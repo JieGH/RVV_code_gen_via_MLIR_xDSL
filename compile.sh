@@ -35,7 +35,7 @@ RISCV_REMOTE_IP="jbpi2"
 RISCV_SSH_PORT="22"
 # This folder will be created at the home directory of the RISCV machine
 # This folder will contain all the generated project structure for benchmarking 
-RISCV_WORKSPACE="xdsl_rvv_microkernel_07032026"
+RISCV_WORKSPACE="xdsl_rvv_microkernel"
 
 # At RISCV machine, Remote software paths
 # RISCV_OPENBLAS_DIR_ENV="\$HOME/.local/openblas_zvl256b"
@@ -49,11 +49,11 @@ RISCV_BLIS_DIR_ENV="\$HOME/${RISCV_WORKSPACE}/blis_install"
 # ============================================================
 DATASETS=(
     # "cnn_models/trail.dat"
-    # "cnn_models/tiny.dat"
+    "cnn_models/tiny.dat"
     # "cnn_models/gnn.dat"
-    "cnn_models/bert_large.dat"
-    "cnn_models/gpt2_large.dat"
-    "cnn_models/square.dat"
+    # "cnn_models/bert_large.dat"
+    # "cnn_models/gpt2_large.dat"
+    # "cnn_models/square.dat"
 )
 # ============================================================
 # Configuration End 
