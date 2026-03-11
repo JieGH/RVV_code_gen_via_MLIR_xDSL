@@ -4,8 +4,14 @@ set -e
 # ============================================================
 # compile.sh — Unified compilation and deployment script
 # Usage:
-#   ./compile.sh  
-# The script will resturn benchmarking results and store them in the tests/output directory
+#   ./compile.sh [OPTIONS]
+#
+# RISC-V connection options:
+#   --riscv-user <user>   SSH user on the RISC-V board  (default: jlei)
+#   --riscv-ip   <host>   Hostname or IP of the board   (default: jbpi2)
+#   --riscv-port <port>   SSH port on the board         (default: 22)
+#
+# The script will return benchmarking results and store them in the tests/output directory
 # ============================================================
 
 
@@ -90,6 +96,9 @@ while [[ "$#" -gt 0 ]]; do
         --openblas-dir)    RISCV_OPENBLAS_DIR_ENV="$2";      shift ;;
         --blis-dir)        RISCV_BLIS_DIR_ENV="$2";          shift ;;
         --riscv-workspace) RISCV_WORKSPACE="$2";       shift ;;
+        --riscv-user)      RISCV_USER="$2";            shift ;;
+        --riscv-ip)        RISCV_REMOTE_IP="$2";       shift ;;
+        --riscv-port)      RISCV_SSH_PORT="$2";        shift ;;
         --setup-env)       SETUP_ENV=true                   ;;
         --mlir-build-dir)  MLIR_BUILD_DIR="$2";        shift ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
