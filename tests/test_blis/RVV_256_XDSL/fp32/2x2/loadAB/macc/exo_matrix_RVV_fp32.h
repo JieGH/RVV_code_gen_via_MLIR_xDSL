@@ -1,7 +1,7 @@
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
-#include "kernels_RVV_4x4_fp32.h"
+#include "kernels_RVV_2x2_fp32.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -1,32 +1,68 @@
-# xDSL RISC-V Microkernel Template
+# RVV xDSL Microkernel Runner
 
-This repository provides an automated infrastructure to generate, deploy, and benchmark xDSL microkernels targeting RISC-V Vector (RVV) architectures. 
+Generate RVV GEMM microkernels locally, sync them to a RISC-V board, run benchmarks, and fetch results back to your host.
 
-### How This Project Works
-At a high level, the project workflow bridges two machines:
-1. **Local x86 Machine**: Responsible for code generation. The Python-based `xdsl` compiler generates the necessary GEMM C++ microkernels locally.
-2. **Remote RISC-V Board**: The generated artifacts, benchmarking tools, and datasets are automatically transferred (via `rsync`) to the RISC-V environment, where all compilation and performance testing takes place. 
+## Quick Start
 
-Once execution finishes on the RISC-V board, the benchmarking results are automatically fetched back and **stored on your local x86 machine** for analysis.
+1. Install local tools
+- `git`, `cmake`, `ninja`, a C/C++ compiler, `python3`, `uv`, `ssh`, `rsync`
 
-## 📊 Pipeline Overview
+2. Install remote tools (on the RISC-V board)
+- `gcc-14`, `gfortran-14`, `make`, `git`, `ssh`
 
-The core of this repository is `compile.sh`, a unified driver script that automates the entire lifecycle:
+3. Create the local Python environment
+```bash
+make install
+```
 
-1. **Local Code Generation**: Invokes xDSL to generate GEMM C++ microkernels for all specified kernel sizes.
-2. **Environment Synchronization**: Uses `rsync` to sync locally generated kernels, C++ APIs, tests, and dataset files to the RISC-V device.
-3. **Unit Testing**: Evaluates the generated microkernel logic locally and runs a benchmarking C++ wrapper on the board to ensure correctness.
-4. **XDSL Kernel Sweep Benchmark**: Builds the benchmark driver on the board, performs dynamic shape/mode parameter sweeps via target datasets using caching and BLIS loop wrapping frameworks. Evaluates configurations and logs outputs.
-5. **OpenBLAS Reference Comparison**: Generates reference baselines by directly executing OpenBLAS instances matching the target dataset specifications. The script securely downloads both baseline outputs, matches them, and finalizes performance scatter and bar plots comparing the metrics.
+4. Edit `compile.sh` (top of file) with your board info
+- `RISCV_USER`
+- `RISCV_REMOTE_IP`
+- `RISCV_SSH_PORT` (optional)
+- Optional tuning: `FAMILIES`, `VLEN_BITS`, `KC_PROFILE`, `DATASETS`
 
-## 📈 Results and Analysis
-Although intermediate object files and source codes are stored on the RISC-V machine temporarily, all final evaluation outputs are securely transferred back to your local x86 machine.
+5. Run the pipeline
+```bash
+bash compile.sh
+```
 
-Check the `tests/output/` directory for:
-- **`.txt` Logs**: Raw numeric performance logs and execution timespans extracted from the board.
-- **`.csv` Files**: Parsed xDSL sweep configuration tables containing GFLOPS execution speeds.
-- **`.pdf` / `.png` Plots**: Graphical scatter and bar plots visually demonstrating your xDSL microkernels' performance compared against baseline architectures like OpenBLAS.
+Example with explicit connection and tuning options:
+```bash
+./compile.sh --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "2,2" --vlen 256
+```
 
-## 🚀 Getting Started
+That’s it. The script will:
+- Build `mlir-translate` locally if missing.
+- Build OpenBLAS and BLIS on the board if missing.
+- Generate kernels, compile, benchmark, and pull results back.
 
-If you want to run this project, please refer to the **[Getting Started Guide](GETTING_STARTED.md)** for detailed instructions on setting up your environment, configuring your connection to the RISC-V board, and executing the benchmark suite.
+## Outputs
+
+Results are saved to `tests/output/` on your local machine:
+- `*.txt` logs
+- `*.csv` sweep tables
+- `*.png` / `*.pdf` plots
+
+## Common Variations
+
+Use a different MLIR build directory:
+```bash
+bash compile.sh --mlir-build-dir ../llvm-project
+```
+
+Override families or VLEN:
+```bash
+bash compile.sh --families "4,4" --vlen 256
+```
+
+## One-Off Setup Only
+
+Local MLIR/LLVM build:
+```bash
+bash setup_env.sh --local-mlir-only --mlir-build-dir ../llvm-project
+```
+
+Remote OpenBLAS/BLIS build:
+```bash
+bash setup_env.sh --remote-only --vlen 256 --riscv-workspace xdsl_rvv_microkernel
+```

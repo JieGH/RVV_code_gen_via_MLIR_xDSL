@@ -18,6 +18,21 @@ LOCAL_MLIR_ONLY=false
 REMOTE_ONLY=false
 
 # ------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------
+require_cmd() {
+    local cmd_name="$1"
+    local label="$2"
+    local cmd_path
+    if ! cmd_path="$(command -v "${cmd_name}" 2>/dev/null)"; then
+        echo "❌ Missing dependency: ${label} (${cmd_name})"
+        echo "   Please install it and re-run this script."
+        exit 1
+    fi
+    echo "✅ ${label} found at ${cmd_path}"
+}
+
+# ------------------------------------------------------------
 # Parse arguments
 # ------------------------------------------------------------
 while [[ "$#" -gt 0 ]]; do
@@ -91,6 +106,14 @@ if [ "$REMOTE_ONLY" = true ] || [ "$LOCAL_MLIR_ONLY" = false ]; then
     fi
 
     echo "Setting up dependencies on board with VLEN=${VLEN_BITS}"
+
+    echo ""
+    echo "============================================================"
+    echo "0. Checking Remote Build Dependencies"
+    echo "============================================================"
+    require_cmd "gcc-14" "GCC 14"
+    require_cmd "gfortran-14" "GFortran 14"
+    require_cmd "ssh" "SSH (remote access)"
 
     mkdir -p "$HOME/${RISCV_WORKSPACE}"
 

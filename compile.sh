@@ -35,9 +35,9 @@ KC_PROFILE="256"
 # The RISCV board expected to be connected to the same x86 machine you are using
 # The authentication is done through ssh keys
 # user name of the RISCV machine
-RISCV_USER="jlei"
+RISCV_USER="RISCV_USER"
 # this is the IP or hostname of the RISCV machine
-RISCV_REMOTE_IP="jbpi2" 
+RISCV_REMOTE_IP="RISCV_REMOTE_IP" 
 RISCV_SSH_PORT="22"
 # This folder will be created at the home directory of the RISCV machine
 # This folder will contain all the generated project structure for benchmarking 
@@ -91,8 +91,8 @@ while [[ "$#" -gt 0 ]]; do
         --verbose)         VERBOSE_FLAG="--verbose"         ;;
         --kc-profile)      KC_PROFILE="$2";            shift ;;
         --no-ref)          NO_REF_FLAG="--no-ref"           ;;
-        --direct)          USE_DIRECT=true                  ;;  # explicit alias
-        --jump)            USE_DIRECT=false                 ;;  # jump-host mode (x86 → fej → jbpi2)
+        --direct)          USE_DIRECT=true                  ;;   
+        --jump)            USE_DIRECT=false                 ;;  
         --openblas-dir)    RISCV_OPENBLAS_DIR_ENV="$2";      shift ;;
         --blis-dir)        RISCV_BLIS_DIR_ENV="$2";          shift ;;
         --riscv-workspace) RISCV_WORKSPACE="$2";       shift ;;
@@ -124,7 +124,7 @@ REF_BASE="kernels_RVV_${VLEN_BITS}_fp32_ldx"
 SEP="------------------------------------------------------------"
 
 if [ "$USE_DIRECT" = true ]; then
-    echo ""; echo "  Mode: Direct (fej → jbpi2)"; echo ""
+    echo ""; echo "  Mode: Direct "; echo ""
     ssh_board() { ssh -p ${RISCV_SSH_PORT} -o StrictHostKeyChecking=no ${RISCV_USER}@${RISCV_REMOTE_IP} "$@"; }
     rsync_board() { rsync -a -e "ssh -p ${RISCV_SSH_PORT} -o StrictHostKeyChecking=no" "$@"; }
     ssh_host()  { ssh_board "$@"; }
