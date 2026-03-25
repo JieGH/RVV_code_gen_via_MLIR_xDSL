@@ -1,17 +1,16 @@
-#include "kernels_RVV_2x2_fp32.h"
+// ============================================================
+// xDSL Generated Merged Kernels
+// ------------------------------------------------------------
+//   Generated   : 2026-03-25 09:33:28
+//   Precision   : i8i8i32
+//   VLEN_BITS   : 256
+// ============================================================
+#include "kernels_RVV_2x2_i8i8i32.h"
 #include <riscv_vector.h>
 
-// ============================================================
-// xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
-//   MR         : 1
-//   NR         : 1
-//   VLEN       : 8  (fp32 elements per vector register)
-//   VLEN_BITS  : 256  (bit-width, VLEN * 32)
-//   Beta mode  : b0  (beta=0: C = alpha*A*B)
-// ============================================================
 // Merged from xdsl_api_gemm_1x1_b0.cpp
+// ------------------------------------------------------------
 #include <stdio.h>
 #include <riscv_vector.h>
 #include <math.h>
@@ -19,15 +18,16 @@
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
+//   Generated   : 2026-03-25 09:33:28
 //   MR         : 1
 //   NR         : 1
-//   VLEN       : 8  (fp32 elements per vector register)
+//   VLEN       : 8  (i8i8i32 elements per vector register)
+//   Precision  : i8i8i32
 //   VLEN_BITS  : 256  (bit-width, VLEN * 32)
 //   Beta mode  : b0  (beta=0: C = alpha*A*B)
 // ============================================================
 
-void gemm_RVV_1x1_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
+void gemm_RVV_1x1_b0_col_i8i8i32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
   float v10 = 0.0e+00f;
   size_t v11 = 0;
   size_t v12 = 1;
@@ -60,17 +60,9 @@ void gemm_RVV_1x1_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 
 
 
-// ============================================================
-// xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
-//   MR         : 1
-//   NR         : 1
-//   VLEN       : 8  (fp32 elements per vector register)
-//   VLEN_BITS  : 256  (bit-width, VLEN * 32)
-//   Beta mode  : b1  (beta=1: C = alpha*A*B + beta*C)
-// ============================================================
 // Merged from xdsl_api_gemm_1x1_b1.cpp
+// ------------------------------------------------------------
 #include <stdio.h>
 #include <riscv_vector.h>
 #include <math.h>
@@ -78,15 +70,16 @@ void gemm_RVV_1x1_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
+//   Generated   : 2026-03-25 09:33:28
 //   MR         : 1
 //   NR         : 1
-//   VLEN       : 8  (fp32 elements per vector register)
+//   VLEN       : 8  (i8i8i32 elements per vector register)
+//   Precision  : i8i8i32
 //   VLEN_BITS  : 256  (bit-width, VLEN * 32)
 //   Beta mode  : b1  (beta=1: C = alpha*A*B + beta*C)
 // ============================================================
 
-void gemm_RVV_1x1_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
+void gemm_RVV_1x1_b1_col_i8i8i32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
   float v10 = 0.0e+00f;
   size_t v11 = 0;
   size_t v12 = 1;
@@ -120,17 +113,9 @@ void gemm_RVV_1x1_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 
 
 
-// ============================================================
-// xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
-//   MR         : 1
-//   NR         : 2
-//   VLEN       : 8  (fp32 elements per vector register)
-//   VLEN_BITS  : 256  (bit-width, VLEN * 32)
-//   Beta mode  : b0  (beta=0: C = alpha*A*B)
-// ============================================================
 // Merged from xdsl_api_gemm_1x2_b0.cpp
+// ------------------------------------------------------------
 #include <stdio.h>
 #include <riscv_vector.h>
 #include <math.h>
@@ -138,15 +123,16 @@ void gemm_RVV_1x1_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
+//   Generated   : 2026-03-25 09:33:28
 //   MR         : 1
 //   NR         : 2
-//   VLEN       : 8  (fp32 elements per vector register)
+//   VLEN       : 8  (i8i8i32 elements per vector register)
+//   Precision  : i8i8i32
 //   VLEN_BITS  : 256  (bit-width, VLEN * 32)
 //   Beta mode  : b0  (beta=0: C = alpha*A*B)
 // ============================================================
 
-void gemm_RVV_1x2_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
+void gemm_RVV_1x2_b0_col_i8i8i32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
   float v10 = 0.0e+00f;
   size_t v11 = 0;
   size_t v12 = 1;
@@ -190,17 +176,9 @@ void gemm_RVV_1x2_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 
 
 
-// ============================================================
-// xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
-//   MR         : 1
-//   NR         : 2
-//   VLEN       : 8  (fp32 elements per vector register)
-//   VLEN_BITS  : 256  (bit-width, VLEN * 32)
-//   Beta mode  : b1  (beta=1: C = alpha*A*B + beta*C)
-// ============================================================
 // Merged from xdsl_api_gemm_1x2_b1.cpp
+// ------------------------------------------------------------
 #include <stdio.h>
 #include <riscv_vector.h>
 #include <math.h>
@@ -208,15 +186,16 @@ void gemm_RVV_1x2_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
+//   Generated   : 2026-03-25 09:33:28
 //   MR         : 1
 //   NR         : 2
-//   VLEN       : 8  (fp32 elements per vector register)
+//   VLEN       : 8  (i8i8i32 elements per vector register)
+//   Precision  : i8i8i32
 //   VLEN_BITS  : 256  (bit-width, VLEN * 32)
 //   Beta mode  : b1  (beta=1: C = alpha*A*B + beta*C)
 // ============================================================
 
-void gemm_RVV_1x2_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
+void gemm_RVV_1x2_b1_col_i8i8i32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
   float v10 = 0.0e+00f;
   size_t v11 = 0;
   size_t v12 = 1;
@@ -262,17 +241,9 @@ void gemm_RVV_1x2_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 
 
 
-// ============================================================
-// xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
-//   MR         : 2
-//   NR         : 1
-//   VLEN       : 8  (fp32 elements per vector register)
-//   VLEN_BITS  : 256  (bit-width, VLEN * 32)
-//   Beta mode  : b0  (beta=0: C = alpha*A*B)
-// ============================================================
 // Merged from xdsl_api_gemm_2x1_b0.cpp
+// ------------------------------------------------------------
 #include <stdio.h>
 #include <riscv_vector.h>
 #include <math.h>
@@ -280,15 +251,16 @@ void gemm_RVV_1x2_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
+//   Generated   : 2026-03-25 09:33:28
 //   MR         : 2
 //   NR         : 1
-//   VLEN       : 8  (fp32 elements per vector register)
+//   VLEN       : 8  (i8i8i32 elements per vector register)
+//   Precision  : i8i8i32
 //   VLEN_BITS  : 256  (bit-width, VLEN * 32)
 //   Beta mode  : b0  (beta=0: C = alpha*A*B)
 // ============================================================
 
-void gemm_RVV_2x1_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
+void gemm_RVV_2x1_b0_col_i8i8i32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
   float v10 = 0.0e+00f;
   size_t v11 = 0;
   size_t v12 = 1;
@@ -321,17 +293,9 @@ void gemm_RVV_2x1_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 
 
 
-// ============================================================
-// xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
-//   MR         : 2
-//   NR         : 1
-//   VLEN       : 8  (fp32 elements per vector register)
-//   VLEN_BITS  : 256  (bit-width, VLEN * 32)
-//   Beta mode  : b1  (beta=1: C = alpha*A*B + beta*C)
-// ============================================================
 // Merged from xdsl_api_gemm_2x1_b1.cpp
+// ------------------------------------------------------------
 #include <stdio.h>
 #include <riscv_vector.h>
 #include <math.h>
@@ -339,15 +303,16 @@ void gemm_RVV_2x1_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
+//   Generated   : 2026-03-25 09:33:28
 //   MR         : 2
 //   NR         : 1
-//   VLEN       : 8  (fp32 elements per vector register)
+//   VLEN       : 8  (i8i8i32 elements per vector register)
+//   Precision  : i8i8i32
 //   VLEN_BITS  : 256  (bit-width, VLEN * 32)
 //   Beta mode  : b1  (beta=1: C = alpha*A*B + beta*C)
 // ============================================================
 
-void gemm_RVV_2x1_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
+void gemm_RVV_2x1_b1_col_i8i8i32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
   float v10 = 0.0e+00f;
   size_t v11 = 0;
   size_t v12 = 1;
@@ -381,17 +346,9 @@ void gemm_RVV_2x1_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 
 
 
-// ============================================================
-// xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
-//   MR         : 2
-//   NR         : 2
-//   VLEN       : 8  (fp32 elements per vector register)
-//   VLEN_BITS  : 256  (bit-width, VLEN * 32)
-//   Beta mode  : b0  (beta=0: C = alpha*A*B)
-// ============================================================
 // Merged from xdsl_api_gemm_2x2_b0.cpp
+// ------------------------------------------------------------
 #include <stdio.h>
 #include <riscv_vector.h>
 #include <math.h>
@@ -399,15 +356,16 @@ void gemm_RVV_2x1_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
+//   Generated   : 2026-03-25 09:33:28
 //   MR         : 2
 //   NR         : 2
-//   VLEN       : 8  (fp32 elements per vector register)
+//   VLEN       : 8  (i8i8i32 elements per vector register)
+//   Precision  : i8i8i32
 //   VLEN_BITS  : 256  (bit-width, VLEN * 32)
 //   Beta mode  : b0  (beta=0: C = alpha*A*B)
 // ============================================================
 
-void gemm_RVV_2x2_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
+void gemm_RVV_2x2_b0_col_i8i8i32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
   float v10 = 0.0e+00f;
   size_t v11 = 0;
   size_t v12 = 1;
@@ -451,17 +409,9 @@ void gemm_RVV_2x2_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 
 
 
-// ============================================================
-// xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
-//   MR         : 2
-//   NR         : 2
-//   VLEN       : 8  (fp32 elements per vector register)
-//   VLEN_BITS  : 256  (bit-width, VLEN * 32)
-//   Beta mode  : b1  (beta=1: C = alpha*A*B + beta*C)
-// ============================================================
 // Merged from xdsl_api_gemm_2x2_b1.cpp
+// ------------------------------------------------------------
 #include <stdio.h>
 #include <riscv_vector.h>
 #include <math.h>
@@ -469,15 +419,16 @@ void gemm_RVV_2x2_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-03-11 10:07:23
+//   Generated   : 2026-03-25 09:33:28
 //   MR         : 2
 //   NR         : 2
-//   VLEN       : 8  (fp32 elements per vector register)
+//   VLEN       : 8  (i8i8i32 elements per vector register)
+//   Precision  : i8i8i32
 //   VLEN_BITS  : 256  (bit-width, VLEN * 32)
 //   Beta mode  : b1  (beta=1: C = alpha*A*B + beta*C)
 // ============================================================
 
-void gemm_RVV_2x2_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
+void gemm_RVV_2x2_b1_col_i8i8i32(void* ctxt, int v1, float* v2, float* v3, int v4, float* v5, int v6, float* v7, float* v8, int v9) {
   float v10 = 0.0e+00f;
   size_t v11 = 0;
   size_t v12 = 1;
@@ -520,6 +471,3 @@ void gemm_RVV_2x2_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
   __riscv_vse32_v_f32m1(v42, v40, v13);
   return;
 }
-
-
-

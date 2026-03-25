@@ -1,8 +1,6 @@
 from xdsl.context import Context
 from xdsl.dialects import emitc
-
-
-from xdsl.dialects.builtin import Float32Type,IntegerType, ModuleOp, StringAttr
+from xdsl.dialects.builtin import Float32Type, IntegerType, ModuleOp, StringAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -171,6 +169,7 @@ class ConvertRVV_vse32_v_f32m1_ToEmitC(RewritePattern):
 
         rewriter.replace_op(op, call_op)
 
+
 #     C00 = __riscv_vmv_v_x_i32m4(0, vlength);
 class ConvertRVV_vmv_v_x_i32m4_ToEmitC(RewritePattern):
     """
@@ -182,6 +181,7 @@ class ConvertRVV_vmv_v_x_i32m4_ToEmitC(RewritePattern):
     To
         vint32m4_t C00 = __riscv_vmv_v_x_i32m4(0, vlength);
     """
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: vmv_v_x_i32m4Op, rewriter: PatternRewriter):
         # extract operands
@@ -193,11 +193,11 @@ class ConvertRVV_vmv_v_x_i32m4_ToEmitC(RewritePattern):
         )
         rewriter.replace_op(op, call_op)
 
+
 #     vtmp = __riscv_vle8_v_i8m1(&Ar[bA + 0], vlength);
 class ConvertRVV_vle8_v_i8m1_ToEmitC(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: vle8_v_i8m1Op, rewriter: PatternRewriter):
-        from xdsl.dialects.builtin import IntegerType
         lvalue_type = emitc.EmitC_LValueType(IntegerType(8))
         # this is a potentional hazard, int8 type does not predefined
         subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
@@ -214,10 +214,10 @@ class ConvertRVV_vle8_v_i8m1_ToEmitC(RewritePattern):
         )
         rewriter.replace_op(op, [subscript, ptr_ref, call_op])
 
+
 class ConvertRVV_vle32_v_i32m4_ToEmitC(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: vle32_v_i32m4Op, rewriter: PatternRewriter):
-        from xdsl.dialects.builtin import IntegerType
         lvalue_type = emitc.EmitC_LValueType(IntegerType(32))
         subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
         ptr_ref = emitc.EmitC_ApplyOp(
@@ -233,6 +233,7 @@ class ConvertRVV_vle32_v_i32m4_ToEmitC(RewritePattern):
         )
         rewriter.replace_op(op, [subscript, ptr_ref, call_op])
 
+
 class ConvertRVV_vwadd_vx_i16m2_ToEmitC(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: vwadd_vx_i16m2Op, rewriter: PatternRewriter):
@@ -243,6 +244,7 @@ class ConvertRVV_vwadd_vx_i16m2_ToEmitC(RewritePattern):
             result_types=[vector_type],
         )
         rewriter.replace_op(op, call_op)
+
 
 class ConvertRVV_vwmacc_vx_i32m4_ToEmitC(RewritePattern):
     @op_type_rewrite_pattern
@@ -255,10 +257,10 @@ class ConvertRVV_vwmacc_vx_i32m4_ToEmitC(RewritePattern):
         )
         rewriter.replace_op(op, call_op)
 
+
 class ConvertRVV_vse32_v_i32m4_ToEmitC(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: vse32_v_i32m4Op, rewriter: PatternRewriter):
-        from xdsl.dialects.builtin import IntegerType
         lvalue_type = emitc.EmitC_LValueType(IntegerType(32))
         subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
         rewriter.insert_op_before_matched_op(subscript)
@@ -274,6 +276,8 @@ class ConvertRVV_vse32_v_i32m4_ToEmitC(RewritePattern):
             result_types=[],
         )
         rewriter.replace_op(op, call_op)
+
+
 class RVVToEmitCPass(ModulePass):
     name = "rvv_to_emitc"
 

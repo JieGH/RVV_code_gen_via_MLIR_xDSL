@@ -1,8 +1,7 @@
 # xdsltemplate/transforms/scf_to_emitc.py
-from typing import cast
 
 from xdsl.context import Context
-from xdsl.dialects import arith, builtin, emitc, scf
+from xdsl.dialects import builtin, emitc, scf
 from xdsl.dialects.builtin import Float32Type, FloatAttr, ModuleOp, StringAttr
 from xdsl.ir import Block, Region, SSAValue
 from xdsl.irdl import IRDLOperation, irdl_op_definition, result_def
@@ -41,9 +40,12 @@ class EmitCYieldOp(IRDLOperation):
 
 def convert_type_for_emitc_variable(ty):
     """Convert RVV types to emitc.opaque, others stay as-is."""
+    if hasattr(ty, "name"):
+        name_str = str(ty.name)
+        if name_str.startswith("rvv."):
+            c_type_name = name_str[4:] + "_t"
+            return emitc.EmitC_OpaqueType(StringAttr(c_type_name))
     if isinstance(ty, RVVFloat32M1Type):
-        return emitc.EmitC_OpaqueType(StringAttr("vfloat32m1_t"))
-    if hasattr(ty, "name") and "rvv" in str(ty.name).lower():
         return emitc.EmitC_OpaqueType(StringAttr("vfloat32m1_t"))
     return ty
 
@@ -52,6 +54,10 @@ def get_emitc_variable_value_attr(ty):
     """Get appropriate value attribute for emitc.variable."""
     if isinstance(ty, emitc.EmitC_OpaqueType):
         return emitc.EmitC_OpaqueAttr(StringAttr(""))
+    if isinstance(ty, builtin.IndexType):
+        return builtin.IntegerAttr(0, builtin.IndexType())
+    if isinstance(ty, builtin.IntegerType):
+        return builtin.IntegerAttr(0, ty)
     return FloatAttr(0.0, Float32Type())
 
 
@@ -106,9 +112,7 @@ class ConvertScfForToEmitCFor(RewritePattern):
             new_block.args[0].name_hint = old_block.args[0].name_hint
 
         # Value mapping: induction variable
-        value_mapping: dict[SSAValue, SSAValue] = {
-            old_block.args[0]: new_block.args[0]
-        }
+        value_mapping: dict[SSAValue, SSAValue] = {old_block.args[0]: new_block.args[0]}
 
         # Get iter_arg block arguments (args after induction variable)
         iter_arg_block_args = list(old_block.args[1:])  # Skip induction var

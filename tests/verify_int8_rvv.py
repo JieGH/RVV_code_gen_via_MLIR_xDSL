@@ -13,12 +13,12 @@ from io import StringIO
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, emitc, func, memref, scf
 from xdsl.dialects.builtin import (
+    FunctionType,
     IndexType,
     IntegerAttr,
     IntegerType,
     MemRefType,
     ModuleOp,
-    FunctionType,
 )
 from xdsl.ir import Block, Region
 from xdsl.printer import Printer
@@ -26,27 +26,25 @@ from xdsl.printer import Printer
 # ── Dialect + Pass imports ───────────────────────────────────────────────────
 from xdsltemplate.dialects.rvv import (
     RVV,
-    RVVInt8M1Type,
-    RVVInt16M2Type,
     RVVInt32M4Type,
     vle8_v_i8m1Op,
-    vwadd_vx_i16m2Op,
     vmv_v_x_i32m4Op,
-    vle32_v_i32m4Op,
-    vwmacc_vx_i32m4Op,
     vse32_v_i32m4Op,
+    vwadd_vx_i16m2Op,
+    vwmacc_vx_i32m4Op,
 )
 from xdsltemplate.transforms.rvv_to_emitc import RVVToEmitCPass
 
 # ── Reference intrinsic names (from the hand-written C) ──────────────────────
 EXPECTED_INTRINSICS = [
-    "__riscv_vmv_v_x_i32m4",    # zero-init accumulator
-    "__riscv_vle8_v_i8m1",      # load A
-    "__riscv_vwadd_vx_i16m2",   # widen A: i8 → i16
+    "__riscv_vmv_v_x_i32m4",  # zero-init accumulator
+    "__riscv_vle8_v_i8m1",  # load A
+    "__riscv_vwadd_vx_i16m2",  # widen A: i8 → i16
     "__riscv_vwmacc_vx_i32m4",  # widening MAC
-    "__riscv_vle32_v_i32m4",    # load C (beta≠0)
-    "__riscv_vse32_v_i32m4",    # store C
+    "__riscv_vle32_v_i32m4",  # load C (beta≠0)
+    "__riscv_vse32_v_i32m4",  # store C
 ]
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 def make_context() -> Context:
@@ -69,66 +67,116 @@ def print_module(module: ModuleOp) -> str:
 
 # ─────────────────────────────────────────────────────────────────────────────
 def build_test_module() -> ModuleOp:
-    """
-    Builds a minimal func.func containing ONE of each new INT8 RVV op.
-    Corresponds to one iteration of the K-loop body in the reference kernel:
-
-        vint32m4_t C00  = __riscv_vmv_v_x_i32m4(0, vlength);        // zero-init
-        vint32m4_t C00b = __riscv_vle32_v_i32m4(&Cr[0], vlength);   // beta≠0 load
-        vint8m1_t  vtmp = __riscv_vle8_v_i8m1(&Ar[0], vlength);     // load A
-        vint16m2_t A0   = __riscv_vwadd_vx_i16m2(vtmp, 0, vlength); // widen
-        C00 = __riscv_vwmacc_vx_i32m4(C00, Br[0], A0, vlength);     // MAC
-        __riscv_vse32_v_i32m4(&Cr[0], C00, vlength);                 // store
-    """
-    index_t    = IndexType()
-    i8_t       = IntegerType(8)
-    i32_t      = IntegerType(32)
-    memref_i8  = MemRefType(i8_t,  [-1])
+    """Builds the complete 32x6 INT8 ukernel matching the provided C code."""
+    index_t = IndexType()
+    i8_t = IntegerType(8)
+    i32_t = IntegerType(32)
+    memref_i8 = MemRefType(i8_t, [-1])
     memref_i32 = MemRefType(i32_t, [-1])
+    acc_t = RVVInt32M4Type()
 
-    # Function: (Ar: memref<?xi8>, Br: memref<?xi8>, Cr: memref<?xi32>) -> ()
-    func_type   = FunctionType.from_lists([memref_i8, memref_i8, memref_i32], [])
-    entry_block = Block(arg_types=[memref_i8, memref_i8, memref_i32])
-    Ar, Br, Cr  = entry_block.args
+    # void uk_riscv1_gemm_Ccol_32x6_vl256_m4_int8_int32(
+    #    int mr, int nr, size_t kc, int8_t *Ar, int8_t *Br, int32_t *Cr, int32_t beta, size_t ldC)
+    input_types = [
+        i32_t,
+        i32_t,
+        index_t,  # mr, nr, kc
+        memref_i8,
+        memref_i8,
+        memref_i32,
+        i32_t,
+        index_t,  # beta, ldC
+    ]
+    func_type = FunctionType.from_lists(input_types, [])
+    entry_block = Block(arg_types=input_types)
+    mr, nr, kc, Ar, Br, Cr, beta, ldC = entry_block.args
 
-    # Constants
-    c_vl  = arith.ConstantOp(IntegerAttr(32, index_t));  entry_block.add_op(c_vl)
-    c0i   = arith.ConstantOp(IntegerAttr(0,  index_t));  entry_block.add_op(c0i)
-    c0i8  = arith.ConstantOp(IntegerAttr(0,  i8_t));     entry_block.add_op(c0i8)
-    c0i32 = arith.ConstantOp(IntegerAttr(0,  i32_t));    entry_block.add_op(c0i32)
+    c_vl = arith.ConstantOp(IntegerAttr(32, index_t))
+    entry_block.add_op(c_vl)
+    vl = c_vl.result
 
-    vl  = c_vl.result
-    i0  = c0i.result
-    i80 = c0i8.result
-    i320= c0i32.result
+    c0_i32 = arith.ConstantOp(IntegerAttr(0, i32_t))
+    entry_block.add_op(c0_i32)
+    c0_idx = arith.ConstantOp(IntegerAttr(0, index_t))
+    entry_block.add_op(c0_idx)
+    c1_idx = arith.ConstantOp(IntegerAttr(1, index_t))
+    entry_block.add_op(c1_idx)
+    c32_idx = arith.ConstantOp(IntegerAttr(32, index_t))
+    entry_block.add_op(c32_idx)
+    c6_idx = arith.ConstantOp(IntegerAttr(6, index_t))
+    entry_block.add_op(c6_idx)
+    c0_i8 = arith.ConstantOp(IntegerAttr(0, i8_t))
+    entry_block.add_op(c0_i8)
 
-    # 1. vmv_v_x_i32m4: zero-init  →  C00 = __riscv_vmv_v_x_i32m4(0, vl)
-    vmv_op = vmv_v_x_i32m4Op(i320, vl);          entry_block.add_op(vmv_op)
+    # ----- INIT ACCUMULATORS (Beta = 0 assumed) -----
+    init_accs = []
+    for _ in range(6):
+        vmv = vmv_v_x_i32m4Op(c0_i32.result, vl)
+        entry_block.add_op(vmv)
+        init_accs.append(vmv.result)
 
-    # 2. vle32_v_i32m4: load C (beta≠0)  →  C00b = __riscv_vle32_v_i32m4(&Cr[0], vl)
-    vle32i32_op = vle32_v_i32m4Op(Cr, i0, vl);   entry_block.add_op(vle32i32_op)
+    # ----- FOR LOOP -----
+    # Loop state: c0..c5, bA, bB
+    acc_types = [acc_t] * 6
+    loop_body_types = [index_t] + acc_types + [index_t, index_t]
+    loop_body = Block(arg_types=loop_body_types)
+    pr = loop_body.args[0]
+    l_accs = [loop_body.args[n + 1] for n in range(6)]
+    bA = loop_body.args[7]
+    bB = loop_body.args[8]
 
-    # 3. vle8_v_i8m1: load A  →  vtmp = __riscv_vle8_v_i8m1(&Ar[0], vl)
-    vle8_op = vle8_v_i8m1Op(Ar, i0, vl);         entry_block.add_op(vle8_op)
+    # vtmp = vle8(&Ar[bA+0]), A0 = vwadd(vtmp, 0)
+    vle8 = vle8_v_i8m1Op(Ar, bA, vl)
+    loop_body.add_op(vle8)
+    vwadd = vwadd_vx_i16m2Op(vle8.result, c0_i8.result, vl)
+    loop_body.add_op(vwadd)
+    A0 = vwadd.result
 
-    # 4. vwadd_vx_i16m2: widen  →  A0 = __riscv_vwadd_vx_i16m2(vtmp, 0, vl)
-    vwadd_op = vwadd_vx_i16m2Op(vle8_op.result, i80, vl)
-    entry_block.add_op(vwadd_op)
+    # C0x = vwmacc(C0x, Br[bB + n], A0)
+    new_accs = []
+    for n in range(6):
+        n_idx = arith.ConstantOp(IntegerAttr(n, index_t))
+        loop_body.add_op(n_idx)
+        bb_off = arith.AddiOp(bB, n_idx.result)
+        loop_body.add_op(bb_off)
+        br_scalar = memref.LoadOp.get(Br, [bb_off.result])
+        loop_body.add_op(br_scalar)
+        vwm = vwmacc_vx_i32m4Op(l_accs[n], br_scalar.res, A0, vl)
+        loop_body.add_op(vwm)
+        new_accs.append(vwm.result)
 
-    # 5. vwmacc_vx_i32m4: MAC  →  C00 = __riscv_vwmacc_vx_i32m4(C00, Br[0], A0, vl)
-    br0 = memref.LoadOp.get(Br, [i0]);            entry_block.add_op(br0)
-    vwmacc_op = vwmacc_vx_i32m4Op(
-        vmv_op.result, br0.res, vwadd_op.result, vl
+    # bA += 32, bB += 6
+    next_bA = arith.AddiOp(bA, c32_idx.result)
+    loop_body.add_op(next_bA)
+    next_bB = arith.AddiOp(bB, c6_idx.result)
+    loop_body.add_op(next_bB)
+
+    # yield updated
+    loop_yield_vals = new_accs + [next_bA.result, next_bB.result]
+    loop_body.add_op(scf.YieldOp(*loop_yield_vals))
+
+    # ForOp Setup -> iter parameters: acc0..5, 0 (bA), 0 (bB)
+    iter_inits = init_accs + [c0_idx.result, c0_idx.result]
+    for_op = scf.ForOp(
+        c0_idx.result, kc, c1_idx.result, iter_inits, Region([loop_body])
     )
-    entry_block.add_op(vwmacc_op)
+    entry_block.add_op(for_op)
 
-    # 6. vse32_v_i32m4: store  →  __riscv_vse32_v_i32m4(&Cr[0], C00, vl)
-    store_op = vse32_v_i32m4Op(Cr, i0, vwmacc_op.result, vl)
-    entry_block.add_op(store_op)
+    # ----- STORE -----
+    final_accs = [for_op.results[n] for n in range(6)]
+    for n in range(6):
+        n_idx = arith.ConstantOp(IntegerAttr(n, index_t))
+        entry_block.add_op(n_idx)
+        col_offset = arith.MuliOp(n_idx.result, ldC)
+        entry_block.add_op(col_offset)
+        vse = vse32_v_i32m4Op(Cr, col_offset.result, final_accs[n], vl)
+        entry_block.add_op(vse)
 
     entry_block.add_op(func.ReturnOp())
 
-    gemm_func = func.FuncOp("test_int8_ops", func_type, Region([entry_block]))
+    gemm_func = func.FuncOp(
+        "uk_riscv1_gemm_Ccol_32x6_vl256_m4_int8_int32", func_type, Region([entry_block])
+    )
     return ModuleOp([gemm_func])
 
 
@@ -157,28 +205,39 @@ def verify_emitc_output(emitc_str: str):
 
 # Path to mlir-translate binary
 MLIR_TRANSLATE = "/home/jlei/Documents/ws_MLIR/llvm-project/build/bin/mlir-translate"
-OUT_DIR        = "/home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/tmp_int_codeGen"
-MLIR_TMP       = f"{OUT_DIR}/verify_int8_rvv.mlir"
-C_TMP          = f"{OUT_DIR}/verify_int8_rvv.c"
+OUT_DIR = "/home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/tmp_int_codeGen"
+MLIR_TMP = f"{OUT_DIR}/verify_int8_rvv.mlir"
+C_TMP = f"{OUT_DIR}/verify_int8_rvv.c"
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 def translate_to_c(module: ModuleOp) -> str | None:
     """Write Generic EmitC MLIR to OUT_DIR and call mlir-translate -mlir-to-cpp."""
-    import subprocess, os
+    import os
+    import subprocess
+
     os.makedirs(OUT_DIR, exist_ok=True)
-    
+
     # Needs to be generic format for mlir-translate to parse
     buf = StringIO()
     Printer(stream=buf, print_generic_format=True).print_op(module)
     emitc_mlir_generic = buf.getvalue().replace("<-1x", "<?x")
-    
+
     with open(MLIR_TMP, "w") as f:
         f.write(emitc_mlir_generic)
     try:
         result = subprocess.run(
-            [MLIR_TRANSLATE, "-allow-unregistered-dialect",
-             "-mlir-to-cpp", MLIR_TMP, "-o", C_TMP],
-            capture_output=True, text=True, timeout=30,
+            [
+                MLIR_TRANSLATE,
+                "-allow-unregistered-dialect",
+                "-mlir-to-cpp",
+                MLIR_TMP,
+                "-o",
+                C_TMP,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         if result.returncode != 0:
             print(f"mlir-translate error:\n{result.stderr}")
@@ -191,10 +250,12 @@ def translate_to_c(module: ModuleOp) -> str | None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-from xdsltemplate.transforms.memref_to_emitc import MemRefToEmitCPass
 from xdsltemplate.transforms.arith_to_emitc import ArithToEmitCPass
 from xdsltemplate.transforms.memref_load_to_emitc import MemrefLoadToEmitcPass
 from xdsltemplate.transforms.memref_store_to_emitc import MemrefStoreToEmitcPass
+from xdsltemplate.transforms.memref_to_emitc import MemRefToEmitCPass
+from xdsltemplate.transforms.scf_to_emitc import SCFToEmitCPass
+
 
 def main():
     print("=== INT8 RVV Dialect + EmitC Lowering Verification ===\n")
@@ -214,10 +275,12 @@ def main():
     MemrefLoadToEmitcPass().apply(ctx, module)
     print("  Applying MemrefStoreToEmitcPass...", flush=True)
     MemrefStoreToEmitcPass().apply(ctx, module)
+    print("  Applying SCFToEmitCPass...", flush=True)
+    SCFToEmitCPass().apply(ctx, module)
     print("  Applying RVVToEmitCPass...", flush=True)
     RVVToEmitCPass().apply(ctx, module)
     print("  Passes done.", flush=True)
-    
+
     emitc_mlir = print_module(module)
 
     # 3. Show EmitC MLIR + verify intrinsic names

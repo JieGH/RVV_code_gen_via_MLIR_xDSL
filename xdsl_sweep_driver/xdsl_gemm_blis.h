@@ -17,12 +17,14 @@
 
 #elif RVV_EXO
   #include <riscv_vector.h>
-  #ifdef FP32
+  #ifdef EXO_MATRIX_HEADER
+      // Automatically passed in via compile.sh CFLAGS
+      #include EXO_MATRIX_HEADER
+  #elif defined(FP32)
       #include "exo_matrix_RVV_fp32.h"
   #else  
       #include "exo_matrix_RVV_fp16.h"
-#endif
-//#include "ARMv8/uk_exo.h"
+  #endif
 //#ifdef loadAB
 //  #ifdef gather
 //      #include "RVV_256/loadAB/gather/exo_matrix_RVV_fp32.h"
@@ -77,4 +79,3 @@ void unpack_CB( char, char, int, int, DTYPE *, int, DTYPE *, int );
 void pack_RB_v( char, char, int, int, DTYPE *, int, DTYPE *, int );
 void pack_CB_v( char, char, int, int, DTYPE *, int, DTYPE *, int );
 //-----------------------------------------------------------------------------------
-
