@@ -340,124 +340,130 @@ BEST_UK=$(grep '_b0' "${OUT_FILE}" | grep 'GFLOP/s' | awk '
 echo " Best kc-loop kernel: ${BEST_UK}  (from ${OUT_FILE})"
 
 
-# # ============================================================
-# # Step 7 — XDSL kernel sweep
-# # ============================================================
-# echo ""; echo "$SEP"; echo " [7/8] XDSL Kernel Sweep (MR=1..${MAX_MR}, NR=1..${MAX_NR})"; echo "$SEP"
+# ============================================================
+# Step 7 — XDSL kernel sweep
+# ============================================================
+echo ""; echo "$SEP"; echo " [7/8] XDSL Kernel Sweep (MR=1..${MAX_MR}, NR=1..${MAX_NR})"; echo "$SEP"
 
-# # Clone benchmark repo if needed
-# ssh_board "cd ${RISCV_WORKSPACE} && if [ ! -d 'RVV_ukernels_benchmark' ]; then git clone https://github.com/adcastel/RVV_ukernels_benchmark.git; else echo 'RVV_ukernels_benchmark already present.'; fi"
-# ssh_board "rm -rf ${RISCV_WORKSPACE}/RVV_ukernels_benchmark/kernels/RVV_${VLEN_BITS}_XDSL"
-# ssh_host "mkdir -p ${RISCV_WORKSPACE}/RVV_ukernels_benchmark/kernels/"
-# rsync_board tests/test_blis/RVV_${VLEN_BITS}_XDSL ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/kernels/
-# ssh_host "mkdir -p ${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/"
-# rsync_board tests/test_openblas/cnn_models ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/
-# rsync_board xdsl_sweep_driver/xdsl_gemm_blis.c ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/src/gemm_blis.c
-# rsync_board xdsl_sweep_driver/xdsl_gemm_blis.h ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/src/gemm_blis.h
-# rsync_board xdsl_sweep_driver/xdsl_test_gemm.c  ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/src/test_gemm.c
+# Sync local benchmark repo instead of cloning
+ssh_board "cd ${RISCV_WORKSPACE} && if [ ! -d 'RVV_ukernels_benchmark' ]; then git clone https://github.com/adcastel/RVV_ukernels_benchmark.git; else echo 'RVV_ukernels_benchmark already present.'; fi"
 
-# # Render DATASETS into a bash array declaration for the remote script
-# DATASETS_BASH_DECL="DATASETS=("
-# for ds in "${DATASETS[@]}"; do DATASETS_BASH_DECL+="\"$ds\" "; done
-# DATASETS_BASH_DECL+=")"
+ssh_board "rm -rf ${RISCV_WORKSPACE}/RVV_ukernels_benchmark/kernels/RVV_${VLEN_BITS}_XDSL"
+ssh_host "mkdir -p ${RISCV_WORKSPACE}/RVV_ukernels_benchmark/kernels/"
+rsync_board tests/test_blis/RVV_${VLEN_BITS}_XDSL ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/kernels/
+ssh_host "mkdir -p ${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/"
+rsync_board tests/test_openblas/cnn_models ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/
+rsync_board xdsl_sweep_driver/xdsl_gemm_blis.c ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/src/gemm_blis.c
+rsync_board xdsl_sweep_driver/xdsl_gemm_blis.h ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/src/gemm_blis.h
+rsync_board xdsl_sweep_driver/xdsl_test_gemm.c  ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/src/test_gemm.c
+rsync_board xdsl_sweep_driver/xdsl_dtypes.h     ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/src/dtypes.h
+rsync_board xdsl_sweep_driver/xdsl_sutils.c     ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/src/sutils.c
+rsync_board xdsl_sweep_driver/xdsl_Makefile     ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/Makefile
 
-# cat > /tmp/xdsl_sweep.sh << SWEEP_EOF
-# #!/bin/bash
-# BLIS_HOME=${RISCV_BLIS_DIR_ENV}
-# BENCH_DIR=\$HOME/${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family
+# Render DATASETS into a bash array declaration for the remote script
+DATASETS_BASH_DECL="DATASETS=("
+for ds in "${DATASETS[@]}"; do DATASETS_BASH_DECL+="\"$ds\" "; done
+DATASETS_BASH_DECL+=")"
 
-# cd \$BENCH_DIR
-# mkdir -p build out
+PREC_UPPER=$(echo $PRECISION | tr 'a-z' 'A-Z')
 
-# FIXED_KPATH="../kernels/RVV_${VLEN_BITS}_XDSL/${PRECISION}/${MAX_DIM_STR}/"
-# FIXED_FILE="kernels_RVV_${MAX_DIM_STR}_${PRECISION}"
+cat > /tmp/xdsl_sweep.sh << SWEEP_EOF
+#!/bin/bash
+BLIS_HOME=${RISCV_BLIS_DIR_ENV}
+BENCH_DIR=\$HOME/${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family
 
-# ${DATASETS_BASH_DECL}
+cd \$BENCH_DIR
+mkdir -p build out
 
-# echo "Compiling monolithic driver binary..."
-# make clean > /dev/null 2>&1 || true
+FIXED_KPATH="../kernels/RVV_${VLEN_BITS}_XDSL/${PRECISION}/${MAX_DIM_STR}/"
+FIXED_FILE="kernels_RVV_${MAX_DIM_STR}_${PRECISION}"
 
-# export CFLAGS="-DLIB_DIR=\"\$FIXED_KPATH\" -DEXO_MATRIX_HEADER=\"exo_matrix_RVV_${PRECISION}.h\" -DCOMPILER_FLAGS=\"-O3 -mcmodel=medany -march=rv64gcv\""
+${DATASETS_BASH_DECL}
 
-# if ! make MR=1 NR=1 KPATH="\$FIXED_KPATH" FILE="\$FIXED_FILE" \
-#           OPT=XDSL GATHER=2 SWAP=0 SIMD_MODE=RVV_EXO RUN_MODE=FAMILY_EXO \
-#           BLIS_HOME=\$BLIS_HOME > /tmp/make_monolithic.log 2>&1; then
-#     echo "ERROR: Compilation failed:"
-#     cat /tmp/make_monolithic.log
-#     exit 1
-# fi
-# echo "Binary built successfully."
+echo "Compiling monolithic driver binary..."
+make clean > /dev/null 2>&1 || true
 
-# export OMP_NUM_THREADS=1
-# export LD_LIBRARY_PATH=\$BLIS_HOME/lib:\$LD_LIBRARY_PATH
+export CFLAGS="-DLIB_DIR=\"\$FIXED_KPATH\" -DEXO_MATRIX_HEADER=\"exo_matrix_RVV_${PRECISION}.h\" -DCOMPILER_FLAGS=\"-O3 -mcmodel=medany -march=rv64gcv\""
 
-# for DATASET in "\${DATASETS[@]}"; do
-#     DS_NAME=\$(basename \$DATASET .dat)
-#     OUTFILE="out/result_\${DS_NAME}_XDSL_sweep_macc.dat"
-#     LOGFILE="out/sweep_log_\${DS_NAME}.txt"
-#     echo ""
-#     echo " >>> Dataset: \$DATASET"
-#     build/test_gemm.x "" "C" "C" "C" "N" "N" 1.0 0.0 0 0 0 0 0 0 0 0 0 0 3.0 F \$DATASET \$OUTFILE ${MAX_MR} ${MAX_NR} | tee "\$LOGFILE"
-# done
-# SWEEP_EOF
+if ! make MR=1 NR=1 KPATH="\$FIXED_KPATH" FILE="\$FIXED_FILE" \
+          OPT=XDSL GATHER=2 SWAP=0 SIMD_MODE=RVV_EXO RUN_MODE=FAMILY_EXO \
+          DT="${PRECISION}" DTYPE="-D${PREC_UPPER}" BLIS_HOME=\$BLIS_HOME > /tmp/make_monolithic.log 2>&1; then
+    echo "ERROR: Compilation failed:"
+    cat /tmp/make_monolithic.log
+    exit 1
+fi
+echo "Binary built successfully."
 
-# chmod +x /tmp/xdsl_sweep.sh
-# rsync_board /tmp/xdsl_sweep.sh ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/xdsl_sweep.sh
-# ssh_board "bash ${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/xdsl_sweep.sh"
+export OMP_NUM_THREADS=1
+export LD_LIBRARY_PATH=\$BLIS_HOME/lib:\$LD_LIBRARY_PATH
 
-# echo " Collecting XDSL sweep CSVs to tests/output/..."
-# mkdir -p tests/output
-# for DS in "${DATASETS[@]}"; do
-#     DS_NAME=$(basename "$DS" .dat)
-#     REMOTE_CSV="${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/out/result_${DS_NAME}_XDSL_sweep_macc.dat"
-#     LOCAL_CSV="tests/output/xdsl_${DS_NAME}_${MAX_MR}x${MAX_NR}.csv"
-#     REMOTE_LOG="${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/out/sweep_log_${DS_NAME}.txt"
-#     LOCAL_LOG="tests/output/sweep_log_${DS_NAME}_${MAX_MR}x${MAX_NR}.txt"
-#     rsync_board "${RSYNC_TARGET}:${REMOTE_CSV}" "${LOCAL_CSV}" || echo " [warn] Could not fetch ${REMOTE_CSV}"
-#     rsync_board "${RSYNC_TARGET}:${REMOTE_LOG}" "${LOCAL_LOG}" || echo " [warn] Could not fetch ${REMOTE_LOG}"
-#     echo " Saved: ${LOCAL_CSV}  +  ${LOCAL_LOG}"
-# done
+for DATASET in "\${DATASETS[@]}"; do
+    DS_NAME=\$(basename \$DATASET .dat)
+    OUTFILE="out/result_\${DS_NAME}_XDSL_sweep_macc.dat"
+    LOGFILE="out/sweep_log_\${DS_NAME}.txt"
+    echo ""
+    echo " >>> Dataset: \$DATASET"
+    build/test_gemm.x "" "C" "C" "C" "N" "N" 1.0 0.0 0 0 0 0 0 0 0 0 0 0 3.0 F \$DATASET \$OUTFILE ${MAX_MR} ${MAX_NR} | tee "\$LOGFILE"
+done
+SWEEP_EOF
+
+chmod +x /tmp/xdsl_sweep.sh
+rsync_board /tmp/xdsl_sweep.sh ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/xdsl_sweep.sh
+ssh_board "bash ${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/xdsl_sweep.sh"
+
+echo " Collecting XDSL sweep CSVs to tests/output/..."
+mkdir -p tests/output
+for DS in "${DATASETS[@]}"; do
+    DS_NAME=$(basename "$DS" .dat)
+    REMOTE_CSV="${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/out/result_${DS_NAME}_XDSL_sweep_macc.dat"
+    LOCAL_CSV="tests/output/xdsl_${DS_NAME}_${MAX_MR}x${MAX_NR}.csv"
+    REMOTE_LOG="${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/out/sweep_log_${DS_NAME}.txt"
+    LOCAL_LOG="tests/output/sweep_log_${DS_NAME}_${MAX_MR}x${MAX_NR}.txt"
+    rsync_board "${RSYNC_TARGET}:${REMOTE_CSV}" "${LOCAL_CSV}" || echo " [warn] Could not fetch ${REMOTE_CSV}"
+    rsync_board "${RSYNC_TARGET}:${REMOTE_LOG}" "${LOCAL_LOG}" || echo " [warn] Could not fetch ${REMOTE_LOG}"
+    echo " Saved: ${LOCAL_CSV}  +  ${LOCAL_LOG}"
+done
 
 
-# # ============================================================
-# # Step 8 — OpenBLAS reference comparison + plot
-# # ============================================================
-# echo ""; echo "$SEP"; echo " [8/8] OpenBLAS Reference + Comparison Plots"; echo "$SEP"
+# ============================================================
+# Step 8 — OpenBLAS reference comparison + plot
+# ============================================================
+echo ""; echo "$SEP"; echo " [8/8] OpenBLAS Reference + Comparison Plots"; echo "$SEP"
 
-# for DS in "${DATASETS[@]}"; do
-#     DS_NAME=$(basename "$DS" .dat)
-#     LOCAL_OBLAS_OUT="tests/output/openblas_${DS_NAME}.txt"
-#     echo " Running OpenBLAS for: $DS"
-#     ssh_board "cd ${RISCV_WORKSPACE} && export OPENBLAS_NUM_THREADS=1 && \
-#         bash test_openblas/openblassDesign/compile_openblas.sh --dir \"${RISCV_OPENBLAS_DIR_ENV}\" --zvl test_openblas/${DS}" \
-#         | tee "${LOCAL_OBLAS_OUT}"
+for DS in "${DATASETS[@]}"; do
+    DS_NAME=$(basename "$DS" .dat)
+    LOCAL_OBLAS_OUT="tests/output/openblas_${DS_NAME}.txt"
+    echo " Running OpenBLAS for: $DS"
+    ssh_board "cd ${RISCV_WORKSPACE} && export OPENBLAS_NUM_THREADS=1 && \
+        bash test_openblas/openblassDesign/compile_openblas.sh --dir \"${RISCV_OPENBLAS_DIR_ENV}\" --precision \"${PRECISION}\" --zvl test_openblas/${DS}" \
+        | tee "${LOCAL_OBLAS_OUT}"
 
-#     LOCAL_CSV="tests/output/xdsl_${DS_NAME}_${MAX_MR}x${MAX_NR}_${PRECISION}.csv"
-#     OUT_PREFIX="tests/output/${DS_NAME}_${MAX_MR}x${MAX_NR}_${PRECISION}"
-#     if [ -f "${LOCAL_CSV}" ] && [ -f "${LOCAL_OBLAS_OUT}" ]; then
-#         echo " Plotting: $DS_NAME"
-#         LOCAL_LOG="tests/output/sweep_log_${DS_NAME}_${MAX_MR}x${MAX_NR}.txt"
-#         python tests/output/plot_comparison.py \
-#             --xdsl "${LOCAL_CSV}" --oblas "${LOCAL_OBLAS_OUT}" \
-#             --model "${DS_NAME}" --out "${OUT_PREFIX}" \
-#             --vlen "${VLEN_BITS}" --kc "${KC_PROFILE}" \
-#             --families "${MAX_DIM_STR}" \
-#             ${BEST_UK:+--best-kernel "${BEST_UK}"} \
-#             ${LOCAL_LOG:+--sweep-log "${LOCAL_LOG}"}
-#     else
-#         echo " [skip] Missing data for $DS_NAME"
-#     fi
-# done
+    LOCAL_CSV="tests/output/xdsl_${DS_NAME}_${MAX_MR}x${MAX_NR}_${PRECISION}.csv"
+    OUT_PREFIX="tests/output/${DS_NAME}_${MAX_MR}x${MAX_NR}_${PRECISION}"
+    if [ -f "${LOCAL_CSV}" ] && [ -f "${LOCAL_OBLAS_OUT}" ]; then
+        echo " Plotting: $DS_NAME"
+        LOCAL_LOG="tests/output/sweep_log_${DS_NAME}_${MAX_MR}x${MAX_NR}.txt"
+        python tests/output/plot_comparison.py \
+            --xdsl "${LOCAL_CSV}" --oblas "${LOCAL_OBLAS_OUT}" \
+            --model "${DS_NAME}" --out "${OUT_PREFIX}" \
+            --vlen "${VLEN_BITS}" --kc "${KC_PROFILE}" \
+            --families "${MAX_DIM_STR}" \
+            ${BEST_UK:+--best-kernel "${BEST_UK}"} \
+            ${LOCAL_LOG:+--sweep-log "${LOCAL_LOG}"}
+    else
+        echo " [skip] Missing data for $DS_NAME"
+    fi
+done
 
-# echo ""
-# echo "============================================================"
-# echo " Run Summary"
-# echo "============================================================"
-# echo "  Families  : ${FAMILIES}  (max kernel: ${MAX_DIM_STR})"
-# echo "  VLEN      : ${VLEN_BITS} bits"
-# echo "  KC profile: ${KC_PROFILE}"
-# echo "  Datasets  : ${DATASETS[*]}"
-# echo "  Best kc-loop kernel: ${BEST_UK:-N/A}"
-# echo "  Outputs saved to: tests/output/"
-# echo "============================================================"
-# echo ""
+echo ""
+echo "============================================================"
+echo " Run Summary"
+echo "============================================================"
+echo "  Families  : ${FAMILIES}  (max kernel: ${MAX_DIM_STR})"
+echo "  VLEN      : ${VLEN_BITS} bits"
+echo "  KC profile: ${KC_PROFILE}"
+echo "  Datasets  : ${DATASETS[*]}"
+echo "  Best kc-loop kernel: ${BEST_UK:-N/A}"
+echo "  Outputs saved to: tests/output/"
+echo "============================================================"
+echo ""

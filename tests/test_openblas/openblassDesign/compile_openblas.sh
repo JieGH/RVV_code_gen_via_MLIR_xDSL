@@ -7,10 +7,21 @@
 OPENBLAS_DIR="${HOME}/.local"
 OPENBLAS_NAME="Generic OpenBLAS"
 
+PRECISION="fp32"
+PREC_FLAG="-DFP32"
+
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --dir)          OPENBLAS_DIR="$2"; shift ;;
         --zvl|--zvl256b) OPENBLAS_NAME="ZVL256B OpenBLAS" ;;
+        --precision)    
+            PRECISION="$2"
+            if [ "$PRECISION" == "i8i8i32" ]; then
+                PREC_FLAG="-DI8I8I32"
+            else
+                PREC_FLAG="-DFP32"
+            fi
+            shift ;;
         *)              EXTRA_ARGS="$EXTRA_ARGS $1" ;;
     esac
     shift
@@ -33,7 +44,7 @@ echo "Compiling OpenBLAS GEMM Test..."
 # Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-gcc -O3 "${SCRIPT_DIR}/openblas_gemm_test.c" -o "${SCRIPT_DIR}/openblas_gemm_test" \
+gcc -O3 $PREC_FLAG "${SCRIPT_DIR}/openblas_gemm_test.c" -o "${SCRIPT_DIR}/openblas_gemm_test" \
     -I${OPENBLAS_DIR}/include \
     -L${OPENBLAS_DIR}/lib \
     -lopenblas -lm

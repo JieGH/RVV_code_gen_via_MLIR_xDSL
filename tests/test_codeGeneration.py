@@ -752,7 +752,7 @@ static void call_kernel_family_{max_mr}x{max_nr}_{beta_str}(int mr_actual, int n
 """
 
             # Generate reference family dispatcher
-            if not no_ref or precision == "i8i8i32":
+            if True: # Always generate for unit test harness
                 code += f"""// Dispatcher for {max_mr}×{max_nr} family (reference kernels, {beta_str})
 // Optimization: Function Pointer Table for O(1) dispatch
 typedef void (*ref_kernel_{beta_str}_t)(void*, int, float*, {type_a}*, int, {type_b}*, int, float*, {type_c}*, int);
@@ -764,12 +764,13 @@ static void call_kernel_family_ref_{max_mr}x{max_nr}_{beta_str}(int mr_actual, i
     float alpha = 1.0f;
     float beta = {beta_value};
 
-    if ({"1" if precision == "i8i8i32" else "0"}) {{
-        scalar_ref_gemm_i8i8i32(K, &alpha, A, lda, B, ldb, &beta, C, ldc, mr_actual, nr_actual);
-        return;
-    }}
+"""
+                if precision == "i8i8i32":
+                    code += f"""    scalar_ref_gemm_i8i8i32(K, &alpha, A, lda, B, ldb, &beta, C, ldc, mr_actual, nr_actual);
+    return;
+"""
 
-    // Static Lookup Table
+                code += f"""    // Static Lookup Table
     static const ref_kernel_{beta_str}_t kernel_table[{max_mr} + 1][{max_nr} + 1] = {{
 """
 
@@ -982,6 +983,8 @@ def generate_test_maincpp(
     code += f"// PRECISION : {precision}\n"
     code += "// ========================================\n"
     code += CPP_HEADER
+    if precision == "i8i8i32":
+        code += "\nvoid scalar_ref_gemm_i8i8i32(int kc, float* alpha, int8_t* A, int lda, int8_t* B, int ldb, float* beta, int32_t* C, int ldc, int mr, int nr);\n"
 
     # Include merged kernel header (declares gemm_RVV_* names) instead of xdsl_api_gemm.h
     max_mr_k = max(k[0] for k in kernels)
@@ -1161,7 +1164,7 @@ static void gemm_outer_family_{max_mr}x{max_nr}_{beta_str}(size_t M, size_t N, s
 """
 
             # Reference outer loop with edge handling
-            if not no_ref or precision == "i8i8i32":
+            if True: # Always generate for unit test harness
                 code += f"""// Outer loop for {max_mr}×{max_nr} family (reference, {beta_str}) - WITH edge handling
 static void gemm_outer_family_ref_{max_mr}x{max_nr}_{beta_str}(size_t M, size_t N, size_t K,
                                                       {type_a}* A, size_t lda,
@@ -1218,14 +1221,13 @@ int main() {{
     # totalling 128 MB, which evicts A/B from cache and inflates small-kernel timings by 1.4-2.8x.
     # init_abc() is called before every kernel's measurement window to reset the buffer.
     code += f"    {type_c}* C_kernel = ({type_c}*)malloc(M * sizeof({type_c}));\n"
-    # For i8i8i32, we always need C_ref for verification, even if --no-ref is used for profiling.
-    # For float, C_ref is only needed if --no-ref is NOT used.
-    if not no_ref or precision == "i8i8i32":
-        code += f"    {type_c}* C_ref = ({type_c}*)malloc(M * sizeof({type_c}));\n\n"
+    # Always generate C_ref for verification in the unit test harness
+    code += f"    {type_c}* C_ref = ({type_c}*)malloc(M * sizeof({type_c}));\n\n"
 
     code += '    printf("========================================\\n");\n'
     code += '    printf(" Microkernel Benchmarking (RVV)\\n");\n'
     code += f'    printf(" Precision : {precision}\\n");\n'
+    code += f'    printf(" Types     : A={type_a}, B={type_b}, C={type_c}\\n");\n'
     code += '    printf("========================================\\n\\n");\n'
     # Call each unique kernel (Part 1 Micro-kernels) for each beta mode
     for beta_mode in beta_modes:
@@ -1248,7 +1250,7 @@ int main() {{
             if precision == "i8i8i32":
                 code += f"    scalar_ref_gemm_i8i8i32(KC, &alpha_{beta_str}, A, {mr}, B, {nr}, &beta_{beta_str}, C_ref, {mr}, {mr}, {nr});\n"
             else:
-                code += f"    gemm_RVV_{mr}x{nr}_{beta_str}_{precision}(NULL, KC, &c_alpha_{beta_str}, A, {mr}, B, {nr}, &c_beta_{beta_str}, C_ref, {mr});\n"
+                code += f"    gemm_RVV_{mr}x{nr}_{beta_str}_col_{precision}(NULL, KC, &c_alpha_{beta_str}, A, {mr}, B, {nr}, &c_beta_{beta_str}, C_ref, {mr});\n"
             code += f"    compare_C(C_ref, C_kernel, M, {'0' if precision == 'i8i8i32' else '0.1'});\n"
             code += '    printf("\\n");\n'
 
@@ -1403,8 +1405,8 @@ int main() {{
     free(A); free(B);
 """
     code += "    free(C_kernel);\n"
-    if not no_ref:
-        code += "    free(C_ref);\n"
+    # Always free C_ref as it is now always allocated for unit test harness
+    code += "    free(C_ref);\n"
 
     code += """
     return 0;
@@ -1653,12 +1655,16 @@ def generate_merged_kernel_file(
     from datetime import datetime
 
     gen_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    type_a = "int8_t" if precision == "i8i8i32" else "float"
+    type_b = "int8_t" if precision == "i8i8i32" else "float"
+    type_c = "int32_t" if precision == "i8i8i32" else "float"
+
     top_comment = f"""// ============================================================
 // xDSL Generated Merged Kernels
 // ------------------------------------------------------------
-//   Generated   : {gen_time}
-//   Precision   : {precision}
-//   VLEN_BITS   : {vlen_bits}
+// Precision : {precision}
+// Types     : A={type_a}, B={type_b}, C={type_c}
+// Generation: {gen_time}
 // ============================================================
 """
 
@@ -1763,7 +1769,7 @@ def generate_merged_kernel_file(
             tests_dir,
             "test_blis",
             f"RVV_{vlen_bits}_XDSL",
-            "fp32",
+            precision,
             f"{max_mr}x{max_nr}",
             "loadAB",
             "macc",
@@ -1773,7 +1779,7 @@ def generate_merged_kernel_file(
         shutil.copy2(merged_h_path, xdsl_blis_dest)
         if VERBOSE:
             print(
-                f"  ✔ Copied {merged_c_filename} → test_blis/RVV_{vlen_bits}_XDSL/fp32/{max_mr}x{max_nr}/loadAB/macc/"
+                f"  ✔ Copied {merged_c_filename} → test_blis/RVV_{vlen_bits}_XDSL/{precision}/{max_mr}x{max_nr}/loadAB/macc/"
             )
 
     if not VERBOSE:
@@ -1893,7 +1899,7 @@ void freeMatrix(ukrFunction**** matrix) {{
             tests_dir,
             "test_blis",
             f"RVV_{vlen_bits}_XDSL",
-            "fp32",
+            precision,
             f"{max_mr}x{max_nr}",
             "loadAB",
             "macc",
@@ -1903,7 +1909,7 @@ void freeMatrix(ukrFunction**** matrix) {{
         shutil.copy2(h_path, xdsl_blis_dest)
         if VERBOSE:
             print(
-                f"  ✔ Copied {c_filename} → test_blis/RVV_{vlen_bits}_XDSL/fp32/{max_mr}x{max_nr}/loadAB/macc/"
+                f"  ✔ Copied {c_filename} → test_blis/RVV_{vlen_bits}_XDSL/{precision}/{max_mr}x{max_nr}/loadAB/macc/"
             )
 
 
@@ -2243,7 +2249,7 @@ def main():
     # Use glob relative to OUTPUT_DIR
     for f in glob(f"{OUTPUT_DIR}/*"):
         if os.path.isfile(f) and not os.path.basename(f).startswith(
-            f"kernels_RVV_{vlen_bits}_fp32_ldx"
+            f"kernels_RVV_{vlen_bits}_{args.precision}_ldx"
         ):
             os.remove(f)
 
@@ -2401,7 +2407,7 @@ def main():
         header_name="xdsl_api_gemm.h",
         ref_kernel_name=ref_kernel_base_name,
         kc_profile=args.kc_profile,
-        no_ref=args.no_ref,
+        no_ref=(args.no_ref or args.precision == "i8i8i32"),
         precision=args.precision,
     )
     if not VERBOSE:
@@ -2413,7 +2419,7 @@ def main():
         OUTPUT_DIR,
         beta_modes,
         ref_kernel_name=ref_kernel_base_name,
-        no_ref=args.no_ref,
+        no_ref=(args.no_ref or args.precision == "i8i8i32"),
         precision=args.precision,
     )
     if not VERBOSE:

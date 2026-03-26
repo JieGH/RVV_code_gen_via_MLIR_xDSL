@@ -18,8 +18,9 @@
 #elif RVV_EXO
   #include <riscv_vector.h>
   #ifdef EXO_MATRIX_HEADER
-      // Automatically passed in via compile.sh CFLAGS
-      #include EXO_MATRIX_HEADER
+      #define STR_HELPER(x) #x
+      #define STR(x) STR_HELPER(x)
+      #include STR(EXO_MATRIX_HEADER)
   #elif defined(FP32)
       #include "exo_matrix_RVV_fp32.h"
   #else  
@@ -60,20 +61,20 @@
 #define Crow(a1,a2)  C[ (a1)*(ldC)+(a2) ]
 #define Mrow(a1,a2)  M[ (a1)*(ldM)+(a2) ]
 
-void gemm_blis_B3A2C0( char, char, char, char, char, size_t, size_t, size_t, DTYPE, DTYPE *, size_t, DTYPE *, size_t, DTYPE, DTYPE *, size_t, 
-		       DTYPE *, DTYPE *, size_t, size_t, size_t, int, int, const cntx_t *, auxinfo_t *, gemm_ukr_ft
+void gemm_blis_B3A2C0( char, char, char, char, char, size_t, size_t, size_t, ALPHA_TYPE, A_TYPE *, size_t, B_TYPE *, size_t, BETA_TYPE, C_TYPE *, size_t, 
+		       A_TYPE *, B_TYPE *, size_t, size_t, size_t, int, int, const cntx_t *, auxinfo_t *, gemm_ukr_ft
             #if defined(FAMILY_EXO)
 		       ,  ukrFunction**** ukrmatrix);
             #else
                      );
 #endif
-void gemm_base_Cresident( char, int, int, int, DTYPE, DTYPE *, int, DTYPE *, int, DTYPE, DTYPE *, int );
-void gemm_base_ABresident( char, char, int, int, int, DTYPE, DTYPE *, int, DTYPE *, int, DTYPE, DTYPE *, int );
+void gemm_base_Cresident( char, int, int, int, ALPHA_TYPE, A_TYPE *, int, B_TYPE *, int, BETA_TYPE, C_TYPE *, int );
+void gemm_base_ABresident( char, char, int, int, int, ALPHA_TYPE, A_TYPE *, int, B_TYPE *, int, BETA_TYPE, C_TYPE *, int );
 
-void pack_RB( char, char, int, int, DTYPE *, int, DTYPE *, int );
-void pack_CB( char, char, int, int, DTYPE *, int, DTYPE *, int );
-void unpack_RB( char, char, int, int, DTYPE *, int, DTYPE *, int );
-void unpack_CB( char, char, int, int, DTYPE *, int, DTYPE *, int );
+void pack_RB( char, char, int, int, A_TYPE *, int, A_TYPE *, int );
+void pack_CB( char, char, int, int, B_TYPE *, int, B_TYPE *, int );
+void unpack_RB( char, char, int, int, A_TYPE *, int, A_TYPE *, int );
+void unpack_CB( char, char, int, int, B_TYPE *, int, B_TYPE *, int );
 
 //-----------------------------------------------------------------------------------
 void pack_RB_v( char, char, int, int, DTYPE *, int, DTYPE *, int );
