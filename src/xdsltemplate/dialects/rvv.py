@@ -371,6 +371,22 @@ class vse32_v_i32m1Op(IRDLOperation):
 
 
 @irdl_op_definition
+class vle32_v_i32m1Op(IRDLOperation):
+    """
+    Vector load operation for vint32m1_t
+    """
+
+    name = "rvv.vle32_v_i32m1Op"
+    memref = operand_def(MemRefType)
+    offset = operand_def(IndexType)
+    avl = operand_def(IndexType)
+    result = result_def(RVVInt32M1Type)
+
+    def __init__(self, memref: SSAValue, offset: SSAValue, avl: SSAValue):
+        super().__init__(operands=[memref, offset, avl], result_types=[RVVInt32M1Type()])
+
+
+@irdl_op_definition
 class vmv_v_x_i32m1Op(IRDLOperation):
     """
     __riscv_vmv_v_x_i32m1(scalar, vl)

@@ -23,11 +23,15 @@ This project has pre-commit hooks (formatting, linting) that may fail on work-in
 
 ```bash
 git add -A
+```bash
+git add -A
 git commit --no-verify -m "your message"
-git push
+# git push   ← ONLY run if user explicitly says "push"
 ```
 
 > **IMPORTANT**: `--no-verify` is only for this specific project (`RVV_code_gen_via_MLIR_xDSL`). Do NOT use it by default in other projects.
+
+> **RULE**: Always commit when asked to "commit and push" or "write up commit", but do **NOT** run `git push` unless the user explicitly says **"push"**. Just commit locally and mention that you haven't pushed.
 
 ---
 
@@ -86,6 +90,9 @@ Do NOT skip straight to implementation for anything involving:
 - New dialect types or ops in `rvv.py`
 - Changes to `rvv_to_emitc.py` lowering passes
 - A new test file alongside dialect changes
+
+> [!IMPORTANT]
+> **CRITICAL**: When adding new RVV dialect operations, always verify the lowering implementation in `rvv_to_emitc.py` *before* proceeding to top-level test bench execution. This prevents late-stage pipeline failures due to missing EmitC patterns.
 
 ---
 

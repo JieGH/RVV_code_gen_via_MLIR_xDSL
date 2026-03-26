@@ -21,8 +21,11 @@ from xdsl.dialects.builtin import (
     FunctionType,
     IndexType,
     IntegerAttr,
+    IntegerType,
     MemRefType,
     ModuleOp,
+    i8, 
+    i32,
 )
 from xdsl.ir import Block, Region, SSAValue
 from xdsl.printer import Printer
@@ -35,6 +38,16 @@ from xdsltemplate.dialects.rvv import (
     vfmv_v_f_f32m1Op,
     vle32_v_f32m1Op,
     vse32_v_f32m1Op,
+    RVVInt8Mf4Type,
+    RVVInt16Mf2Type,
+    RVVInt32M1Type,
+    vle8_v_i8mf4Op,
+    vle32_v_i32m1Op,
+    vmv_v_x_i32m1Op,
+    vmv_v_x_i16mf2Op,
+    vwmacc_vx_i16mf2Op,
+    vwadd_wv_i32m1Op,
+    vse32_v_i32m1Op,
 )
 from xdsltemplate.transforms.arith_to_emitc import ArithToEmitCPass
 from xdsltemplate.transforms.gemm_to_arith import GemmToArithPass
@@ -101,6 +114,16 @@ class IRBuilder:
             self.block.add_op(op)
             self._const_cache[val] = op.result
         return self._const_cache[val]
+        
+    def const_i8(self, val: int) -> SSAValue:
+        op = arith.ConstantOp(IntegerAttr(val, i8))
+        self.block.add_op(op)
+        return op.result
+
+    def const_i32(self, val: int) -> SSAValue:
+        op = arith.ConstantOp(IntegerAttr(val, i32))
+        self.block.add_op(op)
+        return op.result
 
     def muli(self, a: SSAValue, b: SSAValue) -> SSAValue:
         op = arith.MuliOp(a, b)
@@ -137,6 +160,47 @@ class IRBuilder:
     def vse32(self, mem: SSAValue, offset: SSAValue, vec: SSAValue, vl: SSAValue):
         op = vse32_v_f32m1Op(mem, offset, vec, vl)
         self.block.add_op(op)
+
+    # Integer RVV ops
+    def vmv_v_x_i32m1(self, vl: SSAValue, val: SSAValue) -> SSAValue:
+        op = vmv_v_x_i32m1Op(val, vl)
+        self.block.add_op(op)
+        return op.result
+
+    def vmv_v_x_i16mf2(self, vl: SSAValue, val: SSAValue) -> SSAValue:
+        op = vmv_v_x_i16mf2Op(val, vl)
+        self.block.add_op(op)
+        return op.result
+
+    def vle8_i8mf4(self, mem: SSAValue, offset: SSAValue, vl: SSAValue) -> SSAValue:
+        op = vle8_v_i8mf4Op(mem, offset, vl)
+        self.block.add_op(op)
+        return op.result
+
+    def vwmacc_vx_i16mf2(self, acc: SSAValue, scalar: SSAValue, vec: SSAValue, vl: SSAValue) -> SSAValue:
+        op = vwmacc_vx_i16mf2Op(acc, scalar, vec, vl)
+        self.block.add_op(op)
+        return op.result
+
+    def vwadd_wv_i32m1(self, acc: SSAValue, vec: SSAValue, vl: SSAValue) -> SSAValue:
+        op = vwadd_wv_i32m1Op(acc, vec, vl)
+        self.block.add_op(op)
+        return op.result
+
+    def vse32_i32m1(self, mem: SSAValue, offset: SSAValue, vec: SSAValue, vl: SSAValue):
+        op = vse32_v_i32m1Op(mem, offset, vec, vl)
+        self.block.add_op(op)
+
+    def vle32_i32m1(self, mem: SSAValue, offset: SSAValue, vl: SSAValue) -> SSAValue:
+        op = vle32_v_i32m1Op(mem, offset, vl)
+        self.block.add_op(op)
+        return op.result
+
+    def get_c_offset(self, m_idx: int, n_idx: int, ldc: SSAValue) -> SSAValue:
+        # offset = n * ldc + m * vlen
+        row_offset = self.const_index(m_idx * self.vlen)
+        col_offset = self.muli(self.const_index(n_idx), ldc)
+        return self.addi(row_offset, col_offset)
 
     def get_vl_for_m_vec(self, m_idx: int) -> SSAValue:
         # Check if last vector is partial
@@ -182,6 +246,156 @@ def check_kernels(kernels, vlen=8):
     return valid
 
 
+# GEMM Builder for i8i8i32
+def build_gemm_i8i8i32(
+    mr: int = 8,
+    nr: int = 4,
+    vlen: int = 8,
+    beta: BetaMode = BetaMode.B0,
+    name: str = None,
+    precision: str = "i8i8i32",
+) -> ModuleOp:
+    """
+    Build MRxNR GEMM microkernel using xDSL API for i8i8i32 precision.
+    A and B are int8_t, C is int32_t. Accumulators are vint32m1_t.
+    """
+    config = GEMMConfig(mr=mr, nr=nr, vlen=vlen, beta=beta, precision=precision)
+    if name is None:
+        name = config.kernel_name
+    
+    num_m_vecs = config.num_m_vecs
+    
+    # Types
+    idx_t = IndexType()
+    i8_t = i8
+    i16_t = IntegerType(16)
+    i32_t = i32
+    memref_i8 = MemRefType(i8_t, [-1])
+    memref_i32 = MemRefType(i32_t, [-1])
+    acc_t = RVVInt32M1Type()
+
+    # Alpha and beta are float* but ignored at inner loop computation for ints
+    memref_f32 = MemRefType(Float32Type(), [-1])
+    input_types = [
+        idx_t,        # kc
+        memref_f32,   # alpha 
+        memref_i8,    # A
+        idx_t,        # lda
+        memref_i8,    # B
+        idx_t,        # ldb
+        memref_f32,   # beta 
+        memref_i32,   # C
+        idx_t,        # ldc
+    ]
+    func_type = FunctionType.from_lists(input_types, [])
+    entry_block = Block(arg_types=input_types)
+    gemm_func = func.FuncOp(name, func_type, Region([entry_block]))
+    
+    kc, alpha, A, lda, B, ldb, beta_arg, C, ldc = entry_block.args
+
+    eb = IRBuilder(entry_block, vlen, config=config)
+    
+    c0 = eb.const_index(0)
+    c1 = eb.const_index(1)
+    
+    for i in range(max(nr, num_m_vecs * vlen) + 1):
+        eb.const_index(i)
+        
+    c0i16 = arith.ConstantOp(IntegerAttr(0, i16_t)); entry_block.add_op(c0i16)
+    c0i32 = eb.const_i32(0)
+    
+    c_reg_init = {}
+    if beta == BetaMode.B0:
+        for n in range(nr):
+            for m in range(num_m_vecs):
+                vl = eb.get_vl_for_m_vec(m)
+                c_reg_init[(n, m)] = eb.vmv_v_x_i32m1(vl, c0i32)
+    elif beta == BetaMode.B1:
+        for n in range(nr):
+            for m in range(num_m_vecs):
+                vl = eb.get_vl_for_m_vec(m)
+                c_offset = eb.get_c_offset(m, n, ldc)
+                c_reg_init[(n, m)] = eb.vle32_i32m1(C, c_offset, vl)
+
+    zero_i16_vecs = {}
+    for m in range(num_m_vecs):
+        vl = eb.get_vl_for_m_vec(m)
+        zero_i16_vecs[m] = eb.vmv_v_x_i16mf2(vl, c0i16.result)
+
+    loop_body_types = [idx_t] + [acc_t] * config.num_c_regs
+    loop_body = Block(arg_types=loop_body_types)
+    lb = IRBuilder(loop_body, vlen, config=config)
+    k = loop_body.args[0]
+    
+    c_regs = {}
+    idx = 1
+    for n in range(nr):
+        for m in range(num_m_vecs):
+            c_regs[(n, m)] = loop_body.args[idx]
+            idx += 1
+            
+    k_mul_lda = lb.muli(k, lda)
+    A_regs = []
+    for m in range(num_m_vecs):
+        if m == 0:
+            a_offset = k_mul_lda
+        else:
+            a_offset = lb.addi(k_mul_lda, eb.const_index(m * vlen))
+        vl = lb.get_vl_for_m_vec(m)
+        A_regs.append(lb.vle8_i8mf4(A, a_offset, vl))
+        
+    k_mul_ldb = lb.muli(k, ldb)
+    b_offsets = []
+    for n in range(nr):
+        if n == 0:
+            b_offsets.append(k_mul_ldb)
+        else:
+            b_offsets.append(lb.addi(k_mul_ldb, eb.const_index(n)))
+            
+    c_new = {}
+    for n in range(nr):
+        b_scalar = memref.LoadOp.get(B, [b_offsets[n]])
+        loop_body.add_op(b_scalar)
+        
+        for m in range(num_m_vecs):
+            vl = lb.get_vl_for_m_vec(m)
+            tmp_i16 = lb.vwmacc_vx_i16mf2(zero_i16_vecs[m], b_scalar.res, A_regs[m], vl)
+            c_new[(n, m)] = lb.vwadd_wv_i32m1(c_regs[(n, m)], tmp_i16, vl)
+            
+    yield_vals = [c_new[(n, m)] for n in range(nr) for m in range(num_m_vecs)]
+    loop_body.add_op(scf.YieldOp(*yield_vals))
+    
+    iter_inits = [c_reg_init[(n, m)] for n in range(nr) for m in range(num_m_vecs)]
+    for_op = scf.ForOp(c0, kc, c1, iter_inits, Region([loop_body]))
+    entry_block.add_op(for_op)
+    
+    c_final = {}
+    idx = 0
+    for n in range(nr):
+        for m in range(num_m_vecs):
+            c_final[(n, m)] = for_op.results[idx]
+            idx += 1
+            
+    for n in range(nr):
+        if n == 0:
+            col_base = eb.const_index(0)
+        elif n == 1:
+            col_base = ldc
+        else:
+            col_base = eb.muli(eb.const_index(n), ldc)
+            
+        for m in range(num_m_vecs):
+            if m == 0:
+                offset = col_base
+            else:
+                offset = eb.addi(col_base, eb.const_index(m * vlen))
+            vl = eb.get_vl_for_m_vec(m)
+            eb.vse32_i32m1(C, offset, c_final[(n, m)], vl)
+            
+    entry_block.add_op(func.ReturnOp())
+    return ModuleOp([gemm_func])
+
+
 # GEMM Builder
 def build_gemm(
     mr: int = 8,
@@ -197,6 +411,10 @@ def build_gemm(
     Generates function with signature:
     void gemm_...(kc, alpha, A, lda, B, ldb, beta, C, ldc)
     """
+    if precision == "i8i8i32":
+        return build_gemm_i8i8i32(mr, nr, vlen, beta, name, precision)
+
+
     config = GEMMConfig(mr=mr, nr=nr, vlen=vlen, beta=beta, precision=precision)
     if name is None:
         name = config.kernel_name
@@ -384,6 +602,10 @@ def generate_header_file(
 
 """
 
+    type_a = "int8_t" if precision == "i8i8i32" else "float"
+    type_b = "int8_t" if precision == "i8i8i32" else "float"
+    type_c = "int32_t" if precision == "i8i8i32" else "float"
+
     for beta in beta_modes:
         beta_str = "b0" if beta == BetaMode.B0 else "b1"
         code += f"// ---- Beta={beta_str} kernels ----\n\n"
@@ -392,12 +614,12 @@ def generate_header_file(
             code += "    void* v0,         // ctxt (placeholder, unused)\n"
             code += "    int v1,           // kc: Loop count (K dimension)\n"
             code += "    float* v2,        // alpha: Scale factor \n"
-            code += "    float* v3,        // A: Matrix A pointer\n"
+            code += f"    {type_a}* v3,        // A: Matrix A pointer\n"
             code += "    int v4,           // lda: Leading dimension of A\n"
-            code += "    float* v5,        // B: Matrix B pointer\n"
+            code += f"    {type_b}* v5,        // B: Matrix B pointer\n"
             code += "    int v6,           // ldb: Leading dimension of B\n"
             code += "    float* v7,        // beta: Scale factor  \n"
-            code += "    float* v8,        // C: Matrix C pointer (output)\n"
+            code += f"    {type_c}* v8,        // C: Matrix C pointer (output)\n"
             code += "    int v9            // ldc: Leading dimension of C\n"
             code += ");\n\n"
 
@@ -405,9 +627,8 @@ def generate_header_file(
 
     with open(output_path, "w") as f:
         f.write(code)
-
-    if VERBOSE:
         print(f"  ✔ {os.path.basename(output_path)}")
+
 
 
 def generate_kernel_family_dispatchers(
@@ -431,6 +652,10 @@ def generate_kernel_family_dispatchers(
     """
     if beta_modes is None:
         beta_modes = [BetaMode.B0]
+
+    type_a = "int8_t" if precision == "i8i8i32" else "float"
+    type_b = "int8_t" if precision == "i8i8i32" else "float"
+    type_c = "int32_t" if precision == "i8i8i32" else "float"
 
     code = ""
 
@@ -458,12 +683,12 @@ def generate_kernel_family_dispatchers(
 
             code += f"""// Dispatcher for {max_mr}×{max_nr} family (xDSL kernels, {beta_str})
 // Optimization: Function Pointer Table for O(1) dispatch
-typedef void (*xdsl_kernel_{beta_str}_t)(void*, int, float*, float*, int, float*, int, float*, float*, int);
+typedef void (*xdsl_kernel_{beta_str}_t)(void*, int, float*, {type_a}*, int, {type_b}*, int, float*, {type_c}*, int);
 
 static void call_kernel_family_{max_mr}x{max_nr}_{beta_str}(int mr_actual, int nr_actual, size_t K,
-                                                   float* A, size_t lda,
-                                                   float* B, size_t ldb,
-                                                   float* C, size_t ldc) {{
+                                                   {type_a}* A, size_t lda,
+                                                   {type_b}* B, size_t ldb,
+                                                   {type_c}* C, size_t ldc) {{
     float alpha = 1.0f;
     float beta = {beta_value};
     
@@ -510,18 +735,23 @@ static void call_kernel_family_{max_mr}x{max_nr}_{beta_str}(int mr_actual, int n
 """
 
             # Generate reference family dispatcher
-            if not no_ref:
+            if not no_ref or precision == "i8i8i32":
                 code += f"""// Dispatcher for {max_mr}×{max_nr} family (reference kernels, {beta_str})
 // Optimization: Function Pointer Table for O(1) dispatch
-typedef void (*ref_kernel_{beta_str}_t)(void*, int_fast32_t, const float*, float*, int, float*, int, const float*, float*, int);
+typedef void (*ref_kernel_{beta_str}_t)(void*, int, float*, {type_a}*, int, {type_b}*, int, float*, {type_c}*, int);
 
 static void call_kernel_family_ref_{max_mr}x{max_nr}_{beta_str}(int mr_actual, int nr_actual, size_t K,
-                                                       float* A, size_t lda,
-                                                       float* B, size_t ldb,
-                                                       float* C, size_t ldc) {{
+                                                       {type_a}* A, size_t lda,
+                                                       {type_b}* B, size_t ldb,
+                                                       {type_c}* C, size_t ldc) {{
     float alpha = 1.0f;
     float beta = {beta_value};
-    
+
+    if ({"1" if precision == "i8i8i32" else "0"}) {{
+        scalar_ref_gemm_i8i8i32(K, &alpha, A, lda, B, ldb, &beta, C, ldc, mr_actual, nr_actual);
+        return;
+    }}
+
     // Static Lookup Table
     static const ref_kernel_{beta_str}_t kernel_table[{max_mr} + 1][{max_nr} + 1] = {{
 """
@@ -670,11 +900,11 @@ def generate_profiling_section(
     init_abc(A, B, C_ref, M, {mr}, {nr});
     profile_data_t *ref_prof = profile_init(MEASURE_ITERS, xdsl_flops_{beta_str});
     for (int _w = 0; _w < WARMUP_ITERS; _w++) {{
-        gemm_RVV_{mr}x{nr}_{beta_str}_col_{precision}(NULL, KC_PROFILE, &c_alpha_{beta_str}, A, {mr}, B, {nr}, &c_beta_{beta_str}, C_ref, {mr});
+        gemm_RVV_{mr}x{nr}_{beta_str}(NULL, KC_PROFILE, &c_alpha_{beta_str}, A, {mr}, B, {nr}, &c_beta_{beta_str}, C_ref, {mr});
     }}
     for (int _i = 0; _i < MEASURE_ITERS; _i++) {{
         uint64_t _start = TIMER_READ();
-        gemm_RVV_{mr}x{nr}_{beta_str}_col_{precision}(NULL, KC_PROFILE, &c_alpha_{beta_str}, A, {mr}, B, {nr}, &c_beta_{beta_str}, C_ref, {mr});
+        gemm_RVV_{mr}x{nr}_{beta_str}(NULL, KC_PROFILE, &c_alpha_{beta_str}, A, {mr}, B, {nr}, &c_beta_{beta_str}, C_ref, {mr});
         uint64_t _end = TIMER_READ();
         profile_add_sample(ref_prof, _end - _start);
     }}
@@ -726,6 +956,11 @@ def generate_test_maincpp(
     """
     if ref_kernel_name is None:
         ref_kernel_name = f"kernels_RVV_16x15_{precision}"
+
+    type_a = "int8_t" if precision == "i8i8i32" else "float"
+    type_b = "int8_t" if precision == "i8i8i32" else "float"
+    type_c = "int32_t" if precision == "i8i8i32" else "float"
+
     code = "// ========================================\n"
     code += f"// PRECISION : {precision}\n"
     code += "// ========================================\n"
@@ -747,7 +982,71 @@ def generate_test_maincpp(
         code += f'#include "{ref_kernel_name}.h"\n'
 
     # Helper functions
-    code += """\
+    if precision == "i8i8i32":
+        code += """\
+// Initialize matrices with test values
+void init_abc(int8_t* A, int8_t* B, int32_t* C, int size, int r_seed_1, int r_seed_2) {
+    for (int i = 0; i < size; i++) {
+        A[i] = (int8_t)((i % 5) * r_seed_1);
+        B[i] = (int8_t)(((i + 3) % 5) * r_seed_2);
+        C[i] = 123;
+    }
+}
+
+// Print matrix values
+void print_matrix(const char* name, int32_t* M, int rows, int cols) {
+    printf("%s:\\n", name);
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            printf("%6d ", M[i + j * rows]);  
+        }
+        printf("\\n");
+    }
+}
+
+// Scalar reference for i8i8i32 GEMM kernel verification
+void scalar_ref_gemm_i8i8i32(int kc, float* alpha, int8_t* A, int lda, int8_t* B, int ldb, float* beta, int32_t* C, int ldc, int mr, int nr) {
+    for (int n = 0; n < nr; n++) {
+        for (int m = 0; m < mr; m++) {
+            int32_t acc = 0;
+            if (*beta != 0.0f) {
+                acc = C[m + n * ldc];
+            }
+            for (int k = 0; k < kc; k++) {
+                acc += (int32_t)A[m + k * lda] * (int32_t)B[n + k * ldb];
+            }
+            C[m + n * ldc] = acc;
+        }
+    }
+}
+
+// Compare two C matrices
+int compare_C(int32_t* C_ref, int32_t* C, int size, int32_t tol) {
+    int errors = 0;
+    for (int i = 0; i < size; i++) {
+        int32_t diff = C_ref[i] - C[i];
+        if (diff < 0) diff = -diff;
+        if (diff > tol) {
+            if (errors < 10) {
+                printf("Mismatch at %d: ref=%d, got=%d\\n", i, C_ref[i], C[i]);
+            }
+            errors++;
+        }
+    }
+    if (errors == 0) {
+        printf("      OK √ ");
+
+    } else {
+        printf("========================\\n");
+        printf("=        MISMATCHES    =\\n");
+        printf("FAIL: %d mismatches\\n", errors);
+        printf("========================\\n");
+    }
+    return errors;
+}
+"""
+    else:
+        code += """\
 // Initialize matrices with test values
 void init_abc(float* A, float* B, float* C, int size, int r_seed_1, int r_seed_2) {
     for (int i = 0; i < size; i++) {
@@ -821,9 +1120,9 @@ int compare_C(float* C_ref, float* C, int size, float tol) {
             # xDSL outer loop with edge handling
             code += f"""// Outer loop for {max_mr}×{max_nr} family (xDSL, {beta_str}) - WITH edge handling and K-blocking
 static void gemm_outer_family_{max_mr}x{max_nr}_{beta_str}(size_t M, size_t N, size_t K,
-                                                  float* A, size_t lda,
-                                                  float* B, size_t ldb,
-                                                  float* C, size_t ldc) {{
+                                                  {type_a}* A, size_t lda,
+                                                  {type_b}* B, size_t ldb,
+                                                  {type_c}* C, size_t ldc) {{
     const int MR = {max_mr};
     const int NR = {max_nr};
 
@@ -845,12 +1144,12 @@ static void gemm_outer_family_{max_mr}x{max_nr}_{beta_str}(size_t M, size_t N, s
 """
 
             # Reference outer loop with edge handling
-            if not no_ref:
+            if not no_ref or precision == "i8i8i32":
                 code += f"""// Outer loop for {max_mr}×{max_nr} family (reference, {beta_str}) - WITH edge handling
 static void gemm_outer_family_ref_{max_mr}x{max_nr}_{beta_str}(size_t M, size_t N, size_t K,
-                                                      float* A, size_t lda,
-                                                      float* B, size_t ldb,
-                                                      float* C, size_t ldc) {{
+                                                      {type_a}* A, size_t lda,
+                                                      {type_b}* B, size_t ldb,
+                                                      {type_c}* C, size_t ldc) {{
     const int MR = {max_mr};
     const int NR = {max_nr};
     
@@ -889,8 +1188,8 @@ int main() {{
     size_t ldb = {max(16, max_nr)};  // Must be >= max(nr)
     size_t ldc = {max_mr};  // Must be >= max(mr) to avoid column overwrites!
 
-    float* A = (float*)malloc(M * sizeof(float));
-    float* B = (float*)malloc(M * sizeof(float));
+    {type_a}* A = ({type_a}*)malloc(M * sizeof({type_a}));
+    {type_b}* B = ({type_b}*)malloc(M * sizeof({type_b}));
 """
 
     # Declare C arrays for unique kernels only (avoid duplicates from overlapping families)
@@ -901,22 +1200,22 @@ int main() {{
     # Avoids data-cache pollution: 32x32 would otherwise allocate 1024 C matrices
     # totalling 128 MB, which evicts A/B from cache and inflates small-kernel timings by 1.4-2.8x.
     # init_abc() is called before every kernel's measurement window to reset the buffer.
-    code += "    float* C_kernel = (float*)malloc(M * sizeof(float));\n"
-    code += "\n"
-    if not no_ref:
-        code += "    float* C_ref = (float*)malloc(M * sizeof(float));\n\n"
+    code += f"    {type_c}* C_kernel = ({type_c}*)malloc(M * sizeof({type_c}));\n"
+    # For i8i8i32, we always need C_ref for verification, even if --no-ref is used for profiling.
+    # For float, C_ref is only needed if --no-ref is NOT used.
+    if not no_ref or precision == "i8i8i32":
+        code += f"    {type_c}* C_ref = ({type_c}*)malloc(M * sizeof({type_c}));\n\n"
 
-    if not no_ref:
-        code += '    printf("========================================\\n");\n'
-        code += '    printf(" Microkernel Benchmarking (RVV)\\n");\n'
-        code += f'    printf(" Precision : {precision}\\n");\n'
-        code += '    printf("========================================\\n\\n");\n'
-        # Call each unique kernel (Part 1 Micro-kernels) for each beta mode
-        for beta_mode in beta_modes:
-            beta_str = "b0" if beta_mode == BetaMode.B0 else "b1"
-            beta_val = "0.0f" if beta_mode == BetaMode.B0 else "1.0f"
+    code += '    printf("========================================\\n");\n'
+    code += '    printf(" Microkernel Benchmarking (RVV)\\n");\n'
+    code += f'    printf(" Precision : {precision}\\n");\n'
+    code += '    printf("========================================\\n\\n");\n'
+    # Call each unique kernel (Part 1 Micro-kernels) for each beta mode
+    for beta_mode in beta_modes:
+        beta_str = "b0" if beta_mode == BetaMode.B0 else "b1"
+        beta_val = "0.0f" if beta_mode == BetaMode.B0 else "1.0f"
 
-            code += f"""
+        code += f"""
     printf("\\n--- Part 1: {beta_str} kernels ---\\n");
     {{
     float alpha_{beta_str} = 1.0f;
@@ -924,17 +1223,21 @@ int main() {{
     float c_alpha_{beta_str} = 1.0f;
     float c_beta_{beta_str} = {beta_val};
 """
-            for mr, nr in unique_kernels:
-                code += f'    printf("Testing gemm_RVV_{mr}x{nr}_{beta_str}_col_{precision}...");\n'
-                code += f"    init_abc(A, B, C_ref, M, {mr}, {nr});\n"
-                code += f"    gemm_RVV_{mr}x{nr}_{beta_str}_col_{precision}(NULL, KC, &alpha_{beta_str}, A, {mr}, B, {nr}, &beta_{beta_str}, C_kernel, {mr});\n"
-                code += f"    gemm_RVV_{mr}x{nr}_{beta_str}_col_{precision}(NULL, KC, &c_alpha_{beta_str}, A, {mr}, B, {nr}, &c_beta_{beta_str}, C_ref, {mr});\n"
-                code += "    compare_C(C_ref, C_kernel, M, 0.1);\n"
-                code += '    printf("\\n");\n'
+        for mr, nr in unique_kernels:
+            code += f'    printf("Testing gemm_RVV_{mr}x{nr}_{beta_str}_col_{precision}...");\n'
+            code += f"    init_abc(A, B, C_ref, M, {mr}, {nr});\n"
+            code += f"    init_abc(A, B, C_kernel, M, {mr}, {nr});\n"
+            code += f"    gemm_RVV_{mr}x{nr}_{beta_str}_col_{precision}(NULL, KC, &alpha_{beta_str}, A, {mr}, B, {nr}, &beta_{beta_str}, C_kernel, {mr});\n"
+            if precision == "i8i8i32":
+                code += f"    scalar_ref_gemm_i8i8i32(KC, &alpha_{beta_str}, A, {mr}, B, {nr}, &beta_{beta_str}, C_ref, {mr}, {mr}, {nr});\n"
+            else:
+                code += f"    gemm_RVV_{mr}x{nr}_{beta_str}_{precision}(NULL, KC, &c_alpha_{beta_str}, A, {mr}, B, {nr}, &c_beta_{beta_str}, C_ref, {mr});\n"
+            code += f"    compare_C(C_ref, C_kernel, M, {'0' if precision == 'i8i8i32' else '0.1'});\n"
+            code += '    printf("\\n");\n'
 
-            code += "    } // end beta scope\n"
+        code += "    } // end beta scope\n"
 
-        code += """
+    code += """
     printf("========================================\\n");
     printf("Part 2: Outer Loop Tests (Kernel Families)\\n");
     printf("========================================\\n\\n");
@@ -952,12 +1255,12 @@ int main() {{
     const int MEASURE_ITERS_OUTER = 20;
 """
 
-        # Generate test loop for each kernel family, for each beta mode
-        for beta_mode in beta_modes:
-            beta_str = "b0" if beta_mode == BetaMode.B0 else "b1"
+    # Generate test loop for each kernel family, for each beta mode
+    for beta_mode in beta_modes:
+        beta_str = "b0" if beta_mode == BetaMode.B0 else "b1"
 
-            for max_mr, max_nr in kernel_families:
-                code += f"""
+        for max_mr, max_nr in kernel_families:
+            code += f"""
     // ========================================
     // Testing {max_mr}×{max_nr} family in outer loop ({beta_str})
     // ========================================
@@ -974,15 +1277,15 @@ int main() {{
         int ldb_test = K_test + 8;
         int ldc_test = M_test;
 
-        float* A_test = (float*)malloc(lda_test * K_test * sizeof(float));
-        float* B_test = (float*)malloc(ldb_test * K_test * sizeof(float)); 
-        float* C_test = (float*)malloc(  M_test * N_test * sizeof(float));
-        float* C_ref_test = (float*)malloc(  M_test * N_test * sizeof(float));
+        {type_a}* A_test = ({type_a}*)malloc(lda_test * K_test * sizeof({type_a}));
+        {type_b}* B_test = ({type_b}*)malloc(ldb_test * K_test * sizeof({type_b})); 
+        {type_c}* C_test = ({type_c}*)malloc(  M_test * N_test * sizeof({type_c}));
+        {type_c}* C_ref_test = ({type_c}*)malloc(  M_test * N_test * sizeof({type_c}));
 
-        for (int i = 0; i < lda_test * K_test; i++) A_test[i] = (float)(i % 10) * 0.1f;
-        for (int i = 0; i < ldb_test * K_test; i++) B_test[i] = (float)(i % 10) * 0.1f;
-        for (int i = 0; i <   M_test * N_test; i++) C_test[i] = 1.1f;
-        for (int i = 0; i <   M_test * N_test; i++) C_ref_test[i] = 1.1f;
+        for (int i = 0; i < lda_test * K_test; i++) A_test[i] = ({type_a})(i % 10){' * 1' if precision == 'i8i8i32' else ' * 0.1f'};
+        for (int i = 0; i < ldb_test * K_test; i++) B_test[i] = ({type_b})((i + 3) % 10){' * 1' if precision == 'i8i8i32' else ' * 0.1f'};
+        for (int i = 0; i <   M_test * N_test; i++) C_test[i] = ({type_c}){ '1' if precision == 'i8i8i32' else '1.1f' };
+        for (int i = 0; i <   M_test * N_test; i++) C_ref_test[i] = ({type_c}){ '1' if precision == 'i8i8i32' else '1.1f' };
 
         // xDSL Outer Loop using {max_mr}×{max_nr} family ({beta_str})
         gemm_outer_family_{max_mr}x{max_nr}_{beta_str}(M_test, N_test, K_test, A_test, lda_test, B_test, ldb_test, C_test, ldc_test);
@@ -993,12 +1296,17 @@ int main() {{
         // Compare
         int errors = 0;
         for (int i = 0; i < M_test * N_test; i++) {{
-            float diff = C_ref_test[i] - C_test[i];
+            {type_c} diff = C_ref_test[i] - C_test[i];
             if (diff < 0) diff = -diff;
-            if (diff > 0.01f) {{
+            if (diff > {'0' if precision == 'i8i8i32' else '0.01f'}) {{
                 errors++;
                 if (errors < 5) {{
-                    printf("C_ref_test[%d] = %f, C_test[%d] = %f\\n", i, C_ref_test[i], i, C_test[i]);
+                    const char* fmt = {"\"%d\"" if precision == 'i8i8i32' else "\"%f\""};
+                    printf("C_ref_test[%d] = ", i);
+                    printf(fmt, C_ref_test[i]);
+                    printf(", C_test[%d] = ", i);
+                    printf(fmt, C_test[i]);
+                    printf("\\n");
                 }}
             }}
         }}
@@ -1350,13 +1658,13 @@ def generate_merged_kernel_file(
         for beta_mode in beta_modes:
             beta_str = "b0" if beta_mode == BetaMode.B0 else "b1"
 
-            # Original function name in generated file (backend still emits fp32 for now)
-            original_kernel_name = f"xdsl_api_gemm_RVV_{mr}x{nr}_{beta_str}_col_fp32"
+            # Original function name in generated file
+            original_kernel_name = f"xdsl_api_gemm_RVV_{mr}x{nr}_{beta_str}_col_{precision}"
 
             # Rename to gemm_RVV_* in merged file (drop xdsl_api_ prefix)
             target_kernel_name = f"gemm_RVV_{mr}x{nr}_{beta_str}_col_{precision}"
 
-            filename = f"xdsl_api_gemm_{mr}x{nr}_{beta_str}.cpp"
+            filename = f"xdsl_api_gemm_{mr}x{nr}_{beta_str}_{precision}.cpp"
             filepath = os.path.join(output_dir, "kernels", filename)
 
             if not os.path.exists(filepath):
@@ -1406,8 +1714,11 @@ def generate_merged_kernel_file(
                 )
                 source_content += c_func + "\n"
 
-                # Header declaration without duplicate comment
-                decl = f"void {target_kernel_name}(void* ctxt, int kc, float* alpha, float* A, int lda, float* B, int ldb, float* beta, float* C, int ldc);"
+                # Header declaration with correct types
+                type_a_decl = "int8_t" if precision == "i8i8i32" else "float"
+                type_b_decl = "int8_t" if precision == "i8i8i32" else "float"
+                type_c_decl = "int32_t" if precision == "i8i8i32" else "float"
+                decl = f"void {target_kernel_name}(void* ctxt, int kc, float* alpha, {type_a_decl}* A, int lda, {type_b_decl}* B, int ldb, float* beta, {type_c_decl}* C, int ldc);"
                 header_content += decl + "\n"
 
             else:
@@ -1481,7 +1792,11 @@ def generate_exo_matrix_files(
     c_path = os.path.join(merged_dir, c_filename)
     h_path = os.path.join(merged_dir, h_filename)
 
-    merged_h_filename = f"kernels_RVV_{max_mr}x{max_nr}_fp32.h"
+    merged_h_filename = f"kernels_RVV_{max_mr}x{max_nr}_{precision}.h"
+
+    type_a = "int8_t" if precision == "i8i8i32" else "float"
+    type_b = "int8_t" if precision == "i8i8i32" else "float"
+    type_c = "int32_t" if precision == "i8i8i32" else "float"
 
     # Write Header
     h_content = f"""#pragma once
@@ -1493,7 +1808,7 @@ def generate_exo_matrix_files(
 extern "C" {{
 #endif
 
-typedef void (*ukrFunction)(void* ctxt, int kc, float* alpha, float* A, int lda, float* B, int ldb, float* beta, float* C, int ldc);
+typedef void (*ukrFunction)(void* ctxt, int kc, float* alpha, {type_a}* A, int lda, {type_b}* B, int ldb, float* beta, {type_c}* C, int ldc);
 
 ukrFunction**** allocateMatrix();
 void fillMatrix(ukrFunction**** matrix);
@@ -1706,7 +2021,7 @@ def run_pipeline(
         )
         print(f"{'└' + '─' * 58 + '┘'}")
 
-    module = build_gemm(mr=mr, nr=nr, vlen=vlen, beta=beta)
+    module = build_gemm(mr=mr, nr=nr, vlen=vlen, beta=beta, precision=precision)
 
     if SHOW_MLIR:
         if nr == 8 and mr == 8:
@@ -1749,9 +2064,9 @@ def run_pipeline(
     # Step 3: Dump MLIR to file
     kernels_dir = os.path.join(output_dir, "kernels")
     if beta == BetaMode.B0:
-        output_mlir = f"{kernels_dir}/xdsl_api_gemm_{mr}x{nr}_b0.mlir"
+        output_mlir = f"{kernels_dir}/xdsl_api_gemm_{mr}x{nr}_b0_{precision}.mlir"
     elif beta == BetaMode.B1:
-        output_mlir = f"{kernels_dir}/xdsl_api_gemm_{mr}x{nr}_b1.mlir"
+        output_mlir = f"{kernels_dir}/xdsl_api_gemm_{mr}x{nr}_b1_{precision}.mlir"
 
     with open(output_mlir, "w") as f:
         Printer(stream=f, print_generic_format=True).print_op(module)
@@ -1762,9 +2077,9 @@ def run_pipeline(
     # Step 4: Translate to C++
     if mlir_translate_path:
         if beta == BetaMode.B0:
-            output_cpp = f"{kernels_dir}/xdsl_api_gemm_{mr}x{nr}_b0.cpp"
+            output_cpp = f"{kernels_dir}/xdsl_api_gemm_{mr}x{nr}_b0_{precision}.cpp"
         elif beta == BetaMode.B1:
-            output_cpp = f"{kernels_dir}/xdsl_api_gemm_{mr}x{nr}_b1.cpp"
+            output_cpp = f"{kernels_dir}/xdsl_api_gemm_{mr}x{nr}_b1_{precision}.cpp"
 
         subprocess.run(
             [

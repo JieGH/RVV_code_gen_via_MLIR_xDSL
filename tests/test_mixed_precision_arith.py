@@ -126,15 +126,15 @@ if __name__ == "__main__":
     print("\n")
     
     # Translate to C — write using GENERIC format (required by mlir-translate)
-    with open("mixed_precision.mlir", "w") as f:
+    with open("tmp_int_codeGen/mixed_precision.mlir", "w") as f:
         Printer(stream=f, print_generic_format=True).print_op(module)
 
     MLIR_TRANSLATE = "/home/jlei/Documents/ws_MLIR/llvm_pj_dir_06092025/llvm-project/build/bin/mlir-translate"
-    C_OUT = "mixed_precision.c"
+    C_OUT = "tmp_int_codeGen/mixed_precision.c"
     try:
         result = subprocess.run(
             [MLIR_TRANSLATE, "-allow-unregistered-dialect", "-mlir-to-cpp",
-             "mixed_precision.mlir", "-o", C_OUT],
+             "tmp_int_codeGen/mixed_precision.mlir", "-o", C_OUT],
             capture_output=True, text=True, timeout=30,
         )
         if result.returncode != 0:

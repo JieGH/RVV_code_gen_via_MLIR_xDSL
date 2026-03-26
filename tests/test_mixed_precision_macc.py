@@ -56,6 +56,10 @@ MLIR_TRANSLATE = (
     "/home/jlei/Documents/ws_MLIR/llvm_pj_dir_06092025"
     "/llvm-project/build/bin/mlir-translate"
 )
+OUT_DIR  = "tmp_int_codeGen"
+OUT_MLIR_HR  = f"{OUT_DIR}/mixed_precision_macc.mlir"          # human-readable
+OUT_MLIR_GEN = f"{OUT_DIR}/mixed_precision_macc_generic.mlir"  # for mlir-translate
+OUT_C    = f"{OUT_DIR}/mixed_precision_macc.c"
 
 
 def build_kernel() -> ModuleOp:
@@ -230,23 +234,30 @@ if __name__ == "__main__":
             all_ok = False
     print()
 
-    # --- Translate to C via mlir-translate ---
-    OUT_MLIR = "/tmp/mixed_precision_macc.mlir"
-    OUT_C    = "/tmp/mixed_precision_macc.c"
-    with open(OUT_MLIR, "w") as f:
-        Printer(stream=f, print_generic_format=True).print_op(module)
+    # --- Write human-readable MLIR (EmitC IR) ---
+    import os; os.makedirs(OUT_DIR, exist_ok=True)
+    with open(OUT_MLIR_HR, "w") as f:
+        Printer(stream=f).print_op(module)
+    print(f"Wrote human-readable MLIR → {OUT_MLIR_HR}")
 
-    print(f"=== [4] mlir-translate → {OUT_C} ===")
+    # --- Write generic MLIR for mlir-translate ---
+    with open(OUT_MLIR_GEN, "w") as f:
+        Printer(stream=f, print_generic_format=True).print_op(module)
+    print(f"Wrote generic MLIR       → {OUT_MLIR_GEN}")
+
+    # --- Translate to C via mlir-translate ---
+    print(f"\n=== [4] mlir-translate → {OUT_C} ===")
     try:
         r = subprocess.run(
             [MLIR_TRANSLATE, "-allow-unregistered-dialect", "-mlir-to-cpp",
-             OUT_MLIR, "-o", OUT_C],
+             OUT_MLIR_GEN, "-o", OUT_C],
             capture_output=True, text=True, timeout=120,
         )
         if r.returncode != 0:
             print("mlir-translate FAILED:")
             print(r.stderr)
         else:
+            print(f"Wrote C output           → {OUT_C}")
             with open(OUT_C) as f:
                 print(f.read())
     except FileNotFoundError:
