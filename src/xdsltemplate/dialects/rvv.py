@@ -315,6 +315,27 @@ class vwmacc_vv_i16mf2Op(IRDLOperation):
 
 
 @irdl_op_definition
+class vwmacc_vx_i16mf2Op(IRDLOperation):
+    """
+    Widening multiply-accumulate with scalar B: vd (i16) += vs2 (i8 vec) * rs1 (i8 scalar)
+    __riscv_vwmacc_vx_i16mf2(vd, rs1, vs2, vl)
+
+    Used in GEMM inner loop where B is a scalar:
+      tmp_i16 = vwmacc_vx_i16mf2(zero_i16, b_scalar, A_vec, vl)
+    """
+
+    name = "rvv.vwmacc_vx_i16mf2"
+    vd = operand_def(RVVInt16Mf2Type)
+    rs1 = operand_def(IntegerType)       # scalar B (int8_t)
+    vs2 = operand_def(RVVInt8Mf4Type)    # vector A
+    avl = operand_def(IndexType)
+    result = result_def(RVVInt16Mf2Type)
+
+    def __init__(self, vd: SSAValue, rs1: SSAValue, vs2: SSAValue, avl: SSAValue):
+        super().__init__(operands=[vd, rs1, vs2, avl], result_types=[RVVInt16Mf2Type()])
+
+
+@irdl_op_definition
 class vwadd_wv_i32m1Op(IRDLOperation):
     """
     Widening add i32 + i16 -> i32 (or just widen i16 to i32)
@@ -456,6 +477,7 @@ RVV = Dialect(
         vwmul_vv_i16mf2Op,
         vmv_v_x_i16mf2Op,
         vwmacc_vv_i16mf2Op,
+        vwmacc_vx_i16mf2Op,
         vwadd_wv_i32m1Op,
         vse32_v_i32m1Op,
         vmv_v_x_i32m1Op,    ],
