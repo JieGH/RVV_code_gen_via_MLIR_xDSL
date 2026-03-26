@@ -24,7 +24,7 @@ from xdsl.dialects.builtin import (
     IntegerType,
     MemRefType,
     ModuleOp,
-    i8, 
+    i8,
     i32,
 )
 from xdsl.ir import Block, Region, SSAValue
@@ -34,20 +34,20 @@ from xdsl.printer import Printer
 from xdsltemplate.dialects.rvv import (
     RVV,
     RVVFloat32M1Type,
+    RVVInt32M1Type,
     vfmacc_vf_f32m1Op,
     vfmv_v_f_f32m1Op,
-    vle32_v_f32m1Op,
-    vse32_v_f32m1Op,
-    RVVInt8Mf4Type,
-    RVVInt16Mf2Type,
-    RVVInt32M1Type,
     vle8_v_i8mf4Op,
+    vle32_v_f32m1Op,
     vle32_v_i32m1Op,
-    vmv_v_x_i32m1Op,
     vmv_v_x_i16mf2Op,
-    vwmacc_vx_i16mf2Op,
-    vwadd_wv_i32m1Op,
+    vmv_v_x_i32m1Op,
+    vse32_v_f32m1Op,
     vse32_v_i32m1Op,
+    vwadd_wv_i32m1Op,
+    vwmacc_vx_i16mf2Op,
+    vsext_vf2_i16mf2Op,
+    vwmacc_vx_i32m1Op,
 )
 from xdsltemplate.transforms.arith_to_emitc import ArithToEmitCPass
 from xdsltemplate.transforms.gemm_to_arith import GemmToArithPass
@@ -114,7 +114,7 @@ class IRBuilder:
             self.block.add_op(op)
             self._const_cache[val] = op.result
         return self._const_cache[val]
-        
+
     def const_i8(self, val: int) -> SSAValue:
         op = arith.ConstantOp(IntegerAttr(val, i8))
         self.block.add_op(op)
@@ -177,8 +177,22 @@ class IRBuilder:
         self.block.add_op(op)
         return op.result
 
-    def vwmacc_vx_i16mf2(self, acc: SSAValue, scalar: SSAValue, vec: SSAValue, vl: SSAValue) -> SSAValue:
+    def vwmacc_vx_i16mf2(
+        self, acc: SSAValue, scalar: SSAValue, vec: SSAValue, vl: SSAValue
+    ) -> SSAValue:
         op = vwmacc_vx_i16mf2Op(acc, scalar, vec, vl)
+        self.block.add_op(op)
+        return op.result
+
+    def vsext_vf2_i16mf2(self, vec: SSAValue, vl: SSAValue) -> SSAValue:
+        op = vsext_vf2_i16mf2Op(vec, vl)
+        self.block.add_op(op)
+        return op.result
+
+    def vwmacc_vx_i32m1(
+        self, acc: SSAValue, scalar: SSAValue, vec: SSAValue, vl: SSAValue
+    ) -> SSAValue:
+        op = vwmacc_vx_i32m1Op(acc, scalar, vec, vl)
         self.block.add_op(op)
         return op.result
 
@@ -262,9 +276,9 @@ def build_gemm_i8i8i32(
     config = GEMMConfig(mr=mr, nr=nr, vlen=vlen, beta=beta, precision=precision)
     if name is None:
         name = config.kernel_name
-    
+
     num_m_vecs = config.num_m_vecs
-    
+
     # Types
     idx_t = IndexType()
     i8_t = i8
@@ -277,33 +291,34 @@ def build_gemm_i8i8i32(
     # Alpha and beta are float* but ignored at inner loop computation for ints
     memref_f32 = MemRefType(Float32Type(), [-1])
     input_types = [
-        idx_t,        # kc
-        memref_f32,   # alpha 
-        memref_i8,    # A
-        idx_t,        # lda
-        memref_i8,    # B
-        idx_t,        # ldb
-        memref_f32,   # beta 
-        memref_i32,   # C
-        idx_t,        # ldc
+        idx_t,  # kc
+        memref_f32,  # alpha
+        memref_i8,  # A
+        idx_t,  # lda
+        memref_i8,  # B
+        idx_t,  # ldb
+        memref_f32,  # beta
+        memref_i32,  # C
+        idx_t,  # ldc
     ]
     func_type = FunctionType.from_lists(input_types, [])
     entry_block = Block(arg_types=input_types)
     gemm_func = func.FuncOp(name, func_type, Region([entry_block]))
-    
+
     kc, alpha, A, lda, B, ldb, beta_arg, C, ldc = entry_block.args
 
     eb = IRBuilder(entry_block, vlen, config=config)
-    
+
     c0 = eb.const_index(0)
     c1 = eb.const_index(1)
-    
+
     for i in range(max(nr, num_m_vecs * vlen) + 1):
         eb.const_index(i)
-        
-    c0i16 = arith.ConstantOp(IntegerAttr(0, i16_t)); entry_block.add_op(c0i16)
+
+    c0i16 = arith.ConstantOp(IntegerAttr(0, i16_t))
+    entry_block.add_op(c0i16)
     c0i32 = eb.const_i32(0)
-    
+
     c_reg_init = {}
     if beta == BetaMode.B0:
         for n in range(nr):
@@ -317,23 +332,18 @@ def build_gemm_i8i8i32(
                 c_offset = eb.get_c_offset(m, n, ldc)
                 c_reg_init[(n, m)] = eb.vle32_i32m1(C, c_offset, vl)
 
-    zero_i16_vecs = {}
-    for m in range(num_m_vecs):
-        vl = eb.get_vl_for_m_vec(m)
-        zero_i16_vecs[m] = eb.vmv_v_x_i16mf2(vl, c0i16.result)
-
     loop_body_types = [idx_t] + [acc_t] * config.num_c_regs
     loop_body = Block(arg_types=loop_body_types)
     lb = IRBuilder(loop_body, vlen, config=config)
     k = loop_body.args[0]
-    
+
     c_regs = {}
     idx = 1
     for n in range(nr):
         for m in range(num_m_vecs):
             c_regs[(n, m)] = loop_body.args[idx]
             idx += 1
-            
+
     k_mul_lda = lb.muli(k, lda)
     A_regs = []
     for m in range(num_m_vecs):
@@ -343,7 +353,13 @@ def build_gemm_i8i8i32(
             a_offset = lb.addi(k_mul_lda, eb.const_index(m * vlen))
         vl = lb.get_vl_for_m_vec(m)
         A_regs.append(lb.vle8_i8mf4(A, a_offset, vl))
-        
+
+    # --- Optimization: Widen A once to i16 ---
+    A_regs_i16 = []
+    for m in range(num_m_vecs):
+        vl = lb.get_vl_for_m_vec(m)
+        A_regs_i16.append(lb.vsext_vf2_i16mf2(A_regs[m], vl))
+
     k_mul_ldb = lb.muli(k, ldb)
     b_offsets = []
     for n in range(nr):
@@ -351,31 +367,34 @@ def build_gemm_i8i8i32(
             b_offsets.append(k_mul_ldb)
         else:
             b_offsets.append(lb.addi(k_mul_ldb, eb.const_index(n)))
-            
+
     c_new = {}
     for n in range(nr):
-        b_scalar = memref.LoadOp.get(B, [b_offsets[n]])
-        loop_body.add_op(b_scalar)
-        
+        b_scalar_i8 = memref.LoadOp.get(B, [b_offsets[n]])
+        loop_body.add_op(b_scalar_i8)
+        # Extend B scalar to i16 for vwmacc_vx_i32m1
+        b_scalar_i16 = arith.ExtSIOp(b_scalar_i8.res, i16_t)
+        loop_body.add_op(b_scalar_i16)
+
         for m in range(num_m_vecs):
             vl = lb.get_vl_for_m_vec(m)
-            tmp_i16 = lb.vwmacc_vx_i16mf2(zero_i16_vecs[m], b_scalar.res, A_regs[m], vl)
-            c_new[(n, m)] = lb.vwadd_wv_i32m1(c_regs[(n, m)], tmp_i16, vl)
-            
+            # Fast 32-bit MAC using pre-widened A and extended scalar B
+            c_new[(n, m)] = lb.vwmacc_vx_i32m1(c_regs[(n, m)], b_scalar_i16.result, A_regs_i16[m], vl)
+
     yield_vals = [c_new[(n, m)] for n in range(nr) for m in range(num_m_vecs)]
     loop_body.add_op(scf.YieldOp(*yield_vals))
-    
+
     iter_inits = [c_reg_init[(n, m)] for n in range(nr) for m in range(num_m_vecs)]
     for_op = scf.ForOp(c0, kc, c1, iter_inits, Region([loop_body]))
     entry_block.add_op(for_op)
-    
+
     c_final = {}
     idx = 0
     for n in range(nr):
         for m in range(num_m_vecs):
             c_final[(n, m)] = for_op.results[idx]
             idx += 1
-            
+
     for n in range(nr):
         if n == 0:
             col_base = eb.const_index(0)
@@ -383,7 +402,7 @@ def build_gemm_i8i8i32(
             col_base = ldc
         else:
             col_base = eb.muli(eb.const_index(n), ldc)
-            
+
         for m in range(num_m_vecs):
             if m == 0:
                 offset = col_base
@@ -391,7 +410,7 @@ def build_gemm_i8i8i32(
                 offset = eb.addi(col_base, eb.const_index(m * vlen))
             vl = eb.get_vl_for_m_vec(m)
             eb.vse32_i32m1(C, offset, c_final[(n, m)], vl)
-            
+
     entry_block.add_op(func.ReturnOp())
     return ModuleOp([gemm_func])
 
@@ -413,7 +432,6 @@ def build_gemm(
     """
     if precision == "i8i8i32":
         return build_gemm_i8i8i32(mr, nr, vlen, beta, name, precision)
-
 
     config = GEMMConfig(mr=mr, nr=nr, vlen=vlen, beta=beta, precision=precision)
     if name is None:
@@ -628,7 +646,6 @@ def generate_header_file(
     with open(output_path, "w") as f:
         f.write(code)
         print(f"  ✔ {os.path.basename(output_path)}")
-
 
 
 def generate_kernel_family_dispatchers(
@@ -1282,10 +1299,10 @@ int main() {{
         {type_c}* C_test = ({type_c}*)malloc(  M_test * N_test * sizeof({type_c}));
         {type_c}* C_ref_test = ({type_c}*)malloc(  M_test * N_test * sizeof({type_c}));
 
-        for (int i = 0; i < lda_test * K_test; i++) A_test[i] = ({type_a})(i % 10){' * 1' if precision == 'i8i8i32' else ' * 0.1f'};
-        for (int i = 0; i < ldb_test * K_test; i++) B_test[i] = ({type_b})((i + 3) % 10){' * 1' if precision == 'i8i8i32' else ' * 0.1f'};
-        for (int i = 0; i <   M_test * N_test; i++) C_test[i] = ({type_c}){ '1' if precision == 'i8i8i32' else '1.1f' };
-        for (int i = 0; i <   M_test * N_test; i++) C_ref_test[i] = ({type_c}){ '1' if precision == 'i8i8i32' else '1.1f' };
+        for (int i = 0; i < lda_test * K_test; i++) A_test[i] = ({type_a})(i % 10){" * 1" if precision == "i8i8i32" else " * 0.1f"};
+        for (int i = 0; i < ldb_test * K_test; i++) B_test[i] = ({type_b})((i + 3) % 10){" * 1" if precision == "i8i8i32" else " * 0.1f"};
+        for (int i = 0; i <   M_test * N_test; i++) C_test[i] = ({type_c}){"1" if precision == "i8i8i32" else "1.1f"};
+        for (int i = 0; i <   M_test * N_test; i++) C_ref_test[i] = ({type_c}){"1" if precision == "i8i8i32" else "1.1f"};
 
         // xDSL Outer Loop using {max_mr}×{max_nr} family ({beta_str})
         gemm_outer_family_{max_mr}x{max_nr}_{beta_str}(M_test, N_test, K_test, A_test, lda_test, B_test, ldb_test, C_test, ldc_test);
@@ -1298,10 +1315,10 @@ int main() {{
         for (int i = 0; i < M_test * N_test; i++) {{
             {type_c} diff = C_ref_test[i] - C_test[i];
             if (diff < 0) diff = -diff;
-            if (diff > {'0' if precision == 'i8i8i32' else '0.01f'}) {{
+            if (diff > {"0" if precision == "i8i8i32" else "0.01f"}) {{
                 errors++;
                 if (errors < 5) {{
-                    const char* fmt = {"\"%d\"" if precision == 'i8i8i32' else "\"%f\""};
+                    const char* fmt = {'"%d"' if precision == "i8i8i32" else '"%f"'};
                     printf("C_ref_test[%d] = ", i);
                     printf(fmt, C_ref_test[i]);
                     printf(", C_test[%d] = ", i);
@@ -1659,7 +1676,9 @@ def generate_merged_kernel_file(
             beta_str = "b0" if beta_mode == BetaMode.B0 else "b1"
 
             # Original function name in generated file
-            original_kernel_name = f"xdsl_api_gemm_RVV_{mr}x{nr}_{beta_str}_col_{precision}"
+            original_kernel_name = (
+                f"xdsl_api_gemm_RVV_{mr}x{nr}_{beta_str}_col_{precision}"
+            )
 
             # Rename to gemm_RVV_* in merged file (drop xdsl_api_ prefix)
             target_kernel_name = f"gemm_RVV_{mr}x{nr}_{beta_str}_col_{precision}"

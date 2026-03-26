@@ -1,31 +1,31 @@
-import os
 import subprocess
+
 from xdsl.context import Context
-from xdsl.dialects import arith, builtin, func, memref, scf
+from xdsl.dialects import arith, func
 from xdsl.dialects.builtin import (
+    FunctionType,
     IndexType,
     IntegerType,
     MemRefType,
     ModuleOp,
-    FunctionType,
 )
-from xdsl.ir import Block, Region, SSAValue
+from xdsl.ir import Block, Region
 from xdsl.printer import Printer
 
 from xdsltemplate.dialects.rvv import (
     SetvlMf4Op,
     vle8_v_i8mf4Op,
     vmv_v_x_i16mf2Op,
-    vwmacc_vv_i16mf2Op,
-    vwadd_wv_i32m1Op,
     vmv_v_x_i32m1Op,
     vse32_v_i32m1Op,
+    vwadd_wv_i32m1Op,
+    vwmacc_vv_i16mf2Op,
 )
-
-from xdsltemplate.transforms.rvv_to_emitc import RVVToEmitCPass
-from xdsltemplate.transforms.scf_to_emitc import SCFToEmitCPass
 from xdsltemplate.transforms.arith_to_emitc import ArithToEmitCPass
 from xdsltemplate.transforms.memref_to_emitc import MemRefToEmitCPass
+from xdsltemplate.transforms.rvv_to_emitc import RVVToEmitCPass
+from xdsltemplate.transforms.scf_to_emitc import SCFToEmitCPass
+
 
 def build_mixed_precision_test() -> ModuleOp:
     """
@@ -35,23 +35,23 @@ def build_mixed_precision_test() -> ModuleOp:
     index_t = IndexType()
     i8_t = IntegerType(8)
     i32_t = IntegerType(32)
-    
+
     memref_i8 = MemRefType(i8_t, [-1])
     memref_i32 = MemRefType(i32_t, [-1])
-    
+
     input_types = [
         memref_i8,  # A
         memref_i8,  # B
-        memref_i32, # C
-        index_t,    # M (size)
+        memref_i32,  # C
+        index_t,  # M (size)
     ]
-    
+
     func_type = FunctionType.from_lists(input_types, [])
     entry_block = Block(arg_types=input_types)
     test_func = func.FuncOp("test_mixed_precision", func_type, Region([entry_block]))
-    
+
     A, B, C, M_arg = entry_block.args
-    
+
     # Constants
     op_zero = arith.ConstantOp.from_int_and_width(0, index_t)
     entry_block.add_op(op_zero)
@@ -103,6 +103,7 @@ def build_mixed_precision_test() -> ModuleOp:
 
     return ModuleOp([test_func])
 
+
 def lower_to_emitc(module: ModuleOp, ctx: Context):
     MemRefToEmitCPass().apply(ctx, module)
     ArithToEmitCPass().apply(ctx, module)
@@ -110,21 +111,22 @@ def lower_to_emitc(module: ModuleOp, ctx: Context):
     RVVToEmitCPass().apply(ctx, module)
     return module
 
+
 if __name__ == "__main__":
     ctx = Context()
     module = build_mixed_precision_test()
-    
+
     print("--- MLIR ---")
     printer = Printer(print_generic_format=False)
     printer.print_op(module)
     print("\n")
-    
+
     module = lower_to_emitc(module, ctx)
-    
+
     print("--- EmitC ---")
     printer.print_op(module)
     print("\n")
-    
+
     # Translate to C — write using GENERIC format (required by mlir-translate)
     with open("tmp_int_codeGen/mixed_precision.mlir", "w") as f:
         Printer(stream=f, print_generic_format=True).print_op(module)
@@ -133,9 +135,17 @@ if __name__ == "__main__":
     C_OUT = "tmp_int_codeGen/mixed_precision.c"
     try:
         result = subprocess.run(
-            [MLIR_TRANSLATE, "-allow-unregistered-dialect", "-mlir-to-cpp",
-             "tmp_int_codeGen/mixed_precision.mlir", "-o", C_OUT],
-            capture_output=True, text=True, timeout=30,
+            [
+                MLIR_TRANSLATE,
+                "-allow-unregistered-dialect",
+                "-mlir-to-cpp",
+                "tmp_int_codeGen/mixed_precision.mlir",
+                "-o",
+                C_OUT,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         if result.returncode != 0:
             print("mlir-translate failed:")

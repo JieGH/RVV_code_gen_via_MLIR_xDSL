@@ -104,6 +104,20 @@ class ConvertArithSubiOpToEmitC(RewritePattern):
         rewriter.replace_matched_op(new_op)
 
 
+class ConvertArithExtSIToEmitC(RewritePattern):
+    """Rewrite `arith.extsi` to `emitc.cast`."""
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: arith.ExtSIOp, rewriter: PatternRewriter):
+        src = op.input
+        result_type = op.results[0].type
+
+        from xdsltemplate.dialects.emitc_ext import EmitCCastOp
+
+        new_op = EmitCCastOp(src, result_type)
+        rewriter.replace_matched_op(new_op)
+
+
 class ConvertArithIndexCastToEmitC(RewritePattern):
     """Erase arith.index_cast by replacing result with input.
 
@@ -143,6 +157,7 @@ class ArithToEmitCPass(ModulePass):
             ConvertArithAddiOpToEmitC(),
             ConvertArithSubiOpToEmitC(),
             ConvertArithIndexCastToEmitC(),
+            ConvertArithExtSIToEmitC(),
         ]
 
         from xdsl.pattern_rewriter import PatternRewriteWalker

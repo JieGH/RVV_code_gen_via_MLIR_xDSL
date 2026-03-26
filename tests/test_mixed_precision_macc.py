@@ -21,7 +21,7 @@ import subprocess
 from io import StringIO
 
 from xdsl.context import Context
-from xdsl.dialects import arith, emitc, func, memref, scf
+from xdsl.dialects import arith, func, memref, scf
 from xdsl.dialects.builtin import (
     FunctionType,
     IndexType,
@@ -39,8 +39,8 @@ from xdsltemplate.dialects.rvv import (
     vle8_v_i8mf4Op,
     vmv_v_x_i16mf2Op,
     vmv_v_x_i32m1Op,
-    vwadd_wv_i32m1Op,
     vse32_v_i32m1Op,
+    vwadd_wv_i32m1Op,
     vwmacc_vx_i16mf2Op,
 )
 from xdsltemplate.transforms.arith_to_emitc import ArithToEmitCPass
@@ -50,16 +50,16 @@ from xdsltemplate.transforms.memref_to_emitc import MemRefToEmitCPass
 from xdsltemplate.transforms.rvv_to_emitc import RVVToEmitCPass
 from xdsltemplate.transforms.scf_to_emitc import SCFToEmitCPass
 
-NR = 8          # tile columns (= number of A-row elements at VLEN=256, mf4)
+NR = 8  # tile columns (= number of A-row elements at VLEN=256, mf4)
 KERNEL_NAME = "xdsl_api_gemm_RVV_8x8_i8i8i32_b0"
 MLIR_TRANSLATE = (
     "/home/jlei/Documents/ws_MLIR/llvm_pj_dir_06092025"
     "/llvm-project/build/bin/mlir-translate"
 )
-OUT_DIR  = "tmp_int_codeGen"
-OUT_MLIR_HR  = f"{OUT_DIR}/mixed_precision_macc.mlir"          # human-readable
+OUT_DIR = "tmp_int_codeGen"
+OUT_MLIR_HR = f"{OUT_DIR}/mixed_precision_macc.mlir"  # human-readable
 OUT_MLIR_GEN = f"{OUT_DIR}/mixed_precision_macc_generic.mlir"  # for mlir-translate
-OUT_C    = f"{OUT_DIR}/mixed_precision_macc.c"
+OUT_C = f"{OUT_DIR}/mixed_precision_macc.c"
 
 
 def build_kernel() -> ModuleOp:
@@ -72,34 +72,41 @@ def build_kernel() -> ModuleOp:
     )
     """
     idx = IndexType()
-    i8  = IntegerType(8)
+    i8 = IntegerType(8)
     i16 = IntegerType(16)
     i32 = IntegerType(32)
     acc_t = RVVInt32M1Type()
 
     input_types = [
-        idx,                    # kc
-        MemRefType(i8, [-1]),   # A
-        idx,                    # lda
-        MemRefType(i8, [-1]),   # B
-        idx,                    # ldb
+        idx,  # kc
+        MemRefType(i8, [-1]),  # A
+        idx,  # lda
+        MemRefType(i8, [-1]),  # B
+        idx,  # ldb
         MemRefType(i32, [-1]),  # C
-        idx,                    # ldc
+        idx,  # ldc
     ]
     func_type = FunctionType.from_lists(input_types, [])
     entry = Block(arg_types=input_types)
     kc, Ar, lda, Br, ldb, Cr, ldc = entry.args
 
     # --- Constants ---
-    c0   = arith.ConstantOp(IntegerAttr(0, idx));   entry.add_op(c0)
-    c1   = arith.ConstantOp(IntegerAttr(1, idx));   entry.add_op(c1)
-    c8   = arith.ConstantOp(IntegerAttr(8, idx));   entry.add_op(c8)   # tile size
-    c0i8 = arith.ConstantOp(IntegerAttr(0, i8));    entry.add_op(c0i8)
-    c0i16= arith.ConstantOp(IntegerAttr(0, i16));   entry.add_op(c0i16)
-    c0i32= arith.ConstantOp(IntegerAttr(0, i32));   entry.add_op(c0i32)
+    c0 = arith.ConstantOp(IntegerAttr(0, idx))
+    entry.add_op(c0)
+    c1 = arith.ConstantOp(IntegerAttr(1, idx))
+    entry.add_op(c1)
+    c8 = arith.ConstantOp(IntegerAttr(8, idx))
+    entry.add_op(c8)  # tile size
+    c0i8 = arith.ConstantOp(IntegerAttr(0, i8))
+    entry.add_op(c0i8)
+    c0i16 = arith.ConstantOp(IntegerAttr(0, i16))
+    entry.add_op(c0i16)
+    c0i32 = arith.ConstantOp(IntegerAttr(0, i32))
+    entry.add_op(c0i32)
 
     # --- VL: fixed 8 elements (VLEN=256, mf4) ---
-    sv = SetvlMf4Op(c8.result); entry.add_op(sv)
+    sv = SetvlMf4Op(c8.result)
+    entry.add_op(sv)
     vl = sv.vl
 
     # --- Pre-compute column offset constants (for B indexing and C store) ---
@@ -128,10 +135,10 @@ def build_kernel() -> ModuleOp:
     loop_body = Block(arg_types=loop_body_types)
 
     # Unpack loop body args
-    k_iter   = loop_body.args[0]
-    l_accs   = [loop_body.args[1 + j] for j in range(NR)]
-    bA       = loop_body.args[NR + 1]  # byte offset into A
-    bB       = loop_body.args[NR + 2]  # byte offset into B
+    k_iter = loop_body.args[0]
+    l_accs = [loop_body.args[1 + j] for j in range(NR)]
+    bA = loop_body.args[NR + 1]  # byte offset into A
+    bB = loop_body.args[NR + 2]  # byte offset into B
 
     # Load A row as vint8mf4_t: A[bA .. bA+7]
     vle = vle8_v_i8mf4Op(Ar, bA, vl)
@@ -157,8 +164,10 @@ def build_kernel() -> ModuleOp:
         new_accs.append(new_acc.result)
 
     # Advance offsets: bA += lda, bB += ldb
-    next_bA = arith.AddiOp(bA, lda); loop_body.add_op(next_bA)
-    next_bB = arith.AddiOp(bB, ldb); loop_body.add_op(next_bB)
+    next_bA = arith.AddiOp(bA, lda)
+    loop_body.add_op(next_bA)
+    next_bB = arith.AddiOp(bB, ldb)
+    loop_body.add_op(next_bB)
 
     # Yield updated accumulators + offsets
     loop_body.add_op(scf.YieldOp(*new_accs, next_bA.result, next_bB.result))
@@ -235,7 +244,9 @@ if __name__ == "__main__":
     print()
 
     # --- Write human-readable MLIR (EmitC IR) ---
-    import os; os.makedirs(OUT_DIR, exist_ok=True)
+    import os
+
+    os.makedirs(OUT_DIR, exist_ok=True)
     with open(OUT_MLIR_HR, "w") as f:
         Printer(stream=f).print_op(module)
     print(f"Wrote human-readable MLIR → {OUT_MLIR_HR}")
@@ -249,9 +260,17 @@ if __name__ == "__main__":
     print(f"\n=== [4] mlir-translate → {OUT_C} ===")
     try:
         r = subprocess.run(
-            [MLIR_TRANSLATE, "-allow-unregistered-dialect", "-mlir-to-cpp",
-             OUT_MLIR_GEN, "-o", OUT_C],
-            capture_output=True, text=True, timeout=120,
+            [
+                MLIR_TRANSLATE,
+                "-allow-unregistered-dialect",
+                "-mlir-to-cpp",
+                OUT_MLIR_GEN,
+                "-o",
+                OUT_C,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         if r.returncode != 0:
             print("mlir-translate FAILED:")

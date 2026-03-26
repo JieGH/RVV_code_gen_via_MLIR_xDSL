@@ -154,6 +154,17 @@ class EmitCStoreOp(IRDLOperation):
 
 
 @irdl_op_definition
+class EmitCCastOp(IRDLOperation):
+    name = "emitc.cast"
+
+    src = operand_def()
+    result = result_def()
+
+    def __init__(self, src, result_type):
+        super().__init__(operands=[src], result_types=[result_type])
+
+
+@irdl_op_definition
 class EmitCAssignOp(IRDLOperation):
     name = "emitc.assign"
 

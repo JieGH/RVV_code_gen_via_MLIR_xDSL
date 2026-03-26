@@ -363,6 +363,30 @@ class ConvertRVV_vwmacc_vx_i16mf2_ToEmitC(RewritePattern):
         rewriter.replace_op(op, call_op)
 
 
+class ConvertRVV_vsext_vf2_i16mf2_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vsext_vf2_i16mf2Op, rewriter: PatternRewriter):
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint16mf2_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vsext_vf2_i16mf2",
+            call_args=[op.vs2, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+class ConvertRVV_vwmacc_vx_i32m1_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vwmacc_vx_i32m1Op, rewriter: PatternRewriter):
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint32m1_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vwmacc_vx_i32m1",
+            call_args=[op.vd, op.rs1, op.vs2, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, call_op)
+
+
 class ConvertRVV_vwadd_wv_i32m1_ToEmitC(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: vwadd_wv_i32m1Op, rewriter: PatternRewriter):
@@ -438,6 +462,8 @@ class RVVToEmitCPass(ModulePass):
             ConvertRVV_vmv_v_x_i16mf2_ToEmitC(),
             ConvertRVV_vwmacc_vv_i16mf2_ToEmitC(),
             ConvertRVV_vwmacc_vx_i16mf2_ToEmitC(),
+            ConvertRVV_vsext_vf2_i16mf2_ToEmitC(),
+            ConvertRVV_vwmacc_vx_i32m1_ToEmitC(),
             ConvertRVV_vwadd_wv_i32m1_ToEmitC(),
             ConvertRVV_vle32_v_i32m1_ToEmitC(),
             ConvertRVV_vse32_v_i32m1_ToEmitC(),

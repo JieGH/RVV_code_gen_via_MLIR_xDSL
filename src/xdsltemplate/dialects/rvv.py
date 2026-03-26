@@ -256,7 +256,9 @@ class vle8_v_i8mf4Op(IRDLOperation):
     result = result_def(RVVInt8Mf4Type)
 
     def __init__(self, memref: SSAValue, offset: SSAValue, avl: SSAValue):
-        super().__init__(operands=[memref, offset, avl], result_types=[RVVInt8Mf4Type()])
+        super().__init__(
+            operands=[memref, offset, avl], result_types=[RVVInt8Mf4Type()]
+        )
 
 
 @irdl_op_definition
@@ -326,13 +328,47 @@ class vwmacc_vx_i16mf2Op(IRDLOperation):
 
     name = "rvv.vwmacc_vx_i16mf2"
     vd = operand_def(RVVInt16Mf2Type)
-    rs1 = operand_def(IntegerType)       # scalar B (int8_t)
-    vs2 = operand_def(RVVInt8Mf4Type)    # vector A
+    rs1 = operand_def(IntegerType)  # scalar B (int8_t)
+    vs2 = operand_def(RVVInt8Mf4Type)  # vector A
     avl = operand_def(IndexType)
     result = result_def(RVVInt16Mf2Type)
 
     def __init__(self, vd: SSAValue, rs1: SSAValue, vs2: SSAValue, avl: SSAValue):
         super().__init__(operands=[vd, rs1, vs2, avl], result_types=[RVVInt16Mf2Type()])
+
+
+@irdl_op_definition
+class vsext_vf2_i16mf2Op(IRDLOperation):
+    """
+    Widening sign-extend i8 -> i16
+    __riscv_vsext_vf2_i16mf2(vs2, vl)
+    """
+
+    name = "rvv.vsext_vf2_i16mf2Op"
+    vs2 = operand_def(RVVInt8Mf4Type)
+    avl = operand_def(IndexType)
+    result = result_def(RVVInt16Mf2Type)
+
+    def __init__(self, vs2: SSAValue, avl: SSAValue):
+        super().__init__(operands=[vs2, avl], result_types=[RVVInt16Mf2Type()])
+
+
+@irdl_op_definition
+class vwmacc_vx_i32m1Op(IRDLOperation):
+    """
+    Widening multiply-accumulate: vd (i32) += vs2 (i16 vec) * rs1 (i16 scalar)
+    __riscv_vwmacc_vx_i32m1(vd, rs1, vs2, vl)
+    """
+
+    name = "rvv.vwmacc_vx_i32m1"
+    vd = operand_def(RVVInt32M1Type)
+    rs1 = operand_def(IntegerType)  # scalar B (int16_t)
+    vs2 = operand_def(RVVInt16Mf2Type)  # vector A (int16_t)
+    avl = operand_def(IndexType)
+    result = result_def(RVVInt32M1Type)
+
+    def __init__(self, vd: SSAValue, rs1: SSAValue, vs2: SSAValue, avl: SSAValue):
+        super().__init__(operands=[vd, rs1, vs2, avl], result_types=[RVVInt32M1Type()])
 
 
 @irdl_op_definition
@@ -383,7 +419,9 @@ class vle32_v_i32m1Op(IRDLOperation):
     result = result_def(RVVInt32M1Type)
 
     def __init__(self, memref: SSAValue, offset: SSAValue, avl: SSAValue):
-        super().__init__(operands=[memref, offset, avl], result_types=[RVVInt32M1Type()])
+        super().__init__(
+            operands=[memref, offset, avl], result_types=[RVVInt32M1Type()]
+        )
 
 
 @irdl_op_definition
@@ -494,9 +532,12 @@ RVV = Dialect(
         vmv_v_x_i16mf2Op,
         vwmacc_vv_i16mf2Op,
         vwmacc_vx_i16mf2Op,
+        vsext_vf2_i16mf2Op,
+        vwmacc_vx_i32m1Op,
         vwadd_wv_i32m1Op,
         vse32_v_i32m1Op,
-        vmv_v_x_i32m1Op,    ],
+        vmv_v_x_i32m1Op,
+    ],
     [
         # FLOAT
         RVVvectorType,
