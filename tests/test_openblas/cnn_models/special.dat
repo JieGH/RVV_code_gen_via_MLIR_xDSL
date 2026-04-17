@@ -1,0 +1,15 @@
+#layer	m	n	k	Flops
+bert_google_L0	3072	1024	1024	0
+bert_google_L4	8	768	768	0
+bert_google_L14	128	128	64	0
+roberta_L0	1500	1024	1024	0
+roberta_L22	1500	1500	64	0
+distilbert_L0-L5	1024	1024	1024	0
+distilbert_L15	2048	1024	1024	0
+auto_Opset18_L0	128	768	768	0
+auto_Opset18_L2	128	768	768	0
+auto_Opset18_L10	1536	128	64	0
+auto_Opset18_L16	384	1024	1024	0
+nsnet2_L0	1024	1024	1024	0
+deberta_L0	512	512	512	0
+deberta_L20	1024	1024	1024	0

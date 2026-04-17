@@ -23,7 +23,7 @@ make install
 
 5. Run the pipeline
 ```bash
-bash compile.sh
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "32,32" --vlen 256 --precision fp32
 ```
 
 Example with explicit connection and tuning options:
@@ -61,8 +61,41 @@ Local MLIR/LLVM build:
 ```bash
 bash setup_env.sh --local-mlir-only --mlir-build-dir ../llvm-project
 ```
-
 Remote OpenBLAS/BLIS build:
 ```bash
 bash setup_env.sh --remote-only --vlen 256 --riscv-workspace xdsl_rvv_microkernel
+```
+
+## Inspecting Assembly
+
+You can dump and inspect the actual RISC-V assembly generated for any microkernel.
+
+### Local Assembly Dump
+Use the dedicated script to cross-compile kernels to assembly locally:
+```bash
+cd tests/api_gen_cpp
+./dump_asm.sh 4x4_b0_fp32       # Dump a single kernel
+./dump_asm.sh --all              # Dump all fp32 kernels
+```
+Files are saved to `tests/api_gen_cpp/asm/`.
+
+### Remote Assembly Dump
+Alternatively, compile natively on the board and pull the `.s` file back:
+```bash
+./compile.sh --dump-asm 4x4_b0_fp32
+```
+
+## Side Note / Dev Note
+
+To compile in **jump-host mode** (x86 → fej → jbpi2), the following command is used:
+```bash
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "32,32" --vlen 256 --precision fp32
+```
+
+
+```
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh \
+    --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 \
+    --families "8,8" --vlen 256 --precision fp32 \
+    --dump-asm 8x8_b1_fp32
 ```
