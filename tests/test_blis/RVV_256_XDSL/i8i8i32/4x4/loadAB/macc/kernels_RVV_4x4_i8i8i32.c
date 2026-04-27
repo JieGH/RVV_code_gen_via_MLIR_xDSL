@@ -2485,6 +2485,3 @@ void gemm_RVV_4x4_b1_col_i8i8i32(void* ctxt, int v1, float* v2, int8_t* v3, int 
   __riscv_vse32_v_i32m1(v76, v70, v14);
   return;
 }
-
-
-
