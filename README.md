@@ -1,4 +1,4 @@
-# RVV xDSL Microkernel Runner
+# RVV 1.0 Microkernel Runner
 
 Generate RVV GEMM microkernels locally, sync them to a RISC-V board, run benchmarks, and fetch results back to your host.
 
