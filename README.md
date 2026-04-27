@@ -2,6 +2,9 @@
 
 Generate RVV GEMM microkernels locally, sync them to a RISC-V board, run benchmarks, and fetch results back to your host.
 
+Preprint: Enabling RISC-V Vector Code Generation in MLIR through Custom xDSL Lowerings
+https://doi.org/10.48550/arXiv.2603.17800
+
 ## Quick Start
 
 1. Install local tools
