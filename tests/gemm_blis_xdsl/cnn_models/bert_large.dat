@@ -1,0 +1,11 @@
+#Label                 M     N      K     MC   NC   KC
+BERT_large_enc_M123 1024   384   1024    448  164  256
+BERT_large_enc_M5    384   384     64    384  256   64
+BERT_large_enc_M7     64   384    384     64  384  256
+BERT_large_enc_F11  4096   384   1024    448  164  256
+BERT_large_enc_F13  1024   384   4096    448  164  256
+BERT_large_enc_M123 1024   384   1024   
+BERT_large_enc_M5    384   384     64   
+BERT_large_enc_M7     64   384    384   
+BERT_large_enc_F11  4096   384   1024   
+BERT_large_enc_F13  1024   384   4096   

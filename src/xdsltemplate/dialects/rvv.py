@@ -139,6 +139,29 @@ class vle32_v_f32m1Op(IRDLOperation):
 
 
 @irdl_op_definition
+class vlse32_v_f32m1Op(IRDLOperation):
+    """
+    Strided vector load operation
+    vfloat32m1_t __riscv_vlse32_v_f32m1(const float *base, ptrdiff_t bstride, size_t vl);
+    """
+
+    name = "rvv.vlse32_v_f32m1Op"
+    memref = operand_def(MemRefType)
+    offset = operand_def(IndexType)
+    bstride = operand_def(IndexType)
+    avl = operand_def(IndexType)
+    result = result_def(RVVFloat32M1Type)
+
+    def __init__(
+        self, memref: SSAValue, offset: SSAValue, bstride: SSAValue, avl: SSAValue
+    ):
+        super().__init__(
+            operands=[memref, offset, bstride, avl],
+            result_types=[RVVFloat32M1Type()],
+        )
+
+
+@irdl_op_definition
 class vle8_v_i8m1Op(IRDLOperation):
     """
     Vector load operation for vint8m1_t

@@ -58,10 +58,11 @@ DATASETS=(
     # "cnn_models/trail.dat"
     # "cnn_models/tiny.dat"
     # "cnn_models/gnn.dat"
-    # "cnn_models/bert_large.dat"
-    "cnn_models/special.dat"
+    "cnn_models/bert_large.dat"
+    # "cnn_models/special.dat"
     # "cnn_models/gpt2_large.dat"
     # "cnn_models/square.dat"
+    "cnn_models/square_small.dat"
 )
 # ============================================================
 # Configuration End 

@@ -69,10 +69,35 @@ class ConvertScfForToEmitCFor(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: scf.ForOp, rewriter: PatternRewriter):
-        # print(f"[SCF] Pattern matched! iter_args count: {len(op.iter_args)}")
 
         if len(op.iter_args) == 0:
-            # Simple for loop without iter_args - just convert directly
+            # Simple for loop without iter_args
+            lb, ub, step = op.lb, op.ub, op.step
+            old_block = op.body.blocks[0]
+            new_block = Block(arg_types=[old_block.args[0].type])
+            value_mapping: dict[SSAValue, SSAValue] = {
+                old_block.args[0]: new_block.args[0]
+            }
+
+            for inner_op in list(old_block.ops):
+                if isinstance(inner_op, scf.YieldOp):
+                    continue
+                new_op = inner_op.clone(value_mapping)
+                new_block.add_op(new_op)
+                for old_res, new_res in zip(inner_op.results, new_op.results):
+                    value_mapping[old_res] = new_res
+
+            emitc_yield = EmitCYieldOp.create(operands=[], result_types=[])
+            new_block.add_op(emitc_yield)
+            new_region = Region()
+            new_region.add_block(new_block)
+
+            emitc_for = EmitCForOp.create(
+                operands=[lb, ub, step],
+                result_types=[],
+                regions=[new_region],
+            )
+            rewriter.replace_op(op, [emitc_for])
             return
 
         # === Step 1: Create variables for each iter_arg ===
