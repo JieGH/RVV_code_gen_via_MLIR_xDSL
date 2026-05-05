@@ -93,9 +93,16 @@ REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-
 ```
 
 
+int8 int8 int32 design
+
+```
+./compile.sh --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "2,2" --vlen 256
+```
+
+This is jump host mode, may not apply to you
 ```
 REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh \
     --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 \
-    --families "8,8" --vlen 256 --precision fp32 \
-    --dump-asm 8x8_b1_fp32
+    --families "8,8" --vlen 256 --precision i8i8i32 \
+    --dump-asm 8x8_b0_i8i8i32
 ```

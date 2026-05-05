@@ -58,10 +58,10 @@ DATASETS=(
     # "cnn_models/trail.dat"
     # "cnn_models/tiny.dat"
     # "cnn_models/gnn.dat"
-    # "cnn_models/bert_large.dat"
-    "cnn_models/special.dat"
+    "cnn_models/bert_large.dat"
+    # "cnn_models/special.dat"
     # "cnn_models/gpt2_large.dat"
-    # "cnn_models/square.dat"
+    "cnn_models/square.dat"
 )
 # ============================================================
 # Configuration End 
@@ -194,18 +194,22 @@ else
     SETUP_ENV=true
 fi
 
-if ssh_host "[ -f \"${RISCV_OPENBLAS_DIR_ENV}/lib/libopenblas.a\" ] || [ -f \"${RISCV_OPENBLAS_DIR_ENV}/lib64/libopenblas.a\" ]" >/dev/null 2>&1; then
-    echo "  [OK] OpenBLAS (Remote): ${RISCV_OPENBLAS_DIR_ENV}"
+if [ "$PRECISION" = "i8i8i32" ]; then
+    echo "  [SKIP] OpenBLAS/BLIS checks (not needed for i8i8i32)"
 else
-    echo "  [INFO] OpenBLAS not found on remote at ${RISCV_OPENBLAS_DIR_ENV}! Auto-enabling setup..."
-    SETUP_ENV=true
-fi
+    if ssh_host "[ -f \"${RISCV_OPENBLAS_DIR_ENV}/lib/libopenblas.a\" ] || [ -f \"${RISCV_OPENBLAS_DIR_ENV}/lib64/libopenblas.a\" ]" >/dev/null 2>&1; then
+        echo "  [OK] OpenBLAS (Remote): ${RISCV_OPENBLAS_DIR_ENV}"
+    else
+        echo "  [INFO] OpenBLAS not found on remote at ${RISCV_OPENBLAS_DIR_ENV}! Auto-enabling setup..."
+        SETUP_ENV=true
+    fi
 
-if ssh_host "[ -f \"${RISCV_BLIS_DIR_ENV}/lib/libblis.a\" ]" >/dev/null 2>&1; then
-    echo "  [OK] BLIS (Remote): ${RISCV_BLIS_DIR_ENV}"
-else
-    echo "  [INFO] BLIS not found on remote at ${RISCV_BLIS_DIR_ENV}! Auto-enabling setup..."
-    SETUP_ENV=true
+    if ssh_host "[ -f \"${RISCV_BLIS_DIR_ENV}/lib/libblis.a\" ]" >/dev/null 2>&1; then
+        echo "  [OK] BLIS (Remote): ${RISCV_BLIS_DIR_ENV}"
+    else
+        echo "  [INFO] BLIS not found on remote at ${RISCV_BLIS_DIR_ENV}! Auto-enabling setup..."
+        SETUP_ENV=true
+    fi
 fi
 
 if [ "$SETUP_ENV" = true ]; then
@@ -465,32 +469,36 @@ done
 # ============================================================
 # Step 8 — OpenBLAS reference comparison + plot
 # ============================================================
-echo ""; echo "$SEP"; echo " [8/8] OpenBLAS Reference + Comparison Plots"; echo "$SEP"
+if [ "$PRECISION" = "i8i8i32" ]; then
+    echo ""; echo "$SEP"; echo " [8/8] OpenBLAS Reference — SKIPPED (no OpenBLAS i8i8i32 GEMM)"; echo "$SEP"
+else
+    echo ""; echo "$SEP"; echo " [8/8] OpenBLAS Reference + Comparison Plots"; echo "$SEP"
 
-for DS in "${DATASETS[@]}"; do
-    DS_NAME=$(basename "$DS" .dat)
-    LOCAL_OBLAS_OUT="tests/output/openblas_${DS_NAME}_${PRECISION}_rvv_vl${VLEN_BITS}.txt"
-    echo " Running OpenBLAS for: $DS"
-    ssh_board "cd ${RISCV_WORKSPACE} && export OPENBLAS_NUM_THREADS=1 && \
-        bash test_openblas/openblassDesign/compile_openblas.sh --dir \"${RISCV_OPENBLAS_DIR_ENV}\" --precision \"${PRECISION}\" --zvl test_openblas/${DS}" \
-        | tee "${LOCAL_OBLAS_OUT}"
+    for DS in "${DATASETS[@]}"; do
+        DS_NAME=$(basename "$DS" .dat)
+        LOCAL_OBLAS_OUT="tests/output/openblas_${DS_NAME}_${PRECISION}_rvv_vl${VLEN_BITS}.txt"
+        echo " Running OpenBLAS for: $DS"
+        ssh_board "cd ${RISCV_WORKSPACE} && export OPENBLAS_NUM_THREADS=1 && \
+            bash test_openblas/openblassDesign/compile_openblas.sh --dir \"${RISCV_OPENBLAS_DIR_ENV}\" --precision \"${PRECISION}\" --zvl test_openblas/${DS}" \
+            | tee "${LOCAL_OBLAS_OUT}"
 
-    LOCAL_CSV="tests/output/xdsl_${DS_NAME}_${MAX_MR}x${MAX_NR}_${PRECISION}_rvv_vl${VLEN_BITS}.csv"
-    OUT_PREFIX="tests/output/${DS_NAME}_${MAX_MR}x${MAX_NR}_${PRECISION}_rvv_vl${VLEN_BITS}"
-    if [ -f "${LOCAL_CSV}" ] && [ -f "${LOCAL_OBLAS_OUT}" ]; then
-        echo " Plotting: $DS_NAME"
-        LOCAL_LOG="tests/output/sweep_log_${DS_NAME}_${MAX_MR}x${MAX_NR}_${PRECISION}_rvv_vl${VLEN_BITS}.txt"
-        python tests/output/plot_comparison.py \
-            --xdsl "${LOCAL_CSV}" --oblas "${LOCAL_OBLAS_OUT}" \
-            --model "${DS_NAME}" --out "${OUT_PREFIX}" \
-            --vlen "${VLEN_BITS}" --kc "${KC_PROFILE}" \
-            --families "${MAX_DIM_STR}" \
-            ${BEST_UK:+--best-kernel "${BEST_UK}"} \
-            ${LOCAL_LOG:+--sweep-log "${LOCAL_LOG}"}
-    else
-        echo " [skip] Missing data for $DS_NAME"
-    fi
-done
+        LOCAL_CSV="tests/output/xdsl_${DS_NAME}_${MAX_MR}x${MAX_NR}_${PRECISION}_rvv_vl${VLEN_BITS}.csv"
+        OUT_PREFIX="tests/output/${DS_NAME}_${MAX_MR}x${MAX_NR}_${PRECISION}_rvv_vl${VLEN_BITS}"
+        if [ -f "${LOCAL_CSV}" ] && [ -f "${LOCAL_OBLAS_OUT}" ]; then
+            echo " Plotting: $DS_NAME"
+            LOCAL_LOG="tests/output/sweep_log_${DS_NAME}_${MAX_MR}x${MAX_NR}_${PRECISION}_rvv_vl${VLEN_BITS}.txt"
+            python tests/output/plot_comparison.py \
+                --xdsl "${LOCAL_CSV}" --oblas "${LOCAL_OBLAS_OUT}" \
+                --model "${DS_NAME}" --out "${OUT_PREFIX}" \
+                --vlen "${VLEN_BITS}" --kc "${KC_PROFILE}" \
+                --families "${MAX_DIM_STR}" \
+                ${BEST_UK:+--best-kernel "${BEST_UK}"} \
+                ${LOCAL_LOG:+--sweep-log "${LOCAL_LOG}"}
+        else
+            echo " [skip] Missing data for $DS_NAME"
+        fi
+    done
+fi
 
 echo ""
 echo "============================================================"
