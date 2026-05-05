@@ -12381,6 +12381,3 @@ void gemm_RVV_8x8_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
   __riscv_vse32_v_f32m1(v108, v94, v19);
   return;
 }
-
-
-

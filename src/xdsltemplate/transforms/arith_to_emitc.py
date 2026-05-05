@@ -110,7 +110,6 @@ class ConvertArithMinSIOpToEmitC(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: arith.MinSIOp, rewriter: PatternRewriter):
         from xdsl.dialects import emitc
-        from xdsl.dialects.builtin import StringAttr
 
         new_op = emitc.EmitC_CallOpaqueOp(
             callee="std::min",

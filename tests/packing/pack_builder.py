@@ -29,7 +29,7 @@ Memory access derivation from gemm_blis.c Mcol(a1,a2) = M[(a2)*ldM + (a1)]:
 
 from xdsl.dialects import arith, func, scf
 from xdsl.dialects.builtin import IndexType, IntegerAttr, ModuleOp
-from xdsl.ir import Block, Region, SSAValue
+from xdsl.ir import Block, Region
 
 from xdsltemplate.dialects.rvv import (
     SetvlOp,
@@ -38,8 +38,8 @@ from xdsltemplate.dialects.rvv import (
     vse32_v_f32m1Op,
 )
 
-
 # ── Internal helpers ────────────────────────────────────────────────────────────
+
 
 def _const(val: int, idx: IndexType) -> arith.ConstantOp:
     return arith.ConstantOp(IntegerAttr(val, idx))
@@ -60,12 +60,18 @@ def _make_fn(name: str, memref_type, idx: IndexType):
 #       Mc[j*mc + i*RR .. j*mc + i*RR + nr-1] = vec
 #   stride between consecutive vector elements = ldM * elem_bytes
 #
-def build_pack_CB_v_if(idx: IndexType, memref_type, RR: int, elem_bytes: int, suffix: str):
-    fn, (M, Mc, mc, nc, ldM) = _make_fn(f"pack_CB_v_if_{suffix}_RR{RR}", memref_type, idx)
+def build_pack_CB_v_if(
+    idx: IndexType, memref_type, RR: int, elem_bytes: int, suffix: str
+):
+    fn, (M, Mc, mc, nc, ldM) = _make_fn(
+        f"pack_CB_v_if_{suffix}_RR{RR}", memref_type, idx
+    )
     entry = fn.body.blocks[0]
 
-    c0  = _const(0, idx);  c1 = _const(1, idx)
-    cEB = _const(elem_bytes, idx);  cRR = _const(RR, idx)
+    c0 = _const(0, idx)
+    c1 = _const(1, idx)
+    cEB = _const(elem_bytes, idx)
+    cRR = _const(RR, idx)
     entry.add_ops([c0, c1, cEB, cRR])
 
     # Outer: j = 0..nc step RR
@@ -73,10 +79,10 @@ def build_pack_CB_v_if(idx: IndexType, memref_type, RR: int, elem_bytes: int, su
     entry.add_op(scf.ForOp(c0.result, nc, cRR.result, [], Region([ob])))
     j = ob.args[0]
 
-    rem    = arith.SubiOp(nc, j)
-    nr     = arith.MinSIOp(rem.result, cRR.result)
-    vl_op  = SetvlOp(nr.result)
-    bstr   = arith.MuliOp(ldM, cEB.result)        # byte stride = ldM * elem_bytes
+    rem = arith.SubiOp(nc, j)
+    nr = arith.MinSIOp(rem.result, cRR.result)
+    vl_op = SetvlOp(nr.result)
+    bstr = arith.MuliOp(ldM, cEB.result)  # byte stride = ldM * elem_bytes
     ob.add_ops([rem, nr, vl_op, bstr])
 
     # Inner: i = 0..mc step 1
@@ -85,15 +91,15 @@ def build_pack_CB_v_if(idx: IndexType, memref_type, RR: int, elem_bytes: int, su
     i = ib.args[0]
 
     # src_off = j * ldM + i
-    j_ldM   = arith.MuliOp(j, ldM)
+    j_ldM = arith.MuliOp(j, ldM)
     src_off = arith.AddiOp(j_ldM.result, i)
     load_op = vlse32_v_f32m1Op(M, src_off.result, bstr.result, vl_op.vl)
 
     # dst_off = j * mc + i * RR
-    j_mc    = arith.MuliOp(j, mc)
-    i_RR    = arith.MuliOp(i, cRR.result)
+    j_mc = arith.MuliOp(j, mc)
+    i_RR = arith.MuliOp(i, cRR.result)
     dst_off = arith.AddiOp(j_mc.result, i_RR.result)
-    store   = vse32_v_f32m1Op(Mc, dst_off.result, load_op.result, vl_op.vl)
+    store = vse32_v_f32m1Op(Mc, dst_off.result, load_op.result, vl_op.vl)
 
     ib.add_ops([j_ldM, src_off, load_op, j_mc, i_RR, dst_off, store, scf.YieldOp()])
     ob.add_op(scf.YieldOp())
@@ -110,19 +116,25 @@ def build_pack_CB_v_if(idx: IndexType, memref_type, RR: int, elem_bytes: int, su
 #       Mc[j*mc + i*RR .. j*mc + i*RR + nr-1] = vec
 #   consecutive elements are contiguous → unit-stride vle32
 #
-def build_pack_CB_v_else(idx: IndexType, memref_type, RR: int, elem_bytes: int, suffix: str):
-    fn, (M, Mc, mc, nc, ldM) = _make_fn(f"pack_CB_v_else_{suffix}_RR{RR}", memref_type, idx)
+def build_pack_CB_v_else(
+    idx: IndexType, memref_type, RR: int, elem_bytes: int, suffix: str
+):
+    fn, (M, Mc, mc, nc, ldM) = _make_fn(
+        f"pack_CB_v_else_{suffix}_RR{RR}", memref_type, idx
+    )
     entry = fn.body.blocks[0]
 
-    c0 = _const(0, idx);  c1 = _const(1, idx);  cRR = _const(RR, idx)
+    c0 = _const(0, idx)
+    c1 = _const(1, idx)
+    cRR = _const(RR, idx)
     entry.add_ops([c0, c1, cRR])
 
     ob = Block(arg_types=[idx])
     entry.add_op(scf.ForOp(c0.result, nc, cRR.result, [], Region([ob])))
     j = ob.args[0]
 
-    rem   = arith.SubiOp(nc, j)
-    nr    = arith.MinSIOp(rem.result, cRR.result)
+    rem = arith.SubiOp(nc, j)
+    nr = arith.MinSIOp(rem.result, cRR.result)
     vl_op = SetvlOp(nr.result)
     ob.add_ops([rem, nr, vl_op])
 
@@ -131,15 +143,15 @@ def build_pack_CB_v_else(idx: IndexType, memref_type, RR: int, elem_bytes: int, 
     i = ib.args[0]
 
     # src_off = i * ldM + j
-    i_ldM   = arith.MuliOp(i, ldM)
+    i_ldM = arith.MuliOp(i, ldM)
     src_off = arith.AddiOp(i_ldM.result, j)
     load_op = vle32_v_f32m1Op(M, src_off.result, vl_op.vl)
 
     # dst_off = j * mc + i * RR
-    j_mc    = arith.MuliOp(j, mc)
-    i_RR    = arith.MuliOp(i, cRR.result)
+    j_mc = arith.MuliOp(j, mc)
+    i_RR = arith.MuliOp(i, cRR.result)
     dst_off = arith.AddiOp(j_mc.result, i_RR.result)
-    store   = vse32_v_f32m1Op(Mc, dst_off.result, load_op.vl, vl_op.vl)
+    store = vse32_v_f32m1Op(Mc, dst_off.result, load_op.vl, vl_op.vl)
 
     ib.add_ops([i_ldM, src_off, load_op, j_mc, i_RR, dst_off, store, scf.YieldOp()])
     ob.add_op(scf.YieldOp())
@@ -156,11 +168,17 @@ def build_pack_CB_v_else(idx: IndexType, memref_type, RR: int, elem_bytes: int, 
 #       Mc[i*nc + j*RR .. i*nc + j*RR + rr-1] = vec
 #   for fixed j, elements M[j*ldM+i], M[j*ldM+i+1]... are contiguous → vle32
 #
-def build_pack_RB_v_if(idx: IndexType, memref_type, RR: int, elem_bytes: int, suffix: str):
-    fn, (M, Mc, mc, nc, ldM) = _make_fn(f"pack_RB_v_if_{suffix}_RR{RR}", memref_type, idx)
+def build_pack_RB_v_if(
+    idx: IndexType, memref_type, RR: int, elem_bytes: int, suffix: str
+):
+    fn, (M, Mc, mc, nc, ldM) = _make_fn(
+        f"pack_RB_v_if_{suffix}_RR{RR}", memref_type, idx
+    )
     entry = fn.body.blocks[0]
 
-    c0 = _const(0, idx);  c1 = _const(1, idx);  cRR = _const(RR, idx)
+    c0 = _const(0, idx)
+    c1 = _const(1, idx)
+    cRR = _const(RR, idx)
     entry.add_ops([c0, c1, cRR])
 
     # Outer: i = 0..mc step RR  (row blocks)
@@ -168,8 +186,8 @@ def build_pack_RB_v_if(idx: IndexType, memref_type, RR: int, elem_bytes: int, su
     entry.add_op(scf.ForOp(c0.result, mc, cRR.result, [], Region([ob])))
     i = ob.args[0]
 
-    rem   = arith.SubiOp(mc, i)
-    rr    = arith.MinSIOp(rem.result, cRR.result)
+    rem = arith.SubiOp(mc, i)
+    rr = arith.MinSIOp(rem.result, cRR.result)
     vl_op = SetvlOp(rr.result)
     ob.add_ops([rem, rr, vl_op])
 
@@ -179,15 +197,15 @@ def build_pack_RB_v_if(idx: IndexType, memref_type, RR: int, elem_bytes: int, su
     j = ib.args[0]
 
     # src_off = j * ldM + i  → M[j*ldM+i..j*ldM+i+rr-1]  unit-stride
-    j_ldM   = arith.MuliOp(j, ldM)
+    j_ldM = arith.MuliOp(j, ldM)
     src_off = arith.AddiOp(j_ldM.result, i)
     load_op = vle32_v_f32m1Op(M, src_off.result, vl_op.vl)
 
     # dst_off = i * nc + j * RR
-    i_nc    = arith.MuliOp(i, nc)
-    j_RR    = arith.MuliOp(j, cRR.result)
+    i_nc = arith.MuliOp(i, nc)
+    j_RR = arith.MuliOp(j, cRR.result)
     dst_off = arith.AddiOp(i_nc.result, j_RR.result)
-    store   = vse32_v_f32m1Op(Mc, dst_off.result, load_op.vl, vl_op.vl)
+    store = vse32_v_f32m1Op(Mc, dst_off.result, load_op.vl, vl_op.vl)
 
     ib.add_ops([j_ldM, src_off, load_op, i_nc, j_RR, dst_off, store, scf.YieldOp()])
     ob.add_op(scf.YieldOp())
@@ -204,12 +222,18 @@ def build_pack_RB_v_if(idx: IndexType, memref_type, RR: int, elem_bytes: int, su
 #       Mc[i*nc + j*RR .. i*nc + j*RR + rr-1] = vec
 #   for fixed j, elements at rows i..i+rr-1 are separated by ldM → vlse32
 #
-def build_pack_RB_v_else(idx: IndexType, memref_type, RR: int, elem_bytes: int, suffix: str):
-    fn, (M, Mc, mc, nc, ldM) = _make_fn(f"pack_RB_v_else_{suffix}_RR{RR}", memref_type, idx)
+def build_pack_RB_v_else(
+    idx: IndexType, memref_type, RR: int, elem_bytes: int, suffix: str
+):
+    fn, (M, Mc, mc, nc, ldM) = _make_fn(
+        f"pack_RB_v_else_{suffix}_RR{RR}", memref_type, idx
+    )
     entry = fn.body.blocks[0]
 
-    c0  = _const(0, idx);  c1 = _const(1, idx)
-    cEB = _const(elem_bytes, idx);  cRR = _const(RR, idx)
+    c0 = _const(0, idx)
+    c1 = _const(1, idx)
+    cEB = _const(elem_bytes, idx)
+    cRR = _const(RR, idx)
     entry.add_ops([c0, c1, cEB, cRR])
 
     # Outer: i = 0..mc step RR
@@ -217,10 +241,10 @@ def build_pack_RB_v_else(idx: IndexType, memref_type, RR: int, elem_bytes: int, 
     entry.add_op(scf.ForOp(c0.result, mc, cRR.result, [], Region([ob])))
     i = ob.args[0]
 
-    rem   = arith.SubiOp(mc, i)
-    rr    = arith.MinSIOp(rem.result, cRR.result)
+    rem = arith.SubiOp(mc, i)
+    rr = arith.MinSIOp(rem.result, cRR.result)
     vl_op = SetvlOp(rr.result)
-    bstr  = arith.MuliOp(ldM, cEB.result)          # byte stride = ldM * elem_bytes
+    bstr = arith.MuliOp(ldM, cEB.result)  # byte stride = ldM * elem_bytes
     ob.add_ops([rem, rr, vl_op, bstr])
 
     # Inner: j = 0..nc step 1
@@ -229,15 +253,15 @@ def build_pack_RB_v_else(idx: IndexType, memref_type, RR: int, elem_bytes: int, 
     j = ib.args[0]
 
     # src_off = i * ldM + j  → M[(i+0)*ldM+j], stride=ldM
-    i_ldM   = arith.MuliOp(i, ldM)
+    i_ldM = arith.MuliOp(i, ldM)
     src_off = arith.AddiOp(i_ldM.result, j)
     load_op = vlse32_v_f32m1Op(M, src_off.result, bstr.result, vl_op.vl)
 
     # dst_off = i * nc + j * RR
-    i_nc    = arith.MuliOp(i, nc)
-    j_RR    = arith.MuliOp(j, cRR.result)
+    i_nc = arith.MuliOp(i, nc)
+    j_RR = arith.MuliOp(j, cRR.result)
     dst_off = arith.AddiOp(i_nc.result, j_RR.result)
-    store   = vse32_v_f32m1Op(Mc, dst_off.result, load_op.result, vl_op.vl)
+    store = vse32_v_f32m1Op(Mc, dst_off.result, load_op.result, vl_op.vl)
 
     ib.add_ops([i_ldM, src_off, load_op, i_nc, j_RR, dst_off, store, scf.YieldOp()])
     ob.add_op(scf.YieldOp())
@@ -247,21 +271,33 @@ def build_pack_RB_v_else(idx: IndexType, memref_type, RR: int, elem_bytes: int, 
 
 # ── Module builders ────────────────────────────────────────────────────────────
 
-def build_pack_CB_module(idx: IndexType, memref_type,
-                         RR: int = 8, elem_bytes: int = 4, suffix: str = "fp32") -> ModuleOp:
+
+def build_pack_CB_module(
+    idx: IndexType, memref_type, RR: int = 8, elem_bytes: int = 4, suffix: str = "fp32"
+) -> ModuleOp:
     """Build MLIR module with both pack_CB_v branches."""
-    return ModuleOp([
-        build_pack_CB_v_if  (idx, memref_type, RR, elem_bytes, suffix),
-        build_pack_CB_v_else(idx, memref_type, RR, elem_bytes, suffix),
-    ])
+    return ModuleOp(
+        [
+            build_pack_CB_v_if(idx, memref_type, RR, elem_bytes, suffix),
+            build_pack_CB_v_else(idx, memref_type, RR, elem_bytes, suffix),
+        ]
+    )
 
 
-def build_pack_module(idx: IndexType, memref_type,
-                         NR: int = 8, MR: int = 4, elem_bytes: int = 4, suffix: str = "fp32") -> ModuleOp:
+def build_pack_module(
+    idx: IndexType,
+    memref_type,
+    NR: int = 8,
+    MR: int = 4,
+    elem_bytes: int = 4,
+    suffix: str = "fp32",
+) -> ModuleOp:
     """Build MLIR module with ALL packing branches (CB and RB)."""
-    return ModuleOp([
-        build_pack_CB_v_if  (idx, memref_type, NR, elem_bytes, suffix),
-        build_pack_CB_v_else(idx, memref_type, NR, elem_bytes, suffix),
-        build_pack_RB_v_if  (idx, memref_type, MR, elem_bytes, suffix),
-        build_pack_RB_v_else(idx, memref_type, MR, elem_bytes, suffix),
-    ])
+    return ModuleOp(
+        [
+            build_pack_CB_v_if(idx, memref_type, NR, elem_bytes, suffix),
+            build_pack_CB_v_else(idx, memref_type, NR, elem_bytes, suffix),
+            build_pack_RB_v_if(idx, memref_type, MR, elem_bytes, suffix),
+            build_pack_RB_v_else(idx, memref_type, MR, elem_bytes, suffix),
+        ]
+    )

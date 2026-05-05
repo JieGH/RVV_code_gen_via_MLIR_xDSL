@@ -88,22 +88,22 @@ inline void pack_RB_v(char orderM, char transM,
 SUFFIX_TO_CTYPE = {
     "fp32": "float",
     "fp16": "_Float16",
-    "i8":   "int8_t",
-    "i32":  "int32_t",
+    "i8": "int8_t",
+    "i32": "int32_t",
 }
 
 SUFFIX_TO_BYTES = {
     "fp32": 4,
     "fp16": 2,
-    "i8":   1,
-    "i32":  4,
+    "i8": 1,
+    "i32": 4,
 }
 
 
 def generate(NR: int, MR: int, suffix: str, output: str):
-    ctype     = SUFFIX_TO_CTYPE.get(suffix, "float")
+    ctype = SUFFIX_TO_CTYPE.get(suffix, "float")
     elem_bytes = SUFFIX_TO_BYTES.get(suffix, 4)
-    content   = HEADER_TEMPLATE.format(
+    content = HEADER_TEMPLATE.format(
         NR=NR, MR=MR, suffix=suffix, ctype=ctype, elem_bytes=elem_bytes
     )
     with open(output, "w") as f:
@@ -113,9 +113,15 @@ def generate(NR: int, MR: int, suffix: str, output: str):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--NR",     type=int, default=8,      help="CB block width  (B-matrix tile cols)")
-    p.add_argument("--MR",     type=int, default=4,      help="RB block height (A-matrix tile rows)")
-    p.add_argument("--suffix", type=str, default="fp32", help="dtype suffix: fp32|fp16|i8|i32")
+    p.add_argument(
+        "--NR", type=int, default=8, help="CB block width  (B-matrix tile cols)"
+    )
+    p.add_argument(
+        "--MR", type=int, default=4, help="RB block height (A-matrix tile rows)"
+    )
+    p.add_argument(
+        "--suffix", type=str, default="fp32", help="dtype suffix: fp32|fp16|i8|i32"
+    )
     p.add_argument("--output", type=str, default="tests/packing/pack_dispatch.h")
     args = p.parse_args()
     generate(args.NR, args.MR, args.suffix, args.output)

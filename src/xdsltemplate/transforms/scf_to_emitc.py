@@ -69,7 +69,6 @@ class ConvertScfForToEmitCFor(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: scf.ForOp, rewriter: PatternRewriter):
-
         if len(op.iter_args) == 0:
             # Simple for loop without iter_args
             lb, ub, step = op.lb, op.ub, op.step
