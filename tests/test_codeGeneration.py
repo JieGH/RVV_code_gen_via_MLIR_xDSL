@@ -2024,6 +2024,7 @@ def run_pipeline(
     mlir_translate_path: str = None,
     add_header: bool = True,
     precision: str = "fp32",
+    kernel_families: list[tuple[int, int]] = None,
 ):
     """
     Complete pipeline: build GEMM -> apply passes -> dump MLIR -> translate to C++.
@@ -2049,8 +2050,8 @@ def run_pipeline(
     module = build_gemm(mr=mr, nr=nr, vlen=vlen, beta=beta, precision=precision)
 
     if SHOW_MLIR:
-        if nr == 8 and mr == 8:
-            print("\n  📄 Generated MLIR:")
+        if kernel_families and (mr, nr) in kernel_families:
+            print(f"\n  📄 Generated MLIR ({mr}x{nr}):")
             print(f"  {'─' * 56}")
             output = StringIO()
             Printer(stream=output).print_op(module)
@@ -2354,6 +2355,7 @@ def main():
                 mlir_translate_path=MLIR_TRANSLATE,
                 add_header=True,
                 precision=args.precision,
+                kernel_families=KERNEL_FAMILIES,
             )
 
         config = GEMMConfig(mr=mr, nr=nr, beta=BetaMode.B0, vlen=args.vlen)

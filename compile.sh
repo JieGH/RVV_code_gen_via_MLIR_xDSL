@@ -11,6 +11,10 @@ set -e
 #   --riscv-ip   <host>   Hostname or IP of the board   (default: jbpi2)
 #   --riscv-port <port>   SSH port on the board         (default: 22)
 #
+# Workflow options:
+#   --skip-unit-test      Skip independent kernel compile & benchmark (Step 6)
+#                         and go straight to the BLIS GEMM sweep (Step 7)
+#
 # The script will return benchmarking results and store them in the tests/output directory
 # ============================================================
 
@@ -58,7 +62,7 @@ DATASETS=(
     # "cnn_models/trail.dat"
     # "cnn_models/tiny.dat"
     # "cnn_models/gnn.dat"
-    "cnn_models/bert_large.dat"
+    # "cnn_models/bert_large.dat"
     # "cnn_models/special.dat"
     # "cnn_models/gpt2_large.dat"
     "cnn_models/square.dat"
@@ -75,6 +79,7 @@ VERBOSE_FLAG=""
 NO_REF_FLAG="--no-ref"
 USE_DIRECT=true   
 SETUP_ENV=false
+SKIP_UNIT_TEST=false
 MLIR_BUILD_DIR="../llvm-project"
 
 # Local paths 
@@ -104,6 +109,7 @@ while [[ "$#" -gt 0 ]]; do
         --riscv-ip)        RISCV_REMOTE_IP="$2";       shift ;;
         --riscv-port)      RISCV_SSH_PORT="$2";        shift ;;
         --setup-env)       SETUP_ENV=true                   ;;
+        --skip-unit-test)  SKIP_UNIT_TEST=true               ;;
         --mlir-build-dir)  MLIR_BUILD_DIR="$2";        shift ;;
         --dump-asm)        DUMP_ASM_KERNEL="$2";       shift ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
@@ -319,37 +325,8 @@ rsync_board tests/test_openblas/ ${RSYNC_TARGET}:${RISCV_WORKSPACE}/test_openbla
 
 
 # ============================================================
-# Step 6 — Compile and run unit test on board
+# Compute max family dimensions (needed by later steps)
 # ============================================================
-echo ""; echo "$SEP"; echo " [6/8] Compile & Run Unit Test (test_gemm)"; echo "$SEP"
-ssh_board "cd ${RISCV_WORKSPACE} && make clean && make -j8"
-
-if [ -n "$DUMP_ASM_KERNEL" ]; then
-    echo ""; echo "$SEP"; echo " [6.5] Assembly Dump from Board"; echo "$SEP"
-    KERNEL_SRC="kernels/xdsl_api_gemm_${DUMP_ASM_KERNEL}.cpp"
-    ASM_OUT_REMOTE="asm/xdsl_api_gemm_${DUMP_ASM_KERNEL}.s"
-    ASM_OUT_LOCAL="tests/api_gen_cpp/asm/xdsl_api_gemm_${DUMP_ASM_KERNEL}.s"
-    
-    echo "  Compiling ${DUMP_ASM_KERNEL} to assembly on board..."
-    if ssh_board "cd ${RISCV_WORKSPACE} && mkdir -p asm && \
-        riscv64-linux-gnu-g++ -march=rv64gcv -mabi=lp64d -O3 -mcmodel=medany \
-        -fverbose-asm -I. -S ${KERNEL_SRC} -o ${ASM_OUT_REMOTE}"; then
-        
-        echo "  Fetching assembly file (clean channel, no TTY)..."
-        mkdir -p tests/api_gen_cpp/asm
-        # ssh_board_no_tty: no -t flags = clean stdout, no terminal artifacts
-        ssh_board_no_tty "cat ${RISCV_WORKSPACE}/${ASM_OUT_REMOTE}" > "${ASM_OUT_LOCAL}"
-        
-        if [ -s "${ASM_OUT_LOCAL}" ]; then
-            echo "  [OK] Assembly saved to: ${ASM_OUT_LOCAL}"
-        else
-            echo "  [FAIL] Assembly file is empty or was not fetched."
-        fi
-    else
-        echo "  [FAIL] Compilation failed on the remote board."
-    fi
-fi
-
 MAX_MR=0; MAX_NR=0
 for fam in $FAMILIES; do
     mr=$(echo $fam | cut -d',' -f1); nr=$(echo $fam | cut -d',' -f2)
@@ -358,27 +335,64 @@ for fam in $FAMILIES; do
 done
 MAX_DIM_STR="${MAX_MR}x${MAX_NR}"
 
-mkdir -p tests/output
-OUT_FILE="tests/output/uK_${MAX_DIM_STR}_${PRECISION}_rvv_vl${VLEN_BITS}_${KC_PROFILE}.txt"
-echo " Saving output to ${OUT_FILE}..."
-ssh_board "cd ${RISCV_WORKSPACE} && ./test_gemm" > "${OUT_FILE}"
-python "tests/output/plot_perf.py" "${OUT_FILE}" \
-    --families "${MAX_DIM_STR}" --vlen "${VLEN_BITS}" --kc "${KC_PROFILE}"
-if [ -z "$NO_REF_FLAG" ]; then
-    python "tests/output/plot_ref_comparison.py" "${OUT_FILE}"
-fi
-cat ${OUT_FILE}
-# Extract best kernel (highest GFLOP/s in the b0 section)
-BEST_UK=$(grep '_b0' "${OUT_FILE}" | grep 'GFLOP/s' | awk '
-    {
-        for (i=1; i<=NF; i++) {
-            if ($i == "GFLOP/s") gval = $(i-1)
+# ============================================================
+# Step 6 — Compile and run unit test on board
+# ============================================================
+if [ "$SKIP_UNIT_TEST" = true ]; then
+    echo ""; echo "$SEP"; echo " [6/8] Compile & Run Unit Test — SKIPPED (--skip-unit-test)"; echo "$SEP"
+    BEST_UK=""
+else
+    echo ""; echo "$SEP"; echo " [6/8] Compile & Run Unit Test (test_gemm)"; echo "$SEP"
+    ssh_board "cd ${RISCV_WORKSPACE} && make clean && make -j8"
+
+    if [ -n "$DUMP_ASM_KERNEL" ]; then
+        echo ""; echo "$SEP"; echo " [6.5] Assembly Dump from Board"; echo "$SEP"
+        KERNEL_SRC="kernels/xdsl_api_gemm_${DUMP_ASM_KERNEL}.cpp"
+        ASM_OUT_REMOTE="asm/xdsl_api_gemm_${DUMP_ASM_KERNEL}.s"
+        ASM_OUT_LOCAL="tests/api_gen_cpp/asm/xdsl_api_gemm_${DUMP_ASM_KERNEL}.s"
+        
+        echo "  Compiling ${DUMP_ASM_KERNEL} to assembly on board..."
+        if ssh_board "cd ${RISCV_WORKSPACE} && mkdir -p asm && \
+            riscv64-linux-gnu-g++ -march=rv64gcv -mabi=lp64d -O3 -mcmodel=medany \
+            -fverbose-asm -I. -S ${KERNEL_SRC} -o ${ASM_OUT_REMOTE}"; then
+            
+            echo "  Fetching assembly file (clean channel, no TTY)..."
+            mkdir -p tests/api_gen_cpp/asm
+            # ssh_board_no_tty: no -t flags = clean stdout, no terminal artifacts
+            ssh_board_no_tty "cat ${RISCV_WORKSPACE}/${ASM_OUT_REMOTE}" > "${ASM_OUT_LOCAL}"
+            
+            if [ -s "${ASM_OUT_LOCAL}" ]; then
+                echo "  [OK] Assembly saved to: ${ASM_OUT_LOCAL}"
+            else
+                echo "  [FAIL] Assembly file is empty or was not fetched."
+            fi
+        else
+            echo "  [FAIL] Compilation failed on the remote board."
+        fi
+    fi
+
+    mkdir -p tests/output
+    OUT_FILE="tests/output/uK_${MAX_DIM_STR}_${PRECISION}_rvv_vl${VLEN_BITS}_${KC_PROFILE}.txt"
+    echo " Saving output to ${OUT_FILE}..."
+    ssh_board "cd ${RISCV_WORKSPACE} && ./test_gemm" > "${OUT_FILE}"
+    python "tests/output/plot_perf.py" "${OUT_FILE}" \
+        --families "${MAX_DIM_STR}" --vlen "${VLEN_BITS}" --kc "${KC_PROFILE}"
+    if [ -z "$NO_REF_FLAG" ]; then
+        python "tests/output/plot_ref_comparison.py" "${OUT_FILE}"
+    fi
+    cat ${OUT_FILE}
+    # Extract best kernel (highest GFLOP/s in the b0 section)
+    BEST_UK=$(grep '_b0' "${OUT_FILE}" | grep 'GFLOP/s' | awk '
+        {
+            for (i=1; i<=NF; i++) {
+                if ($i == "GFLOP/s") gval = $(i-1)
+            }
+            if (gval+0 > best+0) { best = gval; name = $1 }
         }
-        if (gval+0 > best+0) { best = gval; name = $1 }
-    }
-    END { sub(/_b0$/, "", name); print name }'
-)
-echo " Best kc-loop kernel: ${BEST_UK}  (from ${OUT_FILE})"
+        END { sub(/_b0$/, "", name); print name }'
+    )
+    echo " Best kc-loop kernel: ${BEST_UK}  (from ${OUT_FILE})"
+fi
 
 
 # ============================================================

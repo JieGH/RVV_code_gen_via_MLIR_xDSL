@@ -23,12 +23,12 @@ make install
 
 5. Run the pipeline
 ```bash
-REMOTE_PASS="" REMOTE_HOST="REMOTE_HOST" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user riscv-user --riscv-ip riscv-ip --riscv-port 22 --families "32,32" --vlen 256 --precision fp32
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "32,32" --vlen 256 --precision fp32
 ```
 
 Example with explicit connection and tuning options:
 ```bash
-./compile.sh --riscv-user riscv-user --riscv-ip riscv-ip --riscv-port 22 --families "2,2" --vlen 256
+./compile.sh --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "2,2" --vlen 256
 ```
 
 That’s it. The script will:
@@ -87,22 +87,27 @@ Alternatively, compile natively on the board and pull the `.s` file back:
 
 ## Side Note / Dev Note
 
-To compile in **jump-host mode** (x86 → REMOTE_HOST → riscv-ip), the following command is used:
+To compile in **jump-host mode** (x86 → fej → jbpi2), the following command is used:
 ```bash
-REMOTE_PASS="" REMOTE_HOST="REMOTE_HOST" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user riscv-user --riscv-ip riscv-ip --riscv-port 22 --families "32,32" --vlen 256 --precision fp32
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "32,32" --vlen 256 --precision fp32
+
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "8,4" --vlen 256 --precision fp32 --verbose
+
 ```
 
 
 int8 int8 int32 design
 
 ```
-./compile.sh --riscv-user riscv-user --riscv-ip riscv-ip --riscv-port 22 --families "2,2" --vlen 256
+./compile.sh --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "2,2" --vlen 256 --precision i8i8i32
 ```
 
 This is jump host mode, may not apply to you
 ```
-REMOTE_PASS="" REMOTE_HOST="REMOTE_HOST" REMOTE_PORT="3322" ./compile.sh \
-    --jump --riscv-user riscv-user --riscv-ip riscv-ip --riscv-port 22 \
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh \
+    --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 \
     --families "8,8" --vlen 256 --precision i8i8i32 \
-    --dump-asm 8x8_b0_i8i8i32
+    --dump-asm 8x8_b0_i8i8i32 \
+     --skip-unit-test
+    
 ```
