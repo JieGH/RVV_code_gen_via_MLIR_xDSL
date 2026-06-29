@@ -93,7 +93,20 @@ REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-
 
 REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "8,4" --vlen 256 --precision fp32 --verbose
 
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "8,8" --vlen 256 --precision fp32
 ```
+
+```
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./tests/packing/compile_packing.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22
+```
+
+
+05 may test rvv packing
+```
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" bash tests/gemm_blis_xdsl/compile_merged.sh --jump --riscv-user jlei --riscv-ip jbpi --riscv-port 22
+
+```
+
 
 
 int8 int8 int32 design
@@ -109,5 +122,12 @@ REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh \
     --families "8,8" --vlen 256 --precision i8i8i32 \
     --dump-asm 8x8_b0_i8i8i32 \
      --skip-unit-test
-    
+```
+
+Or for fp32:
+```bash
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh \
+    --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 \
+    --families "8,8" --vlen 256 --precision fp32 \
+    --dump-asm 8x8_b1_fp32
 ```

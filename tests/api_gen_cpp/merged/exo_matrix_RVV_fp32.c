@@ -4,8 +4,8 @@
 ukrFunction**** allocateMatrix() {
     ukrFunction**** matrix = (ukrFunction****)malloc((8 + 1) * sizeof(ukrFunction***));
     for (int i = 0; i < 8 + 1; i++) {
-        matrix[i] = (ukrFunction***)malloc((4 + 1) * sizeof(ukrFunction**));
-        for (int j = 0; j < 4 + 1; j++) {
+        matrix[i] = (ukrFunction***)malloc((8 + 1) * sizeof(ukrFunction**));
+        for (int j = 0; j < 8 + 1; j++) {
             matrix[i][j] = (ukrFunction**)malloc(2 * sizeof(ukrFunction*));
             for (int b = 0; b < 2; b++) {
                 matrix[i][j][b] = (ukrFunction*)malloc(1 * sizeof(ukrFunction));
@@ -26,6 +26,14 @@ void fillMatrix(ukrFunction**** matrix) {
     *matrix[0][3][1] = 	(ukrFunction)NULL;
     *matrix[0][4][0] = 	(ukrFunction)NULL;
     *matrix[0][4][1] = 	(ukrFunction)NULL;
+    *matrix[0][5][0] = 	(ukrFunction)NULL;
+    *matrix[0][5][1] = 	(ukrFunction)NULL;
+    *matrix[0][6][0] = 	(ukrFunction)NULL;
+    *matrix[0][6][1] = 	(ukrFunction)NULL;
+    *matrix[0][7][0] = 	(ukrFunction)NULL;
+    *matrix[0][7][1] = 	(ukrFunction)NULL;
+    *matrix[0][8][0] = 	(ukrFunction)NULL;
+    *matrix[0][8][1] = 	(ukrFunction)NULL;
     *matrix[1][0][0] = 	(ukrFunction)NULL;
     *matrix[1][0][1] = 	(ukrFunction)NULL;
     *matrix[1][1][0] = 	(ukrFunction)gemm_RVV_1x1_b0_col_fp32;
@@ -36,6 +44,14 @@ void fillMatrix(ukrFunction**** matrix) {
     *matrix[1][3][1] = 	(ukrFunction)gemm_RVV_1x3_b1_col_fp32;
     *matrix[1][4][0] = 	(ukrFunction)gemm_RVV_1x4_b0_col_fp32;
     *matrix[1][4][1] = 	(ukrFunction)gemm_RVV_1x4_b1_col_fp32;
+    *matrix[1][5][0] = 	(ukrFunction)gemm_RVV_1x5_b0_col_fp32;
+    *matrix[1][5][1] = 	(ukrFunction)gemm_RVV_1x5_b1_col_fp32;
+    *matrix[1][6][0] = 	(ukrFunction)gemm_RVV_1x6_b0_col_fp32;
+    *matrix[1][6][1] = 	(ukrFunction)gemm_RVV_1x6_b1_col_fp32;
+    *matrix[1][7][0] = 	(ukrFunction)gemm_RVV_1x7_b0_col_fp32;
+    *matrix[1][7][1] = 	(ukrFunction)gemm_RVV_1x7_b1_col_fp32;
+    *matrix[1][8][0] = 	(ukrFunction)gemm_RVV_1x8_b0_col_fp32;
+    *matrix[1][8][1] = 	(ukrFunction)gemm_RVV_1x8_b1_col_fp32;
     *matrix[2][0][0] = 	(ukrFunction)NULL;
     *matrix[2][0][1] = 	(ukrFunction)NULL;
     *matrix[2][1][0] = 	(ukrFunction)gemm_RVV_2x1_b0_col_fp32;
@@ -46,6 +62,14 @@ void fillMatrix(ukrFunction**** matrix) {
     *matrix[2][3][1] = 	(ukrFunction)gemm_RVV_2x3_b1_col_fp32;
     *matrix[2][4][0] = 	(ukrFunction)gemm_RVV_2x4_b0_col_fp32;
     *matrix[2][4][1] = 	(ukrFunction)gemm_RVV_2x4_b1_col_fp32;
+    *matrix[2][5][0] = 	(ukrFunction)gemm_RVV_2x5_b0_col_fp32;
+    *matrix[2][5][1] = 	(ukrFunction)gemm_RVV_2x5_b1_col_fp32;
+    *matrix[2][6][0] = 	(ukrFunction)gemm_RVV_2x6_b0_col_fp32;
+    *matrix[2][6][1] = 	(ukrFunction)gemm_RVV_2x6_b1_col_fp32;
+    *matrix[2][7][0] = 	(ukrFunction)gemm_RVV_2x7_b0_col_fp32;
+    *matrix[2][7][1] = 	(ukrFunction)gemm_RVV_2x7_b1_col_fp32;
+    *matrix[2][8][0] = 	(ukrFunction)gemm_RVV_2x8_b0_col_fp32;
+    *matrix[2][8][1] = 	(ukrFunction)gemm_RVV_2x8_b1_col_fp32;
     *matrix[3][0][0] = 	(ukrFunction)NULL;
     *matrix[3][0][1] = 	(ukrFunction)NULL;
     *matrix[3][1][0] = 	(ukrFunction)gemm_RVV_3x1_b0_col_fp32;
@@ -56,6 +80,14 @@ void fillMatrix(ukrFunction**** matrix) {
     *matrix[3][3][1] = 	(ukrFunction)gemm_RVV_3x3_b1_col_fp32;
     *matrix[3][4][0] = 	(ukrFunction)gemm_RVV_3x4_b0_col_fp32;
     *matrix[3][4][1] = 	(ukrFunction)gemm_RVV_3x4_b1_col_fp32;
+    *matrix[3][5][0] = 	(ukrFunction)gemm_RVV_3x5_b0_col_fp32;
+    *matrix[3][5][1] = 	(ukrFunction)gemm_RVV_3x5_b1_col_fp32;
+    *matrix[3][6][0] = 	(ukrFunction)gemm_RVV_3x6_b0_col_fp32;
+    *matrix[3][6][1] = 	(ukrFunction)gemm_RVV_3x6_b1_col_fp32;
+    *matrix[3][7][0] = 	(ukrFunction)gemm_RVV_3x7_b0_col_fp32;
+    *matrix[3][7][1] = 	(ukrFunction)gemm_RVV_3x7_b1_col_fp32;
+    *matrix[3][8][0] = 	(ukrFunction)gemm_RVV_3x8_b0_col_fp32;
+    *matrix[3][8][1] = 	(ukrFunction)gemm_RVV_3x8_b1_col_fp32;
     *matrix[4][0][0] = 	(ukrFunction)NULL;
     *matrix[4][0][1] = 	(ukrFunction)NULL;
     *matrix[4][1][0] = 	(ukrFunction)gemm_RVV_4x1_b0_col_fp32;
@@ -66,6 +98,14 @@ void fillMatrix(ukrFunction**** matrix) {
     *matrix[4][3][1] = 	(ukrFunction)gemm_RVV_4x3_b1_col_fp32;
     *matrix[4][4][0] = 	(ukrFunction)gemm_RVV_4x4_b0_col_fp32;
     *matrix[4][4][1] = 	(ukrFunction)gemm_RVV_4x4_b1_col_fp32;
+    *matrix[4][5][0] = 	(ukrFunction)gemm_RVV_4x5_b0_col_fp32;
+    *matrix[4][5][1] = 	(ukrFunction)gemm_RVV_4x5_b1_col_fp32;
+    *matrix[4][6][0] = 	(ukrFunction)gemm_RVV_4x6_b0_col_fp32;
+    *matrix[4][6][1] = 	(ukrFunction)gemm_RVV_4x6_b1_col_fp32;
+    *matrix[4][7][0] = 	(ukrFunction)gemm_RVV_4x7_b0_col_fp32;
+    *matrix[4][7][1] = 	(ukrFunction)gemm_RVV_4x7_b1_col_fp32;
+    *matrix[4][8][0] = 	(ukrFunction)gemm_RVV_4x8_b0_col_fp32;
+    *matrix[4][8][1] = 	(ukrFunction)gemm_RVV_4x8_b1_col_fp32;
     *matrix[5][0][0] = 	(ukrFunction)NULL;
     *matrix[5][0][1] = 	(ukrFunction)NULL;
     *matrix[5][1][0] = 	(ukrFunction)gemm_RVV_5x1_b0_col_fp32;
@@ -76,6 +116,14 @@ void fillMatrix(ukrFunction**** matrix) {
     *matrix[5][3][1] = 	(ukrFunction)gemm_RVV_5x3_b1_col_fp32;
     *matrix[5][4][0] = 	(ukrFunction)gemm_RVV_5x4_b0_col_fp32;
     *matrix[5][4][1] = 	(ukrFunction)gemm_RVV_5x4_b1_col_fp32;
+    *matrix[5][5][0] = 	(ukrFunction)gemm_RVV_5x5_b0_col_fp32;
+    *matrix[5][5][1] = 	(ukrFunction)gemm_RVV_5x5_b1_col_fp32;
+    *matrix[5][6][0] = 	(ukrFunction)gemm_RVV_5x6_b0_col_fp32;
+    *matrix[5][6][1] = 	(ukrFunction)gemm_RVV_5x6_b1_col_fp32;
+    *matrix[5][7][0] = 	(ukrFunction)gemm_RVV_5x7_b0_col_fp32;
+    *matrix[5][7][1] = 	(ukrFunction)gemm_RVV_5x7_b1_col_fp32;
+    *matrix[5][8][0] = 	(ukrFunction)gemm_RVV_5x8_b0_col_fp32;
+    *matrix[5][8][1] = 	(ukrFunction)gemm_RVV_5x8_b1_col_fp32;
     *matrix[6][0][0] = 	(ukrFunction)NULL;
     *matrix[6][0][1] = 	(ukrFunction)NULL;
     *matrix[6][1][0] = 	(ukrFunction)gemm_RVV_6x1_b0_col_fp32;
@@ -86,6 +134,14 @@ void fillMatrix(ukrFunction**** matrix) {
     *matrix[6][3][1] = 	(ukrFunction)gemm_RVV_6x3_b1_col_fp32;
     *matrix[6][4][0] = 	(ukrFunction)gemm_RVV_6x4_b0_col_fp32;
     *matrix[6][4][1] = 	(ukrFunction)gemm_RVV_6x4_b1_col_fp32;
+    *matrix[6][5][0] = 	(ukrFunction)gemm_RVV_6x5_b0_col_fp32;
+    *matrix[6][5][1] = 	(ukrFunction)gemm_RVV_6x5_b1_col_fp32;
+    *matrix[6][6][0] = 	(ukrFunction)gemm_RVV_6x6_b0_col_fp32;
+    *matrix[6][6][1] = 	(ukrFunction)gemm_RVV_6x6_b1_col_fp32;
+    *matrix[6][7][0] = 	(ukrFunction)gemm_RVV_6x7_b0_col_fp32;
+    *matrix[6][7][1] = 	(ukrFunction)gemm_RVV_6x7_b1_col_fp32;
+    *matrix[6][8][0] = 	(ukrFunction)gemm_RVV_6x8_b0_col_fp32;
+    *matrix[6][8][1] = 	(ukrFunction)gemm_RVV_6x8_b1_col_fp32;
     *matrix[7][0][0] = 	(ukrFunction)NULL;
     *matrix[7][0][1] = 	(ukrFunction)NULL;
     *matrix[7][1][0] = 	(ukrFunction)gemm_RVV_7x1_b0_col_fp32;
@@ -96,6 +152,14 @@ void fillMatrix(ukrFunction**** matrix) {
     *matrix[7][3][1] = 	(ukrFunction)gemm_RVV_7x3_b1_col_fp32;
     *matrix[7][4][0] = 	(ukrFunction)gemm_RVV_7x4_b0_col_fp32;
     *matrix[7][4][1] = 	(ukrFunction)gemm_RVV_7x4_b1_col_fp32;
+    *matrix[7][5][0] = 	(ukrFunction)gemm_RVV_7x5_b0_col_fp32;
+    *matrix[7][5][1] = 	(ukrFunction)gemm_RVV_7x5_b1_col_fp32;
+    *matrix[7][6][0] = 	(ukrFunction)gemm_RVV_7x6_b0_col_fp32;
+    *matrix[7][6][1] = 	(ukrFunction)gemm_RVV_7x6_b1_col_fp32;
+    *matrix[7][7][0] = 	(ukrFunction)gemm_RVV_7x7_b0_col_fp32;
+    *matrix[7][7][1] = 	(ukrFunction)gemm_RVV_7x7_b1_col_fp32;
+    *matrix[7][8][0] = 	(ukrFunction)gemm_RVV_7x8_b0_col_fp32;
+    *matrix[7][8][1] = 	(ukrFunction)gemm_RVV_7x8_b1_col_fp32;
     *matrix[8][0][0] = 	(ukrFunction)NULL;
     *matrix[8][0][1] = 	(ukrFunction)NULL;
     *matrix[8][1][0] = 	(ukrFunction)gemm_RVV_8x1_b0_col_fp32;
@@ -106,11 +170,19 @@ void fillMatrix(ukrFunction**** matrix) {
     *matrix[8][3][1] = 	(ukrFunction)gemm_RVV_8x3_b1_col_fp32;
     *matrix[8][4][0] = 	(ukrFunction)gemm_RVV_8x4_b0_col_fp32;
     *matrix[8][4][1] = 	(ukrFunction)gemm_RVV_8x4_b1_col_fp32;
+    *matrix[8][5][0] = 	(ukrFunction)gemm_RVV_8x5_b0_col_fp32;
+    *matrix[8][5][1] = 	(ukrFunction)gemm_RVV_8x5_b1_col_fp32;
+    *matrix[8][6][0] = 	(ukrFunction)gemm_RVV_8x6_b0_col_fp32;
+    *matrix[8][6][1] = 	(ukrFunction)gemm_RVV_8x6_b1_col_fp32;
+    *matrix[8][7][0] = 	(ukrFunction)gemm_RVV_8x7_b0_col_fp32;
+    *matrix[8][7][1] = 	(ukrFunction)gemm_RVV_8x7_b1_col_fp32;
+    *matrix[8][8][0] = 	(ukrFunction)gemm_RVV_8x8_b0_col_fp32;
+    *matrix[8][8][1] = 	(ukrFunction)gemm_RVV_8x8_b1_col_fp32;
 }
 
 void freeMatrix(ukrFunction**** matrix) {
     for (int i = 0; i < 8 + 1; i++) {
-        for (int j = 0; j < 4 + 1; j++) {
+        for (int j = 0; j < 8 + 1; j++) {
             for (int b = 0; b < 2; b++) {
                 free(matrix[i][j][b]);
             }

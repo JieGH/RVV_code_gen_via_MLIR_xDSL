@@ -87,6 +87,34 @@ class ConvertRVV_vle32_v_f32m1_ToEmitC(RewritePattern):
         rewriter.replace_op(op, [subscript, ptr_ref, call_op])
 
 
+class ConvertRVV_vlse32_v_f32m1_ToEmitC(RewritePattern):
+    """
+    Lower
+        %va = "rvv.vlse32_v_f32m1Op"(%arg0, %offset, %stride, %vl)
+    to
+        %va = emitc.call_opaque "__riscv_vlse32_v_f32m1"(&arg0[offset], stride, vl)
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vlse32_v_f32m1Op, rewriter: PatternRewriter):
+        lvalue_type = emitc.EmitC_LValueType(Float32Type())
+        subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
+
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vfloat32m1_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vlse32_v_f32m1",
+            call_args=[ptr_ref.result, op.bstride, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, [subscript, ptr_ref, call_op])
+
+
 from xdsltemplate.dialects.emitc_ext import EmitCLoadOp
 
 
@@ -446,6 +474,7 @@ class RVVToEmitCPass(ModulePass):
             ConvertRVVSetvlToEmitC(),
             ConvertRVVSetvlMf4ToEmitC(),
             ConvertRVV_vle32_v_f32m1_ToEmitC(),
+            ConvertRVV_vlse32_v_f32m1_ToEmitC(),
             ConvertRVV_vfmacc_vf_f32m1_ToEmitC(),
             ConvertRVV_vfmv_v_f_f32m1_ToEmitC(),
             ConvertRVV_vse32_v_f32m1_ToEmitC(),
