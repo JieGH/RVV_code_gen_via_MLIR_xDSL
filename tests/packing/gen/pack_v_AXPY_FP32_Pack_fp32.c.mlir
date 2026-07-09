@@ -1,5 +1,5 @@
 "builtin.module"() ({
-  "func.func"() <{sym_name = "pack_CB_v_if_fp32_RR8", function_type = (!emitc.ptr<f32>, !emitc.ptr<f32>, index, index, index) -> ()}> ({
+  "func.func"() <{sym_name = "pack_CB_v_if_AXPY_FP32_Pack_fp32_RR8", function_type = (!emitc.ptr<f32>, !emitc.ptr<f32>, index, index, index) -> ()}> ({
   ^bb0(%0 : !emitc.ptr<f32>, %1 : !emitc.ptr<f32>, %2 : index, %3 : index, %4 : index):
     %5 = "emitc.constant"() {value = 0 : index} : () -> index
     %6 = "emitc.constant"() {value = 1 : index} : () -> index
@@ -30,7 +30,7 @@
     }) : (index, index, index) -> ()
     "func.return"() : () -> ()
   }) {function_type = (!emitc.ptr<f32>, !emitc.ptr<f32>, index, index, index) -> index} : () -> ()
-  "func.func"() <{sym_name = "pack_CB_v_else_fp32_RR8", function_type = (!emitc.ptr<f32>, !emitc.ptr<f32>, index, index, index) -> ()}> ({
+  "func.func"() <{sym_name = "pack_CB_v_else_AXPY_FP32_Pack_fp32_RR8", function_type = (!emitc.ptr<f32>, !emitc.ptr<f32>, index, index, index) -> ()}> ({
   ^bb0(%0 : !emitc.ptr<f32>, %1 : !emitc.ptr<f32>, %2 : index, %3 : index, %4 : index):
     %5 = "emitc.constant"() {value = 0 : index} : () -> index
     %6 = "emitc.constant"() {value = 1 : index} : () -> index
@@ -59,11 +59,11 @@
     }) : (index, index, index) -> ()
     "func.return"() : () -> ()
   }) {function_type = (!emitc.ptr<f32>, !emitc.ptr<f32>, index, index, index) -> index} : () -> ()
-  "func.func"() <{sym_name = "pack_RB_v_if_fp32_RR4", function_type = (!emitc.ptr<f32>, !emitc.ptr<f32>, index, index, index) -> ()}> ({
+  "func.func"() <{sym_name = "pack_RB_v_if_AXPY_FP32_Pack_fp32_RR8", function_type = (!emitc.ptr<f32>, !emitc.ptr<f32>, index, index, index) -> ()}> ({
   ^bb0(%0 : !emitc.ptr<f32>, %1 : !emitc.ptr<f32>, %2 : index, %3 : index, %4 : index):
     %5 = "emitc.constant"() {value = 0 : index} : () -> index
     %6 = "emitc.constant"() {value = 1 : index} : () -> index
-    %7 = "emitc.constant"() {value = 4 : index} : () -> index
+    %7 = "emitc.constant"() {value = 8 : index} : () -> index
     "emitc.for"(%5, %2, %7) ({
     ^bb1(%8 : index):
       %9 = "emitc.sub"(%2, %8) : (index, index) -> index
@@ -88,12 +88,12 @@
     }) : (index, index, index) -> ()
     "func.return"() : () -> ()
   }) {function_type = (!emitc.ptr<f32>, !emitc.ptr<f32>, index, index, index) -> index} : () -> ()
-  "func.func"() <{sym_name = "pack_RB_v_else_fp32_RR4", function_type = (!emitc.ptr<f32>, !emitc.ptr<f32>, index, index, index) -> ()}> ({
+  "func.func"() <{sym_name = "pack_RB_v_else_AXPY_FP32_Pack_fp32_RR8", function_type = (!emitc.ptr<f32>, !emitc.ptr<f32>, index, index, index) -> ()}> ({
   ^bb0(%0 : !emitc.ptr<f32>, %1 : !emitc.ptr<f32>, %2 : index, %3 : index, %4 : index):
     %5 = "emitc.constant"() {value = 0 : index} : () -> index
     %6 = "emitc.constant"() {value = 1 : index} : () -> index
     %7 = "emitc.constant"() {value = 4 : index} : () -> index
-    %8 = "emitc.constant"() {value = 4 : index} : () -> index
+    %8 = "emitc.constant"() {value = 8 : index} : () -> index
     "emitc.for"(%5, %2, %8) ({
     ^bb1(%9 : index):
       %10 = "emitc.sub"(%2, %9) : (index, index) -> index

@@ -4,11 +4,11 @@ generate_packing.py
 Unified entry point for generating all vectorized packing kernels (CB and RB).
 Produces a single C file containing all four branches.
 
-Generated C functions:
+Generated C functions (default NR=8, MR=8):
   pack_CB_v_if_fp32_RR8
   pack_CB_v_else_fp32_RR8
-  pack_RB_v_if_fp32_RR4
-  pack_RB_v_else_fp32_RR4
+  pack_RB_v_if_fp32_RR8
+  pack_RB_v_else_fp32_RR8
 """
 
 import argparse
@@ -25,7 +25,7 @@ sys.path.insert(0, script_dir)
 import pack_builder as pb
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, emitc, func, memref, scf
-from xdsl.dialects.builtin import Float32Type, IndexType, MemRefType
+from xdsl.dialects.builtin import Float32Type, IndexType, MemRefType, IntegerType, f16
 from xdsl.printer import Printer
 
 from xdsltemplate.dialects.rvv import RVV
@@ -88,11 +88,22 @@ def run(
     suffix: str,
     output: str,
     mlir_translate: str | None,
+    vlen_bits: int = 256,
+    method: str = "AXPY_FP32_Pack",
 ):
     idx = IndexType()
-    f32_memref = MemRefType(Float32Type(), [-1])
+    if suffix == "i8":
+        elem_type = IntegerType(8)
+    elif suffix == "i32":
+        elem_type = IntegerType(32)
+    elif suffix == "fp16":
+        elem_type = f16
+    else:
+        elem_type = Float32Type()
+    
+    memref_ty = MemRefType(elem_type, [-1])
     module = pb.build_pack_module(
-        idx, f32_memref, NR=NR, MR=MR, elem_bytes=elem_bytes, suffix=suffix
+        idx, memref_ty, NR=NR, MR=MR, elem_bytes=elem_bytes, suffix=suffix, vlen_bits=vlen_bits, method=method
     )
     ctx = make_context()
 
@@ -120,23 +131,30 @@ def run(
     print("-" * 30)
     all_ok = True
 
-    cb_if = f"pack_CB_v_if_{suffix}_RR{NR}"
-    cb_else = f"pack_CB_v_else_{suffix}_RR{NR}"
-    rb_if = f"pack_RB_v_if_{suffix}_RR{MR}"
-    rb_else = f"pack_RB_v_else_{suffix}_RR{MR}"
+    cb_if = f"pack_CB_v_if_{method}_{suffix}_RR{NR}"
+    cb_else = f"pack_CB_v_else_{method}_{suffix}_RR{NR}"
+    rb_if = f"pack_RB_v_if_{method}_{suffix}_RR{MR}"
+    rb_else = f"pack_RB_v_else_{method}_{suffix}_RR{MR}"
 
-    all_ok &= verify_intrinsics(
-        fn_blocks.get(cb_if), cb_if, ["__riscv_vlse32"], ["__riscv_vle32"]
-    )
-    all_ok &= verify_intrinsics(
-        fn_blocks.get(cb_else), cb_else, ["__riscv_vle32"], ["__riscv_vlse32"]
-    )
-    all_ok &= verify_intrinsics(
-        fn_blocks.get(rb_if), rb_if, ["__riscv_vle32"], ["__riscv_vlse32"]
-    )
-    all_ok &= verify_intrinsics(
-        fn_blocks.get(rb_else), rb_else, ["__riscv_vlse32"], ["__riscv_vle32"]
-    )
+    if method == "DOT_INT8_LANE_Pack":
+        # B-side (CB) uses 8-bit strided loads and 8-bit strided stores
+        all_ok &= verify_intrinsics(fn_blocks.get(cb_if), cb_if, ["__riscv_vlse8", "__riscv_vsse8"], [])
+        # A-side (RB) uses 8-bit loads
+        all_ok &= verify_intrinsics(fn_blocks.get(rb_if), rb_if, ["__riscv_vlse8"], [])
+        # _else branches are intentionally empty for this method, skip checking them
+    else:
+        all_ok &= verify_intrinsics(
+            fn_blocks.get(cb_if), cb_if, ["__riscv_vlse32"], ["__riscv_vle32"]
+        )
+        all_ok &= verify_intrinsics(
+            fn_blocks.get(cb_else), cb_else, ["__riscv_vle32"], ["__riscv_vlse32"]
+        )
+        all_ok &= verify_intrinsics(
+            fn_blocks.get(rb_if), rb_if, ["__riscv_vle32"], ["__riscv_vlse32"]
+        )
+        all_ok &= verify_intrinsics(
+            fn_blocks.get(rb_else), rb_else, ["__riscv_vlse32"], ["__riscv_vle32"]
+        )
 
     print("\n  ✅  PASS" if all_ok else "\n  ❌  FAIL")
     if not all_ok:
@@ -172,10 +190,12 @@ if __name__ == "__main__":
     p.add_argument("--mlir-translate", type=str, default=None)
     p.add_argument("--output", type=str, default="tests/packing/gen/pack_v_fp32.c")
     p.add_argument("--NR", type=int, default=8)
-    p.add_argument("--MR", type=int, default=4)
+    p.add_argument("--MR", type=int, default=8)
     p.add_argument("--elem-bytes", type=int, default=4)
     p.add_argument("--suffix", type=str, default="fp32")
+    p.add_argument("--vlen", type=int, default=256, help="Hardware VLEN in bits (default 256 for SpacemiT K1)")
+    p.add_argument("--method", type=str, default="AXPY_FP32_Pack", help="Packing method identifier")
     args = p.parse_args()
     run(
-        args.NR, args.MR, args.elem_bytes, args.suffix, args.output, args.mlir_translate
+        args.NR, args.MR, args.elem_bytes, args.suffix, args.output, args.mlir_translate, vlen_bits=args.vlen, method=args.method
     )

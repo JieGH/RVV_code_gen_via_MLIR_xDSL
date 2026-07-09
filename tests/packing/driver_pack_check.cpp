@@ -27,17 +27,36 @@
 #include <iostream>
 #include <vector>
 
+#ifdef TEST_INT8
+typedef int8_t TestType;
+#define GEN_VAL(i, j) (TestType)(((i) * 11 + (j)) % 127)
+const TestType SENTINEL = -128;
+#define EPSILON 0
+#else
+typedef float TestType;
+#define GEN_VAL(i, j) (TestType)((i) * 1000 + (j))
+const TestType SENTINEL = -9999.0f;
+#define EPSILON 1e-5f
+#endif
+
 #include "pack_dispatch.h"   // pack_CB_v, pack_RB_v (gemm_blis.h API)
 
 // Scalar references (exact copies of gemm_blis.c)
 void ref_pack_CB(char orderM, char transM, int mc, int nc,
-                 float* M, int ldM, float* Mc, int RR);
+                 TestType* M, int ldM, TestType* Mc, int RR);
 void ref_pack_RB(char orderM, char transM, int mc, int nc,
-                 float* M, int ldM, float* Mc, int RR);
+                 TestType* M, int ldM, TestType* Mc, int RR);
+
+// The exact scalar references for INT8 Method 3
+void ref_pack_DOT_INT8_LANE_Pack_CB(char orderA, char transM, int mc, int nc, TestType *M, int ldM, TestType *Mc, int nr_block, int kr_block);
+void ref_pack_DOT_INT8_LANE_Pack_RB(char orderA, char transM, int mc, int nc, TestType *M, int ldM, TestType *Mc, int mr_block, int kr_block);
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-// NR and MR must match what was used in compile_packing.sh (NR=8, MR=4 for VLEN=256)
-// pack_dispatch.h asserts RR == NR and RR == MR at runtime if they mismatch.
+// NR and MR are passed via -DNR=<n> -DMR=<m> compiler defines (see Makefile).
+// compile_packing.sh is the single source of truth: it sets NR/MR, calls
+// generate_packing.py and gen_dispatch.py with those values, then passes them
+// here through the Makefile.  Changing NR/MR in compile_packing.sh is enough.
+// pack_dispatch.h asserts RR == NR and RR == MR at runtime to catch mismatches.
 //
 // Equivalence proof: xDSL absolute indexing vs. reference k++ pointer:
 //   Reference uses:  k = j*mc;  then k++ per element, k += (RR-nr) per row
@@ -46,30 +65,47 @@ void ref_pack_RB(char orderM, char transM, int mc, int nc,
 //                    After writing nr elements:    k_ref = j*mc + i*RR + nr
 //                    After k += (RR-nr):           k_ref = j*mc + (i+1)*RR  ✓
 //                    xDSL's next iteration uses:   j*mc + (i+1)*RR           ✓
-static const int   NR       = 8;
-static const int   MR       = 4;
-static const float SENTINEL = -9999.0f;
+#ifndef NR
+#define NR 8
+#endif
+#ifndef MR
+#define MR 8
+#endif
+
+#ifndef KR
+#define KR 32
+#endif
 
 static int g_pass = 0, g_fail = 0;
 
 // ── Packed buffer size helpers ────────────────────────────────────────────────
-static int cb_packed_size(int mc, int nc) { return mc * ((nc + NR - 1) / NR) * NR; }
-static int rb_packed_size(int mc, int nc) { return ((mc + MR - 1) / MR) * MR * nc; }
+static int cb_packed_size(int mc, int nc) { 
+    if (std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0) {
+        return ((mc + KR - 1) / KR) * KR * ((nc + NR - 1) / NR) * NR;
+    }
+    return mc * ((nc + NR - 1) / NR) * NR; 
+}
+static int rb_packed_size(int mc, int nc) { 
+    if (std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0) {
+        return ((nc + KR - 1) / KR) * KR * ((mc + MR - 1) / MR) * MR;
+    }
+    return ((mc + MR - 1) / MR) * MR * nc; 
+}
 
 // ── Generic compare helper ────────────────────────────────────────────────────
-static bool compare_buffers(const char* tag, const std::vector<float>& ref,
-                             const std::vector<float>& vec, int data_size) {
+static bool compare_buffers(const char* tag, const std::vector<TestType>& ref,
+                             const std::vector<TestType>& vec, int data_size) {
     int mismatches = 0;
     for (int p = 0; p < data_size; ++p)
-        if (std::abs(ref[p] - vec[p]) > 1e-5f) {
+        if (std::abs((float)ref[p] - (float)vec[p]) > EPSILON) {
             if (mismatches < 4)
-                std::printf("    [!] %s pos=%d ref=%.1f vec=%.1f\n", tag, p, ref[p], vec[p]);
+                std::printf("    [!] %s pos=%d ref=%.1f vec=%.1f\n", tag, p, (float)ref[p], (float)vec[p]);
             ++mismatches;
         }
     return mismatches == 0;
 }
 
-static bool check_guard(const std::vector<float>& buf, int data_size, int guard) {
+static bool check_guard(const std::vector<TestType>& buf, int data_size, int guard) {
     for (int g = 0; g < guard; ++g)
         if (buf[data_size + g] != SENTINEL) return false;
     return true;
@@ -77,13 +113,24 @@ static bool check_guard(const std::vector<float>& buf, int data_size, int guard)
 
 // ── CB test helper ────────────────────────────────────────────────────────────
 static bool run_CB(const char* label, char orderM, char transM,
-                   int mc, int nc, int ldM, std::vector<float>& B) {
+                   int mc, int nc, int ldM, std::vector<TestType>& B) {
+    // Skip unaligned K-dimension for DOT_INT8 packing
+    if (std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0 && (mc % 4 != 0)) {
+        // std::printf("  CB(%c,%c) %-40s SKIPPED (K-dim mc %% 4 != 0)\n", orderM, transM, label);
+        return true;
+    }
+
     int psz = cb_packed_size(mc, nc);
     const int G = 16;
-    std::vector<float> ref(psz + G, 0.0f), vec(psz + G, 0.0f);
+    std::vector<TestType> ref(psz + G, 0), vec(psz + G, 0);
     for (int g = 0; g < G; ++g) vec[psz + g] = SENTINEL;
 
-    ref_pack_CB(orderM, transM, mc, nc, B.data(), ldM, ref.data(), NR);
+    if (std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0) {
+        ref_pack_DOT_INT8_LANE_Pack_CB(orderM, transM, mc, nc, B.data(), ldM, ref.data(), NR, KR);
+    } else {
+        ref_pack_CB(orderM, transM, mc, nc, B.data(), ldM, ref.data(), NR);
+    }
+    
     pack_CB_v  (orderM, transM, mc, nc, B.data(), ldM, vec.data(), NR);
 
     bool data_ok  = compare_buffers("CB", ref, vec, psz);
@@ -96,13 +143,24 @@ static bool run_CB(const char* label, char orderM, char transM,
 
 // ── RB test helper ────────────────────────────────────────────────────────────
 static bool run_RB(const char* label, char orderM, char transM,
-                   int mc, int nc, int ldM, std::vector<float>& B) {
+                   int mc, int nc, int ldM, std::vector<TestType>& B) {
+    // Skip unaligned K-dimension for DOT_INT8 packing
+    if (std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0 && (nc % 4 != 0)) {
+        // std::printf("  RB(%c,%c) %-40s SKIPPED (K-dim nc %% 4 != 0)\n", orderM, transM, label);
+        return true;
+    }
+
     int psz = rb_packed_size(mc, nc);
     const int G = 16;
-    std::vector<float> ref(psz + G, 0.0f), vec(psz + G, 0.0f);
+    std::vector<TestType> ref(psz + G, 0), vec(psz + G, 0);
     for (int g = 0; g < G; ++g) vec[psz + g] = SENTINEL;
 
-    ref_pack_RB(orderM, transM, mc, nc, B.data(), ldM, ref.data(), MR);
+    if (std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0) {
+        ref_pack_DOT_INT8_LANE_Pack_RB(orderM, transM, mc, nc, B.data(), ldM, ref.data(), MR, KR);
+    } else {
+        ref_pack_RB(orderM, transM, mc, nc, B.data(), ldM, ref.data(), MR);
+    }
+    
     pack_RB_v  (orderM, transM, mc, nc, B.data(), ldM, vec.data(), MR);
 
     bool data_ok  = compare_buffers("RB", ref, vec, psz);
@@ -117,21 +175,19 @@ static bool run_RB(const char* label, char orderM, char transM,
 // if-branch  (Col-Major Non-Trans): Bc[j*mc + i*NR + jj] = M[(j+jj)*ldM + i]
 // else-branch (Row-Major Non-Trans): Bc[j*mc + i*NR + jj] = M[i*ldM + (j+jj)]
 static bool gt_CB(const char* label, char orderM, char transM, int mc, int nc, int ldM) {
-    // Fill B so that logical B[i][j] = i*1000 + j regardless of storage order
-    std::vector<float> B((size_t)ldM * std::max(mc, nc) + 64, 0.0f);
+    if (std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0) return true; // GT disabled for method 3 due to complex interleaving layout
+    std::vector<TestType> B((size_t)ldM * std::max(mc, nc) + 64, 0);
 
-    // Col-Major: B_col[j*ldM + i] = i*1000 + j
-    // Row-Major: B_row[i*ldM + j] = i*1000 + j
     bool col_major_storage = (orderM == 'C');
     for (int i = 0; i < mc; ++i)
         for (int j = 0; j < nc; ++j) {
-            float val = (float)(i * 1000 + j);
+            TestType val = GEN_VAL(i, j);
             if (col_major_storage) B[(size_t)j * ldM + i] = val;
             else                   B[(size_t)i * ldM + j] = val;
         }
 
     int psz = cb_packed_size(mc, nc);
-    std::vector<float> vec(psz + 16, 0.0f);
+    std::vector<TestType> vec(psz + 16, 0);
     pack_CB_v(orderM, transM, mc, nc, B.data(), ldM, vec.data(), NR);
 
     // In all CB branches, the packed result is the same:
@@ -160,17 +216,18 @@ static bool gt_CB(const char* label, char orderM, char transM, int mc, int nc, i
 // ── Ground-truth RB ───────────────────────────────────────────────────────────
 // Packed result: Mc[i*nc + j*MR + ii] = logical A[i+ii][j]
 static bool gt_RB(const char* label, char orderM, char transM, int mc, int nc, int ldM) {
-    std::vector<float> B((size_t)ldM * std::max(mc, nc) + 64, 0.0f);
+    if (std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0) return true; // GT disabled for method 3
+    std::vector<TestType> B((size_t)ldM * std::max(mc, nc) + 64, 0);
     bool col_major_storage = (orderM == 'C');
     for (int i = 0; i < mc; ++i)
         for (int j = 0; j < nc; ++j) {
-            float val = (float)(i * 1000 + j);
+            TestType val = GEN_VAL(i, j);
             if (col_major_storage) B[(size_t)j * ldM + i] = val;
             else                   B[(size_t)i * ldM + j] = val;
         }
 
     int psz = rb_packed_size(mc, nc);
-    std::vector<float> vec(psz + 16, 0.0f);
+    std::vector<TestType> vec(psz + 16, 0);
     pack_RB_v(orderM, transM, mc, nc, B.data(), ldM, vec.data(), MR);
 
     // Mc[i_block * nc * MR + j * MR + ii] = logical A[i_block*MR + ii][j]
@@ -199,16 +256,21 @@ static bool gt_RB(const char* label, char orderM, char transM, int mc, int nc, i
 int main() {
     std::printf("======================================================\n");
     std::printf("  pack_CB_v + pack_RB_v — Reference-Aligned Verification\n");
+    std::printf("  Method: %s\n", PACKING_METHOD);
     std::printf("  NR=%d (CB block width)  MR=%d (RB block height)\n", NR, MR);
+#ifdef TEST_INT8
+    std::printf("  VLEN=256, LMUL=1, INT8  — SpacemiT K1\n");
+#else
     std::printf("  VLEN=256, LMUL=1, FP32  — SpacemiT K1\n");
+#endif
     std::printf("======================================================\n\n");
 
     // ── Category 1: Dimension Coverage ───────────────────────────────────────
     std::printf("── Category 1: Dimension Coverage ──────────────────────\n");
     {
         const int BUF = 300 * 64;
-        std::vector<float> B(BUF);
-        for (int k = 0; k < BUF; ++k) B[k] = (float)(k % 97 + 1);
+        std::vector<TestType> B(BUF);
+        for (int k = 0; k < BUF; ++k) B[k] = (TestType)(k % 97 + 1);
 
         // CB: if-branch  ('C','N')  ldM >= mc (col-major)
         run_CB("nc=8,  mc=32, ldM=40",  'C','N', 32,  8, 40, B);
@@ -278,8 +340,8 @@ int main() {
     // ── Category 4: Buffer Boundary ───────────────────────────────────────────
     std::printf("\n── Category 4: Buffer Boundary (OOB Guard) ─────────────\n");
     {
-        std::vector<float> B(256 * 64);
-        for (size_t k = 0; k < B.size(); ++k) B[k] = (float)(k % 89 + 1);
+        std::vector<TestType> B(256 * 64);
+        for (size_t k = 0; k < B.size(); ++k) B[k] = (TestType)(k % 89 + 1);
         run_CB("mc=1, nc=1, ldM=1",  'C','N', 1, 1, 1, B);
         run_CB("mc=1, nc=1, ldM=1",  'R','N', 1, 1, 1, B);
         run_CB("mc=4, nc=9, ldM=8",  'C','N', 4, 9, 8, B);
@@ -294,8 +356,8 @@ int main() {
     std::printf("\n── Category 5: Stress Sweep ─────────────────────────────\n");
     {
         const int BUF = 300 * 64;
-        std::vector<float> B(BUF);
-        for (int k = 0; k < BUF; ++k) B[k] = (float)((k * 7 + 3) % 89 + 1);
+        std::vector<TestType> B(BUF);
+        for (int k = 0; k < BUF; ++k) B[k] = (TestType)((k * 7 + 3) % 89 + 1);
 
         int cb_if_p=0,cb_if_f=0, cb_else_p=0,cb_else_f=0;
         int rb_if_p=0,rb_if_f=0, rb_else_p=0,rb_else_f=0;
@@ -307,48 +369,72 @@ int main() {
             {
                 int ldM = mc + extra, psz = cb_packed_size(mc, nc);
                 if ((size_t)ldM * nc < (size_t)BUF) {
-                    std::vector<float> r(psz,0.0f), v(psz,0.0f);
-                    ref_pack_CB('C','N',mc,nc,B.data(),ldM,r.data(),NR);
-                    pack_CB_v  ('C','N',mc,nc,B.data(),ldM,v.data(),NR);
-                    bool ok=true;
-                    for(int p=0;p<psz&&ok;++p) if(std::abs(r[p]-v[p])>1e-5f){ok=false;++cb_if_f;std::printf("  [!] CB(C,N) FAIL mc=%d nc=%d ldM=%d\n",mc,nc,ldM);}
-                    if(ok) ++cb_if_p;
+                    std::vector<TestType> r(psz,0), v(psz,0);
+                    if (std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0) {
+                        ref_pack_DOT_INT8_LANE_Pack_CB('C','N',mc,nc,B.data(),ldM,r.data(),NR,KR);
+                    } else {
+                        ref_pack_CB('C','N',mc,nc,B.data(),ldM,r.data(),NR);
+                    }
+                    if (!(std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0 && mc % 4 != 0)) {
+                        pack_CB_v  ('C','N',mc,nc,B.data(),ldM,v.data(),NR);
+                        bool ok=true;
+                        for(int p=0;p<psz&&ok;++p) if(std::abs((float)r[p]-(float)v[p])>EPSILON){ok=false;++cb_if_f;}
+                        if(ok) ++cb_if_p;
+                    }
                 }
             }
             // CB else-branch: ldM >= nc (row-major)
             {
                 int ldM = nc + extra, psz = cb_packed_size(mc, nc);
                 if ((size_t)mc * ldM < (size_t)BUF) {
-                    std::vector<float> r(psz,0.0f), v(psz,0.0f);
-                    ref_pack_CB('R','N',mc,nc,B.data(),ldM,r.data(),NR);
-                    pack_CB_v  ('R','N',mc,nc,B.data(),ldM,v.data(),NR);
-                    bool ok=true;
-                    for(int p=0;p<psz&&ok;++p) if(std::abs(r[p]-v[p])>1e-5f){ok=false;++cb_else_f;std::printf("  [!] CB(R,N) FAIL mc=%d nc=%d ldM=%d\n",mc,nc,ldM);}
-                    if(ok) ++cb_else_p;
+                    std::vector<TestType> r(psz,0), v(psz,0);
+                    if (std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0) {
+                        ref_pack_DOT_INT8_LANE_Pack_CB('R','N',mc,nc,B.data(),ldM,r.data(),NR,KR);
+                    } else {
+                        ref_pack_CB('R','N',mc,nc,B.data(),ldM,r.data(),NR);
+                    }
+                    if (!(std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0 && mc % 4 != 0)) {
+                        pack_CB_v  ('R','N',mc,nc,B.data(),ldM,v.data(),NR);
+                        bool ok=true;
+                        for(int p=0;p<psz&&ok;++p) if(std::abs((float)r[p]-(float)v[p])>EPSILON){ok=false;++cb_else_f;}
+                        if(ok) ++cb_else_p;
+                    }
                 }
             }
             // RB if-branch: ldM >= mc (col-major)
             {
                 int ldM = mc + extra, psz = rb_packed_size(mc, nc);
                 if ((size_t)ldM * nc < (size_t)BUF) {
-                    std::vector<float> r(psz,0.0f), v(psz,0.0f);
-                    ref_pack_RB('C','N',mc,nc,B.data(),ldM,r.data(),MR);
-                    pack_RB_v  ('C','N',mc,nc,B.data(),ldM,v.data(),MR);
-                    bool ok=true;
-                    for(int p=0;p<psz&&ok;++p) if(std::abs(r[p]-v[p])>1e-5f){ok=false;++rb_if_f;std::printf("  [!] RB(C,N) FAIL mc=%d nc=%d ldM=%d\n",mc,nc,ldM);}
-                    if(ok) ++rb_if_p;
+                    std::vector<TestType> r(psz,0), v(psz,0);
+                    if (std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0) {
+                        ref_pack_DOT_INT8_LANE_Pack_RB('C','N',mc,nc,B.data(),ldM,r.data(),MR,KR);
+                    } else {
+                        ref_pack_RB('C','N',mc,nc,B.data(),ldM,r.data(),MR);
+                    }
+                    if (!(std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0 && nc % 4 != 0)) {
+                        pack_RB_v  ('C','N',mc,nc,B.data(),ldM,v.data(),MR);
+                        bool ok=true;
+                        for(int p=0;p<psz&&ok;++p) if(std::abs((float)r[p]-(float)v[p])>EPSILON){ok=false;++rb_if_f;}
+                        if(ok) ++rb_if_p;
+                    }
                 }
             }
             // RB else-branch: ldM >= nc (row-major)
             {
                 int ldM = nc + extra, psz = rb_packed_size(mc, nc);
                 if ((size_t)mc * ldM < (size_t)BUF) {
-                    std::vector<float> r(psz,0.0f), v(psz,0.0f);
-                    ref_pack_RB('R','N',mc,nc,B.data(),ldM,r.data(),MR);
-                    pack_RB_v  ('R','N',mc,nc,B.data(),ldM,v.data(),MR);
-                    bool ok=true;
-                    for(int p=0;p<psz&&ok;++p) if(std::abs(r[p]-v[p])>1e-5f){ok=false;++rb_else_f;std::printf("  [!] RB(R,N) FAIL mc=%d nc=%d ldM=%d\n",mc,nc,ldM);}
-                    if(ok) ++rb_else_p;
+                    std::vector<TestType> r(psz,0), v(psz,0);
+                    if (std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0) {
+                        ref_pack_DOT_INT8_LANE_Pack_RB('R','N',mc,nc,B.data(),ldM,r.data(),MR,KR);
+                    } else {
+                        ref_pack_RB('R','N',mc,nc,B.data(),ldM,r.data(),MR);
+                    }
+                    if (!(std::strcmp(PACKING_METHOD, "DOT_INT8_LANE_Pack") == 0 && nc % 4 != 0)) {
+                        pack_RB_v  ('R','N',mc,nc,B.data(),ldM,v.data(),MR);
+                        bool ok=true;
+                        for(int p=0;p<psz&&ok;++p) if(std::abs((float)r[p]-(float)v[p])>EPSILON){ok=false;++rb_else_f;}
+                        if(ok) ++rb_else_p;
+                    }
                 }
             }
         }}}

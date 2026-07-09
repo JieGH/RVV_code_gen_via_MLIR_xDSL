@@ -1,22 +1,40 @@
 CXX    = riscv64-linux-gnu-g++
 CFLAGS = -march=rv64gcv -mabi=lp64d -O3 -mcmodel=medany -I.
 
-# Block sizes — must match what compile_packing.sh used for code generation
+# Block sizes — single source of truth, must match compile_packing.sh
+# These are passed as -DNR/-DMR to every translation unit so that
+# driver_pack_check.cpp and benchmark_packing.cpp pick them up
+# via the #ifndef guards instead of hardcoded constants.
 NR ?= 8
-MR ?= 4
+MR ?= 8
 
-all: verify_packing
+DEFINES = -DNR=$(NR) -DMR=$(MR)
+
+DTYPE ?= fp32
+METHOD ?= AXPY_FP32_Pack
+
+ifeq ($(DTYPE), i8)
+DEFINES += -DTEST_INT8
+endif
+
+all: verify_packing benchmark_packing
 
 # Link: driver + reference + single generated master kernel
-verify_packing: driver_pack_check.o ref_pack_CB.o gen/pack_v_fp32.o
+verify_packing: driver_pack_check.o ref_pack_CB.o ref_pack_DOT_INT8_LANE_Pack.o gen/pack_v_$(METHOD)_$(DTYPE).o
 	$(CXX) $(CFLAGS) $^ -o $@
 
-# Compile unified master kernel
-gen/pack_v_fp32.o: gen/pack_v_fp32.c
-	$(CXX) $(CFLAGS) -DNR=$(NR) -DMR=$(MR) -c $< -o $@
+# Link: benchmark driver + reference + single generated master kernel
+benchmark_packing: benchmark_packing.o ref_pack_CB.o ref_pack_DOT_INT8_LANE_Pack.o gen/pack_v_$(METHOD)_$(DTYPE).o
+	$(CXX) $(CFLAGS) $^ -o $@
 
+# Compile unified master kernel (block sizes baked in)
+gen/pack_v_$(METHOD)_$(DTYPE).o: gen/pack_v_$(METHOD)_$(DTYPE).c
+	$(CXX) $(CFLAGS) $(DEFINES) -c $< -o $@
+
+# Compile all C++ sources with NR/MR defines so driver & benchmark
+# can use #ifndef NR / #ifndef MR instead of hardcoded values
 %.o: %.cpp
-	$(CXX) $(CFLAGS) -c $< -o $@
+	$(CXX) $(CFLAGS) $(DEFINES) -c $< -o $@
 
 clean:
-	rm -f verify_packing *.o gen/*.o
+	rm -f verify_packing benchmark_packing *.o gen/*.o

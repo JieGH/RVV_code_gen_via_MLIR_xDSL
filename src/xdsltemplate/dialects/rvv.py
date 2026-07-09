@@ -14,6 +14,31 @@ from xdsl.irdl import (
 )
 
 
+def compute_lmul(RR: int, elem_bytes: int, vlen_bits: int = 256) -> int:
+    """Return the minimum LMUL (power-of-2) so that LMUL*VLEN/eew >= RR.
+
+    Args:
+        RR:         block size (NR for CB, MR for RB)
+        elem_bytes: element size in bytes (4=fp32, 2=fp16)
+        vlen_bits:  hardware VLEN in bits (default 256 for SpacemiT K1)
+
+    Returns:
+        Integer LMUL ∈ {1, 2, 4, 8}.
+
+    Raises:
+        ValueError: if RR exceeds VLMAX at LMUL=8.
+    """
+    eew = elem_bytes * 8
+    lmul = 1
+    while lmul * vlen_bits // eew < RR:
+        lmul *= 2
+        if lmul > 8:
+            raise ValueError(
+                f"RR={RR} exceeds VLMAX={8 * vlen_bits // eew} (LMUL=8, "
+                f"eew={eew}, VLEN={vlen_bits})"
+            )
+    return lmul
+
 # Since we need tp define rvv type
 # like   vfloat32m1_t va = __riscv_vle32_v_f32m1(a + i, vl);
 @irdl_attr_definition
@@ -88,6 +113,25 @@ class SetvlOp(IRDLOperation):
     """
 
     name = "rvv.setvl"
+
+    avl = operand_def(IndexType)
+    vl = result_def(IndexType)
+
+    def __init__(self, avl: SSAValue):
+        super().__init__(
+            operands=[avl],
+            result_types=[IndexType()],
+        )
+
+
+@irdl_op_definition
+class SetvlE8M1Op(IRDLOperation):
+    """
+    Set vector length for e8m1
+    __riscv_vsetvl_e8m1(avl)
+    """
+
+    name = "rvv.setvl_e8m1"
 
     avl = operand_def(IndexType)
     vl = result_def(IndexType)
@@ -176,6 +220,77 @@ class vle8_v_i8m1Op(IRDLOperation):
 
     def __init__(self, memref: SSAValue, offset: SSAValue, avl: SSAValue):
         super().__init__(operands=[memref, offset, avl], result_types=[RVVInt8M1Type()])
+
+
+@irdl_op_definition
+class vlse8_v_i8m1Op(IRDLOperation):
+    """
+    Strided vector load operation for vint8m1_t
+    vint8m1_t __riscv_vlse8_v_i8m1(const int8_t *base, ptrdiff_t bstride, size_t vl);
+    """
+
+    name = "rvv.vlse8_v_i8m1Op"
+    memref = operand_def(MemRefType)
+    offset = operand_def(IndexType)
+    bstride = operand_def(IndexType)
+    avl = operand_def(IndexType)
+    result = result_def(RVVInt8M1Type)
+
+    def __init__(
+        self, memref: SSAValue, offset: SSAValue, bstride: SSAValue, avl: SSAValue
+    ):
+        super().__init__(
+            operands=[memref, offset, bstride, avl],
+            result_types=[RVVInt8M1Type()],
+        )
+
+
+@irdl_op_definition
+class vse8_v_i8m1Op(IRDLOperation):
+    """
+    Vector store operation for vint8m1_t
+    void __riscv_vse8_v_i8m1(int8_t *base, vint8m1_t value, size_t vl);
+    """
+
+    name = "rvv.vse8_v_i8m1Op"
+    memref = operand_def(MemRefType)
+    offset = operand_def(IndexType)
+    vec = operand_def(RVVInt8M1Type)
+    avl = operand_def(IndexType)
+
+    def __init__(
+        self, memref: SSAValue, offset: SSAValue, vec: SSAValue, avl: SSAValue
+    ):
+        super().__init__(operands=[memref, offset, vec, avl], result_types=[])
+
+
+@irdl_op_definition
+class vsse8_v_i8m1Op(IRDLOperation):
+    """
+    Strided vector store operation for vint8m1_t
+    void __riscv_vsse8_v_i8m1(int8_t *base, ptrdiff_t bstride, vint8m1_t value, size_t vl);
+    """
+
+    name = "rvv.vsse8_v_i8m1Op"
+    memref = operand_def(MemRefType)
+    offset = operand_def(IndexType)
+    bstride = operand_def(IndexType)
+    vec = operand_def(RVVInt8M1Type)
+    avl = operand_def(IndexType)
+
+    def __init__(
+        self,
+        memref: SSAValue,
+        offset: SSAValue,
+        bstride: SSAValue,
+        vec: SSAValue,
+        avl: SSAValue,
+    ):
+        super().__init__(
+            operands=[memref, offset, bstride, vec, avl], result_types=[]
+        )
+
+
 
 
 @irdl_op_definition
@@ -412,6 +527,29 @@ class vwadd_wv_i32m1Op(IRDLOperation):
 
 
 @irdl_op_definition
+class vlse32_v_i32m1Op(IRDLOperation):
+    """
+    Strided vector load operation for vint32m1_t
+    vint32m1_t __riscv_vlse32_v_i32m1(const int32_t *base, ptrdiff_t bstride, size_t vl);
+    """
+
+    name = "rvv.vlse32_v_i32m1Op"
+    memref = operand_def(MemRefType)
+    offset = operand_def(IndexType)
+    bstride = operand_def(IndexType)
+    avl = operand_def(IndexType)
+    result = result_def(RVVInt32M1Type)
+
+    def __init__(
+        self, memref: SSAValue, offset: SSAValue, bstride: SSAValue, avl: SSAValue
+    ):
+        super().__init__(
+            operands=[memref, offset, bstride, avl],
+            result_types=[RVVInt32M1Type()],
+        )
+
+
+@irdl_op_definition
 class vse32_v_i32m1Op(IRDLOperation):
     """
     __riscv_vse32_v_i32m1(ptr, vd, vl)
@@ -531,19 +669,99 @@ class vse32_v_f32m1Op(IRDLOperation):
         )
 
 
+@irdl_op_definition
+class SetvlM2Op(IRDLOperation):
+    """Set vector length for e32m2 (LMUL=2, VLMAX=16 for FP32 on VLEN=256).
+    __riscv_vsetvl_e32m2(avl)
+    """
+    name = "rvv.setvl_m2"
+    avl = operand_def(IndexType)
+    vl  = result_def(IndexType)
+
+    def __init__(self, avl: SSAValue):
+        super().__init__(operands=[avl], result_types=[IndexType()])
+
+
+@irdl_op_definition
+class vle32_v_f32m2Op(IRDLOperation):
+    """Unit-stride vector load, LMUL=2.
+    vfloat32m2_t __riscv_vle32_v_f32m2(const float *base, size_t vl);
+    """
+    name   = "rvv.vle32_v_f32m2Op"
+    memref = operand_def(MemRefType)
+    offset = operand_def(IndexType)
+    avl    = operand_def(IndexType)
+    vl     = result_def(RVVFloat32M2Type)
+
+    def __init__(self, memref: SSAValue, offset: SSAValue, avl: SSAValue):
+        super().__init__(
+            operands=[memref, offset, avl],
+            result_types=[RVVFloat32M2Type()],
+        )
+
+
+@irdl_op_definition
+class vlse32_v_f32m2Op(IRDLOperation):
+    """Strided vector load, LMUL=2.
+    vfloat32m2_t __riscv_vlse32_v_f32m2(const float *base,
+                                         ptrdiff_t bstride, size_t vl);
+    """
+    name    = "rvv.vlse32_v_f32m2Op"
+    memref  = operand_def(MemRefType)
+    offset  = operand_def(IndexType)
+    bstride = operand_def(IndexType)
+    avl     = operand_def(IndexType)
+    result  = result_def(RVVFloat32M2Type)
+
+    def __init__(self, memref: SSAValue, offset: SSAValue,
+                 bstride: SSAValue, avl: SSAValue):
+        super().__init__(
+            operands=[memref, offset, bstride, avl],
+            result_types=[RVVFloat32M2Type()],
+        )
+
+
+@irdl_op_definition
+class vse32_v_f32m2Op(IRDLOperation):
+    """Unit-stride vector store, LMUL=2.
+    void __riscv_vse32_v_f32m2(float *base, vfloat32m2_t value, size_t vl);
+    """
+    name   = "rvv.vse32_v_f32m2Op"
+    memref = operand_def(MemRefType)
+    offset = operand_def(IndexType)
+    vec    = operand_def(RVVFloat32M2Type)
+    avl    = operand_def(IndexType)
+
+    def __init__(self, memref: SSAValue, offset: SSAValue,
+                 vector: SSAValue, avl: SSAValue):
+        super().__init__(
+            operands=[memref, offset, vector, avl],
+            result_types=[],
+        )
+
+
 # python -c "from xdsltemplate.dialects.rvv import vle8_v_i8m1Op, RVVInt8M1Type; print('OK')"
 RVV = Dialect(
     "rvv",
     [
         SetvlOp,
+        SetvlM2Op,
         SetvlMf4Op,
+        SetvlE8M1Op,
         # FLOAT
         vle32_v_f32m1Op,
+        vlse32_v_f32m1Op,
         vfmacc_vf_f32m1Op,
         vfmv_v_f_f32m1Op,
         vse32_v_f32m1Op,
+        vle32_v_f32m2Op,
+        vlse32_v_f32m2Op,
+        vse32_v_f32m2Op,
         # INT
         vle8_v_i8m1Op,
+        vlse8_v_i8m1Op,
+        vse8_v_i8m1Op,
+        vsse8_v_i8m1Op,
         vle32_v_i32m4Op,
         vwadd_vx_i16m2Op,
         vmv_v_x_i32m4Op,
@@ -558,6 +776,7 @@ RVV = Dialect(
         vsext_vf2_i16mf2Op,
         vwmacc_vx_i32m1Op,
         vwadd_wv_i32m1Op,
+        vlse32_v_i32m1Op,
         vse32_v_i32m1Op,
         vmv_v_x_i32m1Op,
     ],

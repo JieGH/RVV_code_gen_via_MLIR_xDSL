@@ -8,9 +8,29 @@ set -e
 # Generates both branch kernels for CB and RB, then regenerates
 # pack_dispatch.h to keep function names in sync with block sizes.
 #
-# Usage (jump-host / same pattern as compile.sh):
+# Block sizes (NR, MR) can be set via CLI flags; defaults are NR=8, MR=8.
+# NR/MR flow end-to-end:  CLI → generate_packing.py → gen_dispatch.py
+#                               → pack_dispatch.h (regenerated) → make NR=.. MR=..
+#                               → driver_pack_check.cpp / benchmark_packing.cpp
+#                                 (via -DNR/-DMR compiler defines in Makefile)
+#
+# Usage (jump-host, default block sizes):
 #   REMOTE_PASS="<pw>" REMOTE_HOST="fej" REMOTE_PORT="3322" \
 #   ./tests/packing/compile_packing.sh \
+#       --jump \
+#       --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22
+#
+# Usage (jump-host, custom block sizes NR=7, MR=7):
+#   REMOTE_PASS="<pw>" REMOTE_HOST="fej" REMOTE_PORT="3322" \
+#   ./tests/packing/compile_packing.sh \
+#       --NR 7 --MR 7 \
+#       --jump \
+#       --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22
+#
+# Usage (jump-host, NR=16 MR=16 with VLEN=256, requires LMUL=2):
+#   REMOTE_PASS="<pw>" REMOTE_HOST="fej" REMOTE_PORT="3322" \
+#   ./tests/packing/compile_packing.sh \
+#       --NR 16 --MR 16 --vlen 256 \
 #       --jump \
 #       --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22
 #
@@ -54,6 +74,11 @@ while [[ "$#" -gt 0 ]]; do
         --riscv-workspace) RISCV_WORKSPACE="$2";     shift      ;;
         --mlir-build-dir)  MLIR_BUILD_DIR="$2";      shift      ;;
         --mlir-translate)  MLIR_TRANSLATE_PATH="$2"; shift      ;;
+        --NR)              NR="$2";                  shift      ;;
+        --MR)              MR="$2";                  shift      ;;
+        --vlen)            VLEN="$2";                shift      ;;
+        --dtype)           DTYPE="$2";               shift      ;;
+        --method)          METHOD="$2";              shift      ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
@@ -139,24 +164,35 @@ echo "  [OK] .venv activated"
 # ============================================================
 echo ""; echo "$SEP"; echo " [1/4] Generate C Code Locally"; echo "$SEP"
 
-# Configurable block sizes & dtype
-NR=8          # CB block width  (B-matrix, cols)
-MR=4          # RB block height (A-matrix, rows)
-DTYPE=fp32    # dtype suffix for generated functions
+# Block sizes & dtype — set by --NR/--MR/--dtype flags above, or defaults here.
+# This is the SINGLE PLACE to change them when no CLI flag is given.
+NR=${NR:-8}      # CB block width  (B-matrix, cols)
+MR=${MR:-8}      # RB block height (A-matrix, rows)
+VLEN=${VLEN:-256}
+DTYPE=${DTYPE:-fp32}  # dtype suffix for generated functions
+METHOD=${METHOD:-AXPY_FP32_Pack}
+
+if [ "$DTYPE" = "i8" ]; then
+    ELEM_BYTES=1
+elif [ "$DTYPE" = "fp16" ]; then
+    ELEM_BYTES=2
+else
+    ELEM_BYTES=4
+fi
 
 PYTHONPATH=src:tests/packing python tests/packing/generate_packing.py \
     --mlir-translate "$MLIR_TRANSLATE_PATH" \
-    --output tests/packing/gen/pack_v_fp32.c \
-    --NR ${NR} --MR ${MR} --elem-bytes 4 --suffix ${DTYPE}
-echo "  [OK] Generated: tests/packing/gen/pack_v_fp32.c  (NR=${NR}, MR=${MR}, dtype=${DTYPE})"
+    --output tests/packing/gen/pack_v_${METHOD}_${DTYPE}.c \
+    --NR ${NR} --MR ${MR} --vlen ${VLEN} --elem-bytes ${ELEM_BYTES} --suffix ${DTYPE} --method ${METHOD}
+echo "  [OK] Generated: tests/packing/gen/pack_v_${METHOD}_${DTYPE}.c  (NR=${NR}, MR=${MR}, dtype=${DTYPE}, method=${METHOD})"
 
 # Cleanup obsolete files
-rm -f tests/packing/test_pack_CB_v_fp32.py tests/packing/test_pack_RB_v_fp32.py
-rm -f tests/packing/gen/pack_CB_v_fp32.c* tests/packing/gen/pack_RB_v_fp32.c*
+rm -f tests/packing/test_pack_CB_v_${METHOD}_${DTYPE}.py tests/packing/test_pack_RB_v_${METHOD}_${DTYPE}.py
+rm -f tests/packing/gen/pack_CB_v_${METHOD}_${DTYPE}.c* tests/packing/gen/pack_RB_v_${METHOD}_${DTYPE}.c*
 
 # Re-generate pack_dispatch.h to match compiled function names
 PYTHONPATH=src:tests/packing python tests/packing/gen_dispatch.py \
-    --NR ${NR} --MR ${MR} --suffix ${DTYPE} \
+    --NR ${NR} --MR ${MR} --suffix ${DTYPE} --method ${METHOD} \
     --output tests/packing/pack_dispatch.h
 echo "  [OK] Generated: tests/packing/pack_dispatch.h"
 
@@ -175,7 +211,7 @@ echo "  [OK] Synced tests/packing/ → ${RSYNC_TARGET}:${REMOTE_PACKING_DIR}/"
 # ============================================================
 echo ""; echo "$SEP"; echo " [3/4] Compile on Board"; echo "$SEP"
 
-ssh_board "cd ${REMOTE_PACKING_DIR} && make clean && make"
+ssh_board "cd ${REMOTE_PACKING_DIR} && make clean && make NR=${NR} MR=${MR} DTYPE=${DTYPE} METHOD=${METHOD}"
 echo "  [OK] Compiled verify_packing on board"
 
 # ============================================================
@@ -184,6 +220,14 @@ echo "  [OK] Compiled verify_packing on board"
 echo ""; echo "$SEP"; echo " [4/4] Run Verification"; echo "$SEP"
 
 ssh_board "cd ${REMOTE_PACKING_DIR} && ./verify_packing"
+echo "  [OK] Verification passed"
+
+# ============================================================
+# [5/5] Run benchmarking on board
+# ============================================================
+echo ""; echo "$SEP"; echo " [5/5] Run Benchmark"; echo "$SEP"
+
+ssh_board "cd ${REMOTE_PACKING_DIR} && ./benchmark_packing"
 echo ""
 echo "$SEP"
 echo " Done."

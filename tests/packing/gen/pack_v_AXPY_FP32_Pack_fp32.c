@@ -2,7 +2,7 @@
 #include <algorithm>
 
 extern "C" {
-void pack_CB_v_if_fp32_RR8(float* v1, float* v2, size_t v3, size_t v4, size_t v5) {
+void pack_CB_v_if_AXPY_FP32_Pack_fp32_RR8(float* v1, float* v2, size_t v3, size_t v4, size_t v5) {
   size_t v6 = 0;
   size_t v7 = 1;
   size_t v8 = 4;
@@ -27,7 +27,7 @@ void pack_CB_v_if_fp32_RR8(float* v1, float* v2, size_t v3, size_t v4, size_t v5
   return;
 }
 
-void pack_CB_v_else_fp32_RR8(float* v1, float* v2, size_t v3, size_t v4, size_t v5) {
+void pack_CB_v_else_AXPY_FP32_Pack_fp32_RR8(float* v1, float* v2, size_t v3, size_t v4, size_t v5) {
   size_t v6 = 0;
   size_t v7 = 1;
   size_t v8 = 8;
@@ -50,10 +50,10 @@ void pack_CB_v_else_fp32_RR8(float* v1, float* v2, size_t v3, size_t v4, size_t 
   return;
 }
 
-void pack_RB_v_if_fp32_RR4(float* v1, float* v2, size_t v3, size_t v4, size_t v5) {
+void pack_RB_v_if_AXPY_FP32_Pack_fp32_RR8(float* v1, float* v2, size_t v3, size_t v4, size_t v5) {
   size_t v6 = 0;
   size_t v7 = 1;
-  size_t v8 = 4;
+  size_t v8 = 8;
   for (size_t i9 = v6; i9 < v3; i9 += v8) {
     size_t v10 = v3 - i9;
     size_t v11 = std::min(v10, v8);
@@ -73,11 +73,11 @@ void pack_RB_v_if_fp32_RR4(float* v1, float* v2, size_t v3, size_t v4, size_t v5
   return;
 }
 
-void pack_RB_v_else_fp32_RR4(float* v1, float* v2, size_t v3, size_t v4, size_t v5) {
+void pack_RB_v_else_AXPY_FP32_Pack_fp32_RR8(float* v1, float* v2, size_t v3, size_t v4, size_t v5) {
   size_t v6 = 0;
   size_t v7 = 1;
   size_t v8 = 4;
-  size_t v9 = 4;
+  size_t v9 = 8;
   for (size_t i10 = v6; i10 < v3; i10 += v9) {
     size_t v11 = v3 - i10;
     size_t v12 = std::min(v11, v9);

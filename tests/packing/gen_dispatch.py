@@ -22,7 +22,7 @@ A runtime assert ensures the caller's RR matches the compiled block size,
 catching configuration mismatches early.
 
 Usage:
-  python gen_dispatch.py --NR 8 --MR 4 --suffix fp32 --output pack_dispatch.h
+  python gen_dispatch.py --NR 8 --MR 8 --suffix fp32 --output pack_dispatch.h
 """
 
 import argparse
@@ -47,15 +47,17 @@ HEADER_TEMPLATE = """\
 #include <cassert>
 #include <cstddef>
 
+#define PACKING_METHOD "{method}"
+
 // ── Generated kernel declarations ─────────────────────────────────────────────
 extern "C" {{
     // pack_CB_v branches (NR={NR}, Col-Block packing of B)
-    void pack_CB_v_if_{suffix}_RR{NR}  ({ctype}* M, {ctype}* Mc, size_t mc, size_t nc, size_t ldM);
-    void pack_CB_v_else_{suffix}_RR{NR}({ctype}* M, {ctype}* Mc, size_t mc, size_t nc, size_t ldM);
+    void pack_CB_v_if_{method}_{suffix}_RR{NR}  ({ctype}* M, {ctype}* Mc, size_t mc, size_t nc, size_t ldM);
+    void pack_CB_v_else_{method}_{suffix}_RR{NR}({ctype}* M, {ctype}* Mc, size_t mc, size_t nc, size_t ldM);
 
     // pack_RB_v branches (MR={MR}, Row-Block packing of A)
-    void pack_RB_v_if_{suffix}_RR{MR}  ({ctype}* M, {ctype}* Mc, size_t mc, size_t nc, size_t ldM);
-    void pack_RB_v_else_{suffix}_RR{MR}({ctype}* M, {ctype}* Mc, size_t mc, size_t nc, size_t ldM);
+    void pack_RB_v_if_{method}_{suffix}_RR{MR}  ({ctype}* M, {ctype}* Mc, size_t mc, size_t nc, size_t ldM);
+    void pack_RB_v_else_{method}_{suffix}_RR{MR}({ctype}* M, {ctype}* Mc, size_t mc, size_t nc, size_t ldM);
 }}
 
 // ── pack_CB_v ─────────────────────────────────────────────────────────────────
@@ -66,9 +68,9 @@ inline void pack_CB_v(char orderM, char transM,
     assert(RR == {NR} && "pack_CB_v: RR must equal compiled NR={NR}");
     if ( ((transM=='N') && (orderM=='C')) ||
          ((transM=='T') && (orderM=='R')) )
-        pack_CB_v_if_{suffix}_RR{NR}  (M, Mc, (size_t)mc, (size_t)nc, (size_t)ldM);
+        pack_CB_v_if_{method}_{suffix}_RR{NR}  (M, Mc, (size_t)mc, (size_t)nc, (size_t)ldM);
     else
-        pack_CB_v_else_{suffix}_RR{NR}(M, Mc, (size_t)mc, (size_t)nc, (size_t)ldM);
+        pack_CB_v_else_{method}_{suffix}_RR{NR}(M, Mc, (size_t)mc, (size_t)nc, (size_t)ldM);
 }}
 
 // ── pack_RB_v ─────────────────────────────────────────────────────────────────
@@ -79,9 +81,9 @@ inline void pack_RB_v(char orderM, char transM,
     assert(RR == {MR} && "pack_RB_v: RR must equal compiled MR={MR}");
     if ( ((transM=='N') && (orderM=='C')) ||
          ((transM=='T') && (orderM=='R')) )
-        pack_RB_v_if_{suffix}_RR{MR}  (M, Mc, (size_t)mc, (size_t)nc, (size_t)ldM);
+        pack_RB_v_if_{method}_{suffix}_RR{MR}  (M, Mc, (size_t)mc, (size_t)nc, (size_t)ldM);
     else
-        pack_RB_v_else_{suffix}_RR{MR}(M, Mc, (size_t)mc, (size_t)nc, (size_t)ldM);
+        pack_RB_v_else_{method}_{suffix}_RR{MR}(M, Mc, (size_t)mc, (size_t)nc, (size_t)ldM);
 }}
 """
 
@@ -100,15 +102,15 @@ SUFFIX_TO_BYTES = {
 }
 
 
-def generate(NR: int, MR: int, suffix: str, output: str):
+def generate(NR: int, MR: int, suffix: str, output: str, method: str):
     ctype = SUFFIX_TO_CTYPE.get(suffix, "float")
     elem_bytes = SUFFIX_TO_BYTES.get(suffix, 4)
     content = HEADER_TEMPLATE.format(
-        NR=NR, MR=MR, suffix=suffix, ctype=ctype, elem_bytes=elem_bytes
+        NR=NR, MR=MR, suffix=suffix, ctype=ctype, elem_bytes=elem_bytes, method=method
     )
     with open(output, "w") as f:
         f.write(content)
-    print(f"✅ Generated: {output}  (NR={NR}, MR={MR}, dtype={suffix})")
+    print(f"✅ Generated: {output}  (NR={NR}, MR={MR}, dtype={suffix}, method={method})")
 
 
 if __name__ == "__main__":
@@ -117,11 +119,12 @@ if __name__ == "__main__":
         "--NR", type=int, default=8, help="CB block width  (B-matrix tile cols)"
     )
     p.add_argument(
-        "--MR", type=int, default=4, help="RB block height (A-matrix tile rows)"
+        "--MR", type=int, default=8, help="RB block height (A-matrix tile rows)"
     )
     p.add_argument(
         "--suffix", type=str, default="fp32", help="dtype suffix: fp32|fp16|i8|i32"
     )
     p.add_argument("--output", type=str, default="tests/packing/pack_dispatch.h")
+    p.add_argument("--method", type=str, default="AXPY_FP32_Pack", help="Packing method identifier")
     args = p.parse_args()
-    generate(args.NR, args.MR, args.suffix, args.output)
+    generate(args.NR, args.MR, args.suffix, args.output, args.method)

@@ -3,7 +3,7 @@
 // ------------------------------------------------------------
 // Precision : fp32
 // Types     : A=float, B=float, C=float
-// Generation: 2026-04-28 16:00:07
+// Generation: 2026-06-29 12:48:36
 // ============================================================
 #include "kernels_RVV_8x8_fp32.h"
 #include <riscv_vector.h>
@@ -18,7 +18,7 @@
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -70,7 +70,7 @@ void gemm_RVV_1x1_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -123,7 +123,7 @@ void gemm_RVV_1x1_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -186,7 +186,7 @@ void gemm_RVV_1x2_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -251,7 +251,7 @@ void gemm_RVV_1x2_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -326,7 +326,7 @@ void gemm_RVV_1x3_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -405,7 +405,7 @@ void gemm_RVV_1x3_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -492,7 +492,7 @@ void gemm_RVV_1x4_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -585,7 +585,7 @@ void gemm_RVV_1x4_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -684,7 +684,7 @@ void gemm_RVV_1x5_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -791,7 +791,7 @@ void gemm_RVV_1x5_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -902,7 +902,7 @@ void gemm_RVV_1x6_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -1023,7 +1023,7 @@ void gemm_RVV_1x6_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -1146,7 +1146,7 @@ void gemm_RVV_1x7_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -1281,7 +1281,7 @@ void gemm_RVV_1x7_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -1416,7 +1416,7 @@ void gemm_RVV_1x8_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 1
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -1565,7 +1565,7 @@ void gemm_RVV_1x8_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -1617,7 +1617,7 @@ void gemm_RVV_2x1_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -1670,7 +1670,7 @@ void gemm_RVV_2x1_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -1733,7 +1733,7 @@ void gemm_RVV_2x2_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -1798,7 +1798,7 @@ void gemm_RVV_2x2_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -1873,7 +1873,7 @@ void gemm_RVV_2x3_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -1952,7 +1952,7 @@ void gemm_RVV_2x3_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -2039,7 +2039,7 @@ void gemm_RVV_2x4_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -2132,7 +2132,7 @@ void gemm_RVV_2x4_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -2231,7 +2231,7 @@ void gemm_RVV_2x5_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -2338,7 +2338,7 @@ void gemm_RVV_2x5_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -2449,7 +2449,7 @@ void gemm_RVV_2x6_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -2570,7 +2570,7 @@ void gemm_RVV_2x6_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -2693,7 +2693,7 @@ void gemm_RVV_2x7_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -2828,7 +2828,7 @@ void gemm_RVV_2x7_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -2963,7 +2963,7 @@ void gemm_RVV_2x8_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 2
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -3112,7 +3112,7 @@ void gemm_RVV_2x8_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 3
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -3164,7 +3164,7 @@ void gemm_RVV_3x1_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 3
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -3217,7 +3217,7 @@ void gemm_RVV_3x1_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 3
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -3280,7 +3280,7 @@ void gemm_RVV_3x2_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 3
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -3345,7 +3345,7 @@ void gemm_RVV_3x2_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 3
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -3420,7 +3420,7 @@ void gemm_RVV_3x3_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 3
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -3499,7 +3499,7 @@ void gemm_RVV_3x3_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 3
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -3586,7 +3586,7 @@ void gemm_RVV_3x4_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 3
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -3679,7 +3679,7 @@ void gemm_RVV_3x4_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 3
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -3778,7 +3778,7 @@ void gemm_RVV_3x5_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:06
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 3
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -3885,7 +3885,7 @@ void gemm_RVV_3x5_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 3
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -3996,7 +3996,7 @@ void gemm_RVV_3x6_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:35
 //   MR         : 3
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -4117,7 +4117,7 @@ void gemm_RVV_3x6_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 3
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -4240,7 +4240,7 @@ void gemm_RVV_3x7_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 3
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -4375,7 +4375,7 @@ void gemm_RVV_3x7_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 3
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -4510,7 +4510,7 @@ void gemm_RVV_3x8_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 3
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -4659,7 +4659,7 @@ void gemm_RVV_3x8_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -4711,7 +4711,7 @@ void gemm_RVV_4x1_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -4764,7 +4764,7 @@ void gemm_RVV_4x1_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -4827,7 +4827,7 @@ void gemm_RVV_4x2_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -4892,7 +4892,7 @@ void gemm_RVV_4x2_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -4967,7 +4967,7 @@ void gemm_RVV_4x3_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -5046,7 +5046,7 @@ void gemm_RVV_4x3_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -5133,7 +5133,7 @@ void gemm_RVV_4x4_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -5226,7 +5226,7 @@ void gemm_RVV_4x4_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -5325,7 +5325,7 @@ void gemm_RVV_4x5_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -5432,7 +5432,7 @@ void gemm_RVV_4x5_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -5543,7 +5543,7 @@ void gemm_RVV_4x6_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -5664,7 +5664,7 @@ void gemm_RVV_4x6_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -5787,7 +5787,7 @@ void gemm_RVV_4x7_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -5922,7 +5922,7 @@ void gemm_RVV_4x7_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -6057,7 +6057,7 @@ void gemm_RVV_4x8_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 4
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -6206,7 +6206,7 @@ void gemm_RVV_4x8_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -6258,7 +6258,7 @@ void gemm_RVV_5x1_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -6311,7 +6311,7 @@ void gemm_RVV_5x1_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -6374,7 +6374,7 @@ void gemm_RVV_5x2_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -6439,7 +6439,7 @@ void gemm_RVV_5x2_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -6514,7 +6514,7 @@ void gemm_RVV_5x3_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -6593,7 +6593,7 @@ void gemm_RVV_5x3_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -6680,7 +6680,7 @@ void gemm_RVV_5x4_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -6773,7 +6773,7 @@ void gemm_RVV_5x4_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -6872,7 +6872,7 @@ void gemm_RVV_5x5_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -6979,7 +6979,7 @@ void gemm_RVV_5x5_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -7090,7 +7090,7 @@ void gemm_RVV_5x6_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -7211,7 +7211,7 @@ void gemm_RVV_5x6_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -7334,7 +7334,7 @@ void gemm_RVV_5x7_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -7469,7 +7469,7 @@ void gemm_RVV_5x7_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -7604,7 +7604,7 @@ void gemm_RVV_5x8_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 5
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -7753,7 +7753,7 @@ void gemm_RVV_5x8_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -7805,7 +7805,7 @@ void gemm_RVV_6x1_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -7858,7 +7858,7 @@ void gemm_RVV_6x1_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -7921,7 +7921,7 @@ void gemm_RVV_6x2_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -7986,7 +7986,7 @@ void gemm_RVV_6x2_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -8061,7 +8061,7 @@ void gemm_RVV_6x3_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -8140,7 +8140,7 @@ void gemm_RVV_6x3_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -8227,7 +8227,7 @@ void gemm_RVV_6x4_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -8320,7 +8320,7 @@ void gemm_RVV_6x4_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -8419,7 +8419,7 @@ void gemm_RVV_6x5_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -8526,7 +8526,7 @@ void gemm_RVV_6x5_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -8637,7 +8637,7 @@ void gemm_RVV_6x6_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -8758,7 +8758,7 @@ void gemm_RVV_6x6_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -8881,7 +8881,7 @@ void gemm_RVV_6x7_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -9016,7 +9016,7 @@ void gemm_RVV_6x7_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -9151,7 +9151,7 @@ void gemm_RVV_6x8_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 6
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -9300,7 +9300,7 @@ void gemm_RVV_6x8_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -9352,7 +9352,7 @@ void gemm_RVV_7x1_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -9405,7 +9405,7 @@ void gemm_RVV_7x1_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -9468,7 +9468,7 @@ void gemm_RVV_7x2_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -9533,7 +9533,7 @@ void gemm_RVV_7x2_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -9608,7 +9608,7 @@ void gemm_RVV_7x3_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -9687,7 +9687,7 @@ void gemm_RVV_7x3_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -9774,7 +9774,7 @@ void gemm_RVV_7x4_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -9867,7 +9867,7 @@ void gemm_RVV_7x4_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -9966,7 +9966,7 @@ void gemm_RVV_7x5_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -10073,7 +10073,7 @@ void gemm_RVV_7x5_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -10184,7 +10184,7 @@ void gemm_RVV_7x6_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -10305,7 +10305,7 @@ void gemm_RVV_7x6_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -10428,7 +10428,7 @@ void gemm_RVV_7x7_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -10563,7 +10563,7 @@ void gemm_RVV_7x7_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -10698,7 +10698,7 @@ void gemm_RVV_7x8_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 7
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -10847,7 +10847,7 @@ void gemm_RVV_7x8_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -10899,7 +10899,7 @@ void gemm_RVV_8x1_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 1
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -10952,7 +10952,7 @@ void gemm_RVV_8x1_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -11015,7 +11015,7 @@ void gemm_RVV_8x2_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 2
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -11080,7 +11080,7 @@ void gemm_RVV_8x2_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -11155,7 +11155,7 @@ void gemm_RVV_8x3_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 3
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -11234,7 +11234,7 @@ void gemm_RVV_8x3_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -11321,7 +11321,7 @@ void gemm_RVV_8x4_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 4
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -11414,7 +11414,7 @@ void gemm_RVV_8x4_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -11513,7 +11513,7 @@ void gemm_RVV_8x5_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 5
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -11620,7 +11620,7 @@ void gemm_RVV_8x5_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -11731,7 +11731,7 @@ void gemm_RVV_8x6_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 6
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -11852,7 +11852,7 @@ void gemm_RVV_8x6_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -11975,7 +11975,7 @@ void gemm_RVV_8x7_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 7
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -12110,7 +12110,7 @@ void gemm_RVV_8x7_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -12245,7 +12245,7 @@ void gemm_RVV_8x8_b0_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
 // ============================================================
 // xDSL Generated Kernel
 // ------------------------------------------------------------
-//   Generated   : 2026-04-28 16:00:07
+//   Generated   : 2026-06-29 12:48:36
 //   MR         : 8
 //   NR         : 8
 //   VLEN       : 8  (fp32 elements per vector register)
@@ -12381,3 +12381,6 @@ void gemm_RVV_8x8_b1_col_fp32(void* ctxt, int v1, float* v2, float* v3, int v4, 
   __riscv_vse32_v_f32m1(v108, v94, v19);
   return;
 }
+
+
+
