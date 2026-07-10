@@ -1,0 +1,23 @@
+{
+    "datatype": "fp32",
+    "method": "AXPY_FP32_Pack",
+    "vlen": 256,
+    "arch": "jbpi2",
+    "mr_nr_family": [
+        [
+            4,
+            4
+        ],
+        [
+            4,
+            8
+        ],
+        [
+            8,
+            8
+        ]
+    ],
+    "datasets": [
+        "project_sample.dat"
+    ]
+}

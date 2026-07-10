@@ -1,0 +1,309 @@
+import os
+import sys
+import subprocess
+import argparse
+import shutil
+
+# Add parent directories to Python path so we can import the old modules
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../gemm_blis_xdsl')))
+
+from test_codeGeneration import build_gemm, BetaMode
+from macro_builder import build_macro_module
+from pack_builder import build_pack_module
+
+from config import BLISProjectConfig
+from cache_config import get_optim_mc_nc_kc
+
+from xdsl.ir import Block, Attribute
+from xdsl.dialects.builtin import ModuleOp, IndexType, Float32Type, MemRefType, StringAttr, SymbolRefAttr
+from xdsl.printer import Printer
+from xdsl.dialects import func
+from xdsl.context import Context
+from xdsl.dialects import arith, builtin, func as func_dialect, memref, scf
+
+from xdsltemplate.dialects.rvv import RVV
+from xdsltemplate.transforms.arith_to_emitc import ArithToEmitCPass
+from xdsltemplate.transforms.gemm_to_arith import GemmToArithPass
+from xdsltemplate.transforms.memref_load_to_emitc import MemrefLoadToEmitcPass
+from xdsltemplate.transforms.memref_store_to_emitc import MemrefStoreToEmitcPass
+from xdsltemplate.transforms.memref_to_emitc import MemRefToEmitCPass
+from xdsltemplate.transforms.rvv_to_emitc import RVVToEmitCPass
+from xdsltemplate.transforms.scf_to_emitc import SCFToEmitCPass
+
+def merge_modules(*modules: ModuleOp) -> ModuleOp:
+    merged_mod = ModuleOp([])
+    for mod in modules:
+        for op in list(mod.body.block.ops):
+            if isinstance(op, func_dialect.FuncOp):
+                op.detach()
+                merged_mod.body.block.add_op(op)
+    return merged_mod
+
+def rename_symbols(mod: ModuleOp, rename_map: dict):
+    """
+    Renames all FuncOps and CallOps according to the rename_map.
+    rename_map is { old_name_string : new_name_string }
+    """
+    def walk_and_rename(region):
+        for block in region.blocks:
+            for op in block.ops:
+                if isinstance(op, func_dialect.CallOp):
+                    callee_name = op.callee.string_value()
+                    if callee_name in rename_map:
+                        op.callee = SymbolRefAttr(rename_map[callee_name])
+                elif op.name == "emitc.call_opaque":
+                    if "callee" in op.attributes:
+                        callee_name = op.attributes["callee"].data
+                        print(f"[DEBUG] Found emitc.call_opaque with callee = {callee_name}")
+                        if callee_name in rename_map:
+                            print(f"[DEBUG] Renaming {callee_name} -> {rename_map[callee_name]}")
+                            from xdsl.dialects.builtin import StringAttr
+                            op.attributes["callee"] = StringAttr(rename_map[callee_name])
+                    elif hasattr(op, "callee"):
+                        callee_name = op.callee.data
+                        print(f"[DEBUG] Found emitc.call_opaque property callee = {callee_name}")
+                        if callee_name in rename_map:
+                            new_name = rename_map[callee_name]
+                            if callee_name == "gemm_microkernel_v":
+                                new_name = new_name.replace("gemm_microkernel_v_", "gemm_microkernel_v_wrapper_")
+                            print(f"[DEBUG] Renaming property {callee_name} -> {new_name}")
+                            from xdsl.dialects.builtin import StringAttr
+                            op.callee = StringAttr(new_name)
+                # Recursively walk regions
+                for r in op.regions:
+                    walk_and_rename(r)
+
+    for op in mod.body.block.ops:
+        if isinstance(op, func_dialect.FuncOp):
+            current_name = op.sym_name.data
+            
+            # Check if this function needs renaming
+            if current_name in rename_map:
+                op.sym_name = StringAttr(rename_map[current_name])
+                
+            # Rename any calls inside this function recursively
+            walk_and_rename(op.body)
+
+def generate_header(config: BLISProjectConfig, out_dir: str, generated_variants: list):
+    """Generates the C++ header for the generated kernel variants."""
+    header_path = os.path.join(out_dir, "generated_kernels.h")
+    with open(header_path, "w") as f:
+        f.write("#ifndef GENERATED_KERNELS_H\n")
+        f.write("#define GENERATED_KERNELS_H\n\n")
+        f.write("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n")
+        
+        for variant in generated_variants:
+            f.write(f"// Cache config: MC={variant['mc']}, NC={variant['nc']}, KC={variant['kc']}\n")
+            f.write(f"void {variant['macro_name']}(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc);\n\n")
+            
+        f.write("typedef void (*gemm_macro_fn)(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc);\n\n")
+        f.write("struct KernelVariant {\n")
+        f.write("    const char* name;\n")
+        f.write("    int mr;\n")
+        f.write("    int nr;\n")
+        f.write("    int mc;\n")
+        f.write("    int nc;\n")
+        f.write("    int kc;\n")
+        f.write("    gemm_macro_fn func;\n")
+        f.write("};\n\n")
+        
+        f.write("static const KernelVariant generated_variants[] = {\n")
+        for variant in generated_variants:
+            name_str = f"MR{variant['mr']}_NR{variant['nr']}"
+            f.write(f"    {{\"{name_str}\", {variant['mr']}, {variant['nr']}, {variant['mc']}, {variant['nc']}, {variant['kc']}, {variant['macro_name']}}},\n")
+        f.write("};\n\n")
+        f.write(f"static const int num_variants = {len(generated_variants)};\n\n")
+        
+        f.write("#ifdef __cplusplus\n}\n#endif\n\n")
+        f.write("#endif // GENERATED_KERNELS_H\n")
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, required=True, help="Path to JSON config file")
+    parser.add_argument("--mlir-translate", type=str, default="/home/jlei/Documents/ws_MLIR/llvm_pj_dir_06092025/llvm-project/build/bin/mlir-translate")
+    args = parser.parse_args()
+
+    # 1. Load config
+    config = BLISProjectConfig.from_json(args.config)
+    print(f"Loaded config: {args.config}")
+    
+    # Create project directory
+    out_dir = f"pj_gen/{config.datatype}_{config.method}_vlen{config.vlen}"
+    os.makedirs(out_dir, exist_ok=True)
+    
+    # To keep track of what we generated for the header
+    generated_variants = []
+    
+    # Setup xDSL Context
+    ctx = Context()
+    ctx.load_dialect(builtin.Builtin)
+    ctx.load_dialect(func_dialect.Func)
+    ctx.load_dialect(memref.MemRef)
+    ctx.load_dialect(arith.Arith)
+    ctx.load_dialect(scf.Scf)
+    ctx.load_dialect(RVV)
+    
+    pass_pipeline = [
+        GemmToArithPass(),
+        MemRefToEmitCPass(),
+        ArithToEmitCPass(),
+        MemrefLoadToEmitcPass(),
+        MemrefStoreToEmitcPass(),
+        SCFToEmitCPass(),
+        RVVToEmitCPass(),
+    ]
+    
+    # 2. Iterate through families
+    for mr, nr in config.mr_nr_family:
+        print(f"\\n[+] Generating variant MR={mr}, NR={nr}")
+        
+        # Calculate optimal cache bounds via the python analytical model
+        mc, nc, kc = get_optim_mc_nc_kc(config.arch, dataSize=4, mr=mr, nr=nr)
+        print(f"    Dynamic Cache Config: MC={mc}, NC={nc}, KC={kc}")
+        
+        vlen_elements = config.vlen // 32
+        
+        # Build Micro-Kernels for all mr x nr edge cases
+        micro_modules = []
+        suffix = f"{config.datatype}_MR{mr}_NR{nr}"
+        micro_rename_map = {}
+        
+        # We need a list of generated combinations for the C++ dispatch
+        generated_microkernels = []
+        
+        for m_idx in range(1, mr + 1):
+            for n_idx in range(1, nr + 1):
+                mic_mod = build_gemm(mr=m_idx, nr=n_idx, vlen=vlen_elements, beta=BetaMode.B0, precision=config.datatype)
+                
+                # Default name generated by build_gemm
+                default_name = f"xdsl_api_gemm_RVV_{m_idx}x{n_idx}_b0_col_{config.datatype}"
+                new_name = f"gemm_microkernel_v_{suffix}_{m_idx}x{n_idx}"
+                
+                micro_rename_map[default_name] = new_name
+                micro_modules.append(mic_mod)
+                generated_microkernels.append((m_idx, n_idx, new_name))
+        
+        # Build Macro-Kernel
+        macro_mod = build_macro_module(
+            MC=mc, NC=nc, KC=kc, 
+            MR=mr, NR=nr, 
+            orderA="C", transA="N", 
+            orderB="C", transB="N", 
+            orderC="C", suffix=config.datatype
+        )
+        default_macro_name = f"gemm_blis_v_CN_CN_C_{config.datatype}"
+        
+        # Build Pack Module
+        f32 = Float32Type()
+        mem_f32 = MemRefType(f32, [-1])
+        idx = IndexType()
+        pack_mod = build_pack_module(idx, mem_f32, NR=nr, MR=mr, elem_bytes=4, suffix=config.datatype)
+        
+        # Merge modules
+        merged_mod = merge_modules(*micro_modules, macro_mod, pack_mod)
+        
+        # Create Renaming Map to safely unique everything and link macro to micro/pack
+        rename_map = {
+            "gemm_microkernel_v_dispatch": f"gemm_microkernel_v_dispatch_{suffix}", # How the macro calls it
+            default_macro_name: f"gemm_macro_v_{suffix}",
+            f"pack_CB_v_if_{config.datatype}_RR{nr}": f"pack_CB_v_if_{suffix}",
+            f"pack_CB_v_else_{config.datatype}_RR{nr}": f"pack_CB_v_else_{suffix}",
+            f"pack_RB_v_if_{config.datatype}_RR{mr}": f"pack_RB_v_if_{suffix}",
+            f"pack_RB_v_else_{config.datatype}_RR{mr}": f"pack_RB_v_else_{suffix}",
+        }
+        
+        rename_map.update(micro_rename_map)
+        
+        rename_symbols(merged_mod, rename_map)
+        
+        # Apply Passes
+        for p in pass_pipeline:
+            p.apply(ctx, merged_mod)
+            
+        # Output MLIR
+        mlir_path = os.path.join(out_dir, f"gemm_full_xdsl_MR{mr}_NR{nr}.mlir")
+        with open(mlir_path, "w") as f:
+            Printer(stream=f, print_generic_format=True).print_op(merged_mod)
+            
+        # Lower to C++
+        c_path = os.path.join(out_dir, f"gemm_full_xdsl_MR{mr}_NR{nr}.cpp")
+        try:
+            subprocess.run(
+                [
+                    args.mlir_translate,
+                    "-allow-unregistered-dialect",
+                    "-mlir-to-cpp",
+                    mlir_path,
+                    "-o",
+                    c_path,
+                ],
+                check=True
+            )
+            
+            # Prepend necessary standard includes
+            with open(c_path, "r") as f:
+                c_code = f.read()
+            with open(c_path, "w") as f:
+                macros = "#define GET_PTR(ptr, off) (ptr + off)\n#define GET_BETA(pc, beta) (pc == 0 ? beta : 1.0f)\n\n"
+                
+                # Forward declarations and wrapper
+                fwd_decls = f"""extern "C" {{
+void pack_CB_v_if_{suffix}(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_{suffix}(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_{suffix}(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_{suffix}(float*, float*, size_t, size_t, size_t);
+"""
+                for m_idx, n_idx, new_name in generated_microkernels:
+                    fwd_decls += f"void {new_name}(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);\n"
+                
+                dispatch_body = f"void gemm_microkernel_v_dispatch_{suffix}(size_t mr, size_t nr, size_t kc, float alpha, float* Ac, float* Bc, float beta, float* C, size_t ldc) {{\n"
+                for m_idx, n_idx, new_name in generated_microkernels:
+                    dispatch_body += f"    if (mr == {m_idx} && nr == {n_idx}) {{ {new_name}((size_t)kc, &alpha, Ac, (size_t)mr, Bc, (size_t)nr, &beta, C, (size_t)ldc); return; }}\n"
+                dispatch_body += f"}}\n"
+                
+                fwd_decls += f"\n{dispatch_body}"
+                fwd_decls += f"""
+void gemm_microkernel_v_wrapper_{suffix}(int32_t mr, int32_t nr, int32_t kc, float alpha, float* Ac, float* Bc, float beta, float* C, int32_t ldc) {{
+    gemm_microkernel_v_dispatch_{suffix}((size_t)mr, (size_t)nr, (size_t)kc, alpha, Ac, Bc, beta, C, (size_t)ldc);
+}}
+}}
+"""
+                f.write("#include <stddef.h>\n#include <stdint.h>\n#include <algorithm>\n#include <riscv_vector.h>\n\n" + macros + fwd_decls + "\nextern \"C\" {\n" + c_code + "\n}\n")
+                
+            print(f"    -> Lowered to {c_path}")
+        except subprocess.CalledProcessError as e:
+            print(f"    -> Failed to lower to C: {e}")
+            
+        generated_variants.append({
+            "mr": mr, "nr": nr, 
+            "mc": mc, "nc": nc, "kc": kc,
+            "macro_name": f"gemm_macro_v_{suffix}"
+        })
+        
+    # Generate the C++ header
+    generate_header(config, out_dir, generated_variants)
+    print(f"\\n[+] Generated header: {os.path.join(out_dir, 'generated_kernels.h')}")
+    
+    # 3. Copy static templates
+    templates_dir = os.path.join(os.path.dirname(__file__), "templates")
+    shutil.copy(os.path.join(templates_dir, "driver_benchmark.cpp"), out_dir)
+    
+    # Process Makefile to optionally restrict datasets
+    makefile_path = os.path.join(templates_dir, "Makefile")
+    with open(makefile_path, "r") as f:
+        makefile_content = f.read()
+    
+    if config.datasets and len(config.datasets) > 0:
+        datasets_str = " ".join([f"../../datasets/{d}" for d in config.datasets])
+        makefile_content = makefile_content.replace(
+            "DATASETS_PATTERN ?= ../../datasets/*.dat", 
+            f"DATASETS_PATTERN ?= {datasets_str}"
+        )
+        print(f"[+] Configured Makefile to run specific datasets: {', '.join(config.datasets)}")
+        
+    with open(os.path.join(out_dir, "Makefile"), "w") as f:
+        f.write(makefile_content)
+
+if __name__ == "__main__":
+    main()

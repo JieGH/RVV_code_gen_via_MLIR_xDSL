@@ -200,7 +200,7 @@ def build_macro_module(
     Bc_ptr = ir_builder.get_ptr(Bc, off_Bc)
 
     ir_builder.call_opaque(
-        "gemm_microkernel_v", [mr, nr, kc, alpha, Ac_ptr, Bc_ptr, betaI, Cptr, ldC]
+        "gemm_microkernel_v_dispatch", [mr, nr, kc, alpha, Ac_ptr, Bc_ptr, betaI, Cptr, ldC]
     )
 
     # ── Wire loop nest (inside-out): each body block receives its ForOp ────────
