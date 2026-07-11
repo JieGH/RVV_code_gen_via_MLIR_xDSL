@@ -243,14 +243,16 @@ int main(int argc, char** argv) {
     cout << "| " << left << setw(18) << "Dataset" 
          << " | " << left << setw(28) << "Dimensions (M x N x K)" 
          << " | " << left << setw(13) << "Variant" 
-         << " | " << left << setw(15) << "Validation" 
+         << " | " << left << setw(14) << "Validation" 
          << " | " << left << setw(10) << "GFLOPS" 
+         << " | " << left << setw(15) << "RVV Time" 
          << " | " << left << setw(23) << "C++ Scalar Ref Time" << " |" << endl;
     cout << "| " << left << setw(18) << ":---" 
          << " | " << left << setw(28) << ":---" 
          << " | " << left << setw(13) << ":---" 
-         << " | " << left << setw(15) << ":---" 
+         << " | " << left << setw(14) << ":---" 
          << " | " << left << setw(10) << ":---" 
+         << " | " << left << setw(15) << ":---" 
          << " | " << left << setw(23) << ":---" << " |" << endl;
 
     string line;
@@ -292,7 +294,9 @@ int main(int argc, char** argv) {
             ref_time_str = ss.str();
         }
 
-        const int N_REPS = 5;
+        // Audit W3: adaptive rep count — tiny tiles need more reps for reliable timing
+        long long flops_total = 2LL * m * n * k;
+        const int N_REPS = (flops_total < 10000) ? 10000 : (flops_total < 1000000) ? 1000 : 5;
 
         for (int v = 0; v < num_variants; ++v) {
             const auto& variant = generated_variants[v];
@@ -301,6 +305,9 @@ int main(int argc, char** argv) {
             size_t padded_nc = ((variant.nc + variant.nr - 1) / variant.nr) * variant.nr;
             float* Ac = alloc_aligned(padded_mc * variant.kc);
             float* Bc = alloc_aligned(variant.kc * padded_nc);
+            // Audit W4: zero-init pack buffers — defensive against stale data in padded regions
+            memset(Ac, 0, padded_mc * variant.kc * sizeof(float));
+            memset(Bc, 0, variant.kc * padded_nc * sizeof(float));
 
             // Re-initialize C for this variant
             for (size_t i = 0; i < (size_t)(ldc * n); ++i) C[i] = 0.0f;
@@ -310,33 +317,32 @@ int main(int argc, char** argv) {
 
             string status = "SKIP";
             if (do_ref) {
-                double error = 0.0;
-                double nrm = 0.0;
-                double tmp = 0.0;
+                // Audit B1: correct relative Frobenius norm — nrm accumulates Cg^2, not Cg^4
+                double error = 0.0;   // sum of squared element-wise differences
+                double nrm   = 0.0;   // sum of squared reference elements
                 int mismatched = 0;
-                // Legacy error computation
                 for (size_t j = 0; j < (size_t)n; ++j) {
                     for (size_t i = 0; i < (size_t)m; ++i) {
-                        tmp = (double) Cg[j * ldc + i] * Cg[j * ldc + i];
-                        nrm += tmp * tmp;
-                        tmp = (double) std::abs(Cg[j * ldc + i] - C[j * ldc + i]);
-                        error += tmp * tmp;
-                        
-                        // Track first few mismatches for debugging
-                        if (tmp > 1e-4 && mismatched < 5) {
+                        double ref_val  = (double) Cg[j * ldc + i];
+                        double diff_val = std::abs(ref_val - (double) C[j * ldc + i]);
+                        nrm   += ref_val  * ref_val;    // B1 fix: was tmp*tmp (i.e. Cg^4)
+                        error += diff_val * diff_val;
+
+                        // Per-element debug: absolute diff > adaptive tolerance
+                        double abs_tol = std::max(1e-4, std::abs(ref_val) * 1e-4);
+                        if (diff_val > abs_tol && mismatched < 5) {
                             if (mismatched == 0) cout << endl << "  [MISMATCH DETECTED] " << variant.name << endl;
-                            cout << "    C[" << i << "," << j << "] -> Ref: " << Cg[j * ldc + i] << " | RVV: " << C[j * ldc + i] << " | Diff: " << tmp << endl;
+                            cout << "    C[" << i << "," << j << "] -> Ref: " << ref_val
+                                 << " | RVV: " << C[j * ldc + i] << " | Diff: " << diff_val << endl;
                             mismatched++;
                         }
                     }
                 }
-                if (nrm != 0.0) {
-                    error = sqrt(error) / sqrt(nrm);
-                } else {
-                    error = sqrt(error);
-                }
-                
-                if (error > 1e-4) status = "FAIL";
+                double rel_error = (nrm != 0.0) ? sqrt(error) / sqrt(nrm) : sqrt(error);
+
+                // Audit W1: K-adaptive threshold — fp32 accumulates ~K * eps_machine error
+                double tol = std::max(1e-5, (double)k * 1.5e-7);
+                if (rel_error > tol) status = "FAIL";
                 else status = "PASS";
             }
 
@@ -370,7 +376,13 @@ int main(int argc, char** argv) {
 
                 stringstream gflops_ss;
                 gflops_ss << fixed << setprecision(4) << gflops;
-                cout << left << setw(10) << gflops_ss.str() << " | " << left << setw(23) << current_ref_time << " |" << endl;
+                
+                stringstream rvv_time_ss;
+                rvv_time_ss << fixed << setprecision(4) << avg_time << "s";
+                
+                cout << left << setw(10) << gflops_ss.str() 
+                     << " | " << left << setw(15) << rvv_time_ss.str()
+                     << " | " << left << setw(23) << current_ref_time << " |" << endl;
             }
             
             free(Ac);
