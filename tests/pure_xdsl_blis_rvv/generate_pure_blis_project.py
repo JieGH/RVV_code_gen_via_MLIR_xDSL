@@ -222,7 +222,9 @@ def main():
                     beta=BetaMode.B0,
                     precision=config.datatype,
                 )
-                default_name_b0 = f"xdsl_api_gemm_RVV_{m_idx}x{n_idx}_b0_col_{config.datatype}"
+                default_name_b0 = (
+                    f"xdsl_api_gemm_RVV_{m_idx}x{n_idx}_b0_col_{config.datatype}"
+                )
                 new_name_b0 = f"gemm_microkernel_v_{suffix}_{m_idx}x{n_idx}_b0"
                 micro_rename_map[default_name_b0] = new_name_b0
                 micro_modules.append(mic_mod_b0)
@@ -236,7 +238,9 @@ def main():
                     beta=BetaMode.B1,
                     precision=config.datatype,
                 )
-                default_name_b1 = f"xdsl_api_gemm_RVV_{m_idx}x{n_idx}_b1_col_{config.datatype}"
+                default_name_b1 = (
+                    f"xdsl_api_gemm_RVV_{m_idx}x{n_idx}_b1_col_{config.datatype}"
+                )
                 new_name_b1 = f"gemm_microkernel_v_{suffix}_{m_idx}x{n_idx}_b1"
                 micro_rename_map[default_name_b1] = new_name_b1
                 micro_modules.append(mic_mod_b1)
@@ -311,6 +315,9 @@ def main():
             with open(c_path) as f:
                 c_code = f.read()
             with open(c_path, "w") as f:
+                # NOTE (Audit F2): GET_BETA only supports beta in {0.0f, 1.0f}.
+                # Arbitrary beta values (e.g. 0.5f) will silently produce wrong results
+                # for K > KC (multi-block accumulation). This is a known BLIS design constraint.
                 macros = "#define GET_PTR(ptr, off) (ptr + off)\n#define GET_BETA(pc, beta) (pc == 0 ? beta : 1.0f)\n\n"
 
                 # Forward declarations and wrapper
@@ -329,9 +336,13 @@ void pack_RB_v_else_{suffix}(float*, float*, size_t, size_t, size_t);
                 dispatch_body += "    if (beta == 0.0f) {\n"
                 for m_idx, n_idx, new_name in generated_microkernels_b0:
                     dispatch_body += f"        if (mr == {m_idx} && nr == {n_idx}) {{ {new_name}((size_t)kc, &alpha, Ac, (size_t){mr}, Bc, (size_t){nr}, &beta, C, (size_t)ldc); return; }}\n"
+                # Audit F1 fix: abort if no matching kernel found (prevents silent wrong results)
+                dispatch_body += f'        fprintf(stderr, "[GEMM DISPATCH ERROR] No B0 kernel for mr=%zu nr=%zu (max MR={mr} NR={nr})\\n", mr, nr); abort();\n'
                 dispatch_body += "    } else {\n"
                 for m_idx, n_idx, new_name in generated_microkernels_b1:
                     dispatch_body += f"        if (mr == {m_idx} && nr == {n_idx}) {{ {new_name}((size_t)kc, &alpha, Ac, (size_t){mr}, Bc, (size_t){nr}, &beta, C, (size_t)ldc); return; }}\n"
+                # Audit F1 fix: abort if no matching kernel found (prevents silent wrong results)
+                dispatch_body += f'        fprintf(stderr, "[GEMM DISPATCH ERROR] No B1 kernel for mr=%zu nr=%zu (max MR={mr} NR={nr})\\n", mr, nr); abort();\n'
                 dispatch_body += "    }\n"
                 dispatch_body += "}\n"
 
@@ -343,7 +354,7 @@ void gemm_microkernel_v_wrapper_{suffix}(int32_t mr, int32_t nr, int32_t kc, flo
 }}
 """
                 f.write(
-                    "#include <stddef.h>\n#include <stdint.h>\n#include <algorithm>\n#include <riscv_vector.h>\n\n"
+                    "#include <stddef.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <algorithm>\n#include <riscv_vector.h>\n\n"
                     + macros
                     + fwd_decls
                     + '\nextern "C" {\n'
