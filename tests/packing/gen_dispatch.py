@@ -110,7 +110,9 @@ def generate(NR: int, MR: int, suffix: str, output: str, method: str):
     )
     with open(output, "w") as f:
         f.write(content)
-    print(f"✅ Generated: {output}  (NR={NR}, MR={MR}, dtype={suffix}, method={method})")
+    print(
+        f"✅ Generated: {output}  (NR={NR}, MR={MR}, dtype={suffix}, method={method})"
+    )
 
 
 if __name__ == "__main__":
@@ -125,6 +127,8 @@ if __name__ == "__main__":
         "--suffix", type=str, default="fp32", help="dtype suffix: fp32|fp16|i8|i32"
     )
     p.add_argument("--output", type=str, default="tests/packing/pack_dispatch.h")
-    p.add_argument("--method", type=str, default="AXPY_FP32_Pack", help="Packing method identifier")
+    p.add_argument(
+        "--method", type=str, default="AXPY_FP32_Pack", help="Packing method identifier"
+    )
     args = p.parse_args()
     generate(args.NR, args.MR, args.suffix, args.output, args.method)

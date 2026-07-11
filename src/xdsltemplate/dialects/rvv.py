@@ -39,6 +39,7 @@ def compute_lmul(RR: int, elem_bytes: int, vlen_bits: int = 256) -> int:
             )
     return lmul
 
+
 # Since we need tp define rvv type
 # like   vfloat32m1_t va = __riscv_vle32_v_f32m1(a + i, vl);
 @irdl_attr_definition
@@ -286,11 +287,7 @@ class vsse8_v_i8m1Op(IRDLOperation):
         vec: SSAValue,
         avl: SSAValue,
     ):
-        super().__init__(
-            operands=[memref, offset, bstride, vec, avl], result_types=[]
-        )
-
-
+        super().__init__(operands=[memref, offset, bstride, vec, avl], result_types=[])
 
 
 @irdl_op_definition
@@ -674,9 +671,10 @@ class SetvlM2Op(IRDLOperation):
     """Set vector length for e32m2 (LMUL=2, VLMAX=16 for FP32 on VLEN=256).
     __riscv_vsetvl_e32m2(avl)
     """
+
     name = "rvv.setvl_m2"
     avl = operand_def(IndexType)
-    vl  = result_def(IndexType)
+    vl = result_def(IndexType)
 
     def __init__(self, avl: SSAValue):
         super().__init__(operands=[avl], result_types=[IndexType()])
@@ -687,11 +685,12 @@ class vle32_v_f32m2Op(IRDLOperation):
     """Unit-stride vector load, LMUL=2.
     vfloat32m2_t __riscv_vle32_v_f32m2(const float *base, size_t vl);
     """
-    name   = "rvv.vle32_v_f32m2Op"
+
+    name = "rvv.vle32_v_f32m2Op"
     memref = operand_def(MemRefType)
     offset = operand_def(IndexType)
-    avl    = operand_def(IndexType)
-    vl     = result_def(RVVFloat32M2Type)
+    avl = operand_def(IndexType)
+    vl = result_def(RVVFloat32M2Type)
 
     def __init__(self, memref: SSAValue, offset: SSAValue, avl: SSAValue):
         super().__init__(
@@ -706,15 +705,17 @@ class vlse32_v_f32m2Op(IRDLOperation):
     vfloat32m2_t __riscv_vlse32_v_f32m2(const float *base,
                                          ptrdiff_t bstride, size_t vl);
     """
-    name    = "rvv.vlse32_v_f32m2Op"
-    memref  = operand_def(MemRefType)
-    offset  = operand_def(IndexType)
-    bstride = operand_def(IndexType)
-    avl     = operand_def(IndexType)
-    result  = result_def(RVVFloat32M2Type)
 
-    def __init__(self, memref: SSAValue, offset: SSAValue,
-                 bstride: SSAValue, avl: SSAValue):
+    name = "rvv.vlse32_v_f32m2Op"
+    memref = operand_def(MemRefType)
+    offset = operand_def(IndexType)
+    bstride = operand_def(IndexType)
+    avl = operand_def(IndexType)
+    result = result_def(RVVFloat32M2Type)
+
+    def __init__(
+        self, memref: SSAValue, offset: SSAValue, bstride: SSAValue, avl: SSAValue
+    ):
         super().__init__(
             operands=[memref, offset, bstride, avl],
             result_types=[RVVFloat32M2Type()],
@@ -726,14 +727,16 @@ class vse32_v_f32m2Op(IRDLOperation):
     """Unit-stride vector store, LMUL=2.
     void __riscv_vse32_v_f32m2(float *base, vfloat32m2_t value, size_t vl);
     """
-    name   = "rvv.vse32_v_f32m2Op"
+
+    name = "rvv.vse32_v_f32m2Op"
     memref = operand_def(MemRefType)
     offset = operand_def(IndexType)
-    vec    = operand_def(RVVFloat32M2Type)
-    avl    = operand_def(IndexType)
+    vec = operand_def(RVVFloat32M2Type)
+    avl = operand_def(IndexType)
 
-    def __init__(self, memref: SSAValue, offset: SSAValue,
-                 vector: SSAValue, avl: SSAValue):
+    def __init__(
+        self, memref: SSAValue, offset: SSAValue, vector: SSAValue, avl: SSAValue
+    ):
         super().__init__(
             operands=[memref, offset, vector, avl],
             result_types=[],

@@ -25,7 +25,7 @@ sys.path.insert(0, script_dir)
 import pack_builder as pb
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, emitc, func, memref, scf
-from xdsl.dialects.builtin import Float32Type, IndexType, MemRefType, IntegerType, f16
+from xdsl.dialects.builtin import Float32Type, IndexType, IntegerType, MemRefType, f16
 from xdsl.printer import Printer
 
 from xdsltemplate.dialects.rvv import RVV
@@ -100,10 +100,17 @@ def run(
         elem_type = f16
     else:
         elem_type = Float32Type()
-    
+
     memref_ty = MemRefType(elem_type, [-1])
     module = pb.build_pack_module(
-        idx, memref_ty, NR=NR, MR=MR, elem_bytes=elem_bytes, suffix=suffix, vlen_bits=vlen_bits, method=method
+        idx,
+        memref_ty,
+        NR=NR,
+        MR=MR,
+        elem_bytes=elem_bytes,
+        suffix=suffix,
+        vlen_bits=vlen_bits,
+        method=method,
     )
     ctx = make_context()
 
@@ -138,7 +145,9 @@ def run(
 
     if method == "DOT_INT8_LANE_Pack":
         # B-side (CB) uses 8-bit strided loads and 8-bit strided stores
-        all_ok &= verify_intrinsics(fn_blocks.get(cb_if), cb_if, ["__riscv_vlse8", "__riscv_vsse8"], [])
+        all_ok &= verify_intrinsics(
+            fn_blocks.get(cb_if), cb_if, ["__riscv_vlse8", "__riscv_vsse8"], []
+        )
         # A-side (RB) uses 8-bit loads
         all_ok &= verify_intrinsics(fn_blocks.get(rb_if), rb_if, ["__riscv_vlse8"], [])
         # _else branches are intentionally empty for this method, skip checking them
@@ -193,9 +202,23 @@ if __name__ == "__main__":
     p.add_argument("--MR", type=int, default=8)
     p.add_argument("--elem-bytes", type=int, default=4)
     p.add_argument("--suffix", type=str, default="fp32")
-    p.add_argument("--vlen", type=int, default=256, help="Hardware VLEN in bits (default 256 for SpacemiT K1)")
-    p.add_argument("--method", type=str, default="AXPY_FP32_Pack", help="Packing method identifier")
+    p.add_argument(
+        "--vlen",
+        type=int,
+        default=256,
+        help="Hardware VLEN in bits (default 256 for SpacemiT K1)",
+    )
+    p.add_argument(
+        "--method", type=str, default="AXPY_FP32_Pack", help="Packing method identifier"
+    )
     args = p.parse_args()
     run(
-        args.NR, args.MR, args.elem_bytes, args.suffix, args.output, args.mlir_translate, vlen_bits=args.vlen, method=args.method
+        args.NR,
+        args.MR,
+        args.elem_bytes,
+        args.suffix,
+        args.output,
+        args.mlir_translate,
+        vlen_bits=args.vlen,
+        method=args.method,
     )

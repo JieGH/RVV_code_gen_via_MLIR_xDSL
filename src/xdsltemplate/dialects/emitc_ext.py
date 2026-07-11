@@ -142,7 +142,6 @@ class EmitCDivOp(IRDLOperation):
         super().__init__(operands=[lhs, rhs], result_types=[result_type])
 
 
-
 @irdl_op_definition
 class EmitCStoreOp(IRDLOperation):
     name = "emitc.store"
