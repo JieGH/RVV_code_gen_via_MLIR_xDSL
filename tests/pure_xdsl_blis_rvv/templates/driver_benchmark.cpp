@@ -340,8 +340,8 @@ int main(int argc, char** argv) {
                 else status = "PASS";
             }
 
-            string current_ref_time = (v == 0) ? "**" + ref_time_str + "**" : "-";
-            string label_str = "**" + label + "**";
+            string current_ref_time = ref_time_str;
+            string label_str = label;
             string dim_str = to_string(m) + "x" + to_string(n) + "x" + to_string(k);
             string var_str = string("`") + variant.name + "`";
             string status_str;
