@@ -115,6 +115,10 @@ def generate_header(config: BLISProjectConfig, out_dir: str, generated_variants:
     with open(header_path, "w") as f:
         f.write("#ifndef GENERATED_KERNELS_H\n")
         f.write("#define GENERATED_KERNELS_H\n\n")
+        f.write(f'#define CONFIG_DATATYPE "{config.datatype}"\n')
+        f.write(f'#define CONFIG_METHOD "{config.method}"\n')
+        f.write(f'#define CONFIG_VLEN {config.vlen}\n')
+        f.write(f'#define CONFIG_ARCH "{config.arch}"\n\n')
         f.write('#ifdef __cplusplus\nextern "C" {\n#endif\n\n')
 
         for variant in generated_variants:
