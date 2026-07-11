@@ -1,5 +1,10 @@
-# layer M     N     K
-A       4     4     4
-B       256   256   256
-C       512   512   512
-D       1024  1024  1024
+# layer              M       N       K
+Edge_1x1x1           1       1       1
+Edge_3x5x7           3       5       7
+MicroTile_8x8        8       8       8
+Pack_Tall            256     8       32
+Pack_Wide            8       256     32
+KC_Cross_K300        64      64      300
+Cache_Fit_L1_128     128     128     128
+Cache_Fit_L2_256     256     256     256
+Macro_Full_512       512     512     512
