@@ -1,5 +1,7 @@
-#ifndef GENERATED_KERNELS_H
-#define GENERATED_KERNELS_H
+#pragma once
+
+#include <stddef.h>
+#include <stdint.h>
 
 #define CONFIG_DATATYPE "fp32"
 #define CONFIG_METHOD "AXPY_FP32_Pack"
@@ -9,6 +11,39 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+void pack_CB_v_if_fp32_NR1(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR1(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR1(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR1(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_fp32_NR2(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR2(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR2(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR2(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_fp32_NR3(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR3(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR3(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR3(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_fp32_NR4(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR4(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR4(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR4(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_fp32_NR5(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR5(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR5(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR5(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_fp32_NR6(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR6(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR6(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR6(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_fp32_NR7(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR7(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR7(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR7(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_fp32_NR8(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR8(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR8(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR8(float*, float*, size_t, size_t, size_t);
 
 void gemm_blis_v_fp32_MR8_NR8(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc);
 
@@ -174,5 +209,3 @@ static const int num_variants = 49;
 #ifdef __cplusplus
 }
 #endif
-
-#endif // GENERATED_KERNELS_H

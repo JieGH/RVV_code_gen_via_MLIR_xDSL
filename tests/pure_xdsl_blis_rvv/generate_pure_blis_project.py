@@ -92,17 +92,26 @@ def rename_symbols(mod: ModuleOp, rename_map: dict):
             walk_and_rename(op.body)
 
 
-def generate_header(config: BLISProjectConfig, out_dir: str, generated_variants: list):
-    """Generates the C++ header for the generated kernel variants."""
+def generate_header(config: BLISProjectConfig, out_dir: str, generated_variants: list, max_dim: int):
     header_path = os.path.join(out_dir, "generated_kernels.h")
     with open(header_path, "w") as f:
-        f.write("#ifndef GENERATED_KERNELS_H\n")
-        f.write("#define GENERATED_KERNELS_H\n\n")
+        f.write("#pragma once\n\n")
+        f.write("#include <stddef.h>\n")
+        f.write("#include <stdint.h>\n\n")
         f.write(f'#define CONFIG_DATATYPE "{config.datatype}"\n')
         f.write(f'#define CONFIG_METHOD "{config.method}"\n')
         f.write(f'#define CONFIG_VLEN {config.vlen}\n')
         f.write(f'#define CONFIG_ARCH "{config.arch}"\n\n')
-        f.write('#ifdef __cplusplus\nextern "C" {\n#endif\n\n')
+        f.write("#ifdef __cplusplus\n")
+        f.write('extern "C" {\n')
+        f.write("#endif\n\n")
+        
+        for dim in range(1, max_dim + 1):
+            f.write(f"void pack_CB_v_if_{config.datatype}_NR{dim}(float*, float*, size_t, size_t, size_t);\n")
+            f.write(f"void pack_CB_v_else_{config.datatype}_NR{dim}(float*, float*, size_t, size_t, size_t);\n")
+            f.write(f"void pack_RB_v_if_{config.datatype}_MR{dim}(float*, float*, size_t, size_t, size_t);\n")
+            f.write(f"void pack_RB_v_else_{config.datatype}_MR{dim}(float*, float*, size_t, size_t, size_t);\n")
+        f.write("\n")
 
         for variant in generated_variants:
             f.write(
@@ -128,8 +137,9 @@ def generate_header(config: BLISProjectConfig, out_dir: str, generated_variants:
         f.write("};\n\n")
         f.write(f"static const int num_variants = {len(generated_variants)};\n\n")
 
-        f.write("#ifdef __cplusplus\n}\n#endif\n\n")
-        f.write("#endif // GENERATED_KERNELS_H\n")
+        f.write("#ifdef __cplusplus\n")
+        f.write("}\n")
+        f.write("#endif\n")
 
 
 def main():
@@ -227,9 +237,29 @@ def main():
             b1_modules.append(mic_mod_b1)
             generated_microkernels_b1.append((m_idx, n_idx, new_name_b1))
 
-    # 4. Generate BLIS and Pack for each expanded family
+    # 3.5 Generate Deduplicated Packing Modules
+    print("    -> Generating deduplicated Packing modules")
+    max_dim = max(max_mr, max_nr)
+    f32 = Float32Type()
+    mem_f32 = MemRefType(f32, [-1])
+    idx = IndexType()
+    
+    for dim in range(1, max_dim + 1):
+        pack_mod = build_pack_module(
+            idx, mem_f32, NR=dim, MR=dim, elem_bytes=4, suffix=config.datatype
+        )
+        rename_map = {
+            f"pack_CB_v_if_{config.datatype}_RR{dim}": f"pack_CB_v_if_{config.datatype}_NR{dim}",
+            f"pack_CB_v_else_{config.datatype}_RR{dim}": f"pack_CB_v_else_{config.datatype}_NR{dim}",
+            f"pack_RB_v_if_{config.datatype}_RR{dim}": f"pack_RB_v_if_{config.datatype}_MR{dim}",
+            f"pack_RB_v_else_{config.datatype}_RR{dim}": f"pack_RB_v_else_{config.datatype}_MR{dim}",
+        }
+        rename_symbols(pack_mod, rename_map)
+        pack_modules.append(pack_mod)
+
+    # 4. Generate BLIS for each expanded family
     for mr, nr in expanded_families:
-        print(f"    -> Generating BLIS/Pack for MR={mr}, NR={nr}")
+        print(f"    -> Generating BLIS for MR={mr}, NR={nr}")
         suffix = f"{config.datatype}_MR{mr}_NR{nr}"
         
         blis_mod = build_macro_module(
@@ -237,26 +267,17 @@ def main():
         )
         default_blis_name = f"gemm_blis_v_CN_CN_C_{config.datatype}"
         
-        f32 = Float32Type()
-        mem_f32 = MemRefType(f32, [-1])
-        idx = IndexType()
-        pack_mod = build_pack_module(
-            idx, mem_f32, NR=nr, MR=mr, elem_bytes=4, suffix=config.datatype
-        )
-        
         rename_map = {
             "gemm_microkernel_v_dispatch": f"gemm_microkernel_v_dispatch_{suffix}",
             default_blis_name: f"gemm_blis_v_{suffix}",
-            f"pack_CB_v_if_{config.datatype}_RR{nr}": f"pack_CB_v_if_{suffix}",
-            f"pack_CB_v_else_{config.datatype}_RR{nr}": f"pack_CB_v_else_{suffix}",
-            f"pack_RB_v_if_{config.datatype}_RR{mr}": f"pack_RB_v_if_{suffix}",
-            f"pack_RB_v_else_{config.datatype}_RR{mr}": f"pack_RB_v_else_{suffix}",
+            f"pack_CB_v_if_{config.datatype}_RR{nr}": f"pack_CB_v_if_{config.datatype}_NR{nr}",
+            f"pack_CB_v_else_{config.datatype}_RR{nr}": f"pack_CB_v_else_{config.datatype}_NR{nr}",
+            f"pack_RB_v_if_{config.datatype}_RR{mr}": f"pack_RB_v_if_{config.datatype}_MR{mr}",
+            f"pack_RB_v_else_{config.datatype}_RR{mr}": f"pack_RB_v_else_{config.datatype}_MR{mr}",
         }
         rename_symbols(blis_mod, rename_map)
-        rename_symbols(pack_mod, rename_map)
         
         blis_modules.append(blis_mod)
-        pack_modules.append(pack_mod)
         
         generated_variants.append({
             "mr": mr,
@@ -276,13 +297,14 @@ def main():
         fwd_decls += f"void {new_name}(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);\n"
 
     dispatch_body = ""
+    for dim in range(1, max_dim + 1):
+        fwd_decls += f"\nvoid pack_CB_v_if_{config.datatype}_NR{dim}(float*, float*, size_t, size_t, size_t);\n"
+        fwd_decls += f"void pack_CB_v_else_{config.datatype}_NR{dim}(float*, float*, size_t, size_t, size_t);\n"
+        fwd_decls += f"void pack_RB_v_if_{config.datatype}_MR{dim}(float*, float*, size_t, size_t, size_t);\n"
+        fwd_decls += f"void pack_RB_v_else_{config.datatype}_MR{dim}(float*, float*, size_t, size_t, size_t);\n"
+
     for mr, nr in expanded_families:
         suffix = f"{config.datatype}_MR{mr}_NR{nr}"
-        fwd_decls += f"\nvoid pack_CB_v_if_{suffix}(float*, float*, size_t, size_t, size_t);\n"
-        fwd_decls += f"void pack_CB_v_else_{suffix}(float*, float*, size_t, size_t, size_t);\n"
-        fwd_decls += f"void pack_RB_v_if_{suffix}(float*, float*, size_t, size_t, size_t);\n"
-        fwd_decls += f"void pack_RB_v_else_{suffix}(float*, float*, size_t, size_t, size_t);\n"
-        
         fwd_decls += f"\nvoid gemm_microkernel_v_dispatch_{suffix}(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);\n"
         fwd_decls += f"void gemm_microkernel_v_wrapper_{suffix}(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);\n"
         
@@ -352,7 +374,7 @@ def main():
     lower_modules(pack_modules, "gemm_pack_xdsl")
 
     # Generate the C++ header
-    generate_header(config, out_dir, generated_variants)
+    generate_header(config, out_dir, generated_variants, max_dim)
     print(f"\n[+] Generated header: {os.path.join(out_dir, 'generated_kernels.h')}")
 
     # 3. Copy static templates

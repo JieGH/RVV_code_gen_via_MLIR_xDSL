@@ -13,7 +13,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR8_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -22,7 +22,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR8_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 8 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -71,7 +71,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR8_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -80,7 +80,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR8_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 7 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -129,7 +129,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR8_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -138,7 +138,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR8_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 6 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -187,7 +187,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR8_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -196,7 +196,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR8_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 5 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -245,7 +245,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR8_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -254,7 +254,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR8_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 4 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -303,7 +303,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR8_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -312,7 +312,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR8_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 3 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -361,7 +361,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR8_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -370,7 +370,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR8_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 2 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -419,7 +419,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR7_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -428,7 +428,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR7_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 8 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -477,7 +477,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR7_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -486,7 +486,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR7_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 7 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -535,7 +535,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR7_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -544,7 +544,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR7_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 6 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -593,7 +593,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR7_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -602,7 +602,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR7_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 5 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -651,7 +651,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR7_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -660,7 +660,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR7_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 4 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -709,7 +709,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR7_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -718,7 +718,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR7_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 3 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -767,7 +767,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR7_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -776,7 +776,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR7_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 2 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -825,7 +825,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR6_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -834,7 +834,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR6_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 8 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -883,7 +883,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR6_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -892,7 +892,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR6_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 7 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -941,7 +941,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR6_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -950,7 +950,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR6_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 6 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -999,7 +999,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR6_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1008,7 +1008,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR6_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 5 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1057,7 +1057,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR6_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1066,7 +1066,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR6_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 4 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1115,7 +1115,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR6_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1124,7 +1124,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR6_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 3 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1173,7 +1173,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR6_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1182,7 +1182,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR6_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 2 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1231,7 +1231,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR5_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1240,7 +1240,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR5_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 8 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1289,7 +1289,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR5_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1298,7 +1298,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR5_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 7 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1347,7 +1347,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR5_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1356,7 +1356,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR5_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 6 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1405,7 +1405,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR5_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1414,7 +1414,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR5_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 5 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1463,7 +1463,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR5_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1472,7 +1472,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR5_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 4 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1521,7 +1521,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR5_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1530,7 +1530,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR5_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 3 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1579,7 +1579,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR5_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1588,7 +1588,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR5_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 2 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1637,7 +1637,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR4_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1646,7 +1646,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR4_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 8 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1695,7 +1695,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR4_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1704,7 +1704,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR4_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 7 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1753,7 +1753,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR4_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1762,7 +1762,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR4_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 6 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1811,7 +1811,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR4_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1820,7 +1820,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR4_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 5 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1869,7 +1869,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR4_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1878,7 +1878,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR4_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 4 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1927,7 +1927,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR4_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1936,7 +1936,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR4_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 3 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -1985,7 +1985,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR4_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -1994,7 +1994,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR4_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 2 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -2043,7 +2043,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR3_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -2052,7 +2052,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR3_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 8 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -2101,7 +2101,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR3_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -2110,7 +2110,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR3_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 7 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -2159,7 +2159,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR3_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -2168,7 +2168,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR3_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 6 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -2217,7 +2217,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR3_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -2226,7 +2226,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR3_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 5 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -2275,7 +2275,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR3_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -2284,7 +2284,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR3_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 4 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -2333,7 +2333,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR3_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -2342,7 +2342,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR3_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 3 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -2391,7 +2391,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR3_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -2400,7 +2400,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR3_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 2 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -2449,7 +2449,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR2_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -2458,7 +2458,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR2_NR8"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 8 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -2507,7 +2507,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR2_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -2516,7 +2516,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR2_NR7"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 7 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -2565,7 +2565,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR2_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -2574,7 +2574,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR2_NR6"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 6 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -2623,7 +2623,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR2_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -2632,7 +2632,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR2_NR5"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 5 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -2681,7 +2681,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR2_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -2690,7 +2690,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR2_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 4 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -2739,7 +2739,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR2_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -2748,7 +2748,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR2_NR3"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 3 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):
@@ -2797,7 +2797,7 @@
         %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
         %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
         %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR2_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
         %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
         "emitc.for"(%16, %0, %13) ({
         ^bb3(%27 : i32):
@@ -2806,7 +2806,7 @@
           %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
           %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
           %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR2_NR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR2"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
           %33 = "emitc.constant"() {value = 2 : i32} : () -> i32
           "emitc.for"(%16, %19, %33) ({
           ^bb4(%34 : i32):

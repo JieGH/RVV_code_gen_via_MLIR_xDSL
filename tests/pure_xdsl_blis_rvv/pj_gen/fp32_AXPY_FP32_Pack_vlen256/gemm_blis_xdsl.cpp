@@ -13,7 +13,7 @@ void gemm_blis_v_fp32_MR8_NR8(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR8_NR8(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR8(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -21,7 +21,7 @@ void gemm_blis_v_fp32_MR8_NR8(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR8_NR8(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR8(v33, v12, v30, v23, v6);
         int32_t v34 = 8;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -60,7 +60,7 @@ void gemm_blis_v_fp32_MR8_NR7(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR8_NR7(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR7(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -68,7 +68,7 @@ void gemm_blis_v_fp32_MR8_NR7(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR8_NR7(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR8(v33, v12, v30, v23, v6);
         int32_t v34 = 7;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -107,7 +107,7 @@ void gemm_blis_v_fp32_MR8_NR6(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR8_NR6(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR6(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -115,7 +115,7 @@ void gemm_blis_v_fp32_MR8_NR6(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR8_NR6(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR8(v33, v12, v30, v23, v6);
         int32_t v34 = 6;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -154,7 +154,7 @@ void gemm_blis_v_fp32_MR8_NR5(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR8_NR5(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR5(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -162,7 +162,7 @@ void gemm_blis_v_fp32_MR8_NR5(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR8_NR5(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR8(v33, v12, v30, v23, v6);
         int32_t v34 = 5;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -201,7 +201,7 @@ void gemm_blis_v_fp32_MR8_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR8_NR4(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR4(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -209,7 +209,7 @@ void gemm_blis_v_fp32_MR8_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR8_NR4(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR8(v33, v12, v30, v23, v6);
         int32_t v34 = 4;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -248,7 +248,7 @@ void gemm_blis_v_fp32_MR8_NR3(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR8_NR3(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR3(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -256,7 +256,7 @@ void gemm_blis_v_fp32_MR8_NR3(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR8_NR3(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR8(v33, v12, v30, v23, v6);
         int32_t v34 = 3;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -295,7 +295,7 @@ void gemm_blis_v_fp32_MR8_NR2(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR8_NR2(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR2(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -303,7 +303,7 @@ void gemm_blis_v_fp32_MR8_NR2(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR8_NR2(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR8(v33, v12, v30, v23, v6);
         int32_t v34 = 2;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -342,7 +342,7 @@ void gemm_blis_v_fp32_MR7_NR8(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR7_NR8(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR8(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -350,7 +350,7 @@ void gemm_blis_v_fp32_MR7_NR8(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR7_NR8(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR7(v33, v12, v30, v23, v6);
         int32_t v34 = 8;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -389,7 +389,7 @@ void gemm_blis_v_fp32_MR7_NR7(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR7_NR7(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR7(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -397,7 +397,7 @@ void gemm_blis_v_fp32_MR7_NR7(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR7_NR7(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR7(v33, v12, v30, v23, v6);
         int32_t v34 = 7;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -436,7 +436,7 @@ void gemm_blis_v_fp32_MR7_NR6(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR7_NR6(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR6(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -444,7 +444,7 @@ void gemm_blis_v_fp32_MR7_NR6(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR7_NR6(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR7(v33, v12, v30, v23, v6);
         int32_t v34 = 6;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -483,7 +483,7 @@ void gemm_blis_v_fp32_MR7_NR5(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR7_NR5(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR5(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -491,7 +491,7 @@ void gemm_blis_v_fp32_MR7_NR5(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR7_NR5(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR7(v33, v12, v30, v23, v6);
         int32_t v34 = 5;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -530,7 +530,7 @@ void gemm_blis_v_fp32_MR7_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR7_NR4(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR4(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -538,7 +538,7 @@ void gemm_blis_v_fp32_MR7_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR7_NR4(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR7(v33, v12, v30, v23, v6);
         int32_t v34 = 4;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -577,7 +577,7 @@ void gemm_blis_v_fp32_MR7_NR3(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR7_NR3(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR3(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -585,7 +585,7 @@ void gemm_blis_v_fp32_MR7_NR3(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR7_NR3(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR7(v33, v12, v30, v23, v6);
         int32_t v34 = 3;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -624,7 +624,7 @@ void gemm_blis_v_fp32_MR7_NR2(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR7_NR2(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR2(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -632,7 +632,7 @@ void gemm_blis_v_fp32_MR7_NR2(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR7_NR2(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR7(v33, v12, v30, v23, v6);
         int32_t v34 = 2;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -671,7 +671,7 @@ void gemm_blis_v_fp32_MR6_NR8(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR6_NR8(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR8(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -679,7 +679,7 @@ void gemm_blis_v_fp32_MR6_NR8(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR6_NR8(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR6(v33, v12, v30, v23, v6);
         int32_t v34 = 8;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -718,7 +718,7 @@ void gemm_blis_v_fp32_MR6_NR7(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR6_NR7(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR7(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -726,7 +726,7 @@ void gemm_blis_v_fp32_MR6_NR7(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR6_NR7(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR6(v33, v12, v30, v23, v6);
         int32_t v34 = 7;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -765,7 +765,7 @@ void gemm_blis_v_fp32_MR6_NR6(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR6_NR6(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR6(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -773,7 +773,7 @@ void gemm_blis_v_fp32_MR6_NR6(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR6_NR6(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR6(v33, v12, v30, v23, v6);
         int32_t v34 = 6;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -812,7 +812,7 @@ void gemm_blis_v_fp32_MR6_NR5(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR6_NR5(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR5(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -820,7 +820,7 @@ void gemm_blis_v_fp32_MR6_NR5(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR6_NR5(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR6(v33, v12, v30, v23, v6);
         int32_t v34 = 5;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -859,7 +859,7 @@ void gemm_blis_v_fp32_MR6_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR6_NR4(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR4(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -867,7 +867,7 @@ void gemm_blis_v_fp32_MR6_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR6_NR4(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR6(v33, v12, v30, v23, v6);
         int32_t v34 = 4;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -906,7 +906,7 @@ void gemm_blis_v_fp32_MR6_NR3(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR6_NR3(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR3(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -914,7 +914,7 @@ void gemm_blis_v_fp32_MR6_NR3(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR6_NR3(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR6(v33, v12, v30, v23, v6);
         int32_t v34 = 3;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -953,7 +953,7 @@ void gemm_blis_v_fp32_MR6_NR2(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR6_NR2(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR2(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -961,7 +961,7 @@ void gemm_blis_v_fp32_MR6_NR2(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR6_NR2(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR6(v33, v12, v30, v23, v6);
         int32_t v34 = 2;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1000,7 +1000,7 @@ void gemm_blis_v_fp32_MR5_NR8(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR5_NR8(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR8(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1008,7 +1008,7 @@ void gemm_blis_v_fp32_MR5_NR8(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR5_NR8(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR5(v33, v12, v30, v23, v6);
         int32_t v34 = 8;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1047,7 +1047,7 @@ void gemm_blis_v_fp32_MR5_NR7(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR5_NR7(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR7(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1055,7 +1055,7 @@ void gemm_blis_v_fp32_MR5_NR7(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR5_NR7(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR5(v33, v12, v30, v23, v6);
         int32_t v34 = 7;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1094,7 +1094,7 @@ void gemm_blis_v_fp32_MR5_NR6(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR5_NR6(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR6(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1102,7 +1102,7 @@ void gemm_blis_v_fp32_MR5_NR6(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR5_NR6(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR5(v33, v12, v30, v23, v6);
         int32_t v34 = 6;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1141,7 +1141,7 @@ void gemm_blis_v_fp32_MR5_NR5(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR5_NR5(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR5(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1149,7 +1149,7 @@ void gemm_blis_v_fp32_MR5_NR5(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR5_NR5(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR5(v33, v12, v30, v23, v6);
         int32_t v34 = 5;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1188,7 +1188,7 @@ void gemm_blis_v_fp32_MR5_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR5_NR4(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR4(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1196,7 +1196,7 @@ void gemm_blis_v_fp32_MR5_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR5_NR4(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR5(v33, v12, v30, v23, v6);
         int32_t v34 = 4;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1235,7 +1235,7 @@ void gemm_blis_v_fp32_MR5_NR3(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR5_NR3(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR3(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1243,7 +1243,7 @@ void gemm_blis_v_fp32_MR5_NR3(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR5_NR3(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR5(v33, v12, v30, v23, v6);
         int32_t v34 = 3;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1282,7 +1282,7 @@ void gemm_blis_v_fp32_MR5_NR2(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR5_NR2(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR2(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1290,7 +1290,7 @@ void gemm_blis_v_fp32_MR5_NR2(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR5_NR2(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR5(v33, v12, v30, v23, v6);
         int32_t v34 = 2;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1329,7 +1329,7 @@ void gemm_blis_v_fp32_MR4_NR8(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR4_NR8(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR8(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1337,7 +1337,7 @@ void gemm_blis_v_fp32_MR4_NR8(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR4_NR8(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR4(v33, v12, v30, v23, v6);
         int32_t v34 = 8;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1376,7 +1376,7 @@ void gemm_blis_v_fp32_MR4_NR7(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR4_NR7(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR7(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1384,7 +1384,7 @@ void gemm_blis_v_fp32_MR4_NR7(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR4_NR7(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR4(v33, v12, v30, v23, v6);
         int32_t v34 = 7;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1423,7 +1423,7 @@ void gemm_blis_v_fp32_MR4_NR6(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR4_NR6(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR6(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1431,7 +1431,7 @@ void gemm_blis_v_fp32_MR4_NR6(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR4_NR6(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR4(v33, v12, v30, v23, v6);
         int32_t v34 = 6;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1470,7 +1470,7 @@ void gemm_blis_v_fp32_MR4_NR5(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR4_NR5(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR5(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1478,7 +1478,7 @@ void gemm_blis_v_fp32_MR4_NR5(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR4_NR5(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR4(v33, v12, v30, v23, v6);
         int32_t v34 = 5;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1517,7 +1517,7 @@ void gemm_blis_v_fp32_MR4_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR4_NR4(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR4(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1525,7 +1525,7 @@ void gemm_blis_v_fp32_MR4_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR4_NR4(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR4(v33, v12, v30, v23, v6);
         int32_t v34 = 4;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1564,7 +1564,7 @@ void gemm_blis_v_fp32_MR4_NR3(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR4_NR3(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR3(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1572,7 +1572,7 @@ void gemm_blis_v_fp32_MR4_NR3(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR4_NR3(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR4(v33, v12, v30, v23, v6);
         int32_t v34 = 3;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1611,7 +1611,7 @@ void gemm_blis_v_fp32_MR4_NR2(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR4_NR2(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR2(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1619,7 +1619,7 @@ void gemm_blis_v_fp32_MR4_NR2(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR4_NR2(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR4(v33, v12, v30, v23, v6);
         int32_t v34 = 2;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1658,7 +1658,7 @@ void gemm_blis_v_fp32_MR3_NR8(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR3_NR8(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR8(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1666,7 +1666,7 @@ void gemm_blis_v_fp32_MR3_NR8(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR3_NR8(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR3(v33, v12, v30, v23, v6);
         int32_t v34 = 8;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1705,7 +1705,7 @@ void gemm_blis_v_fp32_MR3_NR7(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR3_NR7(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR7(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1713,7 +1713,7 @@ void gemm_blis_v_fp32_MR3_NR7(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR3_NR7(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR3(v33, v12, v30, v23, v6);
         int32_t v34 = 7;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1752,7 +1752,7 @@ void gemm_blis_v_fp32_MR3_NR6(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR3_NR6(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR6(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1760,7 +1760,7 @@ void gemm_blis_v_fp32_MR3_NR6(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR3_NR6(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR3(v33, v12, v30, v23, v6);
         int32_t v34 = 6;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1799,7 +1799,7 @@ void gemm_blis_v_fp32_MR3_NR5(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR3_NR5(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR5(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1807,7 +1807,7 @@ void gemm_blis_v_fp32_MR3_NR5(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR3_NR5(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR3(v33, v12, v30, v23, v6);
         int32_t v34 = 5;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1846,7 +1846,7 @@ void gemm_blis_v_fp32_MR3_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR3_NR4(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR4(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1854,7 +1854,7 @@ void gemm_blis_v_fp32_MR3_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR3_NR4(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR3(v33, v12, v30, v23, v6);
         int32_t v34 = 4;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1893,7 +1893,7 @@ void gemm_blis_v_fp32_MR3_NR3(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR3_NR3(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR3(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1901,7 +1901,7 @@ void gemm_blis_v_fp32_MR3_NR3(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR3_NR3(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR3(v33, v12, v30, v23, v6);
         int32_t v34 = 3;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1940,7 +1940,7 @@ void gemm_blis_v_fp32_MR3_NR2(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR3_NR2(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR2(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1948,7 +1948,7 @@ void gemm_blis_v_fp32_MR3_NR2(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR3_NR2(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR3(v33, v12, v30, v23, v6);
         int32_t v34 = 2;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -1987,7 +1987,7 @@ void gemm_blis_v_fp32_MR2_NR8(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR2_NR8(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR8(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -1995,7 +1995,7 @@ void gemm_blis_v_fp32_MR2_NR8(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR2_NR8(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR2(v33, v12, v30, v23, v6);
         int32_t v34 = 8;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -2034,7 +2034,7 @@ void gemm_blis_v_fp32_MR2_NR7(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR2_NR7(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR7(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -2042,7 +2042,7 @@ void gemm_blis_v_fp32_MR2_NR7(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR2_NR7(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR2(v33, v12, v30, v23, v6);
         int32_t v34 = 7;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -2081,7 +2081,7 @@ void gemm_blis_v_fp32_MR2_NR6(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR2_NR6(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR6(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -2089,7 +2089,7 @@ void gemm_blis_v_fp32_MR2_NR6(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR2_NR6(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR2(v33, v12, v30, v23, v6);
         int32_t v34 = 6;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -2128,7 +2128,7 @@ void gemm_blis_v_fp32_MR2_NR5(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR2_NR5(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR5(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -2136,7 +2136,7 @@ void gemm_blis_v_fp32_MR2_NR5(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR2_NR5(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR2(v33, v12, v30, v23, v6);
         int32_t v34 = 5;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -2175,7 +2175,7 @@ void gemm_blis_v_fp32_MR2_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR2_NR4(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR4(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -2183,7 +2183,7 @@ void gemm_blis_v_fp32_MR2_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR2_NR4(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR2(v33, v12, v30, v23, v6);
         int32_t v34 = 4;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -2222,7 +2222,7 @@ void gemm_blis_v_fp32_MR2_NR3(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR2_NR3(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR3(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -2230,7 +2230,7 @@ void gemm_blis_v_fp32_MR2_NR3(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR2_NR3(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR2(v33, v12, v30, v23, v6);
         int32_t v34 = 3;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
@@ -2269,7 +2269,7 @@ void gemm_blis_v_fp32_MR2_NR2(int32_t v1, int32_t v2, int32_t v3, float v4, floa
       int32_t v24 = i18 * v8;
       int32_t v25 = v24 + j21;
       float* v26 = GET_PTR(v7, v25);
-      pack_CB_v_if_fp32_MR2_NR2(v26, v13, v23, v20, v8);
+      pack_CB_v_if_fp32_NR2(v26, v13, v23, v20, v8);
       float v27 = GET_BETA(j21, v9);
       for (int32_t k28 = v17; k28 < v1; k28 += v14) {
         int32_t v29 = v1 - k28;
@@ -2277,7 +2277,7 @@ void gemm_blis_v_fp32_MR2_NR2(int32_t v1, int32_t v2, int32_t v3, float v4, floa
         int32_t v31 = j21 * v6;
         int32_t v32 = v31 + k28;
         float* v33 = GET_PTR(v5, v32);
-        pack_RB_v_if_fp32_MR2_NR2(v33, v12, v30, v23, v6);
+        pack_RB_v_if_fp32_MR2(v33, v12, v30, v23, v6);
         int32_t v34 = 2;
         for (int32_t l35 = v17; l35 < v20; l35 += v34) {
           int32_t v36 = v20 - l35;
