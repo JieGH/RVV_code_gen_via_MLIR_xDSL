@@ -10,7 +10,6 @@ sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "../gemm_blis_xdsl"))
 )
 
-from cache_config import get_optim_mc_nc_kc
 from config import BLISProjectConfig
 from macro_builder import build_macro_module
 from pack_builder import build_pack_module
@@ -123,22 +122,16 @@ def generate_header(config: BLISProjectConfig, out_dir: str, generated_variants:
 
         for variant in generated_variants:
             f.write(
-                f"// Cache config: MC={variant['mc']}, NC={variant['nc']}, KC={variant['kc']}\n"
-            )
-            f.write(
-                f"void {variant['macro_name']}(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc);\n\n"
+                f"void {variant['macro_name']}(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc);\n\n"
             )
 
         f.write(
-            "typedef void (*gemm_macro_fn)(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc);\n\n"
+            "typedef void (*gemm_macro_fn)(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc);\n\n"
         )
         f.write("struct KernelVariant {\n")
         f.write("    const char* name;\n")
         f.write("    int mr;\n")
         f.write("    int nr;\n")
-        f.write("    int mc;\n")
-        f.write("    int nc;\n")
-        f.write("    int kc;\n")
         f.write("    gemm_macro_fn func;\n")
         f.write("};\n\n")
 
@@ -146,7 +139,7 @@ def generate_header(config: BLISProjectConfig, out_dir: str, generated_variants:
         for variant in generated_variants:
             name_str = f"MR{variant['mr']}_NR{variant['nr']}"
             f.write(
-                f'    {{"{name_str}", {variant["mr"]}, {variant["nr"]}, {variant["mc"]}, {variant["nc"]}, {variant["kc"]}, {variant["macro_name"]}}},\n'
+                f'    {{"{name_str}", {variant["mr"]}, {variant["nr"]}, {variant["macro_name"]}}},\n'
             )
         f.write("};\n\n")
         f.write(f"static const int num_variants = {len(generated_variants)};\n\n")
@@ -201,9 +194,7 @@ def main():
     for mr, nr in config.mr_nr_family:
         print(f"\\n[+] Generating variant MR={mr}, NR={nr}")
 
-        # Calculate optimal cache bounds via the python analytical model
-        mc, nc, kc = get_optim_mc_nc_kc(config.arch, dataSize=4, mr=mr, nr=nr)
-        print(f"    Dynamic Cache Config: MC={mc}, NC={nc}, KC={kc}")
+        print(f"\\n[+] Generating variant MR={mr}, NR={nr}")
 
         vlen_elements = config.vlen // 32
 
@@ -252,9 +243,6 @@ def main():
 
         # Build Macro-Kernel
         macro_mod = build_macro_module(
-            MC=mc,
-            NC=nc,
-            KC=kc,
             MR=mr,
             NR=nr,
             orderA="C",
@@ -374,9 +362,6 @@ void gemm_microkernel_v_wrapper_{suffix}(int32_t mr, int32_t nr, int32_t kc, flo
             {
                 "mr": mr,
                 "nr": nr,
-                "mc": mc,
-                "nc": nc,
-                "kc": kc,
                 "macro_name": f"gemm_macro_v_{suffix}",
             }
         )

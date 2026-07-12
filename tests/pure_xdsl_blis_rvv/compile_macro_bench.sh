@@ -120,7 +120,8 @@ ssh_board "rm -rf ${REMOTE_DIR}/pj_gen"
 # Rsync the entire pure_xdsl_blis_rvv directory (or just pj_gen and datasets)
 rsync_board --delete tests/pure_xdsl_blis_rvv/pj_gen/ "${RSYNC_TARGET}:${REMOTE_DIR}/pj_gen/"
 rsync_board tests/pure_xdsl_blis_rvv/datasets/ "${RSYNC_TARGET}:${REMOTE_DIR}/datasets/"
-echo "  [OK] Synced pj_gen/ and datasets/ → ${RSYNC_TARGET}:${REMOTE_DIR}/"
+rsync_board tests/pure_xdsl_blis_rvv/modelLevel/ "${RSYNC_TARGET}:${REMOTE_DIR}/modelLevel/"
+echo "  [OK] Synced pj_gen/, datasets/, and modelLevel/ → ${RSYNC_TARGET}:${REMOTE_DIR}/"
 
 # ============================================================
 # [3/3] Compile and benchmark on board

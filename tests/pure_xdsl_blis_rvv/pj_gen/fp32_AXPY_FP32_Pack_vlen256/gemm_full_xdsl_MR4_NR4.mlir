@@ -1891,58 +1891,52 @@
     "emitc.call_opaque"(%76, %66, %14) <{callee = "__riscv_vse32_v_f32m1"}> : (!emitc.ptr<f32>, !emitc.opaque<"vfloat32m1_t">, index) -> ()
     "func.return"() : () -> ()
   }) {function_type = (index, !emitc.ptr<f32>, !emitc.ptr<f32>, index, !emitc.ptr<f32>, index, !emitc.ptr<f32>, !emitc.ptr<f32>, index) -> f32} : () -> ()
-  "func.func"() <{sym_name = "gemm_macro_v_fp32_MR4_NR4", function_type = (i32, i32, i32, f32, !emitc.ptr<f32>, i32, !emitc.ptr<f32>, i32, f32, !emitc.ptr<f32>, i32, !emitc.ptr<f32>, !emitc.ptr<f32>) -> ()}> ({
-  ^bb0(%0 : i32, %1 : i32, %2 : i32, %3 : f32, %4 : !emitc.ptr<f32>, %5 : i32, %6 : !emitc.ptr<f32>, %7 : i32, %8 : f32, %9 : !emitc.ptr<f32>, %10 : i32, %11 : !emitc.ptr<f32>, %12 : !emitc.ptr<f32>):
-    %13 = "emitc.constant"() {value = 0 : i32} : () -> i32
-    %14 = "emitc.constant"() {value = 1365 : i32} : () -> i32
-    "emitc.for"(%13, %1, %14) ({
-    ^bb1(%15 : i32):
-      %16 = "emitc.sub"(%1, %15) : (i32, i32) -> i32
-      %17 = "emitc.constant"() {value = 1365 : i32} : () -> i32
-      %18 = "emitc.call_opaque"(%16, %17) <{callee = "std::min"}> : (i32, i32) -> i32
-      %19 = "emitc.constant"() {value = 512 : i32} : () -> i32
-      "emitc.for"(%13, %2, %19) ({
+  "func.func"() <{sym_name = "gemm_macro_v_fp32_MR4_NR4", function_type = (i32, i32, i32, f32, !emitc.ptr<f32>, i32, !emitc.ptr<f32>, i32, f32, !emitc.ptr<f32>, i32, !emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()}> ({
+  ^bb0(%0 : i32, %1 : i32, %2 : i32, %3 : f32, %4 : !emitc.ptr<f32>, %5 : i32, %6 : !emitc.ptr<f32>, %7 : i32, %8 : f32, %9 : !emitc.ptr<f32>, %10 : i32, %11 : !emitc.ptr<f32>, %12 : !emitc.ptr<f32>, %13 : i32, %14 : i32, %15 : i32):
+    %16 = "emitc.constant"() {value = 0 : i32} : () -> i32
+    "emitc.for"(%16, %1, %14) ({
+    ^bb1(%17 : i32):
+      %18 = "emitc.sub"(%1, %17) : (i32, i32) -> i32
+      %19 = "emitc.call_opaque"(%18, %14) <{callee = "std::min"}> : (i32, i32) -> i32
+      "emitc.for"(%16, %2, %15) ({
       ^bb2(%20 : i32):
         %21 = "emitc.sub"(%2, %20) : (i32, i32) -> i32
-        %22 = "emitc.constant"() {value = 512 : i32} : () -> i32
-        %23 = "emitc.call_opaque"(%21, %22) <{callee = "std::min"}> : (i32, i32) -> i32
-        %24 = "emitc.mul"(%15, %7) : (i32, i32) -> i32
-        %25 = "emitc.add"(%24, %20) : (i32, i32) -> i32
-        %26 = "emitc.call_opaque"(%6, %25) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-        "emitc.call_opaque"(%26, %12, %23, %18, %7) <{callee = "pack_CB_v_if_fp32_MR4_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
-        %27 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
-        %28 = "emitc.constant"() {value = 192 : i32} : () -> i32
-        "emitc.for"(%13, %0, %28) ({
-        ^bb3(%29 : i32):
-          %30 = "emitc.sub"(%0, %29) : (i32, i32) -> i32
-          %31 = "emitc.constant"() {value = 192 : i32} : () -> i32
-          %32 = "emitc.call_opaque"(%30, %31) <{callee = "std::min"}> : (i32, i32) -> i32
-          %33 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
-          %34 = "emitc.add"(%33, %29) : (i32, i32) -> i32
-          %35 = "emitc.call_opaque"(%4, %34) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-          "emitc.call_opaque"(%35, %11, %32, %23, %5) <{callee = "pack_RB_v_if_fp32_MR4_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
-          %36 = "emitc.constant"() {value = 4 : i32} : () -> i32
-          "emitc.for"(%13, %18, %36) ({
-          ^bb4(%37 : i32):
-            %38 = "emitc.sub"(%18, %37) : (i32, i32) -> i32
-            %39 = "emitc.constant"() {value = 4 : i32} : () -> i32
-            %40 = "emitc.call_opaque"(%38, %39) <{callee = "std::min"}> : (i32, i32) -> i32
-            %41 = "emitc.constant"() {value = 4 : i32} : () -> i32
-            "emitc.for"(%13, %32, %41) ({
-            ^bb5(%42 : i32):
-              %43 = "emitc.sub"(%32, %42) : (i32, i32) -> i32
-              %44 = "emitc.constant"() {value = 4 : i32} : () -> i32
-              %45 = "emitc.call_opaque"(%43, %44) <{callee = "std::min"}> : (i32, i32) -> i32
-              %46 = "emitc.add"(%29, %42) : (i32, i32) -> i32
-              %47 = "emitc.add"(%15, %37) : (i32, i32) -> i32
-              %48 = "emitc.mul"(%47, %10) : (i32, i32) -> i32
-              %49 = "emitc.add"(%48, %46) : (i32, i32) -> i32
-              %50 = "emitc.call_opaque"(%9, %49) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-              %51 = "emitc.mul"(%42, %23) : (i32, i32) -> i32
-              %52 = "emitc.call_opaque"(%11, %51) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-              %53 = "emitc.mul"(%37, %23) : (i32, i32) -> i32
-              %54 = "emitc.call_opaque"(%12, %53) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
-              "emitc.call_opaque"(%45, %40, %23, %3, %52, %54, %27, %50, %10) <{callee = "gemm_microkernel_v_dispatch_fp32_MR4_NR4"}> : (i32, i32, i32, f32, !emitc.ptr<f32>, !emitc.ptr<f32>, f32, !emitc.ptr<f32>, i32) -> ()
+        %22 = "emitc.call_opaque"(%21, %15) <{callee = "std::min"}> : (i32, i32) -> i32
+        %23 = "emitc.mul"(%17, %7) : (i32, i32) -> i32
+        %24 = "emitc.add"(%23, %20) : (i32, i32) -> i32
+        %25 = "emitc.call_opaque"(%6, %24) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
+        "emitc.call_opaque"(%25, %12, %22, %19, %7) <{callee = "pack_CB_v_if_fp32_MR4_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+        %26 = "emitc.call_opaque"(%20, %8) <{callee = "GET_BETA"}> : (i32, f32) -> f32
+        "emitc.for"(%16, %0, %13) ({
+        ^bb3(%27 : i32):
+          %28 = "emitc.sub"(%0, %27) : (i32, i32) -> i32
+          %29 = "emitc.call_opaque"(%28, %13) <{callee = "std::min"}> : (i32, i32) -> i32
+          %30 = "emitc.mul"(%20, %5) : (i32, i32) -> i32
+          %31 = "emitc.add"(%30, %27) : (i32, i32) -> i32
+          %32 = "emitc.call_opaque"(%4, %31) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
+          "emitc.call_opaque"(%32, %11, %29, %22, %5) <{callee = "pack_RB_v_if_fp32_MR4_NR4"}> : (!emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> ()
+          %33 = "emitc.constant"() {value = 4 : i32} : () -> i32
+          "emitc.for"(%16, %19, %33) ({
+          ^bb4(%34 : i32):
+            %35 = "emitc.sub"(%19, %34) : (i32, i32) -> i32
+            %36 = "emitc.constant"() {value = 4 : i32} : () -> i32
+            %37 = "emitc.call_opaque"(%35, %36) <{callee = "std::min"}> : (i32, i32) -> i32
+            %38 = "emitc.constant"() {value = 4 : i32} : () -> i32
+            "emitc.for"(%16, %29, %38) ({
+            ^bb5(%39 : i32):
+              %40 = "emitc.sub"(%29, %39) : (i32, i32) -> i32
+              %41 = "emitc.constant"() {value = 4 : i32} : () -> i32
+              %42 = "emitc.call_opaque"(%40, %41) <{callee = "std::min"}> : (i32, i32) -> i32
+              %43 = "emitc.add"(%27, %39) : (i32, i32) -> i32
+              %44 = "emitc.add"(%17, %34) : (i32, i32) -> i32
+              %45 = "emitc.mul"(%44, %10) : (i32, i32) -> i32
+              %46 = "emitc.add"(%45, %43) : (i32, i32) -> i32
+              %47 = "emitc.call_opaque"(%9, %46) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
+              %48 = "emitc.mul"(%39, %22) : (i32, i32) -> i32
+              %49 = "emitc.call_opaque"(%11, %48) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
+              %50 = "emitc.mul"(%34, %22) : (i32, i32) -> i32
+              %51 = "emitc.call_opaque"(%12, %50) <{callee = "GET_PTR"}> : (!emitc.ptr<f32>, i32) -> !emitc.ptr<f32>
+              "emitc.call_opaque"(%42, %37, %22, %3, %49, %51, %26, %47, %10) <{callee = "gemm_microkernel_v_dispatch_fp32_MR4_NR4"}> : (i32, i32, i32, f32, !emitc.ptr<f32>, !emitc.ptr<f32>, f32, !emitc.ptr<f32>, i32) -> ()
               "emitc.yield"() : () -> ()
             }) : (i32, i32, i32) -> ()
             "emitc.yield"() : () -> ()
@@ -1954,7 +1948,7 @@
       "emitc.yield"() : () -> ()
     }) : (i32, i32, i32) -> ()
     "func.return"() : () -> ()
-  }) {function_type = (i32, i32, i32, f32, !emitc.ptr<f32>, i32, !emitc.ptr<f32>, i32, f32, !emitc.ptr<f32>, i32, !emitc.ptr<f32>, !emitc.ptr<f32>) -> i32} : () -> ()
+  }) {function_type = (i32, i32, i32, f32, !emitc.ptr<f32>, i32, !emitc.ptr<f32>, i32, f32, !emitc.ptr<f32>, i32, !emitc.ptr<f32>, !emitc.ptr<f32>, i32, i32, i32) -> i32} : () -> ()
   "func.func"() <{sym_name = "pack_CB_v_if_fp32_MR4_NR4", function_type = (!emitc.ptr<f32>, !emitc.ptr<f32>, index, index, index) -> ()}> ({
   ^bb0(%0 : !emitc.ptr<f32>, %1 : !emitc.ptr<f32>, %2 : index, %3 : index, %4 : index):
     %5 = "emitc.constant"() {value = 0 : index} : () -> index

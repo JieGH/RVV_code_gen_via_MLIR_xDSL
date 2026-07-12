@@ -1656,52 +1656,46 @@ void gemm_microkernel_v_fp32_MR4_NR4_4x4_b1(size_t v1, float* v2, float* v3, siz
   __riscv_vse32_v_f32m1(v64, v58, v15);
   return;
 }
-void gemm_macro_v_fp32_MR4_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, float* v5, int32_t v6, float* v7, int32_t v8, float v9, float* v10, int32_t v11, float* v12, float* v13) {
-  int32_t v14 = 0;
-  int32_t v15 = 1365;
-  for (int32_t i16 = v14; i16 < v2; i16 += v15) {
-    int32_t v17 = v2 - i16;
-    int32_t v18 = 1365;
-    int32_t v19 = std::min(v17, v18);
-    int32_t v20 = 512;
-    for (int32_t j21 = v14; j21 < v3; j21 += v20) {
+void gemm_macro_v_fp32_MR4_NR4(int32_t v1, int32_t v2, int32_t v3, float v4, float* v5, int32_t v6, float* v7, int32_t v8, float v9, float* v10, int32_t v11, float* v12, float* v13, int32_t v14, int32_t v15, int32_t v16) {
+  int32_t v17 = 0;
+  for (int32_t i18 = v17; i18 < v2; i18 += v15) {
+    int32_t v19 = v2 - i18;
+    int32_t v20 = std::min(v19, v15);
+    for (int32_t j21 = v17; j21 < v3; j21 += v16) {
       int32_t v22 = v3 - j21;
-      int32_t v23 = 512;
-      int32_t v24 = std::min(v22, v23);
-      int32_t v25 = i16 * v8;
-      int32_t v26 = v25 + j21;
-      float* v27 = GET_PTR(v7, v26);
-      pack_CB_v_if_fp32_MR4_NR4(v27, v13, v24, v19, v8);
-      float v28 = GET_BETA(j21, v9);
-      int32_t v29 = 192;
-      for (int32_t k30 = v14; k30 < v1; k30 += v29) {
-        int32_t v31 = v1 - k30;
-        int32_t v32 = 192;
-        int32_t v33 = std::min(v31, v32);
-        int32_t v34 = j21 * v6;
-        int32_t v35 = v34 + k30;
-        float* v36 = GET_PTR(v5, v35);
-        pack_RB_v_if_fp32_MR4_NR4(v36, v12, v33, v24, v6);
-        int32_t v37 = 4;
-        for (int32_t l38 = v14; l38 < v19; l38 += v37) {
-          int32_t v39 = v19 - l38;
-          int32_t v40 = 4;
-          int32_t v41 = std::min(v39, v40);
-          int32_t v42 = 4;
-          for (int32_t m43 = v14; m43 < v33; m43 += v42) {
-            int32_t v44 = v33 - m43;
-            int32_t v45 = 4;
-            int32_t v46 = std::min(v44, v45);
-            int32_t v47 = k30 + m43;
-            int32_t v48 = i16 + l38;
-            int32_t v49 = v48 * v11;
-            int32_t v50 = v49 + v47;
-            float* v51 = GET_PTR(v10, v50);
-            int32_t v52 = m43 * v24;
-            float* v53 = GET_PTR(v12, v52);
-            int32_t v54 = l38 * v24;
-            float* v55 = GET_PTR(v13, v54);
-            gemm_microkernel_v_dispatch_fp32_MR4_NR4(v46, v41, v24, v4, v53, v55, v28, v51, v11);
+      int32_t v23 = std::min(v22, v16);
+      int32_t v24 = i18 * v8;
+      int32_t v25 = v24 + j21;
+      float* v26 = GET_PTR(v7, v25);
+      pack_CB_v_if_fp32_MR4_NR4(v26, v13, v23, v20, v8);
+      float v27 = GET_BETA(j21, v9);
+      for (int32_t k28 = v17; k28 < v1; k28 += v14) {
+        int32_t v29 = v1 - k28;
+        int32_t v30 = std::min(v29, v14);
+        int32_t v31 = j21 * v6;
+        int32_t v32 = v31 + k28;
+        float* v33 = GET_PTR(v5, v32);
+        pack_RB_v_if_fp32_MR4_NR4(v33, v12, v30, v23, v6);
+        int32_t v34 = 4;
+        for (int32_t l35 = v17; l35 < v20; l35 += v34) {
+          int32_t v36 = v20 - l35;
+          int32_t v37 = 4;
+          int32_t v38 = std::min(v36, v37);
+          int32_t v39 = 4;
+          for (int32_t m40 = v17; m40 < v30; m40 += v39) {
+            int32_t v41 = v30 - m40;
+            int32_t v42 = 4;
+            int32_t v43 = std::min(v41, v42);
+            int32_t v44 = k28 + m40;
+            int32_t v45 = i18 + l35;
+            int32_t v46 = v45 * v11;
+            int32_t v47 = v46 + v44;
+            float* v48 = GET_PTR(v10, v47);
+            int32_t v49 = m40 * v23;
+            float* v50 = GET_PTR(v12, v49);
+            int32_t v51 = l35 * v23;
+            float* v52 = GET_PTR(v13, v51);
+            gemm_microkernel_v_dispatch_fp32_MR4_NR4(v43, v38, v23, v4, v50, v52, v27, v48, v11);
           }
         }
       }

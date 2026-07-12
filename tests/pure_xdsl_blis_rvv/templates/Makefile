@@ -5,18 +5,22 @@ CC = gcc
 CFLAGS = -O3 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing
 CXXFLAGS = -O3 -std=c++17 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing
 
-# All generated files are C++ now
+# All generated files are C++ now, plus model_level.c
 CXX_SRCS = $(wildcard *.cpp)
 CXX_OBJS = $(CXX_SRCS:.cpp=.o)
+
+C_SRCS = ../../modelLevel/model_level.c
+C_OBJS = $(C_SRCS:.c=.o)
 
 TARGET = test_gemm.x
 
 all: $(TARGET)
 
-$(TARGET): $(CXX_OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+$(TARGET): $(CXX_OBJS) $(C_OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ -lm
 
-# No C files to compile
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@

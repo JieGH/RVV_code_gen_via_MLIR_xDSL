@@ -9,6 +9,10 @@
 
 #include "generated_kernels.h"
 
+extern "C" {
+#include "../../modelLevel/model_level.h"
+}
+
 using namespace std;
 
 // Generate random data
@@ -305,16 +309,19 @@ int main(int argc, char** argv) {
         for (int v = 0; v < num_variants; ++v) {
             const auto& variant = generated_variants[v];
 
-            size_t padded_mc = ((variant.mc + variant.mr - 1) / variant.mr) * variant.mr;
-            size_t padded_nc = ((variant.nc + variant.nr - 1) / variant.nr) * variant.nr;
-            float* Ac = alloc_aligned(padded_mc * variant.kc);
-            float* Bc = alloc_aligned(variant.kc * padded_nc);
+            int mc, nc, kc;
+            get_optim_mc_nc_kc(sizeof(float), m, n, k, variant.mr, variant.nr, &mc, &nc, &kc);
+
+            size_t padded_mc = ((mc + variant.mr - 1) / variant.mr) * variant.mr;
+            size_t padded_nc = ((nc + variant.nr - 1) / variant.nr) * variant.nr;
+            float* Ac = alloc_aligned(padded_mc * kc);
+            float* Bc = alloc_aligned(kc * padded_nc);
 
             // Re-initialize C for this variant
             for (size_t i = 0; i < (size_t)(ldc * n); ++i) C[i] = 0.0f;
 
             // Warmup (also computes C)
-            variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc);
+            variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc);
 
             string status = "SKIP";
             if (do_ref) {
@@ -369,7 +376,7 @@ int main(int argc, char** argv) {
                 // Benchmark
                 auto start = chrono::high_resolution_clock::now();
                 for (int r = 0; r < N_REPS; ++r) {
-                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc);
+                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc);
                 }
                 auto end = chrono::high_resolution_clock::now();
 

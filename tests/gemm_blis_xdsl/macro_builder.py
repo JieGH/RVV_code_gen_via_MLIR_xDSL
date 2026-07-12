@@ -53,6 +53,11 @@ class MacroBuilder:
         self.block.add_op(op)
         return op.results[0]
 
+    def min_val(self, val1: SSAValue, val2: SSAValue) -> SSAValue:
+        op = arith.MinSIOp(val1, val2)
+        self.block.add_op(op)
+        return op.results[0]
+
     def cmpi(self, lhs: SSAValue, rhs: SSAValue, predicate: int) -> SSAValue:
         op = arith.CmpiOp(lhs, rhs, predicate)
         self.block.add_op(op)
@@ -85,9 +90,6 @@ class MacroBuilder:
 
 
 def build_macro_module(
-    MC: int = 256,
-    NC: int = 1024,
-    KC: int = 256,
     MR: int = 4,
     NR: int = 8,
     orderA: str = "C",
@@ -116,32 +118,33 @@ def build_macro_module(
         i32,
         mem_f32,
         mem_f32,
+        i32,
+        i32,
+        i32,
     ]
 
     # Create the function with an explicit Region and Block
     entry_block = Block(arg_types=arg_types)
     macro_fn = func.FuncOp(fn_name, (arg_types, []), Region([entry_block]))
 
-    m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, Ac, Bc = entry_block.args
+    m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, Ac, Bc, mc_step, nc_step, kc_step = entry_block.args
 
     mb = MacroBuilder(entry_block)
     c0 = mb.const_i32(0)
 
     # ── JC Loop (outermost): step NC, iterates 0..n → jc = N-panel offset ──────
     # ForOp: entry_block.ForOp(0, n, NC) → body = jc_body, induction var = jc
-    nc_step = mb.const_i32(NC)
     jc_body = Block(arg_types=[i32])
     jc = jc_body.args[0]  # jc: N-panel start index (0, NC, 2*NC, ...)
     jc_builder = MacroBuilder(jc_body)
-    nc = jc_builder.min(jc_builder.sub(n, jc), NC)  # nc = min(n-jc, NC)
+    nc = jc_builder.min_val(jc_builder.sub(n, jc), nc_step)  # nc = min(n-jc, NC)
 
     # ── PC Loop (2nd): step KC, iterates 0..k → pc = K-panel offset ──────────
     # ForOp: jc_body.ForOp(0, k, KC) → body = pc_body, induction var = pc
-    kc_step = jc_builder.const_i32(KC)
     pc_body = Block(arg_types=[i32])
     pc = pc_body.args[0]  # pc: K-panel start index (0, KC, 2*KC, ...)
     pc_builder = MacroBuilder(pc_body)
-    kc = pc_builder.min(pc_builder.sub(k, pc), KC)  # kc = min(k-pc, KC)
+    kc = pc_builder.min_val(pc_builder.sub(k, pc), kc_step)  # kc = min(k-pc, KC)
 
     # Pointer Math for B
     row_B, col_B = (pc, jc) if transB == "N" else (jc, pc)
@@ -157,11 +160,10 @@ def build_macro_module(
 
     # ── IC Loop (3rd): step MC, iterates 0..m → ic = M-panel offset ──────────
     # ForOp: pc_body.ForOp(0, m, MC) → body = ic_body, induction var = ic
-    mc_step = pc_builder.const_i32(MC)
     ic_body = Block(arg_types=[i32])
     ic = ic_body.args[0]  # ic: M-panel start index (0, MC, 2*MC, ...)
     ic_builder = MacroBuilder(ic_body)
-    mc = ic_builder.min(ic_builder.sub(m, ic), MC)  # mc = min(m-ic, MC)
+    mc = ic_builder.min_val(ic_builder.sub(m, ic), mc_step)  # mc = min(m-ic, MC)
 
     row_A, col_A = (ic, pc) if transA == "N" else (pc, ic)
     off_A = ic_builder.calc_offset(row_A, col_A, ldA, orderA)
