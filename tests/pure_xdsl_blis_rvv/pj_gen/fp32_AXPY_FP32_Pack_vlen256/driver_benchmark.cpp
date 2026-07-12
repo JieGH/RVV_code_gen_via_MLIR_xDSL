@@ -314,8 +314,21 @@ int main(int argc, char** argv) {
 
             size_t padded_mc = ((mc + variant.mr - 1) / variant.mr) * variant.mr;
             size_t padded_nc = ((nc + variant.nr - 1) / variant.nr) * variant.nr;
-            float* Ac = alloc_aligned(padded_mc * kc);
-            float* Bc = alloc_aligned(kc * padded_nc);
+            size_t ac_len = padded_mc * kc;
+            size_t bc_len = kc * padded_nc;
+            float* Ac_alloc = alloc_aligned(ac_len + 32);
+            float* Bc_alloc = alloc_aligned(bc_len + 32);
+            float* Ac = Ac_alloc + 16;
+            float* Bc = Bc_alloc + 16;
+            for (size_t i = 0; i < 16; ++i) {
+                Ac_alloc[i] = -123456.0f;
+                Ac_alloc[16 + ac_len + i] = -123456.0f;
+                Bc_alloc[i] = -123456.0f;
+                Bc_alloc[16 + bc_len + i] = -123456.0f;
+            }
+            if (string(variant.name) == "MR4_NR1") {
+                cout << "MR4_NR1 allocations: Ac=" << Ac << " Bc=" << Bc << " C=" << C << " bc_len=" << bc_len << endl;
+            }
 
             // Re-initialize C for this variant
             for (size_t i = 0; i < (size_t)(ldc * n); ++i) C[i] = 0.0f;
@@ -394,9 +407,21 @@ int main(int argc, char** argv) {
                      << " | " << left << setw(14) << rvv_time_ss.str()
                      << " | " << left << setw(14) << current_ref_time << " |" << endl;
             }
+            // Check bounds after execution
+            bool corrupted = false;
+            for (size_t i = 0; i < 16; ++i) {
+                if (Ac_alloc[i] != -123456.0f) { cout << "Ac front canary corrupted at " << i << "! Value: " << Ac_alloc[i] << endl; corrupted = true; }
+                if (Ac_alloc[16 + ac_len + i] != -123456.0f) { cout << "Ac back canary corrupted at " << i << "! Value: " << Ac_alloc[16 + ac_len + i] << endl; corrupted = true; }
+                if (Bc_alloc[i] != -123456.0f) { cout << "Bc front canary corrupted at " << i << "! Value: " << Bc_alloc[i] << endl; corrupted = true; }
+                if (Bc_alloc[16 + bc_len + i] != -123456.0f) { cout << "Bc back canary corrupted at " << i << "! Value: " << Bc_alloc[16 + bc_len + i] << endl; corrupted = true; }
+            }
+            if (corrupted) {
+                cout << "MEMORY CORRUPTION DETECTED in variant " << variant.name << ". Exiting." << endl;
+                exit(1);
+            }
             
-            free(Ac);
-            free(Bc);
+            free(Ac_alloc);
+            free(Bc_alloc);
         }
 
         free(A);

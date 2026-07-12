@@ -65,4 +65,3 @@ void get_optim_mc_nc_kc(int dataSize, int m, int n, int k, int mr, int nr, int *
   *nc = model_level(1, NL3, CL3, WL3, dataSize, *kc, *mc); *nc = floor(*nc);
   *nc = min(n, *nc);
 }
-

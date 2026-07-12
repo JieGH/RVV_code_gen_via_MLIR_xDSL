@@ -3,7 +3,7 @@ CC = gcc
 
 # Basic flags for RISC-V Vector extension
 CFLAGS = -O3 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing
-CXXFLAGS = -O3 -std=c++17 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing
+CXXFLAGS = -O2 -std=c++17 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768
 
 # All generated files are C++ now, plus model_level.c
 CXX_SRCS = $(wildcard *.cpp)

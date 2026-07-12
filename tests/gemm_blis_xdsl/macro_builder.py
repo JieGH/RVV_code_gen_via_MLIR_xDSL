@@ -127,7 +127,9 @@ def build_macro_module(
     entry_block = Block(arg_types=arg_types)
     macro_fn = func.FuncOp(fn_name, (arg_types, []), Region([entry_block]))
 
-    m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, Ac, Bc, mc_step, nc_step, kc_step = entry_block.args
+    m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, Ac, Bc, mc_step, nc_step, kc_step = (
+        entry_block.args
+    )
 
     mb = MacroBuilder(entry_block)
     c0 = mb.const_i32(0)
