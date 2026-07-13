@@ -92,7 +92,7 @@ def rename_symbols(mod: ModuleOp, rename_map: dict):
             walk_and_rename(op.body)
 
 
-def generate_header(config: BLISProjectConfig, out_dir: str, generated_variants: list, max_dim: int):
+def generate_header(config: BLISProjectConfig, out_dir: str, generated_variants: list, max_dim: int, c_type_a: str, c_type_b: str, c_type_c: str, c_type_alpha: str):
     header_path = os.path.join(out_dir, "generated_kernels.h")
     with open(header_path, "w") as f:
         f.write("#pragma once\n\n")
@@ -107,19 +107,19 @@ def generate_header(config: BLISProjectConfig, out_dir: str, generated_variants:
         f.write("#endif\n\n")
         
         for dim in range(1, max_dim + 1):
-            f.write(f"void pack_CB_v_if_{config.datatype}_NR{dim}(float*, float*, size_t, size_t, size_t);\n")
-            f.write(f"void pack_CB_v_else_{config.datatype}_NR{dim}(float*, float*, size_t, size_t, size_t);\n")
-            f.write(f"void pack_RB_v_if_{config.datatype}_MR{dim}(float*, float*, size_t, size_t, size_t);\n")
-            f.write(f"void pack_RB_v_else_{config.datatype}_MR{dim}(float*, float*, size_t, size_t, size_t);\n")
+            f.write(f"void pack_CB_v_if_{config.method}_{config.datatype}_NR{dim}({c_type_b}*, {c_type_b}*, size_t, size_t, size_t);\n")
+            f.write(f"void pack_CB_v_else_{config.method}_{config.datatype}_NR{dim}({c_type_b}*, {c_type_b}*, size_t, size_t, size_t);\n")
+            f.write(f"void pack_RB_v_if_{config.method}_{config.datatype}_MR{dim}({c_type_a}*, {c_type_a}*, size_t, size_t, size_t);\n")
+            f.write(f"void pack_RB_v_else_{config.method}_{config.datatype}_MR{dim}({c_type_a}*, {c_type_a}*, size_t, size_t, size_t);\n")
         f.write("\n")
 
 
 
         f.write(
-            "void gemm_blis_generic(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr);\n\n"
+            f"void gemm_blis_generic(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr);\n\n"
         )
         f.write(
-            "typedef void (*gemm_blis_fn)(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr);\n\n"
+            f"typedef void (*gemm_blis_fn)(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr);\n\n"
         )
         f.write("struct KernelVariant {\n")
         f.write("    const char* name;\n")
@@ -163,6 +163,25 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
 
     generated_variants = []
+
+    # Setup type parameters
+    if config.datatype == "fp32":
+        elem_bytes = 4
+        mlir_type = Float32Type()
+        c_type_a = c_type_b = c_type_c = "float"
+        c_type_alpha = "float"
+    elif config.datatype in ["int8", "i8i8i32"]:
+        elem_bytes = 1
+        from xdsl.dialects.builtin import IntegerType
+        mlir_type = IntegerType(8)
+        c_type_a = c_type_b = "int8_t"
+        c_type_c = "int32_t"
+        c_type_alpha = "int32_t"
+    else:
+        elem_bytes = 4
+        mlir_type = Float32Type()
+        c_type_a = c_type_b = c_type_c = "float"
+        c_type_alpha = "float"
 
     # Setup xDSL Context
     ctx = Context()
@@ -240,19 +259,18 @@ def main():
     # 3.5 Generate Deduplicated Packing Modules
     print("    -> Generating deduplicated Packing modules")
     max_dim = max(max_mr, max_nr)
-    f32 = Float32Type()
-    mem_f32 = MemRefType(f32, [-1])
+    mem_type = MemRefType(mlir_type, [-1])
     idx = IndexType()
     
     for dim in range(1, max_dim + 1):
         pack_mod = build_pack_module(
-            idx, mem_f32, NR=dim, MR=dim, elem_bytes=4, suffix=config.datatype, vlen=vlen_elements
+            idx, mem_type, NR=dim, MR=dim, elem_bytes=elem_bytes, suffix=config.datatype, vlen=vlen_elements, method=config.method
         )
         rename_map = {
-            f"pack_CB_v_if_{config.datatype}_RR{dim}": f"pack_CB_v_if_{config.datatype}_NR{dim}",
-            f"pack_CB_v_else_{config.datatype}_RR{dim}": f"pack_CB_v_else_{config.datatype}_NR{dim}",
-            f"pack_RB_v_if_{config.datatype}_RR{dim}": f"pack_RB_v_if_{config.datatype}_MR{dim}",
-            f"pack_RB_v_else_{config.datatype}_RR{dim}": f"pack_RB_v_else_{config.datatype}_MR{dim}",
+            f"pack_CB_v_if_{config.method}_{config.datatype}_RR{dim}": f"pack_CB_v_if_{config.method}_{config.datatype}_NR{dim}",
+            f"pack_CB_v_else_{config.method}_{config.datatype}_RR{dim}": f"pack_CB_v_else_{config.method}_{config.datatype}_NR{dim}",
+            f"pack_RB_v_if_{config.method}_{config.datatype}_RR{dim}": f"pack_RB_v_if_{config.method}_{config.datatype}_MR{dim}",
+            f"pack_RB_v_else_{config.method}_{config.datatype}_RR{dim}": f"pack_RB_v_else_{config.method}_{config.datatype}_MR{dim}",
         }
         rename_symbols(pack_mod, rename_map)
         pack_modules.append(pack_mod)
@@ -267,22 +285,22 @@ def main():
 
     # 5. Generate Headers, Dispatcher and Generic BLIS
     print("\n[+] Generating headers, generic dispatcher, and generic BLIS...")
-    macros = "#define GET_PTR(ptr, off) (ptr + off)\n#define GET_BETA(pc, beta) (pc == 0 ? beta : 1.0f)\n\n"
+    macros = f"#define GET_PTR(ptr, off) (ptr + off)\n#define GET_BETA(pc, beta) (pc == 0 ? beta : ({c_type_alpha})1)\n\n"
     fwd_decls = 'extern "C" {\n'
     
     # Global microkernel decls
     for m_idx, n_idx, new_name in generated_microkernels_b0:
-        fwd_decls += f"void {new_name}(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);\n"
+        fwd_decls += f"void {new_name}(size_t, {c_type_alpha}*, {c_type_a}*, size_t, {c_type_b}*, size_t, {c_type_alpha}*, {c_type_c}*, size_t);\n"
     for m_idx, n_idx, new_name in generated_microkernels_b1:
-        fwd_decls += f"void {new_name}(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);\n"
+        fwd_decls += f"void {new_name}(size_t, {c_type_alpha}*, {c_type_a}*, size_t, {c_type_b}*, size_t, {c_type_alpha}*, {c_type_c}*, size_t);\n"
 
     for dim in range(1, max_dim + 1):
-        fwd_decls += f"\nvoid pack_CB_v_if_{config.datatype}_NR{dim}(float*, float*, size_t, size_t, size_t);\n"
-        fwd_decls += f"void pack_CB_v_else_{config.datatype}_NR{dim}(float*, float*, size_t, size_t, size_t);\n"
-        fwd_decls += f"void pack_RB_v_if_{config.datatype}_MR{dim}(float*, float*, size_t, size_t, size_t);\n"
-        fwd_decls += f"void pack_RB_v_else_{config.datatype}_MR{dim}(float*, float*, size_t, size_t, size_t);\n"
+        fwd_decls += f"\nvoid pack_CB_v_if_{config.method}_{config.datatype}_NR{dim}({c_type_b}*, {c_type_b}*, size_t, size_t, size_t);\n"
+        fwd_decls += f"void pack_CB_v_else_{config.method}_{config.datatype}_NR{dim}({c_type_b}*, {c_type_b}*, size_t, size_t, size_t);\n"
+        fwd_decls += f"void pack_RB_v_if_{config.method}_{config.datatype}_MR{dim}({c_type_a}*, {c_type_a}*, size_t, size_t, size_t);\n"
+        fwd_decls += f"void pack_RB_v_else_{config.method}_{config.datatype}_MR{dim}({c_type_a}*, {c_type_a}*, size_t, size_t, size_t);\n"
 
-    fwd_decls += f"\nvoid gemm_microkernel_v_dispatch_generic(size_t cur_mr, size_t cur_nr, size_t kc, float alpha, float* Ac, float* Bc, float beta, float* C, size_t ldc, size_t max_mr, size_t max_nr);\n"
+    fwd_decls += f"\nvoid gemm_microkernel_v_dispatch_generic(size_t cur_mr, size_t cur_nr, size_t kc, {c_type_alpha} alpha, {c_type_a}* Ac, {c_type_b}* Bc, {c_type_alpha} beta, {c_type_c}* C, size_t ldc, size_t max_mr, size_t max_nr);\n"
     fwd_decls += "\n}\n"
     
     headers_path = os.path.join(out_dir, "gemm_headers.h")
@@ -293,8 +311,8 @@ def main():
         f.write(fwd_decls)
         f.write("\n#endif // GEMM_HEADERS_H\n")
         
-    dispatch_body = f"\nvoid gemm_microkernel_v_dispatch_generic(size_t cur_mr, size_t cur_nr, size_t kc, float alpha, float* Ac, float* Bc, float beta, float* C, size_t ldc, size_t max_mr, size_t max_nr) {{\n"
-    dispatch_body += "    if (beta == 0.0f) {\n"
+    dispatch_body = f"\nvoid gemm_microkernel_v_dispatch_generic(size_t cur_mr, size_t cur_nr, size_t kc, {c_type_alpha} alpha, {c_type_a}* Ac, {c_type_b}* Bc, {c_type_alpha} beta, {c_type_c}* C, size_t ldc, size_t max_mr, size_t max_nr) {{\n"
+    dispatch_body += f"    if (beta == ({c_type_alpha})0) {{\n"
     for m_idx in range(1, max_mr + 1):
         for n_idx in range(1, max_nr + 1):
             new_name = f"gemm_microkernel_v_{config.datatype}_{m_idx}x{n_idx}_b0"
@@ -310,22 +328,22 @@ def main():
     dispatch_body += "}\n"
 
     dispatch_body += f"""
-void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, int32_t lda, float* B, int32_t ldb, float beta, float* C, int32_t ldc, float* Ac, float* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr) {{
-    typedef void (*pack_CB_fn)(float*, float*, size_t, size_t, size_t);
-    typedef void (*pack_RB_fn)(float*, float*, size_t, size_t, size_t);
+void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c_type_a}* A, int32_t lda, {c_type_b}* B, int32_t ldb, {c_type_alpha} beta, {c_type_c}* C, int32_t ldc, {c_type_a}* Ac, {c_type_b}* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr) {{
+    typedef void (*pack_CB_fn)({c_type_b}*, {c_type_b}*, size_t, size_t, size_t);
+    typedef void (*pack_RB_fn)({c_type_a}*, {c_type_a}*, size_t, size_t, size_t);
     
     static const pack_CB_fn pack_CB_funcs[] = {{
         nullptr,
 """
     for dim in range(1, max_dim + 1):
-        dispatch_body += f"        pack_CB_v_if_{config.datatype}_NR{dim},\n"
+        dispatch_body += f"        pack_CB_v_if_{config.method}_{config.datatype}_NR{dim},\n"
     dispatch_body += f"""    }};
     
     static const pack_RB_fn pack_RB_funcs[] = {{
         nullptr,
 """
     for dim in range(1, max_dim + 1):
-        dispatch_body += f"        pack_RB_v_if_{config.datatype}_MR{dim},\n"
+        dispatch_body += f"        pack_RB_v_if_{config.method}_{config.datatype}_MR{dim},\n"
     dispatch_body += f"""    }};
 
     for (int32_t jc = 0; jc < n; jc += nc) {{
@@ -335,14 +353,14 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
             int32_t kc_remain = k - pc;
             int32_t cur_kc = std::min(kc_remain, kc);
             int32_t offset_B = jc * ldb + pc;
-            float* b_ptr = GET_PTR(B, offset_B);
+            {c_type_b}* b_ptr = GET_PTR(B, offset_B);
             pack_CB_funcs[nr](b_ptr, Bc, cur_kc, cur_nc, ldb);
-            float beta_actual = GET_BETA(pc, beta);
+            {c_type_alpha} beta_actual = GET_BETA(pc, beta);
             for (int32_t ic = 0; ic < m; ic += mc) {{
                 int32_t mc_remain = m - ic;
                 int32_t cur_mc = std::min(mc_remain, mc);
                 int32_t offset_A = pc * lda + ic;
-                float* a_ptr = GET_PTR(A, offset_A);
+                {c_type_a}* a_ptr = GET_PTR(A, offset_A);
                 pack_RB_funcs[mr](a_ptr, Ac, cur_mc, cur_kc, lda);
                 for (int32_t jr = 0; jr < cur_nc; jr += nr) {{
                     int32_t nr_remain = cur_nc - jr;
@@ -353,9 +371,9 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
                         int32_t row_C = ic + ir;
                         int32_t col_C = jc + jr;
                         int32_t offset_C = col_C * ldc + row_C;
-                        float* c_ptr = GET_PTR(C, offset_C);
-                        float* a_packed = GET_PTR(Ac, ir * cur_kc);
-                        float* b_packed = GET_PTR(Bc, jr * cur_kc);
+                        {c_type_c}* c_ptr = GET_PTR(C, offset_C);
+                        {c_type_a}* a_packed = GET_PTR(Ac, ir * cur_kc);
+                        {c_type_b}* b_packed = GET_PTR(Bc, jr * cur_kc);
                         gemm_microkernel_v_dispatch_generic(cur_mr, cur_nr, cur_kc, alpha, a_packed, b_packed, beta_actual, c_ptr, ldc, mr, nr);
                     }}
                 }}
@@ -400,7 +418,7 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
     lower_modules(pack_modules, "gemm_pack_xdsl")
 
     # Generate the C++ header
-    generate_header(config, out_dir, generated_variants, max_dim)
+    generate_header(config, out_dir, generated_variants, max_dim, c_type_a, c_type_b, c_type_c, c_type_alpha)
     print(f"\n[+] Generated header: {os.path.join(out_dir, 'generated_kernels.h')}")
 
     # 3. Copy static templates
