@@ -5,8 +5,8 @@
     "arch": "jbpi2",
     "mr_nr_family": [
         [
-            8,
-            8
+            16,
+            16
         ]
     ],
     "datasets": [

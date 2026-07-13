@@ -334,7 +334,7 @@ int main(int argc, char** argv) {
             for (size_t i = 0; i < (size_t)(ldc * n); ++i) C[i] = 0.0f;
 
             // Warmup (also computes C)
-            variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc);
+            variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr);
 
             string status = "SKIP";
             if (do_ref) {
@@ -389,7 +389,7 @@ int main(int argc, char** argv) {
                 // Benchmark
                 auto start = chrono::high_resolution_clock::now();
                 for (int r = 0; r < N_REPS; ++r) {
-                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc);
+                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr);
                 }
                 auto end = chrono::high_resolution_clock::now();
 

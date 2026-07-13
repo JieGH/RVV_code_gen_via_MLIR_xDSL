@@ -20,6 +20,14 @@ void gemm_microkernel_v_fp32_1x5_b0(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_1x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_1x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_1x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_2x1_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_2x2_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_2x3_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
@@ -28,6 +36,14 @@ void gemm_microkernel_v_fp32_2x5_b0(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_2x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_2x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_2x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_3x1_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_3x2_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_3x3_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
@@ -36,6 +52,14 @@ void gemm_microkernel_v_fp32_3x5_b0(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_3x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_3x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_3x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_4x1_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_4x2_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_4x3_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
@@ -44,6 +68,14 @@ void gemm_microkernel_v_fp32_4x5_b0(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_4x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_4x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_4x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_5x1_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_5x2_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_5x3_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
@@ -52,6 +84,14 @@ void gemm_microkernel_v_fp32_5x5_b0(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_5x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_5x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_5x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_6x1_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_6x2_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_6x3_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
@@ -60,6 +100,14 @@ void gemm_microkernel_v_fp32_6x5_b0(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_6x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_6x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_6x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_7x1_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_7x2_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_7x3_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
@@ -68,6 +116,14 @@ void gemm_microkernel_v_fp32_7x5_b0(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_7x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_7x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_7x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_8x1_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_8x2_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_8x3_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
@@ -76,6 +132,142 @@ void gemm_microkernel_v_fp32_8x5_b0(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_8x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_8x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_8x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x1_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x2_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x3_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x4_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x5_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x1_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x2_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x3_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x4_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x5_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x1_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x2_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x3_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x4_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x5_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x1_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x2_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x3_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x4_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x5_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x1_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x2_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x3_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x4_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x5_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x1_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x2_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x3_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x4_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x5_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x1_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x2_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x3_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x4_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x5_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x1_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x2_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x3_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x4_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x5_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x6_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x7_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x8_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x9_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x10_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x11_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x12_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x13_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x14_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x15_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x16_b0(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_1x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_1x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_1x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
@@ -84,6 +276,14 @@ void gemm_microkernel_v_fp32_1x5_b1(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_1x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_1x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_1x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_1x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_2x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_2x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_2x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
@@ -92,6 +292,14 @@ void gemm_microkernel_v_fp32_2x5_b1(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_2x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_2x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_2x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_2x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_3x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_3x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_3x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
@@ -100,6 +308,14 @@ void gemm_microkernel_v_fp32_3x5_b1(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_3x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_3x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_3x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_3x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_4x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_4x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_4x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
@@ -108,6 +324,14 @@ void gemm_microkernel_v_fp32_4x5_b1(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_4x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_4x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_4x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_4x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_5x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_5x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_5x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
@@ -116,6 +340,14 @@ void gemm_microkernel_v_fp32_5x5_b1(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_5x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_5x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_5x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_5x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_6x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_6x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_6x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
@@ -124,6 +356,14 @@ void gemm_microkernel_v_fp32_6x5_b1(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_6x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_6x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_6x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_6x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_7x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_7x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_7x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
@@ -132,6 +372,14 @@ void gemm_microkernel_v_fp32_7x5_b1(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_7x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_7x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_7x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_7x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_8x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_8x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_8x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
@@ -140,6 +388,142 @@ void gemm_microkernel_v_fp32_8x5_b1(size_t, float*, float*, size_t, float*, size
 void gemm_microkernel_v_fp32_8x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_8x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 void gemm_microkernel_v_fp32_8x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_8x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x4_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x5_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_9x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x4_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x5_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_10x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x4_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x5_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_11x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x4_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x5_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_12x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x4_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x5_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_13x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x4_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x5_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_14x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x4_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x5_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_15x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x1_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x2_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x3_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x4_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x5_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x6_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x7_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x8_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x9_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x10_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x11_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x12_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x13_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x14_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x15_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
+void gemm_microkernel_v_fp32_16x16_b1(size_t, float*, float*, size_t, float*, size_t, float*, float*, size_t);
 
 void pack_CB_v_if_fp32_NR1(float*, float*, size_t, size_t, size_t);
 void pack_CB_v_else_fp32_NR1(float*, float*, size_t, size_t, size_t);
@@ -181,152 +565,47 @@ void pack_CB_v_else_fp32_NR8(float*, float*, size_t, size_t, size_t);
 void pack_RB_v_if_fp32_MR8(float*, float*, size_t, size_t, size_t);
 void pack_RB_v_else_fp32_MR8(float*, float*, size_t, size_t, size_t);
 
-void gemm_microkernel_v_dispatch_fp32_MR8_NR8(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR8_NR8(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
+void pack_CB_v_if_fp32_NR9(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR9(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR9(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR9(float*, float*, size_t, size_t, size_t);
 
-void gemm_microkernel_v_dispatch_fp32_MR8_NR7(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR8_NR7(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
+void pack_CB_v_if_fp32_NR10(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR10(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR10(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR10(float*, float*, size_t, size_t, size_t);
 
-void gemm_microkernel_v_dispatch_fp32_MR8_NR6(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR8_NR6(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
+void pack_CB_v_if_fp32_NR11(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR11(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR11(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR11(float*, float*, size_t, size_t, size_t);
 
-void gemm_microkernel_v_dispatch_fp32_MR8_NR5(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR8_NR5(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
+void pack_CB_v_if_fp32_NR12(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR12(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR12(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR12(float*, float*, size_t, size_t, size_t);
 
-void gemm_microkernel_v_dispatch_fp32_MR8_NR4(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR8_NR4(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
+void pack_CB_v_if_fp32_NR13(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR13(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR13(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR13(float*, float*, size_t, size_t, size_t);
 
-void gemm_microkernel_v_dispatch_fp32_MR8_NR3(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR8_NR3(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
+void pack_CB_v_if_fp32_NR14(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR14(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR14(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR14(float*, float*, size_t, size_t, size_t);
 
-void gemm_microkernel_v_dispatch_fp32_MR8_NR2(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR8_NR2(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
+void pack_CB_v_if_fp32_NR15(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR15(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR15(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR15(float*, float*, size_t, size_t, size_t);
 
-void gemm_microkernel_v_dispatch_fp32_MR7_NR8(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR7_NR8(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
+void pack_CB_v_if_fp32_NR16(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_fp32_NR16(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_fp32_MR16(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_fp32_MR16(float*, float*, size_t, size_t, size_t);
 
-void gemm_microkernel_v_dispatch_fp32_MR7_NR7(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR7_NR7(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR7_NR6(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR7_NR6(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR7_NR5(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR7_NR5(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR7_NR4(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR7_NR4(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR7_NR3(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR7_NR3(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR7_NR2(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR7_NR2(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR6_NR8(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR6_NR8(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR6_NR7(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR6_NR7(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR6_NR6(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR6_NR6(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR6_NR5(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR6_NR5(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR6_NR4(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR6_NR4(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR6_NR3(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR6_NR3(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR6_NR2(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR6_NR2(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR5_NR8(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR5_NR8(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR5_NR7(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR5_NR7(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR5_NR6(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR5_NR6(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR5_NR5(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR5_NR5(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR5_NR4(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR5_NR4(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR5_NR3(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR5_NR3(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR5_NR2(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR5_NR2(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR4_NR8(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR4_NR8(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR4_NR7(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR4_NR7(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR4_NR6(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR4_NR6(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR4_NR5(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR4_NR5(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR4_NR4(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR4_NR4(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR4_NR3(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR4_NR3(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR4_NR2(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR4_NR2(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR3_NR8(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR3_NR8(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR3_NR7(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR3_NR7(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR3_NR6(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR3_NR6(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR3_NR5(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR3_NR5(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR3_NR4(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR3_NR4(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR3_NR3(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR3_NR3(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR3_NR2(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR3_NR2(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR2_NR8(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR2_NR8(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR2_NR7(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR2_NR7(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR2_NR6(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR2_NR6(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR2_NR5(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR2_NR5(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR2_NR4(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR2_NR4(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR2_NR3(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR2_NR3(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
-
-void gemm_microkernel_v_dispatch_fp32_MR2_NR2(size_t, size_t, size_t, float, float*, float*, float, float*, size_t);
-void gemm_microkernel_v_wrapper_fp32_MR2_NR2(int32_t, int32_t, int32_t, float, float*, float*, float, float*, int32_t);
+void gemm_microkernel_v_dispatch_generic(size_t cur_mr, size_t cur_nr, size_t kc, float alpha, float* Ac, float* Bc, float beta, float* C, size_t ldc, size_t max_mr, size_t max_nr);
 
 }
 

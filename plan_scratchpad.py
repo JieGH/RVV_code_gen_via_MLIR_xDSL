@@ -1,1 +1,2 @@
-# Just checking my thoughts
+def test():
+    print("test")
