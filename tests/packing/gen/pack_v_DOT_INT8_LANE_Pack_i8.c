@@ -2,11 +2,11 @@
 #include <algorithm>
 
 extern "C" {
-void pack_CB_v_if_DOT_INT8_LANE_Pack_i8_RR8(int8_t* v1, int8_t* v2, size_t v3, size_t v4, size_t v5) {
+void pack_CB_v_if_DOT_INT8_LANE_Pack_i8_RR16(int8_t* v1, int8_t* v2, size_t v3, size_t v4, size_t v5) {
   size_t v6 = 0;
   size_t v7 = 1;
   size_t v8 = 4;
-  size_t v9 = 8;
+  size_t v9 = 16;
   size_t v10 = 32;
   for (size_t i11 = v6; i11 < v4; i11 += v9) {
     size_t v12 = v4 - i11;
@@ -64,14 +64,14 @@ void pack_CB_v_if_DOT_INT8_LANE_Pack_i8_RR8(int8_t* v1, int8_t* v2, size_t v3, s
   return;
 }
 
-void pack_CB_v_else_DOT_INT8_LANE_Pack_i8_RR8(int8_t* v1, int8_t* v2, size_t v3, size_t v4, size_t v5) {
+void pack_CB_v_else_DOT_INT8_LANE_Pack_i8_RR16(int8_t* v1, int8_t* v2, size_t v3, size_t v4, size_t v5) {
   return;
 }
 
-void pack_RB_v_if_DOT_INT8_LANE_Pack_i8_RR8(int8_t* v1, int8_t* v2, size_t v3, size_t v4, size_t v5) {
+void pack_RB_v_if_DOT_INT8_LANE_Pack_i8_RR16(int8_t* v1, int8_t* v2, size_t v3, size_t v4, size_t v5) {
   size_t v6 = 0;
   size_t v7 = 1;
-  size_t v8 = 8;
+  size_t v8 = 16;
   size_t v9 = 32;
   size_t v10 = 1;
   for (size_t i11 = v6; i11 < v3; i11 += v8) {
@@ -107,7 +107,7 @@ void pack_RB_v_if_DOT_INT8_LANE_Pack_i8_RR8(int8_t* v1, int8_t* v2, size_t v3, s
   return;
 }
 
-void pack_RB_v_else_DOT_INT8_LANE_Pack_i8_RR8(int8_t* v1, int8_t* v2, size_t v3, size_t v4, size_t v5) {
+void pack_RB_v_else_DOT_INT8_LANE_Pack_i8_RR16(int8_t* v1, int8_t* v2, size_t v3, size_t v4, size_t v5) {
   return;
 }
 

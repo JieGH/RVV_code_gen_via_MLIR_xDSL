@@ -31,6 +31,7 @@ clean:
 DATASETS_PATTERN ?= ../../datasets/*.dat
 
 run: $(TARGET)
+	@mkdir -p logs
 	@for dataset in $(DATASETS_PATTERN); do \
 		echo "Running dataset: $$dataset"; \
 		./$(TARGET) $$dataset | tee "results_$$(basename $$dataset .dat).csv"; \

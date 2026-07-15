@@ -1,10 +1,10 @@
 "builtin.module"() ({
-  "func.func"() <{sym_name = "pack_CB_v_if_DOT_INT8_LANE_Pack_i8_RR8", function_type = (!emitc.ptr<i8>, !emitc.ptr<i8>, index, index, index) -> ()}> ({
+  "func.func"() <{sym_name = "pack_CB_v_if_DOT_INT8_LANE_Pack_i8_RR16", function_type = (!emitc.ptr<i8>, !emitc.ptr<i8>, index, index, index) -> ()}> ({
   ^bb0(%0 : !emitc.ptr<i8>, %1 : !emitc.ptr<i8>, %2 : index, %3 : index, %4 : index):
     %5 = "emitc.constant"() {value = 0 : index} : () -> index
     %6 = "emitc.constant"() {value = 1 : index} : () -> index
     %7 = "emitc.constant"() {value = 4 : index} : () -> index
-    %8 = "emitc.constant"() {value = 8 : index} : () -> index
+    %8 = "emitc.constant"() {value = 16 : index} : () -> index
     %9 = "emitc.constant"() {value = 32 : index} : () -> index
     "emitc.for"(%5, %3, %8) ({
     ^bb1(%10 : index):
@@ -75,15 +75,15 @@
     }) : (index, index, index) -> ()
     "func.return"() : () -> ()
   }) {function_type = (!emitc.ptr<i8>, !emitc.ptr<i8>, index, index, index) -> index} : () -> ()
-  "func.func"() <{sym_name = "pack_CB_v_else_DOT_INT8_LANE_Pack_i8_RR8", function_type = (!emitc.ptr<i8>, !emitc.ptr<i8>, index, index, index) -> ()}> ({
+  "func.func"() <{sym_name = "pack_CB_v_else_DOT_INT8_LANE_Pack_i8_RR16", function_type = (!emitc.ptr<i8>, !emitc.ptr<i8>, index, index, index) -> ()}> ({
   ^bb0(%0 : !emitc.ptr<i8>, %1 : !emitc.ptr<i8>, %2 : index, %3 : index, %4 : index):
     "func.return"() : () -> ()
   }) {function_type = (!emitc.ptr<i8>, !emitc.ptr<i8>, index, index, index) -> index} : () -> ()
-  "func.func"() <{sym_name = "pack_RB_v_if_DOT_INT8_LANE_Pack_i8_RR8", function_type = (!emitc.ptr<i8>, !emitc.ptr<i8>, index, index, index) -> ()}> ({
+  "func.func"() <{sym_name = "pack_RB_v_if_DOT_INT8_LANE_Pack_i8_RR16", function_type = (!emitc.ptr<i8>, !emitc.ptr<i8>, index, index, index) -> ()}> ({
   ^bb0(%0 : !emitc.ptr<i8>, %1 : !emitc.ptr<i8>, %2 : index, %3 : index, %4 : index):
     %5 = "emitc.constant"() {value = 0 : index} : () -> index
     %6 = "emitc.constant"() {value = 1 : index} : () -> index
-    %7 = "emitc.constant"() {value = 8 : index} : () -> index
+    %7 = "emitc.constant"() {value = 16 : index} : () -> index
     %8 = "emitc.constant"() {value = 32 : index} : () -> index
     %9 = "emitc.constant"() {value = 1 : index} : () -> index
     "emitc.for"(%5, %2, %7) ({
@@ -126,7 +126,7 @@
     }) : (index, index, index) -> ()
     "func.return"() : () -> ()
   }) {function_type = (!emitc.ptr<i8>, !emitc.ptr<i8>, index, index, index) -> index} : () -> ()
-  "func.func"() <{sym_name = "pack_RB_v_else_DOT_INT8_LANE_Pack_i8_RR8", function_type = (!emitc.ptr<i8>, !emitc.ptr<i8>, index, index, index) -> ()}> ({
+  "func.func"() <{sym_name = "pack_RB_v_else_DOT_INT8_LANE_Pack_i8_RR16", function_type = (!emitc.ptr<i8>, !emitc.ptr<i8>, index, index, index) -> ()}> ({
   ^bb0(%0 : !emitc.ptr<i8>, %1 : !emitc.ptr<i8>, %2 : index, %3 : index, %4 : index):
     "func.return"() : () -> ()
   }) {function_type = (!emitc.ptr<i8>, !emitc.ptr<i8>, index, index, index) -> index} : () -> ()

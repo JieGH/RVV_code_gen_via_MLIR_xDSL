@@ -124,13 +124,27 @@ rsync_board tests/pure_xdsl_blis_rvv/modelLevel/ "${RSYNC_TARGET}:${REMOTE_DIR}/
 echo "  [OK] Synced pj_gen/, datasets/, and modelLevel/ → ${RSYNC_TARGET}:${REMOTE_DIR}/"
 
 # ============================================================
-# [3/3] Compile and benchmark on board
+# [3/4] Compile and benchmark on board
 # ============================================================
-echo ""; echo "$SEP"; echo " [3/3] Compile and Benchmark on Board"; echo "$SEP"
+echo ""; echo "$SEP"; echo " [3/4] Compile and Benchmark on Board"; echo "$SEP"
 
 # We don't know the exact folder name inside pj_gen without parsing the json,
 # but we know it generated into pj_gen/* . Let's just find the directory inside pj_gen and run make.
 ssh_board "cd ${REMOTE_DIR}/pj_gen && for d in */; do (cd \"\$d\" && make clean && make all && make run); done"
+
+# ============================================================
+# [4/4] Fetch logs
+# ============================================================
+echo ""; echo "$SEP"; echo " [4/4] Fetch Logs"; echo "$SEP"
+
+TIMESTAMP=$(date +"%Y-%m-%d_%H%M%S")
+LOCAL_LOG_DIR="tests/pure_xdsl_blis_rvv/logs/${PJ_NAME}_${TIMESTAMP}"
+mkdir -p "${LOCAL_LOG_DIR}"
+
+# Rsync the logs folder from the nested pj_gen directory
+rsync_board "${RSYNC_TARGET}:${REMOTE_DIR}/pj_gen/*/logs/" "${LOCAL_LOG_DIR}/"
+
+echo "  [OK] Fetched logs to ${LOCAL_LOG_DIR}/"
 
 echo ""
 echo "$SEP"

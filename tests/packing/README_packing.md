@@ -36,7 +36,7 @@ REMOTE_PASS="<your_password>" REMOTE_HOST="fej" REMOTE_PORT="3322" \
 ### Custom Block Sizes and Types
 You can configure block dimensions (`NR`, `MR`), hardware `VLEN`, the target data type (`dtype`), and the packing method using CLI flags:
 ```bash
-REMOTE_PASS="<your_password>" REMOTE_HOST="fej" REMOTE_PORT="3322" \
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" \
 ./tests/packing/compile_packing.sh \
     --NR 16 --MR 16 --vlen 256 \
     --dtype i8 \

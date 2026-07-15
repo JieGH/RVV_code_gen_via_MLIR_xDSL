@@ -6,6 +6,8 @@
 #include <iomanip>
 #include <cmath>
 #include <cstdlib>
+#include <algorithm>
+#include <tuple>
 
 #include "generated_kernels.h"
 
@@ -237,6 +239,22 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    // Ensure logs directory exists (handled by Makefile)
+    ofstream raw_log("logs/raw_results.txt", ios_base::app);
+    if (!raw_log.is_open()) {
+        cerr << "Warning: Could not open logs/raw_results.txt for writing." << endl;
+    }
+
+    ofstream best_log("logs/best_results.txt", ios_base::app);
+    if (!best_log.is_open()) {
+        cerr << "Warning: Could not open logs/best_results.txt for writing." << endl;
+    } else {
+        best_log.seekp(0, ios::end);
+        if (best_log.tellp() == 0) {
+            best_log << "Arch,Datatype,Method,VLEN,Label,M,N,K,Best_Kernel,GFLOPS,RVV_Time_ms,Ref_Time_ms\n";
+        }
+    }
+
     string dataset_path = argv[1];
     ifstream file(dataset_path);
     if (!file.is_open()) {
@@ -244,26 +262,14 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    cout << "Running dataset: " << dataset_path << endl;
-    cout << "Config: Datatype=" << CONFIG_DATATYPE 
-         << ", Packing=" << CONFIG_METHOD 
-         << ", VLEN=" << CONFIG_VLEN 
-         << ", Arch=" << CONFIG_ARCH << endl;
+    cout << "\n============================================================" << endl;
+    cout << " Benchmark Config: Arch=" << CONFIG_ARCH 
+         << " | Datatype=" << CONFIG_DATATYPE 
+         << " | Method=" << CONFIG_METHOD 
+         << " | VLEN=" << CONFIG_VLEN << endl;
+    cout << " Dataset: " << dataset_path << endl;
+    cout << "============================================================\n" << endl;
 
-    cout << "| " << left << setw(16) << "Dataset" 
-         << " | " << left << setw(13) << "Dims(MxNxK)" 
-         << " | " << left << setw(11) << "Variant" 
-         << " | " << left << setw(14) << "Validation" 
-         << " | " << left << setw(10) << "GFLOPS" 
-         << " | " << left << setw(14) << "T_RVV(ms)" 
-         << " | " << left << setw(14) << "T_Ref(ms)" << " |" << endl;
-    cout << "| " << left << setw(16) << ":---" 
-         << " | " << left << setw(13) << ":---" 
-         << " | " << left << setw(11) << ":---" 
-         << " | " << left << setw(14) << ":---" 
-         << " | " << left << setw(10) << ":---" 
-         << " | " << left << setw(14) << ":---" 
-         << " | " << left << setw(14) << ":---" << " |" << endl;
 
     string line;
     while (getline(file, line)) {
@@ -289,22 +295,35 @@ int main(int argc, char** argv) {
         float beta = 0.0f;
 
         string ref_time_str = "N/A";
+        double ref_time_val_global = 0.0;
+        string dim_str = to_string(m) + "x" + to_string(n) + "x" + to_string(k);
         // Bounded reference check (skip if too massive)
         bool do_ref = true;
         if (do_ref) {
+            cout << "\r" << "  [" << label << " (" << dim_str << ")] Running scalar reference ... " << flush;
             // Initialize Cg
             for (size_t i = 0; i < (size_t)(ldc * n); ++i) Cg[i] = 0.0f;
             auto ref_start = chrono::high_resolution_clock::now();
             gemm_ref('C', 'C', 'C', 'N', 'N', m, n, k, alpha, A, lda, B, ldb, beta, Cg, ldc);
             auto ref_end = chrono::high_resolution_clock::now();
             chrono::duration<double> ref_diff = ref_end - ref_start;
+            ref_time_val_global = ref_diff.count() * 1000.0;
             
             stringstream ss;
-            ss << fixed << setprecision(4) << (ref_diff.count() * 1000.0);
+            ss << fixed << setprecision(4) << ref_time_val_global;
             ref_time_str = ss.str();
         }
 
         const int N_REPS = 5;
+
+        struct VariantResult {
+            string name;
+            string status;
+            double gflops;
+            double rvv_time_ms;
+            double ref_time_ms;
+        };
+        vector<VariantResult> variant_results;
 
         for (int v = 0; v < num_variants; ++v) {
             const auto& variant = generated_variants[v];
@@ -371,21 +390,19 @@ int main(int argc, char** argv) {
 
             string current_ref_time = ref_time_str;
             string label_str = label;
-            string dim_str = to_string(m) + "x" + to_string(n) + "x" + to_string(k);
             string var_str = string("`") + variant.name + "`";
             string status_str;
             if (status == "PASS") status_str = "✅ PASS";
             else if (status == "SKIP") status_str = "⏭️ SKIP";
             else status_str = "❌ FAIL";
 
-            cout << "| " << left << setw(16) << label_str 
-                 << " | " << left << setw(13) << dim_str 
-                 << " | " << left << setw(11) << var_str 
-                 << " | " << left << setw(14) << status_str << " | ";
+            cout << "\r" << "  [" << label << " (" << dim_str << ")] Testing variant " << (v+1) << "/" << num_variants << " : " << left << setw(15) << variant.name << flush;
             
-            if (status == "FAIL") {
-                cout << left << setw(10) << "N/A" << " | " << left << setw(14) << "N/A" << " | " << left << setw(14) << current_ref_time << " |" << endl;
-            } else {
+            double gflops_val = 0.0;
+            double rvv_time_val = 0.0;
+            double ref_time_val = ref_time_val_global;
+
+            if (status != "FAIL") {
                 // Benchmark
                 auto start = chrono::high_resolution_clock::now();
                 for (int r = 0; r < N_REPS; ++r) {
@@ -395,18 +412,18 @@ int main(int argc, char** argv) {
 
                 chrono::duration<double> diff = end - start;
                 double avg_time = diff.count() / N_REPS;
-                double gflops = (2.0 * m * n * k) / (avg_time * 1e9);
-
-                stringstream gflops_ss;
-                gflops_ss << fixed << setprecision(4) << gflops;
-                
-                stringstream rvv_time_ss;
-                rvv_time_ss << fixed << setprecision(4) << (avg_time * 1000.0);
-                
-                cout << left << setw(10) << gflops_ss.str() 
-                     << " | " << left << setw(14) << rvv_time_ss.str()
-                     << " | " << left << setw(14) << current_ref_time << " |" << endl;
+                gflops_val = (2.0 * m * n * k) / (avg_time * 1e9);
+                rvv_time_val = avg_time * 1000.0;
             }
+            
+            variant_results.push_back({string(variant.name), status, gflops_val, rvv_time_val, ref_time_val});
+
+            if (raw_log.is_open()) {
+                raw_log << label_str << "," << m << "," << n << "," << k << "," 
+                        << variant.name << "," << status << "," 
+                        << gflops_val << "," << rvv_time_val << "," << ref_time_val << endl;
+            }
+
             // Check bounds after execution
             bool corrupted = false;
             for (size_t i = 0; i < 16; ++i) {
@@ -422,6 +439,34 @@ int main(int argc, char** argv) {
             
             free(Ac_alloc);
             free(Bc_alloc);
+        }
+
+        // Print Top 3 for this problem
+        cout << "\r                                                                               \r";
+        sort(variant_results.begin(), variant_results.end(), [](const VariantResult& a, const VariantResult& b) {
+            if (a.status == "PASS" && b.status != "PASS") return true;
+            if (a.status != "PASS" && b.status == "PASS") return false;
+            return a.gflops > b.gflops;
+        });
+
+        string problem_str = label + " (" + dim_str + ")";
+        cout << "▶ " << left << setw(30) << problem_str << " | ";
+        for (size_t i = 0; i < min((size_t)3, variant_results.size()); ++i) {
+            auto& vr = variant_results[i];
+            cout << "#" << (i+1) << ": " << left << setw(8) << vr.name << " " 
+                 << fixed << setprecision(2) << vr.gflops << " GOPs  ";
+            if (vr.status != "PASS") {
+                cout << "[" << vr.status << "] ";
+            }
+        }
+        cout << endl;
+
+        if (!variant_results.empty() && best_log.is_open()) {
+            auto& best = variant_results[0];
+            best_log << CONFIG_ARCH << "," << CONFIG_DATATYPE << "," << CONFIG_METHOD << "," << CONFIG_VLEN << ","
+                     << label << "," << m << "," << n << "," << k << "," 
+                     << best.name << "," << best.gflops << "," 
+                     << best.rvv_time_ms << "," << best.ref_time_ms << "\n";
         }
 
         free(A);
