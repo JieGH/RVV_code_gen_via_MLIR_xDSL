@@ -322,6 +322,10 @@ int main(int argc, char** argv) {
             double gflops;
             double rvv_time_ms;
             double ref_time_ms;
+            double sample_rvv;
+            double sample_ref;
+            int sample_i;
+            int sample_j;
         };
         vector<VariantResult> variant_results;
 
@@ -330,11 +334,16 @@ int main(int argc, char** argv) {
 
             int mc, nc, kc;
             get_optim_mc_nc_kc(sizeof(float), m, n, k, variant.mr, variant.nr, &mc, &nc, &kc);
+            
+            int kc_pad = kc;
+            if (string(CONFIG_METHOD).find("DOT") != string::npos) {
+                kc_pad = ((kc + 3) / 4) * 4;
+            }
 
             size_t padded_mc = ((mc + variant.mr - 1) / variant.mr) * variant.mr;
             size_t padded_nc = ((nc + variant.nr - 1) / variant.nr) * variant.nr;
-            size_t ac_len = padded_mc * kc;
-            size_t bc_len = kc * padded_nc;
+            size_t ac_len = padded_mc * kc_pad;
+            size_t bc_len = kc_pad * padded_nc;
             float* Ac_alloc = alloc_aligned(ac_len + 32);
             float* Bc_alloc = alloc_aligned(bc_len + 32);
             float* Ac = Ac_alloc + 16;
@@ -345,9 +354,6 @@ int main(int argc, char** argv) {
                 Bc_alloc[i] = -123456.0f;
                 Bc_alloc[16 + bc_len + i] = -123456.0f;
             }
-            if (string(variant.name) == "MR4_NR1") {
-                cout << "MR4_NR1 allocations: Ac=" << Ac << " Bc=" << Bc << " C=" << C << " bc_len=" << bc_len << endl;
-            }
 
             // Re-initialize C for this variant
             for (size_t i = 0; i < (size_t)(ldc * n); ++i) C[i] = 0.0f;
@@ -356,7 +362,15 @@ int main(int argc, char** argv) {
             variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr);
 
             string status = "SKIP";
+            double sample_rvv = 0.0;
+            double sample_ref = 0.0;
+            int sample_i = rand() % m;
+            int sample_j = rand() % n;
+
             if (do_ref) {
+                sample_rvv = C[sample_j * ldc + sample_i];
+                sample_ref = Cg[sample_j * ldc + sample_i];
+
                 double error = 0.0;
                 double nrm = 0.0;
                 double tmp = 0.0;
@@ -416,7 +430,7 @@ int main(int argc, char** argv) {
                 rvv_time_val = avg_time * 1000.0;
             }
             
-            variant_results.push_back({string(variant.name), status, gflops_val, rvv_time_val, ref_time_val});
+            variant_results.push_back({string(variant.name), status, gflops_val, rvv_time_val, ref_time_val, sample_rvv, sample_ref, sample_i, sample_j});
 
             if (raw_log.is_open()) {
                 raw_log << label_str << "," << m << "," << n << "," << k << "," 
@@ -458,6 +472,13 @@ int main(int argc, char** argv) {
             if (vr.status != "PASS") {
                 cout << "[" << vr.status << "] ";
             }
+        }
+        
+        if (!variant_results.empty() && variant_results[0].status == "PASS") {
+            auto& vr = variant_results[0];
+            cout << "| Check(" << vr.name << "): C[" << vr.sample_i << "," << vr.sample_j 
+                 << "] Ref: " << fixed << setprecision(5) << vr.sample_ref 
+                 << " xDSL: " << vr.sample_rvv;
         }
         cout << endl;
 

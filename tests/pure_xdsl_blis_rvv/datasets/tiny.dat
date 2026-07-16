@@ -1,3 +1,11 @@
-#layer	m	n	k	Flops
-1	16	16	15	236027904
-2	3	3	3	236027904
+# layer              M       N       K
+MicroTile_8x8        8       8       8
+MicroTile64x64        64        64       64
+MicroTile8x64        8        64       64
+MicroTile64x8        64        8       64
+MicroTile16x8        16        8       16
+MicroTile8x16        8        16       16
+Pack_Tall            256     8       32
+Pack_Wide            8       256     32
+KC_Cross_K300        64      64      300
+Cache_Fit_L1_128     128     128     128

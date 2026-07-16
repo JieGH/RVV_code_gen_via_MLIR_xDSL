@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #define CONFIG_DATATYPE "fp32"
-#define CONFIG_METHOD "AXPY_FP32_Pack"
+#define CONFIG_METHOD "DOT_FP32_LANE_Pack"
 #define CONFIG_VLEN 256
 #define CONFIG_ARCH "jbpi2"
 
@@ -12,134 +12,134 @@
 extern "C" {
 #endif
 
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR1(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR1(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR1(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR1(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR2(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR2(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR2(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR2(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR3(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR3(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR3(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR3(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR4(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR4(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR4(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR4(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR5(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR5(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR5(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR5(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR6(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR6(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR6(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR6(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR7(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR7(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR7(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR7(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR8(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR8(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR8(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR8(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR9(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR9(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR9(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR9(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR10(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR10(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR10(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR10(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR11(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR11(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR11(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR11(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR12(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR12(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR12(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR12(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR13(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR13(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR13(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR13(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR14(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR14(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR14(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR14(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR15(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR15(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR15(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR15(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR16(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR16(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR16(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR16(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR17(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR17(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR17(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR17(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR18(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR18(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR18(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR18(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR19(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR19(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR19(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR19(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR20(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR20(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR20(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR20(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR21(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR21(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR21(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR21(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR22(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR22(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR22(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR22(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR23(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR23(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR23(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR23(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR24(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR24(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR24(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR24(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR25(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR25(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR25(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR25(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR26(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR26(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR26(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR26(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR27(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR27(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR27(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR27(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR28(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR28(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR28(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR28(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR29(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR29(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR29(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR29(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR30(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR30(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR30(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR30(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR31(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR31(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR31(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR31(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_if_AXPY_FP32_Pack_fp32_NR32(float*, float*, size_t, size_t, size_t);
-void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR32(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR32(float*, float*, size_t, size_t, size_t);
-void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR32(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR1(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR1(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR1(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR1(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR2(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR2(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR2(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR2(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR3(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR3(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR3(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR3(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR4(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR4(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR4(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR4(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR5(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR5(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR5(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR5(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR6(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR6(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR6(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR6(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR7(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR7(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR7(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR7(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR8(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR8(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR8(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR8(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR9(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR9(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR9(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR9(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR10(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR10(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR10(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR10(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR11(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR11(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR11(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR11(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR12(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR12(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR12(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR12(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR13(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR13(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR13(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR13(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR14(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR14(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR14(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR14(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR15(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR15(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR15(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR15(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR16(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR16(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR16(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR16(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR17(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR17(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR17(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR17(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR18(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR18(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR18(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR18(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR19(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR19(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR19(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR19(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR20(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR20(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR20(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR20(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR21(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR21(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR21(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR21(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR22(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR22(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR22(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR22(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR23(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR23(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR23(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR23(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR24(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR24(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR24(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR24(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR25(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR25(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR25(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR25(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR26(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR26(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR26(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR26(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR27(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR27(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR27(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR27(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR28(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR28(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR28(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR28(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR29(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR29(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR29(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR29(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR30(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR30(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR30(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR30(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR31(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR31(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR31(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR31(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR32(float*, float*, size_t, size_t, size_t);
+void pack_CB_v_else_DOT_FP32_LANE_Pack_fp32_NR32(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR32(float*, float*, size_t, size_t, size_t);
+void pack_RB_v_else_DOT_FP32_LANE_Pack_fp32_MR32(float*, float*, size_t, size_t, size_t);
 
 void gemm_blis_generic(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr);
 
@@ -168,6 +168,7 @@ static const KernelVariant generated_variants[] = {
     {"MR32_NR4", 32, 4, gemm_blis_generic},
     {"MR32_NR3", 32, 3, gemm_blis_generic},
     {"MR32_NR2", 32, 2, gemm_blis_generic},
+    {"MR32_NR1", 32, 1, gemm_blis_generic},
     {"MR31_NR16", 31, 16, gemm_blis_generic},
     {"MR31_NR15", 31, 15, gemm_blis_generic},
     {"MR31_NR14", 31, 14, gemm_blis_generic},
@@ -183,6 +184,7 @@ static const KernelVariant generated_variants[] = {
     {"MR31_NR4", 31, 4, gemm_blis_generic},
     {"MR31_NR3", 31, 3, gemm_blis_generic},
     {"MR31_NR2", 31, 2, gemm_blis_generic},
+    {"MR31_NR1", 31, 1, gemm_blis_generic},
     {"MR30_NR16", 30, 16, gemm_blis_generic},
     {"MR30_NR15", 30, 15, gemm_blis_generic},
     {"MR30_NR14", 30, 14, gemm_blis_generic},
@@ -198,6 +200,7 @@ static const KernelVariant generated_variants[] = {
     {"MR30_NR4", 30, 4, gemm_blis_generic},
     {"MR30_NR3", 30, 3, gemm_blis_generic},
     {"MR30_NR2", 30, 2, gemm_blis_generic},
+    {"MR30_NR1", 30, 1, gemm_blis_generic},
     {"MR29_NR16", 29, 16, gemm_blis_generic},
     {"MR29_NR15", 29, 15, gemm_blis_generic},
     {"MR29_NR14", 29, 14, gemm_blis_generic},
@@ -213,6 +216,7 @@ static const KernelVariant generated_variants[] = {
     {"MR29_NR4", 29, 4, gemm_blis_generic},
     {"MR29_NR3", 29, 3, gemm_blis_generic},
     {"MR29_NR2", 29, 2, gemm_blis_generic},
+    {"MR29_NR1", 29, 1, gemm_blis_generic},
     {"MR28_NR16", 28, 16, gemm_blis_generic},
     {"MR28_NR15", 28, 15, gemm_blis_generic},
     {"MR28_NR14", 28, 14, gemm_blis_generic},
@@ -228,6 +232,7 @@ static const KernelVariant generated_variants[] = {
     {"MR28_NR4", 28, 4, gemm_blis_generic},
     {"MR28_NR3", 28, 3, gemm_blis_generic},
     {"MR28_NR2", 28, 2, gemm_blis_generic},
+    {"MR28_NR1", 28, 1, gemm_blis_generic},
     {"MR27_NR16", 27, 16, gemm_blis_generic},
     {"MR27_NR15", 27, 15, gemm_blis_generic},
     {"MR27_NR14", 27, 14, gemm_blis_generic},
@@ -243,6 +248,7 @@ static const KernelVariant generated_variants[] = {
     {"MR27_NR4", 27, 4, gemm_blis_generic},
     {"MR27_NR3", 27, 3, gemm_blis_generic},
     {"MR27_NR2", 27, 2, gemm_blis_generic},
+    {"MR27_NR1", 27, 1, gemm_blis_generic},
     {"MR26_NR16", 26, 16, gemm_blis_generic},
     {"MR26_NR15", 26, 15, gemm_blis_generic},
     {"MR26_NR14", 26, 14, gemm_blis_generic},
@@ -258,6 +264,7 @@ static const KernelVariant generated_variants[] = {
     {"MR26_NR4", 26, 4, gemm_blis_generic},
     {"MR26_NR3", 26, 3, gemm_blis_generic},
     {"MR26_NR2", 26, 2, gemm_blis_generic},
+    {"MR26_NR1", 26, 1, gemm_blis_generic},
     {"MR25_NR16", 25, 16, gemm_blis_generic},
     {"MR25_NR15", 25, 15, gemm_blis_generic},
     {"MR25_NR14", 25, 14, gemm_blis_generic},
@@ -273,6 +280,7 @@ static const KernelVariant generated_variants[] = {
     {"MR25_NR4", 25, 4, gemm_blis_generic},
     {"MR25_NR3", 25, 3, gemm_blis_generic},
     {"MR25_NR2", 25, 2, gemm_blis_generic},
+    {"MR25_NR1", 25, 1, gemm_blis_generic},
     {"MR24_NR16", 24, 16, gemm_blis_generic},
     {"MR24_NR15", 24, 15, gemm_blis_generic},
     {"MR24_NR14", 24, 14, gemm_blis_generic},
@@ -288,6 +296,7 @@ static const KernelVariant generated_variants[] = {
     {"MR24_NR4", 24, 4, gemm_blis_generic},
     {"MR24_NR3", 24, 3, gemm_blis_generic},
     {"MR24_NR2", 24, 2, gemm_blis_generic},
+    {"MR24_NR1", 24, 1, gemm_blis_generic},
     {"MR23_NR16", 23, 16, gemm_blis_generic},
     {"MR23_NR15", 23, 15, gemm_blis_generic},
     {"MR23_NR14", 23, 14, gemm_blis_generic},
@@ -303,6 +312,7 @@ static const KernelVariant generated_variants[] = {
     {"MR23_NR4", 23, 4, gemm_blis_generic},
     {"MR23_NR3", 23, 3, gemm_blis_generic},
     {"MR23_NR2", 23, 2, gemm_blis_generic},
+    {"MR23_NR1", 23, 1, gemm_blis_generic},
     {"MR22_NR16", 22, 16, gemm_blis_generic},
     {"MR22_NR15", 22, 15, gemm_blis_generic},
     {"MR22_NR14", 22, 14, gemm_blis_generic},
@@ -318,6 +328,7 @@ static const KernelVariant generated_variants[] = {
     {"MR22_NR4", 22, 4, gemm_blis_generic},
     {"MR22_NR3", 22, 3, gemm_blis_generic},
     {"MR22_NR2", 22, 2, gemm_blis_generic},
+    {"MR22_NR1", 22, 1, gemm_blis_generic},
     {"MR21_NR16", 21, 16, gemm_blis_generic},
     {"MR21_NR15", 21, 15, gemm_blis_generic},
     {"MR21_NR14", 21, 14, gemm_blis_generic},
@@ -333,6 +344,7 @@ static const KernelVariant generated_variants[] = {
     {"MR21_NR4", 21, 4, gemm_blis_generic},
     {"MR21_NR3", 21, 3, gemm_blis_generic},
     {"MR21_NR2", 21, 2, gemm_blis_generic},
+    {"MR21_NR1", 21, 1, gemm_blis_generic},
     {"MR20_NR16", 20, 16, gemm_blis_generic},
     {"MR20_NR15", 20, 15, gemm_blis_generic},
     {"MR20_NR14", 20, 14, gemm_blis_generic},
@@ -348,6 +360,7 @@ static const KernelVariant generated_variants[] = {
     {"MR20_NR4", 20, 4, gemm_blis_generic},
     {"MR20_NR3", 20, 3, gemm_blis_generic},
     {"MR20_NR2", 20, 2, gemm_blis_generic},
+    {"MR20_NR1", 20, 1, gemm_blis_generic},
     {"MR19_NR16", 19, 16, gemm_blis_generic},
     {"MR19_NR15", 19, 15, gemm_blis_generic},
     {"MR19_NR14", 19, 14, gemm_blis_generic},
@@ -363,6 +376,7 @@ static const KernelVariant generated_variants[] = {
     {"MR19_NR4", 19, 4, gemm_blis_generic},
     {"MR19_NR3", 19, 3, gemm_blis_generic},
     {"MR19_NR2", 19, 2, gemm_blis_generic},
+    {"MR19_NR1", 19, 1, gemm_blis_generic},
     {"MR18_NR16", 18, 16, gemm_blis_generic},
     {"MR18_NR15", 18, 15, gemm_blis_generic},
     {"MR18_NR14", 18, 14, gemm_blis_generic},
@@ -378,6 +392,7 @@ static const KernelVariant generated_variants[] = {
     {"MR18_NR4", 18, 4, gemm_blis_generic},
     {"MR18_NR3", 18, 3, gemm_blis_generic},
     {"MR18_NR2", 18, 2, gemm_blis_generic},
+    {"MR18_NR1", 18, 1, gemm_blis_generic},
     {"MR17_NR16", 17, 16, gemm_blis_generic},
     {"MR17_NR15", 17, 15, gemm_blis_generic},
     {"MR17_NR14", 17, 14, gemm_blis_generic},
@@ -393,6 +408,7 @@ static const KernelVariant generated_variants[] = {
     {"MR17_NR4", 17, 4, gemm_blis_generic},
     {"MR17_NR3", 17, 3, gemm_blis_generic},
     {"MR17_NR2", 17, 2, gemm_blis_generic},
+    {"MR17_NR1", 17, 1, gemm_blis_generic},
     {"MR16_NR16", 16, 16, gemm_blis_generic},
     {"MR16_NR15", 16, 15, gemm_blis_generic},
     {"MR16_NR14", 16, 14, gemm_blis_generic},
@@ -408,6 +424,7 @@ static const KernelVariant generated_variants[] = {
     {"MR16_NR4", 16, 4, gemm_blis_generic},
     {"MR16_NR3", 16, 3, gemm_blis_generic},
     {"MR16_NR2", 16, 2, gemm_blis_generic},
+    {"MR16_NR1", 16, 1, gemm_blis_generic},
     {"MR15_NR16", 15, 16, gemm_blis_generic},
     {"MR15_NR15", 15, 15, gemm_blis_generic},
     {"MR15_NR14", 15, 14, gemm_blis_generic},
@@ -423,6 +440,7 @@ static const KernelVariant generated_variants[] = {
     {"MR15_NR4", 15, 4, gemm_blis_generic},
     {"MR15_NR3", 15, 3, gemm_blis_generic},
     {"MR15_NR2", 15, 2, gemm_blis_generic},
+    {"MR15_NR1", 15, 1, gemm_blis_generic},
     {"MR14_NR16", 14, 16, gemm_blis_generic},
     {"MR14_NR15", 14, 15, gemm_blis_generic},
     {"MR14_NR14", 14, 14, gemm_blis_generic},
@@ -438,6 +456,7 @@ static const KernelVariant generated_variants[] = {
     {"MR14_NR4", 14, 4, gemm_blis_generic},
     {"MR14_NR3", 14, 3, gemm_blis_generic},
     {"MR14_NR2", 14, 2, gemm_blis_generic},
+    {"MR14_NR1", 14, 1, gemm_blis_generic},
     {"MR13_NR16", 13, 16, gemm_blis_generic},
     {"MR13_NR15", 13, 15, gemm_blis_generic},
     {"MR13_NR14", 13, 14, gemm_blis_generic},
@@ -453,6 +472,7 @@ static const KernelVariant generated_variants[] = {
     {"MR13_NR4", 13, 4, gemm_blis_generic},
     {"MR13_NR3", 13, 3, gemm_blis_generic},
     {"MR13_NR2", 13, 2, gemm_blis_generic},
+    {"MR13_NR1", 13, 1, gemm_blis_generic},
     {"MR12_NR16", 12, 16, gemm_blis_generic},
     {"MR12_NR15", 12, 15, gemm_blis_generic},
     {"MR12_NR14", 12, 14, gemm_blis_generic},
@@ -468,6 +488,7 @@ static const KernelVariant generated_variants[] = {
     {"MR12_NR4", 12, 4, gemm_blis_generic},
     {"MR12_NR3", 12, 3, gemm_blis_generic},
     {"MR12_NR2", 12, 2, gemm_blis_generic},
+    {"MR12_NR1", 12, 1, gemm_blis_generic},
     {"MR11_NR16", 11, 16, gemm_blis_generic},
     {"MR11_NR15", 11, 15, gemm_blis_generic},
     {"MR11_NR14", 11, 14, gemm_blis_generic},
@@ -483,6 +504,7 @@ static const KernelVariant generated_variants[] = {
     {"MR11_NR4", 11, 4, gemm_blis_generic},
     {"MR11_NR3", 11, 3, gemm_blis_generic},
     {"MR11_NR2", 11, 2, gemm_blis_generic},
+    {"MR11_NR1", 11, 1, gemm_blis_generic},
     {"MR10_NR16", 10, 16, gemm_blis_generic},
     {"MR10_NR15", 10, 15, gemm_blis_generic},
     {"MR10_NR14", 10, 14, gemm_blis_generic},
@@ -498,6 +520,7 @@ static const KernelVariant generated_variants[] = {
     {"MR10_NR4", 10, 4, gemm_blis_generic},
     {"MR10_NR3", 10, 3, gemm_blis_generic},
     {"MR10_NR2", 10, 2, gemm_blis_generic},
+    {"MR10_NR1", 10, 1, gemm_blis_generic},
     {"MR9_NR16", 9, 16, gemm_blis_generic},
     {"MR9_NR15", 9, 15, gemm_blis_generic},
     {"MR9_NR14", 9, 14, gemm_blis_generic},
@@ -513,6 +536,7 @@ static const KernelVariant generated_variants[] = {
     {"MR9_NR4", 9, 4, gemm_blis_generic},
     {"MR9_NR3", 9, 3, gemm_blis_generic},
     {"MR9_NR2", 9, 2, gemm_blis_generic},
+    {"MR9_NR1", 9, 1, gemm_blis_generic},
     {"MR8_NR16", 8, 16, gemm_blis_generic},
     {"MR8_NR15", 8, 15, gemm_blis_generic},
     {"MR8_NR14", 8, 14, gemm_blis_generic},
@@ -528,6 +552,7 @@ static const KernelVariant generated_variants[] = {
     {"MR8_NR4", 8, 4, gemm_blis_generic},
     {"MR8_NR3", 8, 3, gemm_blis_generic},
     {"MR8_NR2", 8, 2, gemm_blis_generic},
+    {"MR8_NR1", 8, 1, gemm_blis_generic},
     {"MR7_NR16", 7, 16, gemm_blis_generic},
     {"MR7_NR15", 7, 15, gemm_blis_generic},
     {"MR7_NR14", 7, 14, gemm_blis_generic},
@@ -543,6 +568,7 @@ static const KernelVariant generated_variants[] = {
     {"MR7_NR4", 7, 4, gemm_blis_generic},
     {"MR7_NR3", 7, 3, gemm_blis_generic},
     {"MR7_NR2", 7, 2, gemm_blis_generic},
+    {"MR7_NR1", 7, 1, gemm_blis_generic},
     {"MR6_NR16", 6, 16, gemm_blis_generic},
     {"MR6_NR15", 6, 15, gemm_blis_generic},
     {"MR6_NR14", 6, 14, gemm_blis_generic},
@@ -558,6 +584,7 @@ static const KernelVariant generated_variants[] = {
     {"MR6_NR4", 6, 4, gemm_blis_generic},
     {"MR6_NR3", 6, 3, gemm_blis_generic},
     {"MR6_NR2", 6, 2, gemm_blis_generic},
+    {"MR6_NR1", 6, 1, gemm_blis_generic},
     {"MR5_NR16", 5, 16, gemm_blis_generic},
     {"MR5_NR15", 5, 15, gemm_blis_generic},
     {"MR5_NR14", 5, 14, gemm_blis_generic},
@@ -573,6 +600,7 @@ static const KernelVariant generated_variants[] = {
     {"MR5_NR4", 5, 4, gemm_blis_generic},
     {"MR5_NR3", 5, 3, gemm_blis_generic},
     {"MR5_NR2", 5, 2, gemm_blis_generic},
+    {"MR5_NR1", 5, 1, gemm_blis_generic},
     {"MR4_NR16", 4, 16, gemm_blis_generic},
     {"MR4_NR15", 4, 15, gemm_blis_generic},
     {"MR4_NR14", 4, 14, gemm_blis_generic},
@@ -588,6 +616,7 @@ static const KernelVariant generated_variants[] = {
     {"MR4_NR4", 4, 4, gemm_blis_generic},
     {"MR4_NR3", 4, 3, gemm_blis_generic},
     {"MR4_NR2", 4, 2, gemm_blis_generic},
+    {"MR4_NR1", 4, 1, gemm_blis_generic},
     {"MR3_NR16", 3, 16, gemm_blis_generic},
     {"MR3_NR15", 3, 15, gemm_blis_generic},
     {"MR3_NR14", 3, 14, gemm_blis_generic},
@@ -603,6 +632,7 @@ static const KernelVariant generated_variants[] = {
     {"MR3_NR4", 3, 4, gemm_blis_generic},
     {"MR3_NR3", 3, 3, gemm_blis_generic},
     {"MR3_NR2", 3, 2, gemm_blis_generic},
+    {"MR3_NR1", 3, 1, gemm_blis_generic},
     {"MR2_NR16", 2, 16, gemm_blis_generic},
     {"MR2_NR15", 2, 15, gemm_blis_generic},
     {"MR2_NR14", 2, 14, gemm_blis_generic},
@@ -618,9 +648,26 @@ static const KernelVariant generated_variants[] = {
     {"MR2_NR4", 2, 4, gemm_blis_generic},
     {"MR2_NR3", 2, 3, gemm_blis_generic},
     {"MR2_NR2", 2, 2, gemm_blis_generic},
+    {"MR2_NR1", 2, 1, gemm_blis_generic},
+    {"MR1_NR16", 1, 16, gemm_blis_generic},
+    {"MR1_NR15", 1, 15, gemm_blis_generic},
+    {"MR1_NR14", 1, 14, gemm_blis_generic},
+    {"MR1_NR13", 1, 13, gemm_blis_generic},
+    {"MR1_NR12", 1, 12, gemm_blis_generic},
+    {"MR1_NR11", 1, 11, gemm_blis_generic},
+    {"MR1_NR10", 1, 10, gemm_blis_generic},
+    {"MR1_NR9", 1, 9, gemm_blis_generic},
+    {"MR1_NR8", 1, 8, gemm_blis_generic},
+    {"MR1_NR7", 1, 7, gemm_blis_generic},
+    {"MR1_NR6", 1, 6, gemm_blis_generic},
+    {"MR1_NR5", 1, 5, gemm_blis_generic},
+    {"MR1_NR4", 1, 4, gemm_blis_generic},
+    {"MR1_NR3", 1, 3, gemm_blis_generic},
+    {"MR1_NR2", 1, 2, gemm_blis_generic},
+    {"MR1_NR1", 1, 1, gemm_blis_generic},
 };
 
-static const int num_variants = 465;
+static const int num_variants = 512;
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,6 @@
 {
     "datatype": "fp32",
-    "method": "AXPY_FP32_Pack",
+    "method": "DOT_FP32_LANE_Pack",
     "vlen": 256,
     "arch": "jbpi2",
     "mr_nr_family": [

@@ -1040,74 +1040,74 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
     
     static const pack_CB_fn pack_CB_funcs[] = {
         nullptr,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR1,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR2,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR3,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR4,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR5,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR6,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR7,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR8,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR9,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR10,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR11,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR12,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR13,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR14,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR15,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR16,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR17,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR18,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR19,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR20,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR21,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR22,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR23,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR24,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR25,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR26,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR27,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR28,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR29,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR30,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR31,
-        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR32,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR1,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR2,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR3,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR4,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR5,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR6,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR7,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR8,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR9,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR10,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR11,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR12,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR13,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR14,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR15,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR16,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR17,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR18,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR19,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR20,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR21,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR22,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR23,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR24,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR25,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR26,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR27,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR28,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR29,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR30,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR31,
+        pack_CB_v_if_DOT_FP32_LANE_Pack_fp32_NR32,
     };
     
     static const pack_RB_fn pack_RB_funcs[] = {
         nullptr,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR1,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR2,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR3,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR4,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR5,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR6,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR7,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR8,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR9,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR10,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR11,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR12,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR13,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR14,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR15,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR16,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR17,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR18,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR19,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR20,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR21,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR22,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR23,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR24,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR25,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR26,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR27,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR28,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR29,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR30,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR31,
-        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR32,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR1,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR2,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR3,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR4,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR5,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR6,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR7,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR8,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR9,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR10,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR11,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR12,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR13,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR14,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR15,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR16,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR17,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR18,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR19,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR20,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR21,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR22,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR23,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR24,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR25,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR26,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR27,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR28,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR29,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR30,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR31,
+        pack_RB_v_if_DOT_FP32_LANE_Pack_fp32_MR32,
     };
 
     for (int32_t jc = 0; jc < n; jc += nc) {
@@ -1118,6 +1118,16 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
             int32_t cur_kc = std::min(kc_remain, kc);
             int32_t offset_B = jc * ldb + pc;
             float* b_ptr = GET_PTR(B, offset_B);
+            int32_t kc_pad = cur_kc;
+
+            kc_pad = ((cur_kc + 3) / 4) * 4;
+
+            int32_t mc_pad = (mc + mr - 1) / mr * mr;
+            int32_t nc_pad = (nc + nr - 1) / nr * nr;
+            // Zero initialize Ac and Bc so padded elements are strictly zero
+            memset(Ac, 0, mc_pad * kc_pad * sizeof(float));
+            memset(Bc, 0, kc_pad * nc_pad * sizeof(float));
+
             pack_CB_funcs[nr](b_ptr, Bc, cur_kc, cur_nc, ldb);
             float beta_actual = GET_BETA(pc, beta);
             for (int32_t ic = 0; ic < m; ic += mc) {
@@ -1136,9 +1146,9 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
                         int32_t col_C = jc + jr;
                         int32_t offset_C = col_C * ldc + row_C;
                         float* c_ptr = GET_PTR(C, offset_C);
-                        float* a_packed = GET_PTR(Ac, ir * cur_kc);
-                        float* b_packed = GET_PTR(Bc, jr * cur_kc);
-                        gemm_microkernel_v_dispatch_generic(cur_mr, cur_nr, cur_kc, alpha, a_packed, b_packed, beta_actual, c_ptr, ldc, mr, nr);
+                        float* a_packed = GET_PTR(Ac, ir * kc_pad);
+                        float* b_packed = GET_PTR(Bc, jr * kc_pad);
+                        gemm_microkernel_v_dispatch_generic(cur_mr, cur_nr, kc_pad, alpha, a_packed, b_packed, beta_actual, c_ptr, ldc, mr, nr);
                     }
                 }
             }

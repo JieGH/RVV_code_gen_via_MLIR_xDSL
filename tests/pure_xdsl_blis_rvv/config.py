@@ -14,8 +14,29 @@ class BLISProjectConfig:
 
     @classmethod
     def from_json(cls, file_path: str) -> "BLISProjectConfig":
+        import re
         with open(file_path) as f:
-            data = json.load(f)
+            lines = f.readlines()
+
+        # Remove lines that are just comments
+        cleaned_lines = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("#") or stripped.startswith("//"):
+                continue
+            # Also handle inline comments (basic implementation)
+            if "#" in line and not '"' in line.split("#")[1]:
+                line = line.split("#")[0] + "\n"
+            elif "//" in line and not '"' in line.split("//")[1]:
+                line = line.split("//")[0] + "\n"
+            cleaned_lines.append(line)
+
+        json_str = "".join(cleaned_lines)
+        
+        # Remove trailing commas (which often happen when commenting out the last item)
+        json_str = re.sub(r',\s*([\]}])', r'\1', json_str)
+
+        data = json.loads(json_str)
 
         # Convert mr_nr_family list of lists to list of tuples
         if "mr_nr_family" in data:

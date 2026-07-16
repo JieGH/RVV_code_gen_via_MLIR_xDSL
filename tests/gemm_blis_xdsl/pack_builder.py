@@ -325,6 +325,114 @@ def build_pack_CB_dot_int8_lane_else(idx, memref_type, RR, elem_bytes, suffix, v
     fn.body.blocks[0].add_op(func.ReturnOp())
     return fn
 
+def build_pack_RB_dot_fp32_lane_if(idx, memref_type, RR, elem_bytes, suffix, vlen=8, method="DOT_FP32_LANE_Pack"):
+    fn, (M, Mc, mc, nc, ldM) = _make_fn(f"pack_RB_v_if_{method}_{suffix}_RR{RR}", memref_type, idx)
+    entry = fn.body.blocks[0]
+    KR = 4
+    c0 = _const(0, idx)
+    c1 = _const(1, idx)
+    cMR = _const(RR, idx)
+    cKR = _const(KR, idx)
+    cEB = _const(elem_bytes, idx)
+    entry.add_ops([c0, c1, cMR, cKR, cEB])
+    ob = Block(arg_types=[idx])
+    entry.add_op(scf.ForOp(c0.result, mc, cMR.result, [], Region([ob])))
+    i_out = ob.args[0]
+    rem_mr = arith.SubiOp(mc, i_out)
+    mr_val = arith.MinSIOp(rem_mr.result, cMR.result)
+    ob.add_ops([rem_mr, mr_val])
+    mb = Block(arg_types=[idx])
+    ob.add_op(scf.ForOp(c0.result, nc, cKR.result, [], Region([mb])))
+    j_mid = mb.args[0]
+    rem_kr = arith.SubiOp(nc, j_mid)
+    kr_lim = arith.MinSIOp(rem_kr.result, cKR.result)
+    vl_op = SetvlOp(kr_lim.result)
+    bstr = arith.MuliOp(ldM, cEB.result)
+    mb.add_ops([rem_kr, kr_lim, vl_op, bstr])
+    ib = Block(arg_types=[idx])
+    mb.add_op(scf.ForOp(c0.result, mr_val.result, c1.result, [], Region([ib])))
+    ii_in = ib.args[0]
+    i_plus_ii = arith.AddiOp(i_out, ii_in)
+    j_ldM = arith.MuliOp(j_mid, ldM)
+    src_off = arith.AddiOp(j_ldM.result, i_plus_ii.result)
+    load_op = vlse32_v_f32m1Op(M, src_off.result, bstr.result, vl_op.vl)
+    cKR_minus_1 = _const(KR - 1, idx)
+    nc_plus = arith.AddiOp(nc, cKR_minus_1.result)
+    nc_div = arith.DivSIOp(nc_plus.result, cKR.result)
+    nc_padded = arith.MuliOp(nc_div.result, cKR.result)
+    i_block = arith.DivSIOp(i_out, cMR.result)
+    block_size = arith.MuliOp(nc_padded.result, cMR.result)
+    i_offset = arith.MuliOp(i_block.result, block_size.result)
+    j_MR = arith.MuliOp(j_mid, cMR.result)
+    ii_KR = arith.MuliOp(ii_in, cKR.result)
+    t1 = arith.AddiOp(i_offset.result, j_MR.result)
+    dst_off = arith.AddiOp(t1.result, ii_KR.result)
+    store_op = vse32_v_f32m1Op(Mc, dst_off.result, load_op.result, vl_op.vl)
+    ib.add_ops([i_plus_ii, j_ldM, src_off, load_op, cKR_minus_1, nc_plus, nc_div, nc_padded, i_block, block_size, i_offset, j_MR, ii_KR, t1, dst_off, store_op, scf.YieldOp()])
+    mb.add_op(scf.YieldOp())
+    ob.add_op(scf.YieldOp())
+    entry.add_op(func.ReturnOp())
+    return fn
+
+def build_pack_CB_dot_fp32_lane_if(idx, memref_type, RR, elem_bytes, suffix, vlen=8, method="DOT_FP32_LANE_Pack"):
+    fn, (M, Mc, kc, nc, ldM) = _make_fn(f"pack_CB_v_if_{method}_{suffix}_RR{RR}", memref_type, idx)
+    entry = fn.body.blocks[0]
+    KR = 4
+    c0 = _const(0, idx)
+    c1 = _const(1, idx)
+    cNR = _const(RR, idx)
+    cKR = _const(KR, idx)
+    entry.add_ops([c0, c1, cNR, cKR])
+    ob = Block(arg_types=[idx])
+    entry.add_op(scf.ForOp(c0.result, nc, cNR.result, [], Region([ob])))
+    j_out = ob.args[0]
+    rem_nr = arith.SubiOp(nc, j_out)
+    nr_val = arith.MinSIOp(rem_nr.result, cNR.result)
+    ob.add_ops([rem_nr, nr_val])
+    mb = Block(arg_types=[idx])
+    ob.add_op(scf.ForOp(c0.result, kc, cKR.result, [], Region([mb])))
+    i_mid = mb.args[0]
+    rem_kr = arith.SubiOp(kc, i_mid)
+    kr_lim = arith.MinSIOp(rem_kr.result, cKR.result)
+    vl_op = SetvlOp(kr_lim.result)
+    mb.add_ops([rem_kr, kr_lim, vl_op])
+    ib = Block(arg_types=[idx])
+    mb.add_op(scf.ForOp(c0.result, nr_val.result, c1.result, [], Region([ib])))
+    ii_in = ib.args[0]
+    j_plus_ii = arith.AddiOp(j_out, ii_in)
+    j_ldM = arith.MuliOp(j_plus_ii.result, ldM)
+    src_off = arith.AddiOp(j_ldM.result, i_mid)
+    load_op = vle32_v_f32m1Op(M, src_off.result, vl_op.vl)
+    cKR_minus_1 = _const(KR - 1, idx)
+    kc_plus = arith.AddiOp(kc, cKR_minus_1.result)
+    kc_div = arith.DivSIOp(kc_plus.result, cKR.result)
+    kc_padded = arith.MuliOp(kc_div.result, cKR.result)
+    j_block = arith.DivSIOp(j_out, cNR.result)
+    block_size = arith.MuliOp(kc_padded.result, cNR.result)
+    j_offset = arith.MuliOp(j_block.result, block_size.result)
+    i_mid_div_KR = arith.DivSIOp(i_mid, cKR.result)
+    NR_KR = arith.MuliOp(cNR.result, cKR.result)
+    i_offset = arith.MuliOp(i_mid_div_KR.result, NR_KR.result)
+    ii_KR = arith.MuliOp(ii_in, cKR.result)
+    t1 = arith.AddiOp(j_offset.result, i_offset.result)
+    dst_off = arith.AddiOp(t1.result, ii_KR.result)
+    store_op = vse32_v_f32m1Op(Mc, dst_off.result, load_op.results[0], vl_op.vl)
+    ib.add_ops([j_plus_ii, j_ldM, src_off, load_op, cKR_minus_1, kc_plus, kc_div, kc_padded, j_block, block_size, j_offset, i_mid_div_KR, NR_KR, i_offset, ii_KR, t1, dst_off, store_op, scf.YieldOp()])
+    mb.add_op(scf.YieldOp())
+    ob.add_op(scf.YieldOp())
+    entry.add_op(func.ReturnOp())
+    return fn
+
+def build_pack_RB_dot_fp32_lane_else(idx, memref_type, RR, elem_bytes, suffix, vlen=8, method="DOT_FP32_LANE_Pack"):
+    fn, args = _make_fn(f"pack_RB_v_else_{method}_{suffix}_RR{RR}", memref_type, idx)
+    fn.body.blocks[0].add_op(func.ReturnOp())
+    return fn
+
+def build_pack_CB_dot_fp32_lane_else(idx, memref_type, RR, elem_bytes, suffix, vlen=8, method="DOT_FP32_LANE_Pack"):
+    fn, args = _make_fn(f"pack_CB_v_else_{method}_{suffix}_RR{RR}", memref_type, idx)
+    fn.body.blocks[0].add_op(func.ReturnOp())
+    return fn
+
 def build_pack_module(idx: IndexType, memref_type, NR: int = 8, MR: int = 4, elem_bytes: int = 4, suffix: str = "fp32", vlen: int = 8, method: str = "AXPY_FP32_Pack") -> ModuleOp:
     if method == "DOT_INT8_LANE_Pack":
         return ModuleOp([
@@ -332,6 +440,13 @@ def build_pack_module(idx: IndexType, memref_type, NR: int = 8, MR: int = 4, ele
             build_pack_CB_dot_int8_lane_else(idx, memref_type, NR, elem_bytes, suffix, vlen, method),
             build_pack_RB_dot_int8_lane_if(idx, memref_type, MR, elem_bytes, suffix, vlen, method),
             build_pack_RB_dot_int8_lane_else(idx, memref_type, MR, elem_bytes, suffix, vlen, method),
+        ])
+    if method == "DOT_FP32_LANE_Pack":
+        return ModuleOp([
+            build_pack_CB_dot_fp32_lane_if(idx, memref_type, NR, elem_bytes, suffix, vlen, method),
+            build_pack_CB_dot_fp32_lane_else(idx, memref_type, NR, elem_bytes, suffix, vlen, method),
+            build_pack_RB_dot_fp32_lane_if(idx, memref_type, MR, elem_bytes, suffix, vlen, method),
+            build_pack_RB_dot_fp32_lane_else(idx, memref_type, MR, elem_bytes, suffix, vlen, method),
         ])
     return ModuleOp([
         build_pack_CB_v_if(idx, memref_type, NR, elem_bytes, suffix, vlen, method),

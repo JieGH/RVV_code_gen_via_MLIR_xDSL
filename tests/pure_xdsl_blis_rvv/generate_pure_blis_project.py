@@ -210,8 +210,8 @@ def main():
         if mr > max_mr: max_mr = mr
         if nr > max_nr: max_nr = nr
         
-        start_m = 2 if mr >= 2 else 1
-        start_n = 2 if nr >= 2 else 1
+        start_m = 1
+        start_n = 1
         
         for i in range(start_m, mr + 1):
             for j in range(start_n, nr + 1):
@@ -238,7 +238,7 @@ def main():
         for n_idx in range(1, max_nr + 1):
             # Beta 0
             mic_mod_b0 = build_gemm(
-                mr=m_idx, nr=n_idx, vlen=vlen_elements, beta=BetaMode.B0, precision=config.datatype
+                mr=m_idx, nr=n_idx, vlen=vlen_elements, beta=BetaMode.B0, precision=config.datatype, method=config.method
             )
             default_name_b0 = f"xdsl_api_gemm_RVV_{m_idx}x{n_idx}_b0_col_{config.datatype}"
             new_name_b0 = f"gemm_microkernel_v_{config.datatype}_{m_idx}x{n_idx}_b0"
@@ -248,7 +248,7 @@ def main():
 
             # Beta 1
             mic_mod_b1 = build_gemm(
-                mr=m_idx, nr=n_idx, vlen=vlen_elements, beta=BetaMode.B1, precision=config.datatype
+                mr=m_idx, nr=n_idx, vlen=vlen_elements, beta=BetaMode.B1, precision=config.datatype, method=config.method
             )
             default_name_b1 = f"xdsl_api_gemm_RVV_{m_idx}x{n_idx}_b1_col_{config.datatype}"
             new_name_b1 = f"gemm_microkernel_v_{config.datatype}_{m_idx}x{n_idx}_b1"
@@ -306,7 +306,7 @@ def main():
     headers_path = os.path.join(out_dir, "gemm_headers.h")
     with open(headers_path, "w") as f:
         f.write("#ifndef GEMM_HEADERS_H\n#define GEMM_HEADERS_H\n\n")
-        f.write("#include <stddef.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <algorithm>\n#include <riscv_vector.h>\n\n")
+        f.write("#include <stddef.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <string>\n#include <algorithm>\n#include <riscv_vector.h>\n\n")
         f.write(macros)
         f.write(fwd_decls)
         f.write("\n#endif // GEMM_HEADERS_H\n")
@@ -354,6 +354,19 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
             int32_t cur_kc = std::min(kc_remain, kc);
             int32_t offset_B = jc * ldb + pc;
             {c_type_b}* b_ptr = GET_PTR(B, offset_B);
+            int32_t kc_pad = cur_kc;
+"""
+    if "DOT" in config.method:
+        dispatch_body += f"""
+            kc_pad = ((cur_kc + 3) / 4) * 4;
+"""
+    dispatch_body += f"""
+            int32_t mc_pad = (mc + mr - 1) / mr * mr;
+            int32_t nc_pad = (nc + nr - 1) / nr * nr;
+            // Zero initialize Ac and Bc so padded elements are strictly zero
+            memset(Ac, 0, mc_pad * kc_pad * sizeof({c_type_a}));
+            memset(Bc, 0, kc_pad * nc_pad * sizeof({c_type_b}));
+
             pack_CB_funcs[nr](b_ptr, Bc, cur_kc, cur_nc, ldb);
             {c_type_alpha} beta_actual = GET_BETA(pc, beta);
             for (int32_t ic = 0; ic < m; ic += mc) {{
@@ -372,9 +385,9 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
                         int32_t col_C = jc + jr;
                         int32_t offset_C = col_C * ldc + row_C;
                         {c_type_c}* c_ptr = GET_PTR(C, offset_C);
-                        {c_type_a}* a_packed = GET_PTR(Ac, ir * cur_kc);
-                        {c_type_b}* b_packed = GET_PTR(Bc, jr * cur_kc);
-                        gemm_microkernel_v_dispatch_generic(cur_mr, cur_nr, cur_kc, alpha, a_packed, b_packed, beta_actual, c_ptr, ldc, mr, nr);
+                        {c_type_a}* a_packed = GET_PTR(Ac, ir * kc_pad);
+                        {c_type_b}* b_packed = GET_PTR(Bc, jr * kc_pad);
+                        gemm_microkernel_v_dispatch_generic(cur_mr, cur_nr, kc_pad, alpha, a_packed, b_packed, beta_actual, c_ptr, ldc, mr, nr);
                     }}
                 }}
             }}

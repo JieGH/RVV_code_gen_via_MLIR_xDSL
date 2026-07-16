@@ -145,6 +145,12 @@ class IRBuilder:
         self.block.add_op(op)
         return op.vl
 
+    def vlse32(self, mem: SSAValue, offset: SSAValue, stride: SSAValue, vl: SSAValue) -> SSAValue:
+        from xdsltemplate.dialects.rvv import vlse32_v_f32m1Op
+        op = vlse32_v_f32m1Op(mem, offset, stride, vl)
+        self.block.add_op(op)
+        return op.result
+
     def vfmacc(
         self,
         acc: SSAValue,
@@ -415,6 +421,116 @@ def build_gemm_i8i8i32(
     return ModuleOp([gemm_func])
 
 
+def build_gemm_dot_fp32(
+    mr: int = 8,
+    nr: int = 4,
+    vlen: int = 4,
+    beta: BetaMode = BetaMode.B0,
+    name: str = None,
+    precision: str = "fp32",
+) -> ModuleOp:
+    """Build MRxNR FP32 DOT microkernel."""
+    config = GEMMConfig(mr=mr, nr=nr, vlen=vlen, beta=beta, precision=precision)
+    if name is None:
+        name = config.kernel_name
+    num_m_vecs = config.num_m_vecs
+    index_t = IndexType()
+    f32_t = Float32Type()
+    memref_f32 = MemRefType(f32_t, [-1])
+    rvv_vec_t = RVVFloat32M1Type()
+
+    input_types = [
+        index_t, memref_f32, memref_f32, index_t, memref_f32, index_t, memref_f32, memref_f32, index_t,
+    ]
+    func_type = FunctionType.from_lists(input_types, [])
+    entry_block = Block(arg_types=input_types)
+    gemm_func = func.FuncOp(name, func_type, Region([entry_block]))
+    kc, alpha, A, lda, B, ldb, beta_arg, C, ldc = entry_block.args
+
+    eb = IRBuilder(entry_block, vlen, config=config)
+    f0 = eb.const_f32(0.0)
+    for i in range(max(nr, num_m_vecs * vlen) + 1):
+        eb.const_index(i)
+
+    c_reg_init = {}
+    if beta == BetaMode.B0:
+        for n in range(nr):
+            for m in range(num_m_vecs):
+                vl = eb.get_vl_for_m_vec(m)
+                c_reg_init[(n, m)] = eb.vfmv_zero(vl, f0)
+    elif beta == BetaMode.B1:
+        for n in range(nr):
+            col_base = eb.muli(eb.const_index(n), ldc) if n > 0 else eb.const_index(0)
+            for m in range(num_m_vecs):
+                offset = eb.addi(col_base, eb.const_index(m * vlen)) if m > 0 else col_base
+                vl = eb.get_vl_for_m_vec(m)
+                c_reg_init[(n, m)] = eb.vle32(C, offset, vl)
+
+    KR = 4
+    cKR = eb.const_index(KR)
+    stride_A = eb.const_index(KR * 4)
+
+    loop_body_types = [index_t] + [rvv_vec_t] * config.num_c_regs
+    loop_body = Block(arg_types=loop_body_types)
+    lb = IRBuilder(loop_body, vlen, config=config)
+    k = loop_body.args[0]
+
+    c_regs = {}
+    idx = 1
+    for n in range(nr):
+        for m in range(num_m_vecs):
+            c_regs[(n, m)] = loop_body.args[idx]
+            idx += 1
+
+    c_new = c_regs
+    k_nr = lb.muli(k, ldb)
+    k_mr = lb.muli(k, lda)
+    
+    for l in range(KR):
+        # b_off = k_nr + n * KR + l
+        b_scalars = []
+        for n in range(nr):
+            n_KR_l = n * KR + l
+            b_off = lb.addi(k_nr, eb.const_index(n_KR_l)) if n_KR_l > 0 else k_nr
+            b_scalars.append(b_off)
+
+        # a_off = k_mr + m * vlen * KR + l
+        A_regs = []
+        for m in range(num_m_vecs):
+            m_vlen_KR_l = m * vlen * KR + l
+            a_off = lb.addi(k_mr, eb.const_index(m_vlen_KR_l)) if m_vlen_KR_l > 0 else k_mr
+            vl = lb.get_vl_for_m_vec(m)
+            A_regs.append(lb.vlse32(A, a_off, stride_A, vl))
+
+        for n in range(nr):
+            for m in range(num_m_vecs):
+                vl = lb.get_vl_for_m_vec(m)
+                c_new[(n, m)] = lb.vfmacc(c_new[(n, m)], B, b_scalars[n], A_regs[m], vl)
+
+    yield_vals = [c_new[(n, m)] for n in range(nr) for m in range(num_m_vecs)]
+    loop_body.add_op(scf.YieldOp(*yield_vals))
+
+    iter_inits = [c_reg_init[(n, m)] for n in range(nr) for m in range(num_m_vecs)]
+    for_op = scf.ForOp(eb.const_index(0), kc, cKR, iter_inits, Region([loop_body]))
+    entry_block.add_op(for_op)
+
+    c_final = {}
+    idx = 0
+    for n in range(nr):
+        for m in range(num_m_vecs):
+            c_final[(n, m)] = for_op.results[idx]
+            idx += 1
+
+    for n in range(nr):
+        col_base = eb.muli(eb.const_index(n), ldc) if n > 0 else eb.const_index(0)
+        for m in range(num_m_vecs):
+            offset = eb.addi(col_base, eb.const_index(m * vlen)) if m > 0 else col_base
+            vl = eb.get_vl_for_m_vec(m)
+            eb.vse32(C, offset, c_final[(n, m)], vl)
+
+    entry_block.add_op(func.ReturnOp())
+    return ModuleOp([gemm_func])
+
 # GEMM Builder
 def build_gemm(
     mr: int = 8,
@@ -423,6 +539,7 @@ def build_gemm(
     beta: BetaMode = BetaMode.B0,
     name: str = None,
     precision: str = "fp32",
+    method: str = "AXPY_FP32_Pack",
 ) -> ModuleOp:
     """
     Build MRxNR GEMM microkernel using xDSL API.
@@ -432,6 +549,8 @@ def build_gemm(
     """
     if precision == "i8i8i32":
         return build_gemm_i8i8i32(mr, nr, vlen, beta, name, precision)
+    if method == "DOT_FP32_LANE_Pack":
+        return build_gemm_dot_fp32(mr, nr, vlen, beta, name, precision)
 
     config = GEMMConfig(mr=mr, nr=nr, vlen=vlen, beta=beta, precision=precision)
     if name is None:
