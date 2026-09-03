@@ -7,6 +7,7 @@
 - **Active Subproject:** `tests/pure_xdsl_blis_rvv/` is the primary active subproject (the "Project Generator" paradigm for RISC-V Vector microkernels).
 - **Working Tree Integrity:** Working tree changes are live and uncommitted. Never run destructive git commands (`git reset --hard`, `git clean -fd`, etc.).
 - **Passive & Inspection Autonomy:** Prefer native read tools (`list_dir`, `view_file`, `grep_search`, `find_by_name`) for zero-prompt inspection. All non-mutating inspection operations (`ls`, `cat`, `git status`, `git diff`, inspecting logs) are pre-approved and should execute autonomously as long as no files are modified. Never alter existing code without explicit user alignment.
+- **Permission & Risk Transparency:** Whenever requesting permission or proposing a non-trivial command/script, always explain: (1) what the operation (`op`) actually does in plain English, and (2) what the associated risks are (e.g. file changes, remote board side-effects, git mutations, or zero risk).
 
 ## Agent skills
 
