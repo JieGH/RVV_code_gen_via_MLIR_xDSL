@@ -547,7 +547,7 @@ def build_gemm(
     Generates function with signature:
     void gemm_...(kc, alpha, A, lda, B, ldb, beta, C, ldc)
     """
-    if precision == "i8i8i32":
+    if precision in ("i8i8i32", "int8"):
         return build_gemm_i8i8i32(mr, nr, vlen, beta, name, precision)
     if method == "DOT_FP32_LANE_Pack":
         return build_gemm_dot_fp32(mr, nr, vlen, beta, name, precision)

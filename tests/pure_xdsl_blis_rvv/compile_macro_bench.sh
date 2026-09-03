@@ -22,6 +22,7 @@ RISCV_REMOTE_IP="jbpi2"
 RISCV_SSH_PORT="22"
 RISCV_WORKSPACE="xdsl_rvv_microkernel"
 CONFIG="config.json"
+TEST_ARGS=""
 
 SEP="------------------------------------------------------------"
 
@@ -34,6 +35,7 @@ while [[ "$#" -gt 0 ]]; do
         --riscv-port)      RISCV_SSH_PORT="$2";      shift      ;;
         --riscv-workspace) RISCV_WORKSPACE="$2";     shift      ;;
         --config)          CONFIG="$2";              shift      ;;
+        --scalar-pack)     TEST_ARGS="--scalar-pack"            ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
@@ -128,9 +130,9 @@ echo "  [OK] Synced pj_gen/, datasets/, and modelLevel/ → ${RSYNC_TARGET}:${RE
 # ============================================================
 echo ""; echo "$SEP"; echo " [3/4] Compile and Benchmark on Board"; echo "$SEP"
 
-# We don't know the exact folder name inside pj_gen without parsing the json,
-# but we know it generated into pj_gen/* . Let's just find the directory inside pj_gen and run make.
-ssh_board "cd ${REMOTE_DIR}/pj_gen && for d in */; do (cd \"\$d\" && make clean && make all && make run); done"
+# Read compile_order.txt to run exactly in the JSON config order,
+# avoiding bash default alphabetical expansion on 'for d in */'
+ssh_board "cd ${REMOTE_DIR}/pj_gen && while read d; do (cd \"\$d\" && make clean && make all && make run TEST_ARGS=\"${TEST_ARGS}\"); done < compile_order.txt"
 
 # ============================================================
 # [4/4] Fetch logs
@@ -138,13 +140,27 @@ ssh_board "cd ${REMOTE_DIR}/pj_gen && for d in */; do (cd \"\$d\" && make clean 
 echo ""; echo "$SEP"; echo " [4/4] Fetch Logs"; echo "$SEP"
 
 TIMESTAMP=$(date +"%Y-%m-%d_%H%M%S")
-LOCAL_LOG_DIR="tests/pure_xdsl_blis_rvv/logs/${PJ_NAME}_${TIMESTAMP}"
-mkdir -p "${LOCAL_LOG_DIR}"
+TMP_LOG_DIR="tests/pure_xdsl_blis_rvv/logs/tmp_${TIMESTAMP}"
+mkdir -p "${TMP_LOG_DIR}"
 
-# Rsync the logs folder from the nested pj_gen directory
-rsync_board "${RSYNC_TARGET}:${REMOTE_DIR}/pj_gen/*/logs/" "${LOCAL_LOG_DIR}/"
+# Rsync the logs folder while preserving the pj_gen project subdirectories locally
+rsync_board -am --include='*/' --include='logs/***' --exclude='*' "${RSYNC_TARGET}:${REMOTE_DIR}/pj_gen/" "${TMP_LOG_DIR}/"
 
-echo "  [OK] Fetched logs to ${LOCAL_LOG_DIR}/"
+# Reorganize locally into flat, timestamped directories for each configuration
+for proj_dir in "${TMP_LOG_DIR}"/*/; do
+    if [ -d "$proj_dir" ]; then
+        proj_name=$(basename "$proj_dir")
+        final_dir="tests/pure_xdsl_blis_rvv/logs/${proj_name}_${TIMESTAMP}"
+        mkdir -p "$final_dir"
+        # Move the raw and summary files out of the nested logs/ folder into the final directory
+        if [ -d "$proj_dir/logs" ]; then
+            mv "$proj_dir/logs/"* "$final_dir/" 2>/dev/null || true
+        fi
+        echo "  [OK] Fetched logs to ${final_dir}/"
+    fi
+done
+
+rm -rf "${TMP_LOG_DIR}"
 
 echo ""
 echo "$SEP"

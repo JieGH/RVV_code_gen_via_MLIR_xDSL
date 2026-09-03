@@ -5,15 +5,19 @@ from dataclasses import dataclass
 
 @dataclass
 class BLISProjectConfig:
-    datatype: str  # "fp32" | "int8"
-    method: str  # "AXPY_FP32_Pack" | "DOT_INT8_LANE" | ...
-    vlen: int  # 256 | 512
-    arch: str  # "jbpi2" | "generic_rvv" (points to cache configs)
-    mr_nr_family: list[tuple[int, int]]  # e.g. [(4,4), (4,8), (8,8), (8,16)]
+    datatype: str  # e.g. "fp32", "int8", "i8i8i32"
+    method: str  # e.g. "AXPY_FP32", "DOT_INT8"
+    mr_nr_family: list[tuple[int, int]]  # e.g. [(8, 8), (32, 32)]
+    vlen: int  # e.g. 256, 512
+    arch: str  # e.g. "jbpi2"
     datasets: list[str] = None  # e.g. ["cache_test.dat", "special.dat"]
+    skip_ref_run: bool = False
+    iterations: int = 1000
+    is_pinned: bool = False
+
 
     @classmethod
-    def from_json(cls, file_path: str) -> "BLISProjectConfig":
+    def from_json(cls, file_path: str) -> list["BLISProjectConfig"]:
         import re
         with open(file_path) as f:
             lines = f.readlines()
@@ -37,12 +41,40 @@ class BLISProjectConfig:
         json_str = re.sub(r',\s*([\]}])', r'\1', json_str)
 
         data = json.loads(json_str)
+        
+        configs = []
+        for row in data:
+            is_pinned = (len(row) >= 8)  # As requested: 8th arg means PINNED, no 8th arg means SWEEP
 
-        # Convert mr_nr_family list of lists to list of tuples
-        if "mr_nr_family" in data:
-            data["mr_nr_family"] = [tuple(pair) for pair in data["mr_nr_family"]]
-
-        return cls(**data)
+            if len(row) >= 8:
+                datatype, method, mr_nr, vlen, arch, datasets, skip_ref_run, iterations = row[:8]
+            elif len(row) == 7:
+                datatype, method, mr_nr, vlen, arch, datasets, skip_ref_run = row
+                iterations = 1000  # Fallback matches class default
+            else:
+                datatype, method, mr_nr, vlen, arch, datasets = row
+                skip_ref_run = False
+                iterations = 1000  # Fallback matches class default
+                
+            # Parse mr_nr into a list of tuples
+            if len(mr_nr) == 2 and isinstance(mr_nr[0], int):
+                mr_nr_family = [tuple(mr_nr)]
+            else:
+                mr_nr_family = [tuple(pair) for pair in mr_nr]
+                
+            configs.append(cls(
+                datatype=datatype,
+                method=method,
+                mr_nr_family=mr_nr_family,
+                vlen=vlen,
+                arch=arch,
+                datasets=datasets,
+                skip_ref_run=skip_ref_run,
+                iterations=iterations,
+                is_pinned=is_pinned
+            ))
+            
+        return configs
 
     def to_json(self, file_path: str):
         os.makedirs(os.path.dirname(file_path) or ".", exist_ok=True)

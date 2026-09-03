@@ -433,7 +433,139 @@ def build_pack_CB_dot_fp32_lane_else(idx, memref_type, RR, elem_bytes, suffix, v
     fn.body.blocks[0].add_op(func.ReturnOp())
     return fn
 
+def build_pack_CB_v_if_int8(idx: IndexType, memref_type, RR: int, elem_bytes: int,
+                              suffix: str, vlen: int = 32, method: str = "AXPY_INT8_Pack"):
+    """
+    Pack Matrix B (CB = Column-Major B -> packed Bc row-major) for INT8 AXPY.
+    Uses vle8/vlse8/vse8 with LMUL=M1. Mirrors build_pack_CB_v_if but for 8-bit.
+
+    Arguments passed at runtime: (M, Mc, kc, nc, ldM)
+    Loop: outer over j (nc, step NR), inner over i (kc, step 1).
+    Load: vlse8 with stride = ldM * 1 (gathers NR elements across rows at same k).
+    Store: vse8 contiguous to Bc.
+    """
+    fn, (M, Mc, kc, nc, ldM) = _make_fn(f"pack_CB_v_if_{method}_{suffix}_RR{RR}", memref_type, idx)
+    entry = fn.body.blocks[0]
+    c0, c1, cEB, cRR = _const(0, idx), _const(1, idx), _const(elem_bytes, idx), _const(RR, idx)
+    entry.add_ops([c0, c1, cEB, cRR])
+
+    ob = Block(arg_types=[idx])
+    entry.add_op(scf.ForOp(c0.result, nc, cRR.result, [], Region([ob])))
+    j = ob.args[0]
+    rem = arith.SubiOp(nc, j)
+    nr = arith.MinSIOp(rem.result, cRR.result)
+    bstr = arith.MuliOp(ldM, cEB.result)
+    ob.add_ops([rem, nr, bstr])
+
+    ib = Block(arg_types=[idx])
+    ob.add_op(scf.ForOp(c0.result, kc, c1.result, [], Region([ib])))
+    i = ib.args[0]
+
+    j_ldM = arith.MuliOp(j, ldM)
+    src_off_base = arith.AddiOp(j_ldM.result, i)
+    j_kc, i_RR = arith.MuliOp(j, kc), arith.MuliOp(i, cRR.result)
+    dst_off_base = arith.AddiOp(j_kc.result, i_RR.result)
+    ib.add_ops([j_ldM, src_off_base, j_kc, i_RR, dst_off_base])
+
+    # Inline chunk loop using SetvlE8M1Op (do NOT use get_safe_chunk_avl which calls FP32 SetvlOp)
+    num_vecs = (RR + vlen - 1) // vlen
+    for v in range(num_vecs):
+        c_chunk     = _const(v * vlen, idx)
+        c_chunk_end = _const((v + 1) * vlen, idx)
+        end         = arith.MinSIOp(nr.result, c_chunk_end.result)
+        end_safe    = arith.MaxSIOp(end.result, c_chunk.result)
+        chunk_avl   = arith.SubiOp(end_safe.result, c_chunk.result)
+        vl_op       = SetvlE8M1Op(chunk_avl.result)   # <- INT8 M1 setvl
+        ib.add_ops([c_chunk, c_chunk_end, end, end_safe, chunk_avl, vl_op])
+
+        chunk_ldM     = arith.MuliOp(c_chunk.result, ldM)
+        src_off_chunk = arith.AddiOp(src_off_base.result, chunk_ldM.result)
+        load_op       = vlse8_v_i8m1Op(M, src_off_chunk.result, bstr.result, vl_op.vl)
+        dst_off_chunk = arith.AddiOp(dst_off_base.result, c_chunk.result)
+        store         = vse8_v_i8m1Op(Mc, dst_off_chunk.result, load_op.result, vl_op.vl)
+        ib.add_ops([chunk_ldM, src_off_chunk, load_op, dst_off_chunk, store])
+
+    ib.add_op(scf.YieldOp())
+    ob.add_op(scf.YieldOp())
+    entry.add_op(func.ReturnOp())
+    return fn
+
+def build_pack_CB_v_else_int8(idx: IndexType, memref_type, RR: int, elem_bytes: int,
+                               suffix: str, vlen: int = 32, method: str = "AXPY_INT8_Pack"):
+    """Stub -- INT8 CB else branch. Tail cases handled by _if via SetvlE8M1 masking."""
+    fn, _ = _make_fn(f"pack_CB_v_else_{method}_{suffix}_RR{RR}", memref_type, idx)
+    fn.body.blocks[0].add_op(func.ReturnOp())
+    return fn
+
+def build_pack_RB_v_if_int8(idx: IndexType, memref_type, RR: int, elem_bytes: int,
+                              suffix: str, vlen: int = 32, method: str = "AXPY_INT8_Pack"):
+    """
+    Pack Matrix A (RB = Row-Major B -> packed Ac column-major panels) for INT8 AXPY.
+    Uses vle8/vse8 with LMUL=M1. Mirrors build_pack_RB_v_if but for 8-bit.
+
+    Arguments passed at runtime: (M, Mc, mc, kc, ldM)
+    Loop: outer over i (mc, step MR), inner over j (kc, step 1).
+    Load: vle8 contiguous (MR elements at same k, adjacent rows in col-major A).
+    Store: vse8 contiguous to Ac.
+    """
+    fn, (M, Mc, mc, kc, ldM) = _make_fn(f"pack_RB_v_if_{method}_{suffix}_RR{RR}", memref_type, idx)
+    entry = fn.body.blocks[0]
+    c0, c1, cRR = _const(0, idx), _const(1, idx), _const(RR, idx)
+    entry.add_ops([c0, c1, cRR])
+
+    ob = Block(arg_types=[idx])
+    entry.add_op(scf.ForOp(c0.result, mc, cRR.result, [], Region([ob])))
+    i = ob.args[0]
+    rem = arith.SubiOp(mc, i)
+    rr  = arith.MinSIOp(rem.result, cRR.result)
+    ob.add_ops([rem, rr])
+
+    ib = Block(arg_types=[idx])
+    ob.add_op(scf.ForOp(c0.result, kc, c1.result, [], Region([ib])))
+    j = ib.args[0]
+
+    j_ldM        = arith.MuliOp(j, ldM)
+    src_off_base = arith.AddiOp(j_ldM.result, i)
+    i_kc, j_RR  = arith.MuliOp(i, kc), arith.MuliOp(j, cRR.result)
+    dst_off_base = arith.AddiOp(i_kc.result, j_RR.result)
+    ib.add_ops([j_ldM, src_off_base, i_kc, j_RR, dst_off_base])
+
+    num_vecs = (RR + vlen - 1) // vlen
+    for v in range(num_vecs):
+        c_chunk     = _const(v * vlen, idx)
+        c_chunk_end = _const((v + 1) * vlen, idx)
+        end         = arith.MinSIOp(rr.result, c_chunk_end.result)
+        end_safe    = arith.MaxSIOp(end.result, c_chunk.result)
+        chunk_avl   = arith.SubiOp(end_safe.result, c_chunk.result)
+        vl_op       = SetvlE8M1Op(chunk_avl.result)   # <- INT8 M1 setvl
+        ib.add_ops([c_chunk, c_chunk_end, end, end_safe, chunk_avl, vl_op])
+
+        src_off_chunk = arith.AddiOp(src_off_base.result, c_chunk.result)
+        load_op       = vle8_v_i8m1Op(M, src_off_chunk.result, vl_op.vl)
+        dst_off_chunk = arith.AddiOp(dst_off_base.result, c_chunk.result)
+        store         = vse8_v_i8m1Op(Mc, dst_off_chunk.result, load_op.result, vl_op.vl)
+        ib.add_ops([src_off_chunk, load_op, dst_off_chunk, store])
+
+    ib.add_op(scf.YieldOp())
+    ob.add_op(scf.YieldOp())
+    entry.add_op(func.ReturnOp())
+    return fn
+
+def build_pack_RB_v_else_int8(idx: IndexType, memref_type, RR: int, elem_bytes: int,
+                               suffix: str, vlen: int = 32, method: str = "AXPY_INT8_Pack"):
+    """Stub -- INT8 RB else branch. Tail cases handled by _if via SetvlE8M1 masking."""
+    fn, _ = _make_fn(f"pack_RB_v_else_{method}_{suffix}_RR{RR}", memref_type, idx)
+    fn.body.blocks[0].add_op(func.ReturnOp())
+    return fn
+
 def build_pack_module(idx: IndexType, memref_type, NR: int = 8, MR: int = 4, elem_bytes: int = 4, suffix: str = "fp32", vlen: int = 8, method: str = "AXPY_FP32_Pack") -> ModuleOp:
+    if method == "AXPY_INT8_Pack":
+        return ModuleOp([
+            build_pack_CB_v_if_int8(idx, memref_type, NR, elem_bytes, suffix, vlen, method),
+            build_pack_CB_v_else_int8(idx, memref_type, NR, elem_bytes, suffix, vlen, method),
+            build_pack_RB_v_if_int8(idx, memref_type, MR, elem_bytes, suffix, vlen, method),
+            build_pack_RB_v_else_int8(idx, memref_type, MR, elem_bytes, suffix, vlen, method),
+        ])
     if method == "DOT_INT8_LANE_Pack":
         return ModuleOp([
             build_pack_CB_dot_int8_lane_if(idx, memref_type, NR, elem_bytes, suffix, vlen, method),

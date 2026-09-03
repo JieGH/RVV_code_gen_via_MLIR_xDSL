@@ -262,45 +262,49 @@ Mathematically, this hybrid approach perfectly reconstructs the matrices and com
 > - **Datatype**: `fp32`
 > - **Method**: `DOT_FP32_LANE_Pack`
 > - **Vector Length (VLEN)**: 256 bits (8 FP32 elements/vector register)
+> - **Metric**: `Ker GOPs` = kernel-only compute throughput (excludes packing time); `Tot GOPs` = end-to-end including packing
 
-| Dataset / Workload | Dimensions (M×N×K) | #1 Best Configuration | #2 Runner Up | #3 Runner Up |
-| :--- | :--- | :--- | :--- | :--- |
-| **Edge_1x1x1** | 1×1×1 | `MR1_NR1` (0.01 GOPs) | `MR1_NR2` (0.01 GOPs) | `MR1_NR8` (0.01 GOPs) |
-| **Edge_3x5x7** | 3×5×7 | `MR4_NR14` (0.35 GOPs) | `MR4_NR16` (0.35 GOPs) | `MR4_NR9` (0.35 GOPs) |
-| **MicroTile_8x8** | 8×8×8 | `MR12_NR8` (1.43 GOPs) | `MR8_NR8` (1.43 GOPs) | `MR8_NR10` (1.43 GOPs) |
-| **Pack_Tall** | 256×8×32 | `MR16_NR16` (3.07 GOPs) | `MR16_NR14` (3.06 GOPs) | `MR16_NR13` (3.03 GOPs) |
-| **Pack_Wide** | 8×256×32 | `MR14_NR14` (4.04 GOPs) | `MR20_NR14` (4.03 GOPs) | `MR11_NR16` (4.03 GOPs) |
-| **KC_Cross_K300** | 64×64×300 | `MR16_NR11` (6.14 GOPs) | `MR16_NR12` (5.93 GOPs) | `MR8_NR14` (5.84 GOPs) |
-| **Cache_Fit_L1_128** | 128×128×128 | `MR16_NR11` (7.46 GOPs) | `MR16_NR13` (7.38 GOPs) | `MR16_NR12` (7.22 GOPs) |
-| **square_1024** | 1024×1024×1024 | `MR16_NR7` (6.18 GOPs) | `MR8_NR14` (5.73 GOPs) | `MR16_NR8` (5.71 GOPs) |
-| **B1_L_M123** | 1024×384×1024 | `MR16_NR7` (5.72 GOPs) | `MR16_NR8` (5.30 GOPs) | `MR16_NR11` (5.26 GOPs) |
-| **B2_L_M5** | 384×384×64 | `MR16_NR11` (8.07 GOPs) | `MR16_NR13` (7.86 GOPs) | `MR16_NR12` (7.86 GOPs) |
-| **B3_L_M7** | 64×384×384 | `MR16_NR12` (6.79 GOPs) | `MR16_NR11` (6.66 GOPs) | `MR8_NR14` (6.51 GOPs) |
-| **B4_L_F11** | 4096×384×1024 | `MR16_NR7` (5.90 GOPs) | `MR16_NR11` (5.69 GOPs) | `MR16_NR10` (5.55 GOPs) |
-| **B5_L_F13** | 1024×384×4096 | `MR16_NR7` (5.54 GOPs) | `MR16_NR8` (5.17 GOPs) | `MR16_NR6` (5.13 GOPs) |
+| Dataset / Workload | Dimensions (M×N×K) | Best Kernel | Tot GOPs | Ker GOPs | RVV Pk (GB/s) | Scl Pk (GB/s) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **L1 (Edge)** | 1×1×1 | `MR1_NR1` | 0.00 | 0.01 | 0.0 | 0.0 |
+| **L2 (Edge)** | 3×5×7 | `MR8_NR8` | 0.19 | 0.93 | 0.6 | 0.5 |
+| **L3 (MicroTile)** | 8×8×8 | `MR8_NR8` | 0.82 | 3.61 | 1.2 | 0.9 |
+| **L4 (Pack_Tall)** | 256×8×32 | `MR16_NR8` | 2.90 | 6.16 | 1.7 | 1.5 |
+| **L5 (Pack_Wide)** | 8×256×32 | `MR13_NR16` | 3.70 | 6.83 | 2.8 | 1.5 |
+| **L6 (KC_Cross)** | 64×64×300 | `MR16_NR11` | 5.97 | 8.28 | 1.6 | 1.3 |
+| **L7 (Cache_Fit)** | 128×128×128 | `MR16_NR13` | 7.08 | 8.28 | 1.9 | 1.3 |
+| **s_1024 (Square)** | 1024×1024×1024 | `MR16_NR7` | 5.83 | 6.51 | 0.3 | 0.2 |
+| **B1_M123** | 1024×384×1024 | `MR16_NR7` | 5.46 | 6.56 | 0.3 | 0.2 |
+| **B2_M5** | 384×384×64 | `MR16_NR11` | 7.57 | 8.30 | 1.7 | 1.3 |
+| **B3_M7** | 64×384×384 | `MR16_NR12` | 6.55 | 8.11 | 1.5 | 1.0 |
+| **B4_F11** | 4096×384×1024 | `MR16_NR7` | 5.56 | 6.52 | 0.2 | 0.2 |
+| **B5_F13** | 1024×384×4096 | `MR16_NR7` | 5.23 | 6.20 | 0.3 | 0.2 |
 
 ### Comparison: DOT FP32 vs. AXPY FP32 vs. prev_xdsl
 
-To evaluate the overhead of emulating DOT layouts using strided loads in FP32 on RVV, we compare the current DOT implementation against the `AXPY_FP32_Pack` implementation and the previous xDSL FP32 reference (`prev_xdsl`):
+To evaluate the overhead of emulating DOT layouts using strided loads in FP32 on RVV, we compare the current DOT implementation (Ker GOPs) against the `AXPY_FP32_Pack` implementation (Ker GOPs, same run) and the previous xDSL FP32 reference (`prev_xdsl`):
 
-| Dataset / Workload | Dimensions (M×N×K) | DOT Peak (GFLOPS) | AXPY Peak (GFLOPS) | `prev_xdsl` (GFLOPS) | DOT vs AXPY Δ | DOT vs `prev_xdsl` Δ |
+| Dataset / Workload | Dimensions (M×N×K) | DOT Ker GOPs | AXPY Ker GOPs | `prev_xdsl` (GFLOPS) | DOT vs AXPY Δ | DOT vs `prev_xdsl` Δ |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Edge_1x1x1** | 1×1×1 | 0.01 | 0.01 | N/A | 0.0% | N/A |
-| **Edge_3x5x7** | 3×5×7 | 0.35 | 0.51 | N/A | -31.4% | N/A |
-| **MicroTile_8x8** | 8×8×8 | 1.43 | 1.95 | N/A | -26.7% | N/A |
-| **Pack_Tall** | 256×8×32 | 3.07 | 5.37 | N/A | -42.8% | N/A |
-| **Pack_Wide** | 8×256×32 | 4.04 | 4.71 | N/A | -14.2% | N/A |
-| **KC_Cross_K300** | 64×64×300 | 6.14 | 9.25 | N/A | -33.6% | N/A |
-| **Cache_Fit_L1_128** | 128×128×128 | 7.46 | 9.66 | N/A | -22.8% | N/A |
-| **square_1024** | 1024×1024×1024 | 6.18 | 8.68 | ~8.5 | -28.8% | -27.3% |
-| **B1_L_M123** | 1024×384×1024 | 5.72 | 8.22 | ~8.0 | -30.4% | -28.5% |
-| **B2_L_M5** | 384×384×64 | 8.07 | 12.26 | ~12.5 | -34.2% | -35.4% |
-| **B3_L_M7** | 64×384×384 | 6.79 | 6.58 | ~8.8 | +3.2% | -22.8% |
-| **B4_L_F11** | 4096×384×1024 | 5.90 | 8.04 | ~8.5 | -26.6% | -30.6% |
-| **B5_L_F13** | 1024×384×4096 | 5.54 | 7.67 | ~7.5 | -27.8% | -26.1% |
+| **L1 (Edge)** | 1×1×1 | 0.01 | 0.02 | N/A | -50.0% | N/A |
+| **L2 (Edge)** | 3×5×7 | 0.93 | 1.20 | N/A | -22.5% | N/A |
+| **L3 (MicroTile)** | 8×8×8 | 3.61 | 4.10 | N/A | -11.9% | N/A |
+| **L4 (Pack_Tall)** | 256×8×32 | 6.16 | 9.57 | N/A | -35.6% | N/A |
+| **L5 (Pack_Wide)** | 8×256×32 | 6.83 | 8.15 | N/A | -16.2% | N/A |
+| **L6 (KC_Cross)** | 64×64×300 | 8.28 | 12.61 | N/A | -34.3% | N/A |
+| **L7 (Cache_Fit)** | 128×128×128 | 8.28 | 13.72 | N/A | -39.7% | N/A |
+| **s_1024 (Square)** | 1024×1024×1024 | 6.51 | 9.01 | ~8.5 | -27.7% | -23.4% |
+| **B1_M123** | 1024×384×1024 | 6.56 | 8.55 | ~8.0 | -23.3% | -18.0% |
+| **B2_M5** | 384×384×64 | 8.30 | 12.96 | ~12.5 | -36.0% | -33.6% |
+| **B3_M7** | 64×384×384 | 8.11 | 10.86 | ~8.8 | -25.3% | -7.8% |
+| **B4_F11** | 4096×384×1024 | 6.52 | 8.90 | ~8.5 | -26.7% | -23.3% |
+| **B5_F13** | 1024×384×4096 | 6.20 | 8.28 | ~7.5 | -25.1% | -17.3% |
 
 **Key Findings:**
-1. **Performance Overhead:** The DOT implementation exhibits a significant performance degradation compared to the native AXPY formulation across almost all workloads, with peak GFLOPS dropping by ~20-40%. 
-2. **Strided Load Penalty:** This performance loss is directly attributable to the `vlse32.v` strided loads required in the inner microkernel loop to reconstruct the vectors. The hardware penalties of non-unit stride memory accesses dominate the computation time.
-3. **B3 Exception:** Interestingly, for `B3_L_M7` (64×384×384), the DOT formulation slightly outperformed AXPY (6.79 vs 6.58 GOPs). However, this is likely an anomaly related to cache blocking interactions rather than an architectural advantage.
-4. **Validation of Theory:** The results confirm the risk identified in Section 6: while the DOT memory layout mirrors integer implementations nicely, emulating it in FP32 on RVV hardware that lacks a native FP32 `vdot` instruction is mathematically correct but fundamentally non-performant compared to `AXPY`.
+1. **Performance Overhead:** The DOT implementation exhibits a consistent performance degradation compared to the native AXPY formulation across all workloads, with Ker GOPs dropping by ~12–40%.
+2. **Strided Load Penalty:** This performance loss is directly attributable to the `vlse32.v` strided loads required in the inner microkernel loop to reconstruct the B-matrix vectors. Non-unit stride memory accesses dominate execution time.
+3. **No B3 Exception (new run):** Unlike a previous run where B3 (64×384×384) showed a slight DOT advantage (6.79 vs 6.58), the new run shows DOT at 8.11 vs AXPY at 10.86 — AXPY is now clearly faster here too, indicating the earlier result was likely a cache-blocking anomaly.
+4. **Validation of Theory:** The results confirm the risk identified in Section 6: while the DOT memory layout mirrors INT8 implementations structurally, emulating it in FP32 on RVV hardware that lacks a native FP32 `vdot` instruction is mathematically correct but fundamentally non-performant compared to `AXPY`.
+
+
+

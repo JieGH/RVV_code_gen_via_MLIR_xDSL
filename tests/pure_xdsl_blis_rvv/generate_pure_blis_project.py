@@ -6,9 +6,7 @@ import sys
 
 # Add parent directories to Python path so we can import the old modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "../gemm_blis_xdsl"))
-)
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../gemm_blis_xdsl")))
 
 from config import BLISProjectConfig
 from macro_builder import build_macro_module
@@ -92,7 +90,7 @@ def rename_symbols(mod: ModuleOp, rename_map: dict):
             walk_and_rename(op.body)
 
 
-def generate_header(config: BLISProjectConfig, out_dir: str, generated_variants: list, max_dim: int, c_type_a: str, c_type_b: str, c_type_c: str, c_type_alpha: str):
+def generate_header(config: BLISProjectConfig, out_dir: str, generated_variants: list, max_dim: int, c_type_a: str, c_type_b: str, c_type_c: str, c_type_alpha: str, pack_dims=None):
     header_path = os.path.join(out_dir, "generated_kernels.h")
     with open(header_path, "w") as f:
         f.write("#pragma once\n\n")
@@ -101,12 +99,20 @@ def generate_header(config: BLISProjectConfig, out_dir: str, generated_variants:
         f.write(f'#define CONFIG_DATATYPE "{config.datatype}"\n')
         f.write(f'#define CONFIG_METHOD "{config.method}"\n')
         f.write(f'#define CONFIG_VLEN {config.vlen}\n')
-        f.write(f'#define CONFIG_ARCH "{config.arch}"\n\n')
+        f.write(f'#define CONFIG_ARCH "{config.arch}"\n')
+        f.write(f'#define CONFIG_ITERATIONS {config.iterations}\n\n')
+        if config.datatype in ("int8", "i8i8i32"):
+            f.write("#define DTYPE_INT8 1\n\n")
+            
+        if config.skip_ref_run:
+            f.write("#define SKIP_REF_RUN 1\n\n")
+            
         f.write("#ifdef __cplusplus\n")
         f.write('extern "C" {\n')
         f.write("#endif\n\n")
         
-        for dim in range(1, max_dim + 1):
+        _pack_dims = pack_dims if pack_dims is not None else range(1, max_dim + 1)
+        for dim in _pack_dims:
             f.write(f"void pack_CB_v_if_{config.method}_{config.datatype}_NR{dim}({c_type_b}*, {c_type_b}*, size_t, size_t, size_t);\n")
             f.write(f"void pack_CB_v_else_{config.method}_{config.datatype}_NR{dim}({c_type_b}*, {c_type_b}*, size_t, size_t, size_t);\n")
             f.write(f"void pack_RB_v_if_{config.method}_{config.datatype}_MR{dim}({c_type_a}*, {c_type_a}*, size_t, size_t, size_t);\n")
@@ -116,10 +122,10 @@ def generate_header(config: BLISProjectConfig, out_dir: str, generated_variants:
 
 
         f.write(
-            f"void gemm_blis_generic(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr);\n\n"
+            f"void gemm_blis_generic(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack);\n\n"
         )
         f.write(
-            f"typedef void (*gemm_blis_fn)(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr);\n\n"
+            f"typedef void (*gemm_blis_fn)(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack);\n\n"
         )
         f.write("struct KernelVariant {\n")
         f.write("    const char* name;\n")
@@ -142,22 +148,7 @@ def generate_header(config: BLISProjectConfig, out_dir: str, generated_variants:
         f.write("#endif\n")
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--config", type=str, required=True, help="Path to JSON config file"
-    )
-    parser.add_argument(
-        "--mlir-translate",
-        type=str,
-        default="/home/jlei/Documents/ws_MLIR/llvm_pj_dir_06092025/llvm-project/build/bin/mlir-translate",
-    )
-    args = parser.parse_args()
-
-    # 1. Load config
-    config = BLISProjectConfig.from_json(args.config)
-    print(f"Loaded config: {args.config}")
-
+def build_project(config: BLISProjectConfig, args):
     # Create project directory
     out_dir = f"pj_gen/{config.datatype}_{config.method}_vlen{config.vlen}"
     os.makedirs(out_dir, exist_ok=True)
@@ -176,7 +167,7 @@ def main():
         mlir_type = IntegerType(8)
         c_type_a = c_type_b = "int8_t"
         c_type_c = "int32_t"
-        c_type_alpha = "int32_t"
+        c_type_alpha = "float"
     else:
         elem_bytes = 4
         mlir_type = Float32Type()
@@ -202,6 +193,11 @@ def main():
         RVVToEmitCPass(),
     ]
 
+    # Use the is_pinned flag from the parsed configuration
+    is_pinned = config.is_pinned
+    # Always initialize so they're defined in both branches (linter safety)
+    pinned_mr, pinned_nr = config.mr_nr_family[0] if is_pinned else (0, 0)
+
     # 2. Expand families and find global max
     max_mr = 0
     max_nr = 0
@@ -209,20 +205,24 @@ def main():
     for mr, nr in config.mr_nr_family:
         if mr > max_mr: max_mr = mr
         if nr > max_nr: max_nr = nr
-        
-        start_m = 1
-        start_n = 1
-        
-        for i in range(start_m, mr + 1):
-            for j in range(start_n, nr + 1):
+
+        for i in range(1, mr + 1):
+            for j in range(1, nr + 1):
                 expanded_families.add((i, j))
-    
+
     # Sort them descending
     expanded_families = sorted(list(expanded_families), key=lambda x: (x[0], x[1]), reverse=True)
-    
-    print(f"\n[+] Global Max MR={max_mr}, NR={max_nr}")
-    print(f"[+] Expanded to {len(expanded_families)} independent macrokernels")
 
+    if is_pinned:
+        pinned_mr, pinned_nr = config.mr_nr_family[0]
+        print(f"\n[+] Pinned kernel mode: only generating MR={pinned_mr}, NR={pinned_nr}")
+    else:
+        print(f"\n[+] Search mode: Global Max MR={max_mr}, NR={max_nr}")
+        print(f"[+] Expanded to {len(expanded_families)} independent macrokernels")
+
+    # NOTE: For INT8 i8mf4, capacity per fractional reg = vlen/(8*4) = vlen/32,
+    # which coincidentally equals the FP32 M1 capacity. This is correct for i8mf4.
+    # If LMUL is ever changed to M1 for INT8, use: vlen_elements = config.vlen // 8
     vlen_elements = config.vlen // 32
 
     b0_modules = []
@@ -234,27 +234,31 @@ def main():
 
     # 3. Generate Global Microkernel Pool
     print("\n[+] Generating Global Microkernel Pool...")
-    for m_idx in range(1, max_mr + 1):
-        for n_idx in range(1, max_nr + 1):
-            # Beta 0
-            mic_mod_b0 = build_gemm(
-                mr=m_idx, nr=n_idx, vlen=vlen_elements, beta=BetaMode.B0, precision=config.datatype, method=config.method
-            )
-            default_name_b0 = f"xdsl_api_gemm_RVV_{m_idx}x{n_idx}_b0_col_{config.datatype}"
-            new_name_b0 = f"gemm_microkernel_v_{config.datatype}_{m_idx}x{n_idx}_b0"
-            rename_symbols(mic_mod_b0, {default_name_b0: new_name_b0})
-            b0_modules.append(mic_mod_b0)
-            generated_microkernels_b0.append((m_idx, n_idx, new_name_b0))
+    _precision = "i8i8i32" if config.datatype in ("int8", "i8i8i32") else config.datatype
 
-            # Beta 1
-            mic_mod_b1 = build_gemm(
-                mr=m_idx, nr=n_idx, vlen=vlen_elements, beta=BetaMode.B1, precision=config.datatype, method=config.method
-            )
-            default_name_b1 = f"xdsl_api_gemm_RVV_{m_idx}x{n_idx}_b1_col_{config.datatype}"
-            new_name_b1 = f"gemm_microkernel_v_{config.datatype}_{m_idx}x{n_idx}_b1"
-            rename_symbols(mic_mod_b1, {default_name_b1: new_name_b1})
-            b1_modules.append(mic_mod_b1)
-            generated_microkernels_b1.append((m_idx, n_idx, new_name_b1))
+    # Pinned mode: only 1 kernel. Search mode: full pool for BLIS fringe dispatch.
+    kernel_pairs = [(pinned_mr, pinned_nr)] if is_pinned else [(m, n) for m in range(1, max_mr + 1) for n in range(1, max_nr + 1)]
+
+    for m_idx, n_idx in kernel_pairs:
+        # Beta 0
+        mic_mod_b0 = build_gemm(
+            mr=m_idx, nr=n_idx, vlen=vlen_elements, beta=BetaMode.B0, precision=_precision, method=config.method
+        )
+        default_name_b0 = f"xdsl_api_gemm_RVV_{m_idx}x{n_idx}_b0_col_{_precision}"
+        new_name_b0 = f"gemm_microkernel_v_{config.datatype}_{m_idx}x{n_idx}_b0"
+        rename_symbols(mic_mod_b0, {default_name_b0: new_name_b0})
+        b0_modules.append(mic_mod_b0)
+        generated_microkernels_b0.append((m_idx, n_idx, new_name_b0))
+
+        # Beta 1
+        mic_mod_b1 = build_gemm(
+            mr=m_idx, nr=n_idx, vlen=vlen_elements, beta=BetaMode.B1, precision=_precision, method=config.method
+        )
+        default_name_b1 = f"xdsl_api_gemm_RVV_{m_idx}x{n_idx}_b1_col_{_precision}"
+        new_name_b1 = f"gemm_microkernel_v_{config.datatype}_{m_idx}x{n_idx}_b1"
+        rename_symbols(mic_mod_b1, {default_name_b1: new_name_b1})
+        b1_modules.append(mic_mod_b1)
+        generated_microkernels_b1.append((m_idx, n_idx, new_name_b1))
 
     # 3.5 Generate Deduplicated Packing Modules
     print("    -> Generating deduplicated Packing modules")
@@ -262,7 +266,11 @@ def main():
     mem_type = MemRefType(mlir_type, [-1])
     idx = IndexType()
     
-    for dim in range(1, max_dim + 1):
+    # Pinned mode: only generate pack funcs for the exact MR and NR needed.
+    # Search mode: generate for all dims up to max_dim.
+    pack_gen_dims = sorted(set([pinned_mr, pinned_nr])) if is_pinned else range(1, max_dim + 1)
+
+    for dim in pack_gen_dims:
         pack_mod = build_pack_module(
             idx, mem_type, NR=dim, MR=dim, elem_bytes=elem_bytes, suffix=config.datatype, vlen=vlen_elements, method=config.method
         )
@@ -276,7 +284,8 @@ def main():
         pack_modules.append(pack_mod)
 
     # 4. Generate Generic BLIS config
-    for mr, nr in expanded_families:
+    variants_to_test = [(pinned_mr, pinned_nr)] if is_pinned else expanded_families
+    for mr, nr in variants_to_test:
         generated_variants.append({
             "mr": mr,
             "nr": nr,
@@ -306,45 +315,100 @@ def main():
     headers_path = os.path.join(out_dir, "gemm_headers.h")
     with open(headers_path, "w") as f:
         f.write("#ifndef GEMM_HEADERS_H\n#define GEMM_HEADERS_H\n\n")
-        f.write("#include <stddef.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <string>\n#include <algorithm>\n#include <riscv_vector.h>\n\n")
+        f.write("#include <stddef.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <string>\n#include <algorithm>\n#include <riscv_vector.h>\n#include <chrono>\n\n")
         f.write(macros)
         f.write(fwd_decls)
         f.write("\n#endif // GEMM_HEADERS_H\n")
         
-    dispatch_body = f"\nvoid gemm_microkernel_v_dispatch_generic(size_t cur_mr, size_t cur_nr, size_t kc, {c_type_alpha} alpha, {c_type_a}* Ac, {c_type_b}* Bc, {c_type_alpha} beta, {c_type_c}* C, size_t ldc, size_t max_mr, size_t max_nr) {{\n"
-    dispatch_body += f"    if (beta == ({c_type_alpha})0) {{\n"
-    for m_idx in range(1, max_mr + 1):
-        for n_idx in range(1, max_nr + 1):
-            new_name = f"gemm_microkernel_v_{config.datatype}_{m_idx}x{n_idx}_b0"
-            dispatch_body += f"        if (cur_mr == {m_idx} && cur_nr == {n_idx}) {{ {new_name}(kc, &alpha, Ac, max_mr, Bc, max_nr, &beta, C, ldc); return; }}\n"
-    dispatch_body += f'        fprintf(stderr, "[GEMM DISPATCH ERROR] No B0 kernel for cur_mr=%zu cur_nr=%zu\\n", cur_mr, cur_nr); abort();\n'
-    dispatch_body += "    } else {\n"
-    for m_idx in range(1, max_mr + 1):
-        for n_idx in range(1, max_nr + 1):
-            new_name = f"gemm_microkernel_v_{config.datatype}_{m_idx}x{n_idx}_b1"
-            dispatch_body += f"        if (cur_mr == {m_idx} && cur_nr == {n_idx}) {{ {new_name}(kc, &alpha, Ac, max_mr, Bc, max_nr, &beta, C, ldc); return; }}\n"
-    dispatch_body += f'        fprintf(stderr, "[GEMM DISPATCH ERROR] No B1 kernel for cur_mr=%zu cur_nr=%zu\\n", cur_mr, cur_nr); abort();\n'
-    dispatch_body += "    }\n"
-    dispatch_body += "}\n"
+    if is_pinned:
+        # Pinned mode: simple dispatcher — always calls the ONE kernel.
+        b0_name = f"gemm_microkernel_v_{config.datatype}_{pinned_mr}x{pinned_nr}_b0"
+        b1_name = f"gemm_microkernel_v_{config.datatype}_{pinned_mr}x{pinned_nr}_b1"
+        dispatch_body = f"\nvoid gemm_microkernel_v_dispatch_generic(size_t cur_mr, size_t cur_nr, size_t kc, {c_type_alpha} alpha, {c_type_a}* Ac, {c_type_b}* Bc, {c_type_alpha} beta, {c_type_c}* C, size_t ldc, size_t max_mr, size_t max_nr) {{\n"
+        dispatch_body += f"    if (beta == ({c_type_alpha})0) {{ {b0_name}(kc, &alpha, Ac, max_mr, Bc, max_nr, &beta, C, ldc); }}\n"
+        dispatch_body += f"    else {{ {b1_name}(kc, &alpha, Ac, max_mr, Bc, max_nr, &beta, C, ldc); }}\n"
+        dispatch_body += "}\n"
+    else:
+        # Search mode: full if-else table for all fringe kernels.
+        dispatch_body = f"\nvoid gemm_microkernel_v_dispatch_generic(size_t cur_mr, size_t cur_nr, size_t kc, {c_type_alpha} alpha, {c_type_a}* Ac, {c_type_b}* Bc, {c_type_alpha} beta, {c_type_c}* C, size_t ldc, size_t max_mr, size_t max_nr) {{\n"
+        dispatch_body += f"    if (beta == ({c_type_alpha})0) {{\n"
+        for m_idx in range(1, max_mr + 1):
+            for n_idx in range(1, max_nr + 1):
+                new_name = f"gemm_microkernel_v_{config.datatype}_{m_idx}x{n_idx}_b0"
+                dispatch_body += f"        if (cur_mr == {m_idx} && cur_nr == {n_idx}) {{ {new_name}(kc, &alpha, Ac, max_mr, Bc, max_nr, &beta, C, ldc); return; }}\n"
+        dispatch_body += f'        fprintf(stderr, "[GEMM DISPATCH ERROR] No B0 kernel for cur_mr=%zu cur_nr=%zu\\n", cur_mr, cur_nr); abort();\n'
+        dispatch_body += "    } else {\n"
+        for m_idx in range(1, max_mr + 1):
+            for n_idx in range(1, max_nr + 1):
+                new_name = f"gemm_microkernel_v_{config.datatype}_{m_idx}x{n_idx}_b1"
+                dispatch_body += f"        if (cur_mr == {m_idx} && cur_nr == {n_idx}) {{ {new_name}(kc, &alpha, Ac, max_mr, Bc, max_nr, &beta, C, ldc); return; }}\n"
+        dispatch_body += f'        fprintf(stderr, "[GEMM DISPATCH ERROR] No B1 kernel for cur_mr=%zu cur_nr=%zu\\n", cur_mr, cur_nr); abort();\n'
+        dispatch_body += "    }\n"
+        dispatch_body += "}\n"
 
     dispatch_body += f"""
-void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c_type_a}* A, int32_t lda, {c_type_b}* B, int32_t ldb, {c_type_alpha} beta, {c_type_c}* C, int32_t ldc, {c_type_a}* Ac, {c_type_b}* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr) {{
+static inline void pack_RB_scalar(int32_t mc, int32_t nc, {c_type_a}* M, int32_t ldM, {c_type_a}* Mc, int32_t RR) {{
+    int32_t i, j, ii, k, rr;
+    for (i = 0; i < mc; i += RR) {{
+        k = i * nc;
+        rr = std::min(mc - i, RR);
+        for (j = 0; j < nc; j++) {{
+            for (ii = 0; ii < rr; ii++) {{
+                Mc[k] = M[(j) * ldM + (i + ii)];
+                k++;
+            }}
+            k += (RR - rr);
+        }}
+    }}
+}}
+
+static inline void pack_CB_scalar(int32_t mc, int32_t nc, {c_type_b}* M, int32_t ldM, {c_type_b}* Mc, int32_t RR) {{
+    int32_t i, j, jj, k, nr;
+    for (j = 0; j < nc; j += RR) {{
+        k = j * mc;
+        nr = std::min(nc - j, RR);
+        for (i = 0; i < mc; i++) {{
+            for (jj = 0; jj < nr; jj++) {{
+                Mc[k] = M[(j + jj) * ldM + (i)];
+                k++;
+            }}
+            k += (RR - nr);
+        }}
+    }}
+}}
+
+void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c_type_a}* A, int32_t lda, {c_type_b}* B, int32_t ldb, {c_type_alpha} beta, {c_type_c}* C, int32_t ldc, {c_type_a}* Ac, {c_type_b}* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack) {{
+"""
+    if is_pinned:
+        # Pinned mode: declare named pack functions directly — no table needed.
+        pinned_cb_fn = f"pack_CB_v_if_{config.method}_{config.datatype}_NR{pinned_nr}"
+        pinned_rb_fn = f"pack_RB_v_if_{config.method}_{config.datatype}_MR{pinned_mr}"
+        dispatch_body += f"""
     typedef void (*pack_CB_fn)({c_type_b}*, {c_type_b}*, size_t, size_t, size_t);
+    typedef void (*pack_RB_fn)({c_type_a}*, {c_type_a}*, size_t, size_t, size_t);
+    const pack_CB_fn pack_CB_direct = {pinned_cb_fn};
+    const pack_RB_fn pack_RB_direct = {pinned_rb_fn};
+"""
+    else:
+        # Search mode: function pointer tables indexed by dimension.
+        dispatch_body += f"""    typedef void (*pack_CB_fn)({c_type_b}*, {c_type_b}*, size_t, size_t, size_t);
     typedef void (*pack_RB_fn)({c_type_a}*, {c_type_a}*, size_t, size_t, size_t);
     
     static const pack_CB_fn pack_CB_funcs[] = {{
         nullptr,
 """
-    for dim in range(1, max_dim + 1):
-        dispatch_body += f"        pack_CB_v_if_{config.method}_{config.datatype}_NR{dim},\n"
-    dispatch_body += f"""    }};
+        for dim in range(1, max_dim + 1):
+            dispatch_body += f"        pack_CB_v_if_{config.method}_{config.datatype}_NR{dim},\n"
+        dispatch_body += f"""    }};
     
     static const pack_RB_fn pack_RB_funcs[] = {{
         nullptr,
 """
-    for dim in range(1, max_dim + 1):
-        dispatch_body += f"        pack_RB_v_if_{config.method}_{config.datatype}_MR{dim},\n"
-    dispatch_body += f"""    }};
+        for dim in range(1, max_dim + 1):
+            dispatch_body += f"        pack_RB_v_if_{config.method}_{config.datatype}_MR{dim},\n"
+        dispatch_body += f"""    }};"""
+
+    dispatch_body += f"""
 
     for (int32_t jc = 0; jc < n; jc += nc) {{
         int32_t nc_remain = n - jc;
@@ -360,21 +424,81 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
         dispatch_body += f"""
             kc_pad = ((cur_kc + 3) / 4) * 4;
 """
+    # Pre-compute the pack call lines so we stay inside a single f-string below.
+    pack_cb_call = f"                pack_CB_direct(b_ptr, Bc, cur_kc, cur_nc, ldb);" if is_pinned else f"                pack_CB_funcs[nr](b_ptr, Bc, cur_kc, cur_nc, ldb);"
+    pack_rb_call = f"                    pack_RB_direct(a_ptr, Ac, cur_mc, cur_kc, lda);" if is_pinned else f"                    pack_RB_funcs[mr](a_ptr, Ac, cur_mc, cur_kc, lda);"
+
+    # Pre-compute the inner kernel call block.
+    # In pinned mode, fringe tiles (cur_mr<mr or cur_nr<nr) use a small stack temp
+    # buffer of exactly mr*nr so the hardcoded kernel never writes beyond valid C.
+    # Main tiles (cur_mr==mr, cur_nr==nr) call the kernel directly.
+    # In search mode the dispatch table selects the right fringe kernel, no guard needed.
+    if is_pinned:
+        kernel_call_block = f"""\
+                        if (cur_mr < mr || cur_nr < nr) {{
+                            // Fringe tile: use a temp buffer to avoid OOB write by the {pinned_mr}x{pinned_nr} kernel
+                            {c_type_c} tmp_C[{pinned_mr} * {pinned_nr}];
+                            memset(tmp_C, 0, sizeof({c_type_c}) * {pinned_mr} * {pinned_nr});
+                            if (beta_actual != ({c_type_alpha})0) {{
+                                for (int _ii = 0; _ii < cur_mr; _ii++)
+                                    for (int _jj = 0; _jj < cur_nr; _jj++)
+                                        tmp_C[_jj * {pinned_mr} + _ii] = c_ptr[_jj * ldc + _ii];
+                            }}
+                            gemm_microkernel_v_dispatch_generic(cur_mr, cur_nr, kc_pad, alpha, a_packed, b_packed, beta_actual, tmp_C, {pinned_mr}, mr, nr);
+                            for (int _ii = 0; _ii < cur_mr; _ii++)
+                                for (int _jj = 0; _jj < cur_nr; _jj++)
+                                    c_ptr[_jj * ldc + _ii] = tmp_C[_jj * {pinned_mr} + _ii];
+                        }} else {{
+                            gemm_microkernel_v_dispatch_generic(cur_mr, cur_nr, kc_pad, alpha, a_packed, b_packed, beta_actual, c_ptr, ldc, mr, nr);
+                        }}"""
+    else:
+        kernel_call_block = "                        gemm_microkernel_v_dispatch_generic(cur_mr, cur_nr, kc_pad, alpha, a_packed, b_packed, beta_actual, c_ptr, ldc, mr, nr);"
+
     dispatch_body += f"""
             int32_t mc_pad = (mc + mr - 1) / mr * mr;
             int32_t nc_pad = (nc + nr - 1) / nr * nr;
-            // Zero initialize Ac and Bc so padded elements are strictly zero
-            memset(Ac, 0, mc_pad * kc_pad * sizeof({c_type_a}));
-            memset(Bc, 0, kc_pad * nc_pad * sizeof({c_type_b}));
 
-            pack_CB_funcs[nr](b_ptr, Bc, cur_kc, cur_nc, ldb);
+            if (cur_nc % nr != 0) {{
+                int32_t full_nc_elements = (cur_nc / nr) * nr * kc_pad;
+                int32_t pad_nc_elements = nr * kc_pad;
+                memset(Bc + full_nc_elements, 0, pad_nc_elements * sizeof({c_type_b}));
+            }}
+
+            auto t_pack_start_B = std::chrono::high_resolution_clock::now();
+            if (use_scalar_pack) {{
+                pack_CB_scalar(cur_kc, cur_nc, b_ptr, ldb, Bc, nr);
+            }} else {{
+{pack_cb_call}
+            }}
+            auto t_pack_end_B = std::chrono::high_resolution_clock::now();
+            *pack_time += std::chrono::duration<double>(t_pack_end_B - t_pack_start_B).count();
+            *pack_bytes += cur_kc * cur_nc * sizeof({c_type_b});
+
             {c_type_alpha} beta_actual = GET_BETA(pc, beta);
             for (int32_t ic = 0; ic < m; ic += mc) {{
                 int32_t mc_remain = m - ic;
                 int32_t cur_mc = std::min(mc_remain, mc);
                 int32_t offset_A = pc * lda + ic;
                 {c_type_a}* a_ptr = GET_PTR(A, offset_A);
-                pack_RB_funcs[mr](a_ptr, Ac, cur_mc, cur_kc, lda);
+
+                if (cur_mc % mr != 0) {{
+                    int32_t full_mc_elements = (cur_mc / mr) * mr * kc_pad;
+                    int32_t pad_mc_elements = mr * kc_pad;
+                    memset(Ac + full_mc_elements, 0, pad_mc_elements * sizeof({c_type_a}));
+                }}
+
+                auto t_pack_start_A = std::chrono::high_resolution_clock::now();
+                if (use_scalar_pack) {{
+                    pack_RB_scalar(cur_mc, cur_kc, a_ptr, lda, Ac, mr);
+                }} else {{
+{pack_rb_call}
+                }}
+                auto t_pack_end_A = std::chrono::high_resolution_clock::now();
+                *pack_time += std::chrono::duration<double>(t_pack_end_A - t_pack_start_A).count();
+                *pack_bytes += cur_mc * cur_kc * sizeof({c_type_a});
+
+
+
                 for (int32_t jr = 0; jr < cur_nc; jr += nr) {{
                     int32_t nr_remain = cur_nc - jr;
                     int32_t cur_nr = std::min(nr_remain, nr);
@@ -387,7 +511,11 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
                         {c_type_c}* c_ptr = GET_PTR(C, offset_C);
                         {c_type_a}* a_packed = GET_PTR(Ac, ir * kc_pad);
                         {c_type_b}* b_packed = GET_PTR(Bc, jr * kc_pad);
-                        gemm_microkernel_v_dispatch_generic(cur_mr, cur_nr, kc_pad, alpha, a_packed, b_packed, beta_actual, c_ptr, ldc, mr, nr);
+                        
+                        auto t_kern_start = std::chrono::high_resolution_clock::now();
+{kernel_call_block}
+                        auto t_kern_end = std::chrono::high_resolution_clock::now();
+                        *kernel_time += std::chrono::duration<double>(t_kern_end - t_kern_start).count();
                     }}
                 }}
             }}
@@ -396,9 +524,10 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
 }}
 """
 
+
     dispatch_path = os.path.join(out_dir, "gemm_dispatch_xdsl.cpp")
     with open(dispatch_path, "w") as f:
-        f.write('#include "gemm_headers.h"\n\nextern "C" {\n')
+        f.write(f'// CONFIG METHOD: {config.method}\n// DATATYPE: {config.datatype}\n#include "gemm_headers.h"\n\nextern "C" {{\n')
         f.write(dispatch_body)
         f.write("\n}\n")
 
@@ -420,7 +549,7 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
             with open(c_path) as f:
                 c_code = f.read()
             with open(c_path, "w") as f:
-                f.write(f'#include "gemm_headers.h"\n\nextern "C" {{\n\n{c_code}\n}}\n')
+                f.write(f'// CONFIG METHOD: {config.method}\n// DATATYPE: {config.datatype}\n#include "gemm_headers.h"\n\nextern "C" {{\n\n{c_code}\n}}\n')
             print(f"    -> Lowered to {c_path}")
         except subprocess.CalledProcessError as e:
             print(f"    -> Failed to lower to C: {e}")
@@ -431,7 +560,8 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
     lower_modules(pack_modules, "gemm_pack_xdsl")
 
     # Generate the C++ header
-    generate_header(config, out_dir, generated_variants, max_dim, c_type_a, c_type_b, c_type_c, c_type_alpha)
+    _pack_dims = sorted(set([pinned_mr, pinned_nr])) if is_pinned else None
+    generate_header(config, out_dir, generated_variants, max_dim, c_type_a, c_type_b, c_type_c, c_type_alpha, pack_dims=_pack_dims)
     print(f"\n[+] Generated header: {os.path.join(out_dir, 'generated_kernels.h')}")
 
     # 3. Copy static templates
@@ -446,6 +576,13 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
     # The generated file is now split into multiple files, and the template Makefile
     # just compiles all *.cpp files, so we don't need to rename specific files.
 
+    # Rename the TARGET binary to be unique
+    target_name = f"test_gemm_{config.datatype}_{config.method}.x"
+    makefile_content = makefile_content.replace(
+        "TARGET = test_gemm.x",
+        f"TARGET = {target_name}"
+    )
+
     if config.datasets and len(config.datasets) > 0:
         datasets_str = " ".join([f"../../datasets/{d}" for d in config.datasets])
         makefile_content = makefile_content.replace(
@@ -458,6 +595,37 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
 
     with open(os.path.join(out_dir, "Makefile"), "w") as f:
         f.write(makefile_content)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config", type=str, required=True, help="Path to JSON config file"
+    )
+    parser.add_argument(
+        "--mlir-translate",
+        type=str,
+        default="/home/jlei/Documents/ws_MLIR/llvm_pj_dir_06092025/llvm-project/build/bin/mlir-translate",
+    )
+    args = parser.parse_args()
+
+    configs = BLISProjectConfig.from_json(args.config)
+    print(f"Loaded config: {args.config} with {len(configs)} designs")
+    
+    # Clear old generated projects to avoid running stale configs
+    import shutil
+    shutil.rmtree("pj_gen", ignore_errors=True)
+    
+    ordered_dirs = []
+    for config in configs:
+        print(f"\n============================================================")
+        print(f"Building project for {config.datatype}_{config.method}_vlen{config.vlen}...")
+        print(f"============================================================")
+        build_project(config, args)
+        ordered_dirs.append(f"{config.datatype}_{config.method}_vlen{config.vlen}")
+        
+    with open("pj_gen/compile_order.txt", "w") as f:
+        for d in ordered_dirs:
+            f.write(d + "\n")
 
 if __name__ == "__main__":
     main()

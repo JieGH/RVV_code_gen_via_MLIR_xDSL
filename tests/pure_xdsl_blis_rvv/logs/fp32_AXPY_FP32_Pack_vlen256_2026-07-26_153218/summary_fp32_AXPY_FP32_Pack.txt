@@ -1,0 +1,1 @@
+▶ B3_M7 (64x384x384)     | MR16_NR6   6.35 Tot GOPs |  10.35 Ker GOPs |   0.7 GB/s RVV Pk |   0.6 GB/s Scl Pk | ⏭️ SKIP
