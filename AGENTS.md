@@ -19,3 +19,6 @@ Standard 5-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `re
 
 ### Domain docs
 Single-context layout (`CONTEXT.md` and `docs/adr/`). See `docs/agents/domain.md`.
+
+### Execution
+Running the pipeline against the RISC-V board (direct vs. jump-host, entry-point scripts, reference command). See `docs/agents/execution.md`.

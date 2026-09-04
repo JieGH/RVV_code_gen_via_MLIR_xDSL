@@ -107,6 +107,19 @@ REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" bash tests/gemm_blis_xdsl/co
 
 ```
 
+### Pure xDSL BLIS macrokernel bench
+
+`tests/pure_xdsl_blis_rvv/compile_macro_bench.sh` builds and benchmarks the generated pure-xDSL BLIS project (the "Project Generator" pipeline, see `CONTEXT.md`) end to end. It activates the local `.venv` itself, generates the kernels, syncs and builds them on the board, and pulls the results back. Run it from the repo root.
+
+Jump-host mode:
+```bash
+source .venv/bin/activate && REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" \
+  ./tests/pure_xdsl_blis_rvv/compile_macro_bench.sh --jump \
+  --riscv-user jlei --riscv-ip jbpi --riscv-port 22
+```
+
+Same jump-host convention as above: `REMOTE_HOST`/`REMOTE_PORT` reach the intermediate host (`fej`), `--riscv-*` reach the board behind it. Add `--config <name>.json` to target a project config other than the default `config.json`.
+
 
 
 int8 int8 int32 design
