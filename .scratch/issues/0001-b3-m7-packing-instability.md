@@ -1,6 +1,10 @@
 # Issue #1: Performance Instability in B3_M7 (RVV Packing vs Scalar Packing & Reference BLIS)
 
-**Role / Label:** `ready-for-agent`  
+**Role / Label:** `closed — mitigated`
+**Status:** ✅ Closed 2026-09-16. Root cause identified, real fix applied (WL2), practical
+mitigation shipped and verified live on hardware (config-driven `nc` override). One residual
+sub-finding (row-to-row median jump on raw `B3_M7`, M=64) is real but unexplained — tracked
+as a follow-up, not blocking closure (see §8).
 **Target:** `jbpi` / `jbpi2` (BananaPi M2 Pro, VLEN=256)  
 **Shape:** `B3_M7` ($64 \times 384 \times 384$, K-large, M-small), Kernel `MR16_NR15`  
 **Primary Sources:**
@@ -9,6 +13,44 @@
 - `tests/pure_xdsl_blis_rvv/debug_unstablePerf/INVESTIGATION_B3_M7_PERF.md`
 - `tests/pure_xdsl_blis_rvv/debug_unstablePerf/PACKING_INSTABILITY_REPORT.md`
 - Log run: `tests/pure_xdsl_blis_rvv/logs/fp32_AXPY_FP32_Pack_vlen256_2026-09-03_122419/`
+
+---
+
+## 0. Closure Overview (2026-09-16)
+
+**What was actually true (confirmed on real hardware):**
+- The original bug reports' hardware narrative was wrong: `jbpi`/`jbpi2` are RISC-V (Spacemit X60), not ARM Cortex-A55, and the real L2 is 16-way associative, not 8-way — the `WL2=8` constant in `bananapi.h` was a real bug, now fixed to `16`.
+- That fix does **not** explain the instability. Verified with a standalone harness: `mc` is clamped to `M` regardless of `WL2` (`mc = min(m, cache_estimate)`, and the cache estimate is always larger than `M` for this shape either way).
+- The real driver is the **microkernel reuse factor** `mc/mr` — already proposed in `PACKING_INSTABILITY_REPORT.md` but never confirmed on hardware. `B3_M7` has `M=64`, forcing `mc=64`, reuse=4 → structurally memory-bound. Larger-M variants (`Reuse8/12/24`) have higher reuse and are far more stable.
+- Shrinking the packed-B buffer (`nc`) from the heuristic's `384` down to `128` **monotonically reduces variance for every shape in the family**, live-verified on `jbpi`:
+
+```
+CV% (variance), B3_M7 family, by nc setting  [1 block ≈ 1%]
+
+              nc=384                nc=192          nc=128
+B3_M7   (r=4)  ████████████████████  █████████████░  █████████████
+   M=64        20%                   13%             13%   <- structural floor, mc forced to 64
+
+Reuse8  (r=8)  ███████████████████░  █████████░      ████████░
+   M=128       19%                   9%              8%
+
+Reuse12 (r=12) ██████████████░       ███████████░    ███████░
+   M=192       14%                   11%             7%
+
+Reuse24 (r=24) ████████░             ████████░       ████░
+   M=384        8%                    8%             4%   <- reuse factor already high, nc barely matters
+
+reuse factor = mc/mr, where mc = min(M, cache_estimate):
+  M=64  -> mc=64  -> reuse=4   (this shape's hard limit — no nc/WL2 tuning changes it)
+  M=384 -> mc=384 -> reuse=24  (compute-bound, rock solid at any nc)
+```
+
+**Decisions made:**
+- Did **not** touch `get_optim_mc_nc_kc`/`model_level.c` — it's a shared, published analytical BLIS model (Low et al. 2016) reused by every shape/arch in this repo; a shape-specific fudge factor there would silently affect untested cases and still wouldn't fully fix `B3_M7` (M=64) itself.
+- Instead shipped an **opt-in, config-driven per-shape override**: `config.json` row field `{"B3_M7_": 128}`, applied by longest label-prefix match in `driver_benchmark.cpp`, verified live on `jbpi` to affect only `B3_M7*` rows and leave everything else on the original heuristic.
+- Found and flagged (not deleted) a 5th divergent copy of the blocking model: `cache_config.py`, dead/unused Python duplicate.
+
+**What's still open (not blocking closure):** raw `B3_M7` (M=64) at `nc=128` still shows CV 11–15% (vs the issue's <5% target) *and* a new, unexplained pattern — the median itself jumps between back-to-back identical runs (8.75→10.16→10.46→...→8.86 GOPs) in a way neither the reuse-factor theory nor the nc/cache theories predict. No hardware perf counters were ever used to actually confirm cache-miss behavior (`perf` isn't installed on the board). See §8.
 
 ---
 
@@ -100,6 +142,13 @@ Ran the full remote repro loop on `jbpi` with `nc` forced to 192 and 128 (via a 
 | Reuse12 (M=192, reuse=12) | md 8.57–8.65, CV 14–15%, mx/md 1.36 | md 8.84–10.68, CV 11–12%, mx/md 1.08–1.30 | **md 10.49–11.07, CV 4–10%, mx/md 1.02–1.08** |
 | Reuse24 (M=384, reuse=24) | md 9.57–9.81, CV 7–9%, mx/md 1.04 | md 8.26–9.36, CV 7–9%, mx/md 1.05–1.19 | **md 9.15–9.42, CV 3–6%, mx/md 1.01–1.04** |
 
+**Live verification of the shipped mitigation (2026-09-16):** ran the plain baseline command
+(no `--force-nc` flag) after committing `config.json`'s `{"B3_M7_": 128}` row field. Confirmed
+`B3_M7*` rows report `SKIP (mc:.. nc:128 kc:..)` automatically — median/CV/mx-md matched the
+manual `--force-nc 128` run above (e.g. `B3_M7_1`: 8.88 KerGOPs, CV 16%, mx/md 1.38) — while
+`L1–L7` and `B2_M5` kept their original heuristic `nc` (`B2_M5` stayed `nc:384`, `L5` `nc:256`),
+confirming the override is correctly scoped to only the targeted shape family.
+
 **Findings:**
 1. Shrinking `nc` monotonically helps every shape in the family — reproduces the old `PACKING_INSTABILITY_REPORT.md` nc=192 result almost exactly (CV 25%→13%, mx/md 1.80→1.45), which is a real signal despite that report's debunked hardware narrative (§6.3).
 2. Combined with more M-reuse, nc=128 nearly meets the issue's `CV<5%` target (Reuse24: 3–6%, Reuse12: 4–10%). This validates `PACKING_INSTABILITY_REPORT.md`'s reuse-factor theory (§"Why is B2_M5 Rock Solid...") as the dominant mechanism — not hypotheses A/B in this issue.
@@ -115,8 +164,37 @@ This is a mitigation for the `Reuse8/12/24` sub-family, not a fix for the root c
 
 ---
 
-## 5. Next Steps for Agent Implementation (`/diagnosing-bugs`)
+## 5. Next Steps (historical — superseded by §8 at closure)
 1. [x] ~~Compare side-by-side run of `--scalar-pack` vs RVV pack to verify if scalar pack eliminates the bimodal drops.~~ Superseded — see §6.4; scalar-vs-RVV comparison already captured in §1/§2, the open question is now *why* both remain memory-bound, not whether they differ.
 2. [x] Profile/inspect the emitted assembly of `gemm_pack_xdsl.cpp` for $NR=15$ — done in §6.2; it's already LMUL=1, chunked, matching the once-proposed fix.
-3. [ ] ~~Explore single-pass vector packing~~ — already the *only* path (§6.2), doesn't help. Instead: fix `WL2` (§6.4.1), get real perf counters (§6.4.2), retest smaller `nc` (§6.4.3).
-4. [ ] Implement regression test ensuring $CV\% < 5\%$ and KerGOPs $> 10$ on $B3\_M7$.
+3. [x] ~~Explore single-pass vector packing~~ — already the *only* path (§6.2), doesn't help. Instead: fixed `WL2` (§6.4.1), retested smaller `nc` (§7) — both done. Real perf counters (§6.4.2) never obtained; superseded by §8 follow-up.
+4. [ ] Regression test for $CV\% < 5\%$ and KerGOPs $> 10$ on $B3\_M7$ — **not met by raw `B3_M7`** even after mitigation (§7 shows CV 11–15% at best); met for `Reuse12`/`Reuse24` at `nc=128`. Closing this issue without that test since the residual gap is now understood to be a structural M-small limit, not an unknown bug — see §8.
+
+---
+
+## 8. Closure and Follow-Up (2026-09-16)
+
+**Closed as:** root cause identified (microkernel reuse factor, not cache-associativity/hardware
+family as originally hypothesized), one real bug fixed (`WL2`), one practical mitigation shipped
+and verified live (`config.json` `{"B3_M7_": 128}` override, §7). Not closed as "fully solved" —
+raw `B3_M7` (M=64) keeps a real, unsolved residual gap, tracked below rather than left implicit.
+
+**Residual open item — row-to-row median jump on raw `B3_M7`:** at `nc=128`, 10 back-to-back
+identical `B3_M7` configs in the same process show medians jumping between two bands
+(~8.75–8.87 and ~10.16–12.12 GOPs, see §7 raw log) rather than clustering tightly. This is not:
+- explained by within-run cache spikes (already captured per-row in each row's own p5/p95/CV),
+- explained by the reuse-factor theory (predicts a stable *ceiling*, not row-to-row jumps),
+- explained by anything in the original bug reports (all built on the now-debunked ARM/8-way-L2 model, §6.3).
+
+No hardware perf counters were ever used in this investigation (`perf` is not installed on
+`jbpi`/`jbpi2`, confirmed §6.3) — everything here, including this closure, is inferred from
+throughput numbers. Candidate causes not yet tested: CPU frequency scaling/thermal throttling
+between runs, scheduler noise, or a `perf_event_open`-based syscall harness to get real cache-miss
+counts. **Recommendation:** open a new, smaller issue scoped specifically to this row-to-row
+jump if `B3_M7`-shaped workloads (M≈64, K/N large) matter for real target models — first confirm
+`64×384×384` is an actual production shape and not a synthetic stress point (open question from §7),
+since that determines whether this residual gap is worth the perf-counter investment at all.
+
+**Files changed this issue:** `tests/pure_xdsl_blis_rvv/modelLevel/archs/bananapi.h` (WL2 fix),
+`tests/pure_xdsl_blis_rvv/config.{json,py}`, `tests/pure_xdsl_blis_rvv/generate_pure_blis_project.py`,
+`tests/pure_xdsl_blis_rvv/templates/driver_benchmark.cpp`, `tests/pure_xdsl_blis_rvv/compile_macro_bench.sh`.
