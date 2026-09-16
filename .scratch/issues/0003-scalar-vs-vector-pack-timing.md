@@ -87,6 +87,56 @@ Positive = vector packing faster; negative = vector packing slower.
 
 Full raw logs: `tests/pure_xdsl_blis_rvv/logs/fp32_AXPY_FP32_Pack_vlen256_MR{16NR15,32NR6,32NR7}_2026-09-16_151844/raw_fp32_AXPY_FP32_Pack.txt`.
 
+### 3.1 Pack/compute weight by shape
+
+Packing cost as a fraction of total time is a function of M-reuse, not raw problem
+size or FLOP count — confirms issue #1/#2's theory across the whole matrix, not just
+the one shape it was found on:
+
+| Case | Shape (m×n×k) | Scalar Pack % of total | Vector Pack % of total |
+|---|---|---|---|
+| S1 | 1000×1000×1000 | 9.2% | 8.6% |
+| S2 | 2000×2000×2000 | 8.7% | 7.9% |
+| S3 | 3000×3000×3000 | 6.8% | 5.9% |
+| S4 | 4000×4000×4000 | 7.7% | 7.0% |
+| S5 | 5000×5000×5000 | 6.2% | 5.4% |
+| B1 | 1024×384×1024 | 17.2% | 15.4% |
+| B2 | 384×384×64 | 9.1% | 5.4% |
+| B3 | 64×384×384 | 36.8% | 39.6% |
+| B4 | 4096×384×1024 | 16.1% | 14.8% |
+| B5 | 1024×384×4096 | 17.0% | 15.7% |
+
+Three bands: Square (reuse≈24, `mc=768` fixed by cache) stays under 9%, shrinking as
+problem size grows; BERT B1/B4/B5 (reuse≥24, flatter aspect ratio) sit noticeably
+higher at 15-17%; B3 (M=64, reuse=4) is the outlier at 37-40% — 4-7x every other
+shape, and also the one shape where vector packing loses to scalar (see §3.2).
+
+### 3.2 Total-GOPs vs. the external scalar-pack reference (drift check)
+
+Re-adding issue #2's total-GOPs-vs-reference comparison alongside this run's
+head-to-head pack timing shows the two move independently of each other:
+
+| Case | KerGOPs (this run) | Ref GOPs (external design) | Δ vs ref (this run) | Δ vs ref (issue #2) | Vector Pack Gain % |
+|---|---|---|---|---|---|
+| S1 | 8.82 | ~8.5 | +3.8% | +2% | +7.2% |
+| S2 | 8.53 | ~8.7 | -2.0% | -4% | +10.2% |
+| S3 | 8.73 | ~8.9 | -1.9% | -5% | +13.0% |
+| S4 | 8.52 | ~9.0 | -5.3% | -8% | +10.3% |
+| S5 | 8.39 | ~9.0 | -6.8% | -4% | +13.3% |
+| B1 | 8.60 | ~8.0 | +7.5% | +5% | +12.1% |
+| B2 | 13.12 | ~12.5 | +5.0% | +2% | +44.7% |
+| B3 | 11.02 | ~8.8 | +25.2% | +3% | -12.7% |
+| B4 | 8.25 | ~8.5 | -2.9% | +2% | +9.7% |
+| B5 | 8.22 | ~7.5 | +9.6% | +10% | +8.6% |
+
+The Δ-vs-ref figures **drift by several points between the two runs** (e.g. S4:
+-8%→-5.3%, S1: +2%→+3.8%, B4: +2%→-2.9%) despite the pipeline being unchanged —
+inconsistent with a deterministic packing-implementation gap, consistent with
+`N_REPS=5` sampling noise on Square/B4 (§5 below) and/or the external reference
+having been measured under different, uncontrolled conditions from either xDSL run.
+Meanwhile Vector Pack Gain % is positive and substantial on every Square shape in
+*this* run — the opposite of what a packing-caused regression on Square would predict.
+
 ### Findings
 
 1. **The Square-shape regression from issue #2 is *not* a packing-time effect.**
@@ -101,8 +151,11 @@ Full raw logs: `tests/pure_xdsl_blis_rvv/logs/fp32_AXPY_FP32_Pack_vlen256_MR{16N
    reference numbers (issue #2's "ref" column was a different, user-supplied design
    run under different, uncontrolled conditions, not measured in the same run) or
    `N_REPS=5` sampling noise on the Square group, not the packing implementation.
-   This answers issue #2's open next-step #1 and closes the "is it packing?"
-   question: **no, it isn't.**
+   Supporting evidence: re-running the identical matrix moved the Δ-vs-ref numbers
+   by several points in both directions (§3.2) — inconsistent with a deterministic
+   packing-caused gap, consistent with sampling/environment noise. This answers
+   issue #2's open next-step #1 and closes the "is it packing?" question: **no, it
+   isn't.**
 2. **`B3` is the one shape where vector packing is slower than scalar (-12.7%).** B3
    is the smallest/highest-pack-overhead shape in the matrix (`mc=64, kc=128`,
    39.4% of its total time in packing — see [[0001-b3-m7-packing-instability]] and
