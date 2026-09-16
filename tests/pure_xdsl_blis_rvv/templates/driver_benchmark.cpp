@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <algorithm>
 #include <tuple>
 #include <cstdint>
@@ -415,7 +416,30 @@ int main(int argc, char** argv) {
 
             int mc, nc, kc;
             get_optim_mc_nc_kc(sizeof(float), m, n, k, variant.mr, variant.nr, &mc, &nc, &kc);
-            
+
+            // Debug/mitigation override for issue #1 (B3_M7 packing instability): apply a
+            // per-shape nc override from config.json (matched by longest label prefix),
+            // without changing get_optim_mc_nc_kc's general heuristic for any other shape.
+            {
+                size_t best_len = 0;
+                int best_nc = nc;
+                for (size_t oi = 0; oi < CONFIG_NC_OVERRIDES_COUNT; ++oi) {
+                    const auto& ov = CONFIG_NC_OVERRIDES[oi];
+                    size_t plen = std::strlen(ov.prefix);
+                    if (plen > best_len && label.compare(0, plen, ov.prefix) == 0) {
+                        best_len = plen;
+                        best_nc = (n < ov.nc) ? n : ov.nc;
+                    }
+                }
+                nc = best_nc;
+            }
+
+            // Ad hoc override for quick interactive experiments; takes priority over config.json.
+            if (const char* forced_nc = std::getenv("RVV_FORCE_NC")) {
+                int nc_req = std::atoi(forced_nc);
+                nc = (n < nc_req) ? n : nc_req;
+            }
+
             int kc_pad = kc;
             if (string(CONFIG_METHOD).find("DOT") != string::npos) {
                 kc_pad = ((kc + 3) / 4) * 4;

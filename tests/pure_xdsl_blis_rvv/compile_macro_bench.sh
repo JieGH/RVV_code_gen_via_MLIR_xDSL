@@ -23,6 +23,7 @@ RISCV_SSH_PORT="22"
 RISCV_WORKSPACE="xdsl_rvv_microkernel"
 CONFIG="config.json"
 TEST_ARGS=""
+FORCE_NC=""
 
 SEP="------------------------------------------------------------"
 
@@ -36,6 +37,7 @@ while [[ "$#" -gt 0 ]]; do
         --riscv-workspace) RISCV_WORKSPACE="$2";     shift      ;;
         --config)          CONFIG="$2";              shift      ;;
         --scalar-pack)     TEST_ARGS="--scalar-pack"            ;;
+        --force-nc)        FORCE_NC="$2";            shift      ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
@@ -132,7 +134,11 @@ echo ""; echo "$SEP"; echo " [3/4] Compile and Benchmark on Board"; echo "$SEP"
 
 # Read compile_order.txt to run exactly in the JSON config order,
 # avoiding bash default alphabetical expansion on 'for d in */'
-ssh_board "cd ${REMOTE_DIR}/pj_gen && while read d; do (cd \"\$d\" && make clean && make all && make run TEST_ARGS=\"${TEST_ARGS}\"); done < compile_order.txt"
+FORCE_NC_ENV=""
+if [ -n "${FORCE_NC}" ]; then
+    FORCE_NC_ENV="RVV_FORCE_NC=${FORCE_NC} "
+fi
+ssh_board "cd ${REMOTE_DIR}/pj_gen && while read d; do (cd \"\$d\" && make clean && make all && ${FORCE_NC_ENV}make run TEST_ARGS=\"${TEST_ARGS}\"); done < compile_order.txt"
 
 # ============================================================
 # [4/4] Fetch logs

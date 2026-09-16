@@ -11,6 +11,10 @@
 
 #define SKIP_REF_RUN 1
 
+struct NcOverrideEntry { const char* prefix; int nc; };
+static const NcOverrideEntry CONFIG_NC_OVERRIDES[] = { {"B3_M7_", 128} };
+static const size_t CONFIG_NC_OVERRIDES_COUNT = 1;
+
 #ifdef __cplusplus
 extern "C" {
 #endif

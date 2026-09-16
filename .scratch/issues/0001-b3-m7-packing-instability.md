@@ -82,10 +82,36 @@ SSH'd directly into `jbpi` and `jbpi2` (both live, identical specs):
 - **No `perf` binary on the board** (Bianbu 2.2.1 minimal image). `objdump`/`gcc`/`readelf`/`taskset`/`chrt` are present; CPU governor is already pinned to `performance`. **No hypothesis in this issue about L2 eviction, pseudo-LRU behavior, or cache-miss counts has ever been backed by an actual hardware counter** — all of it is inferred from GOPs throughput numbers alone.
 
 ### 6.4 Revised priorities
-1. Fix `WL2` in `bananapi.h` to `16` (matches real hardware) and see whether `get_optim_mc_nc_kc` picks a different `nc`/`kc` for `B3_M7` — this directly drives the buffer size the rest of the theory depends on. Cheap, do first.
+1. ~~Fix `WL2` in `bananapi.h` to `16` (matches real hardware) and see whether `get_optim_mc_nc_kc` picks a different `nc`/`kc` for `B3_M7`.~~ **Done, dead end for this bug (2026-09-16).** Built a standalone harness against `tests/pure_xdsl_blis_rvv/modelLevel/model_level.c` calling `get_optim_mc_nc_kc(sizeof(float), m=64, n=384, k=384, mr=16, nr=15, ...)` with `WL2=8` vs `WL2=16`. Result is byte-identical both ways: `mc=64 nc=384 kc=128`. Reason: `mc` is computed from the L2 model then clamped with `*mc = min(m, *mc)` (`model_level.c:64`) — for `B3_M7`, `m=64` is far smaller than either computed L2 estimate (640 for WL2=8, 1536 for WL2=16), so the clamp always wins and `WL2` never reaches the output. **`WL2=8` is still a real bug to fix (doesn't match the real 16-way L2 on `jbpi`/`jbpi2`, and *does* matter for other, less M-starved shapes), but it is not the cause of B3_M7's instability — the mc/nc/kc blocking BLIS picks for this shape is unaffected by it.**
 2. Get real cache-miss counts. No `perf` CLI on-board; either install `linux-tools`/`perf` (needs board network + package availability, unverified) or write a small harness using raw `perf_event_open` syscalls. This is the only way to confirm or kill the eviction-chaos theory instead of continuing to infer it from throughput.
-3. Retest the one lever the reports partially validated but never turned into a permanent fix: forcing `nc=128`/`192` for `B3_M7` (already showed CV 25%→13% in the `PACKING_INSTABILITY_REPORT.md` nc=192 experiment).
+3. Retest the one lever the reports partially validated but never turned into a permanent fix: forcing `nc=128`/`192` for `B3_M7` (already showed CV 25%→13% in the `PACKING_INSTABILITY_REPORT.md` nc=192 experiment). **Next up.**
 4. Port whichever mitigation works from `tests/pure_xdsl_blis_rvv/pack_builder.py` (confirm `tests/packing/pack_builder.py` and `tests/gemm_blis_xdsl/pack_builder.py` are dead code before touching them, or reconcile/delete the duplicates — four divergent copies of the same generator is itself a latent bug).
+
+---
+
+## 7. Live nc-Reduction Experiment (2026-09-16) and Config-Driven Mitigation
+
+Ran the full remote repro loop on `jbpi` with `nc` forced to 192 and 128 (via a temporary `RVV_FORCE_NC` env-var patch to `driver_benchmark.cpp`), comparing against the `nc=384` baseline in §1:
+
+| Shape | nc=384 (baseline, §1) | nc=192 | nc=128 |
+| :--- | :--- | :--- | :--- |
+| B3_M7 (M=64, reuse=4) | md 7.15–7.41, CV 16–27%, mx/md 1.75–1.82 | md 8.78–8.89, CV 11–16%, mx/md 1.43–1.45 | md 8.75–10.55 (itself erratic row-to-row), CV 11–15%, mx/md 1.16–1.40 |
+| Reuse8 (M=128, reuse=8) | md 7.99–8.05, CV 17–21%, mx/md 1.50 | md 8.97–9.14, CV 6–12%, mx/md 1.30–1.34 | md 9.14–10.47, CV 6–11%, mx/md 1.10–1.30 |
+| Reuse12 (M=192, reuse=12) | md 8.57–8.65, CV 14–15%, mx/md 1.36 | md 8.84–10.68, CV 11–12%, mx/md 1.08–1.30 | **md 10.49–11.07, CV 4–10%, mx/md 1.02–1.08** |
+| Reuse24 (M=384, reuse=24) | md 9.57–9.81, CV 7–9%, mx/md 1.04 | md 8.26–9.36, CV 7–9%, mx/md 1.05–1.19 | **md 9.15–9.42, CV 3–6%, mx/md 1.01–1.04** |
+
+**Findings:**
+1. Shrinking `nc` monotonically helps every shape in the family — reproduces the old `PACKING_INSTABILITY_REPORT.md` nc=192 result almost exactly (CV 25%→13%, mx/md 1.80→1.45), which is a real signal despite that report's debunked hardware narrative (§6.3).
+2. Combined with more M-reuse, nc=128 nearly meets the issue's `CV<5%` target (Reuse24: 3–6%, Reuse12: 4–10%). This validates `PACKING_INSTABILITY_REPORT.md`'s reuse-factor theory (§"Why is B2_M5 Rock Solid...") as the dominant mechanism — not hypotheses A/B in this issue.
+3. **Raw `B3_M7` (M=64) does not fully improve even at nc=128** — `mc` is clamped to `m=64` regardless (confirmed via harness in §6.4.1), so no `nc` value fixes it. A **new, previously-unflagged phenomenon** appears here: the *median itself jumps row-to-row* across 10 identical back-to-back configs in the same process (8.75→10.16→10.46→...→8.86), which is not explained by within-run cache spikes (already captured per-row) or by the reuse-factor theory. Unexplained; needs real perf/frequency counters (§6.4 priority 2, still open) to chase further.
+
+**Design decision — do not modify `get_optim_mc_nc_kc`/`model_level.c`:** that function implements the general "Low et al. 2016" analytical BLIS cache-blocking model, shared across every shape (ResNet50 sweep in `model_test.c`) and every arch (`bananapi`, `jbpi2`, `amd_zen`, `arm_carmel` in `cache_config.py`). Baking a `B3_M7`-specific fudge factor into it would silently change behavior for untested shapes/archs, and wouldn't even fully fix the case it targets (item 3 above). Instead, added a **config-driven, opt-in per-shape override** that leaves the reference heuristic untouched:
+- `config.py`: new optional 9th `config.json` row field, `{"label-prefix": forced_nc}` — longest matching label-prefix wins.
+- `generate_pure_blis_project.py`: emits the override table into `generated_kernels.h` as `CONFIG_NC_OVERRIDES[]`.
+- `templates/driver_benchmark.cpp`: applies the matching override after computing the heuristic `nc`, per dataset row (matched against the row's own label, e.g. `B3_M7_1`); `RVV_FORCE_NC` env var still available as a higher-priority ad hoc override for interactive experiments.
+- `config.json`: the live `testCase_repeat.dat` row now carries `{"B3_M7_": 128}` as a shipped example/default mitigation, matching the data above.
+
+This is a mitigation for the `Reuse8/12/24` sub-family, not a fix for the root cause of raw `B3_M7` — that remains open (item 3 above), and per discussion, may be a structural limit of this blocked-GEMM design for M-small shapes (real BLIS uses a different loop/pack strategy for that case) rather than a tunable-constant bug. Worth checking whether `64×384×384` is an actual target workload shape or a synthetic stress point before investing further here.
 
 ---
 

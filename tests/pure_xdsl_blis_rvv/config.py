@@ -14,11 +14,17 @@ class BLISProjectConfig:
     skip_ref_run: bool = False
     iterations: int = 1000
     is_pinned: bool = False
-
+    # Optional: {"label-prefix": forced_nc}. Any dataset row whose label starts with
+    # a key gets its heuristic `nc` (from get_optim_mc_nc_kc) overridden with the
+    # given value, clamped to the row's own N. Longest matching prefix wins.
+    # Debug/mitigation knob for shape-specific instability (see issue #1) — does not
+    # change the general cache-blocking model for any other shape.
+    nc_overrides: dict[str, int] = None
 
     @classmethod
     def from_json(cls, file_path: str) -> list["BLISProjectConfig"]:
         import re
+
         with open(file_path) as f:
             lines = f.readlines()
 
@@ -29,25 +35,37 @@ class BLISProjectConfig:
             if stripped.startswith("#") or stripped.startswith("//"):
                 continue
             # Also handle inline comments (basic implementation)
-            if "#" in line and not '"' in line.split("#")[1]:
+            if "#" in line and '"' not in line.split("#")[1]:
                 line = line.split("#")[0] + "\n"
-            elif "//" in line and not '"' in line.split("//")[1]:
+            elif "//" in line and '"' not in line.split("//")[1]:
                 line = line.split("//")[0] + "\n"
             cleaned_lines.append(line)
 
         json_str = "".join(cleaned_lines)
-        
+
         # Remove trailing commas (which often happen when commenting out the last item)
-        json_str = re.sub(r',\s*([\]}])', r'\1', json_str)
+        json_str = re.sub(r",\s*([\]}])", r"\1", json_str)
 
         data = json.loads(json_str)
-        
+
         configs = []
         for row in data:
-            is_pinned = (len(row) >= 8)  # As requested: 8th arg means PINNED, no 8th arg means SWEEP
+            is_pinned = (
+                len(row) >= 8
+            )  # As requested: 8th arg means PINNED, no 8th arg means SWEEP
+            nc_overrides = row[8] if len(row) >= 9 else None
 
             if len(row) >= 8:
-                datatype, method, mr_nr, vlen, arch, datasets, skip_ref_run, iterations = row[:8]
+                (
+                    datatype,
+                    method,
+                    mr_nr,
+                    vlen,
+                    arch,
+                    datasets,
+                    skip_ref_run,
+                    iterations,
+                ) = row[:8]
             elif len(row) == 7:
                 datatype, method, mr_nr, vlen, arch, datasets, skip_ref_run = row
                 iterations = 1000  # Fallback matches class default
@@ -55,25 +73,28 @@ class BLISProjectConfig:
                 datatype, method, mr_nr, vlen, arch, datasets = row
                 skip_ref_run = False
                 iterations = 1000  # Fallback matches class default
-                
+
             # Parse mr_nr into a list of tuples
             if len(mr_nr) == 2 and isinstance(mr_nr[0], int):
                 mr_nr_family = [tuple(mr_nr)]
             else:
                 mr_nr_family = [tuple(pair) for pair in mr_nr]
-                
-            configs.append(cls(
-                datatype=datatype,
-                method=method,
-                mr_nr_family=mr_nr_family,
-                vlen=vlen,
-                arch=arch,
-                datasets=datasets,
-                skip_ref_run=skip_ref_run,
-                iterations=iterations,
-                is_pinned=is_pinned
-            ))
-            
+
+            configs.append(
+                cls(
+                    datatype=datatype,
+                    method=method,
+                    mr_nr_family=mr_nr_family,
+                    vlen=vlen,
+                    arch=arch,
+                    datasets=datasets,
+                    skip_ref_run=skip_ref_run,
+                    iterations=iterations,
+                    is_pinned=is_pinned,
+                    nc_overrides=nc_overrides,
+                )
+            )
+
         return configs
 
     def to_json(self, file_path: str):

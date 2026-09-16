@@ -26,7 +26,12 @@
 
 
         // ["fp32", "AXPY_FP32_Pack", [16, 16], 256, "jbpi2", ["testCase.dat"], true],
-    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["testCase_repeat.dat"], true, 1000],
+    // 9th (optional) arg: {"label-prefix": forced_nc} — per-shape nc override, longest
+    // prefix wins. Mitigation for issue #1 (B3_M7 packing instability): shrinking nc from
+    // the heuristic's 384 down to 128 cuts CV% roughly in half across the whole B3_M7
+    // family (raw + Reuse8/12/24) without touching get_optim_mc_nc_kc. See
+    // .scratch/issues/0001-b3-m7-packing-instability.md for the full before/after data.
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["testCase_repeat.dat"], true, 1000, {"B3_M7_": 128}],
     // ["fp32", "AXPY_FP32_Pack", [16, 11], 256, "jbpi2", ["testCase.dat"], true, 1000]
     // ["fp32", "AXPY_FP32_Pack", [16, 17], 256, "jbpi2", ["testCase.dat"], true, 1000],
     // ["fp32", "AXPY_FP32_Pack", [16, 6], 256, "jbpi2", ["testCase.dat"], true, 1000]
