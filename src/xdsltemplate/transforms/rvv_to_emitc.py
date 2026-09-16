@@ -1,8 +1,6 @@
 from xdsl.context import Context
 from xdsl.dialects import emitc
-
-# from xdsl.xdsl.dialects.builtin import StringAttr
-from xdsl.dialects.builtin import Float32Type, ModuleOp, StringAttr
+from xdsl.dialects.builtin import Float32Type, IntegerType, ModuleOp, StringAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -11,33 +9,56 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 
-from xdsltemplate.dialects.emitc_ext import EmitCSubscriptOp
+from xdsltemplate.dialects.emitc_ext import EmitCCastOp, EmitCSubscriptOp
 from xdsltemplate.dialects.rvv import *
+
+# from xdsltemplate.dialects.rvv import *
 
 
 class ConvertRVVSetvlToEmitC(RewritePattern):
     """
-    Convert RVV to emitc
-    such as Stevop
-    %vl = "rvv.setvl"(%loop_size) : (index) -> index
-    to
-    %vl = emitc.call_opaque "__riscv_vsetvl_e32m1"(%loop_size) : (index) -> index
+    %vl = "rvv.setvl"(%avl) → __riscv_vsetvl_e32m1(avl)
     """
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: SetvlOp, rewriter: PatternRewriter):
-        # match and rewrite setvlop operation
-        # we want to use call operation in emitc c to do the convertion
         call_op = emitc.EmitC_CallOpaqueOp(
-            # There are error, check the function definition of the original back end code for Call op
-            callee="__riscv_vsetvl_e32m1",  # str is fine; it will be wrapped as StringAttr
-            call_args=[op.avl],  # avl defined in rvv dialetc, the input
-            result_types=[op.vl.type],  # vl is the type
+            callee="__riscv_vsetvl_e32m1",
+            call_args=[op.avl],
+            result_types=[op.vl.type],
         )
-
         rewriter.replace_op(op, [call_op])
 
-        # rewriter.replace_op(op, call_op.results)
+
+class ConvertRVVSetvlE8M1ToEmitC(RewritePattern):
+    """
+    %vl = "rvv.setvl_e8m1"(%avl) → __riscv_vsetvl_e8m1(avl)
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: SetvlE8M1Op, rewriter: PatternRewriter):
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vsetvl_e8m1",
+            call_args=[op.avl],
+            result_types=[op.vl.type],
+        )
+        rewriter.replace_op(op, [call_op])
+
+
+class ConvertRVVSetvlMf4ToEmitC(RewritePattern):
+    """
+    %vl = "rvv.setvl_mf4"(%avl) → __riscv_vsetvl_e8mf4(avl)
+    Correct setvl for vint8mf4_t / vint16mf2_t / vint32m1_t mixed precision.
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: SetvlMf4Op, rewriter: PatternRewriter):
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vsetvl_e8mf4",
+            call_args=[op.avl],
+            result_types=[op.vl.type],
+        )
+        rewriter.replace_op(op, [call_op])
 
 
 class ConvertRVV_vle32_v_f32m1_ToEmitC(RewritePattern):
@@ -78,6 +99,34 @@ class ConvertRVV_vle32_v_f32m1_ToEmitC(RewritePattern):
             result_types=[vector_type],
         )
         # Replace with all three operations
+        rewriter.replace_op(op, [subscript, ptr_ref, call_op])
+
+
+class ConvertRVV_vlse32_v_f32m1_ToEmitC(RewritePattern):
+    """
+    Lower
+        %va = "rvv.vlse32_v_f32m1Op"(%arg0, %offset, %stride, %vl)
+    to
+        %va = emitc.call_opaque "__riscv_vlse32_v_f32m1"(&arg0[offset], stride, vl)
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vlse32_v_f32m1Op, rewriter: PatternRewriter):
+        lvalue_type = emitc.EmitC_LValueType(Float32Type())
+        subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
+
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vfloat32m1_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vlse32_v_f32m1",
+            call_args=[ptr_ref.result, op.bstride, op.avl],
+            result_types=[vector_type],
+        )
         rewriter.replace_op(op, [subscript, ptr_ref, call_op])
 
 
@@ -170,16 +219,508 @@ class ConvertRVV_vse32_v_f32m1_ToEmitC(RewritePattern):
         rewriter.replace_op(op, call_op)
 
 
+class ConvertRVVSetvlM2ToEmitC(RewritePattern):
+    """
+    %vl = "rvv.setvl_m2"(%avl) → __riscv_vsetvl_e32m2(avl)
+    VLMAX = 16 for VLEN=256, FP32, LMUL=2.
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: SetvlM2Op, rewriter: PatternRewriter):
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vsetvl_e32m2",
+            call_args=[op.avl],
+            result_types=[op.vl.type],
+        )
+        rewriter.replace_op(op, [call_op])
+
+
+class ConvertRVV_vle32_v_f32m2_ToEmitC(RewritePattern):
+    """
+    Lower unit-stride load (LMUL=2):
+      "rvv.vle32_v_f32m2Op"(%memref, %offset, %avl) → __riscv_vle32_v_f32m2(&base[offset], vl)
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vle32_v_f32m2Op, rewriter: PatternRewriter):
+        lvalue_type = emitc.EmitC_LValueType(Float32Type())
+        subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vfloat32m2_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vle32_v_f32m2",
+            call_args=[ptr_ref.result, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, [subscript, ptr_ref, call_op])
+
+
+class ConvertRVV_vlse32_v_f32m2_ToEmitC(RewritePattern):
+    """
+    Lower strided load (LMUL=2):
+      "rvv.vlse32_v_f32m2Op"(%memref, %offset, %bstride, %avl)
+        → __riscv_vlse32_v_f32m2(&base[offset], bstride, vl)
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vlse32_v_f32m2Op, rewriter: PatternRewriter):
+        lvalue_type = emitc.EmitC_LValueType(Float32Type())
+        subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vfloat32m2_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vlse32_v_f32m2",
+            call_args=[ptr_ref.result, op.bstride, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, [subscript, ptr_ref, call_op])
+
+
+class ConvertRVV_vse32_v_f32m2_ToEmitC(RewritePattern):
+    """
+    Lower unit-stride store (LMUL=2):
+      "rvv.vse32_v_f32m2Op"(%memref, %offset, %vec, %avl)
+        → __riscv_vse32_v_f32m2(&base[offset], vec, vl)
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vse32_v_f32m2Op, rewriter: PatternRewriter):
+        lvalue_type = emitc.EmitC_LValueType(Float32Type())
+        subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
+        rewriter.insert_op_before_matched_op(subscript)
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+        rewriter.insert_op_before_matched_op(ptr_ref)
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vse32_v_f32m2",
+            call_args=[ptr_ref.result, op.vec, op.avl],
+            result_types=[],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+#     C00 = __riscv_vmv_v_x_i32m4(0, vlength);
+class ConvertRVV_vmv_v_x_i32m4_ToEmitC(RewritePattern):
+    """
+    We want to convert
+        rvv.vmv_v_x_i32m4Op( %scarler, %vl): (INT32, Index) -> !rvv.RVVInt32M4Type
+    To
+        %C00 = emitc.call_opaque "__riscv_vmv_v_x_i32m4"(%scalar, %vl)
+            : (int32, index) -> !emitc.opaque<"vint32m4_t">
+    To
+        vint32m4_t C00 = __riscv_vmv_v_x_i32m4(0, vlength);
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vmv_v_x_i32m4Op, rewriter: PatternRewriter):
+        # extract operands
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint32m4_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vmv_v_x_i32m4",
+            call_args=[op.scalar, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+#     vtmp = __riscv_vle8_v_i8m1(&Ar[bA + 0], vlength);
+class ConvertRVV_vle8_v_i8m1_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vle8_v_i8m1Op, rewriter: PatternRewriter):
+        lvalue_type = emitc.EmitC_LValueType(IntegerType(8))
+        # this is a potentional hazard, int8 type does not predefined
+        subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint8m1_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vle8_v_i8m1",
+            call_args=[ptr_ref.result, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, [subscript, ptr_ref, call_op])
+
+
+class ConvertRVV_vlse8_v_i8m1_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vlse8_v_i8m1Op, rewriter: PatternRewriter):
+        lvalue_type = emitc.EmitC_LValueType(IntegerType(8))
+        subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint8m1_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vlse8_v_i8m1",
+            call_args=[ptr_ref.result, op.bstride, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, [subscript, ptr_ref, call_op])
+
+
+class ConvertRVV_vse8_v_i8m1_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vse8_v_i8m1Op, rewriter: PatternRewriter):
+        lvalue_type = emitc.EmitC_LValueType(IntegerType(8))
+        subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
+        rewriter.insert_op_before_matched_op(subscript)
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+        rewriter.insert_op_before_matched_op(ptr_ref)
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vse8_v_i8m1",
+            call_args=[ptr_ref.result, op.vec, op.avl],
+            result_types=[],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+class ConvertRVV_vsse8_v_i8m1_ToEmitC(RewritePattern):
+    """Lower vsse8_v_i8m1Op → __riscv_vsse8_v_i8m1 (strided store of vint8m1_t)."""
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vsse8_v_i8m1Op, rewriter: PatternRewriter):
+        lvalue_type = emitc.EmitC_LValueType(IntegerType(8))
+        subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
+        rewriter.insert_op_before_matched_op(subscript)
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+        rewriter.insert_op_before_matched_op(ptr_ref)
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vsse8_v_i8m1",
+            call_args=[ptr_ref.result, op.bstride, op.vec, op.avl],
+            result_types=[],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+class ConvertRVV_vle32_v_i32m4_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vle32_v_i32m4Op, rewriter: PatternRewriter):
+        lvalue_type = emitc.EmitC_LValueType(IntegerType(32))
+        subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint32m4_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vle32_v_i32m4",
+            call_args=[ptr_ref.result, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, [subscript, ptr_ref, call_op])
+
+
+class ConvertRVV_vwadd_vx_i16m2_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vwadd_vx_i16m2Op, rewriter: PatternRewriter):
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint16m2_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vwadd_vx_i16m2",
+            call_args=[op.vs, op.scalar, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+class ConvertRVV_vwmacc_vx_i32m4_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vwmacc_vx_i32m4Op, rewriter: PatternRewriter):
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint32m4_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vwmacc_vx_i32m4",
+            call_args=[op.vd, op.scalar, op.vs2, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+class ConvertRVV_vse32_v_i32m4_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vse32_v_i32m4Op, rewriter: PatternRewriter):
+        lvalue_type = emitc.EmitC_LValueType(IntegerType(32))
+        subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
+        rewriter.insert_op_before_matched_op(subscript)
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+        rewriter.insert_op_before_matched_op(ptr_ref)
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vse32_v_i32m4",
+            call_args=[ptr_ref.result, op.vec, op.avl],
+            result_types=[],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+class ConvertRVV_vmv_v_x_i32m1_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vmv_v_x_i32m1Op, rewriter: PatternRewriter):
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint32m1_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vmv_v_x_i32m1",
+            call_args=[op.scalar, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+class ConvertRVV_vle8_v_i8mf4_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vle8_v_i8mf4Op, rewriter: PatternRewriter):
+        lvalue_type = emitc.EmitC_LValueType(IntegerType(8))
+        subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint8mf4_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vle8_v_i8mf4",
+            call_args=[ptr_ref.result, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, [subscript, ptr_ref, call_op])
+
+
+class ConvertRVV_vwmul_vv_i16mf2_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vwmul_vv_i16mf2Op, rewriter: PatternRewriter):
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint16mf2_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vwmul_vv_i16mf2",
+            call_args=[op.vs2, op.vs1, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+class ConvertRVV_vmv_v_x_i16mf2_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vmv_v_x_i16mf2Op, rewriter: PatternRewriter):
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint16mf2_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vmv_v_x_i16mf2",
+            call_args=[op.scalar, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+class ConvertRVV_vwmacc_vv_i16mf2_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vwmacc_vv_i16mf2Op, rewriter: PatternRewriter):
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint16mf2_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vwmacc_vv_i16mf2",
+            call_args=[op.vd, op.vs1, op.vs2, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+class ConvertRVV_vwmacc_vx_i16mf2_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vwmacc_vx_i16mf2Op, rewriter: PatternRewriter):
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint16mf2_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vwmacc_vx_i16mf2",
+            call_args=[op.vd, op.rs1, op.vs2, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+class ConvertRVV_vsext_vf2_i16mf2_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vsext_vf2_i16mf2Op, rewriter: PatternRewriter):
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint16mf2_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vsext_vf2_i16mf2",
+            call_args=[op.vs2, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+class ConvertRVV_vwmacc_vx_i32m1_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vwmacc_vx_i32m1Op, rewriter: PatternRewriter):
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint32m1_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vwmacc_vx_i32m1",
+            call_args=[op.vd, op.rs1, op.vs2, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+class ConvertRVV_vwadd_wv_i32m1_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vwadd_wv_i32m1Op, rewriter: PatternRewriter):
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint32m1_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vwadd_wv_i32m1",
+            call_args=[op.vs2, op.vs1, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, call_op)
+
+
+class ConvertRVV_vle32_v_i32m1_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vle32_v_i32m1Op, rewriter: PatternRewriter):
+        lvalue_type = emitc.EmitC_LValueType(IntegerType(32))
+        subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint32m1_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vle32_v_i32m1",
+            call_args=[ptr_ref.result, op.avl],
+            result_types=[vector_type],
+        )
+        rewriter.replace_op(op, [subscript, ptr_ref, call_op])
+
+
+class ConvertRVV_vlse32_v_i32m1_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vlse32_v_i32m1Op, rewriter: PatternRewriter):
+        ptr_type = op.memref.type
+        elem_type = getattr(
+            ptr_type, "pointee_type", getattr(ptr_type, "element_type", IntegerType(32))
+        )
+
+        lvalue_type = emitc.EmitC_LValueType(elem_type)
+        subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+
+        call_arg = ptr_ref.result
+        new_ops = [subscript, ptr_ref]
+
+        if elem_type != IntegerType(32):
+            i32_ptr_type = emitc.EmitC_PointerType(IntegerType(32))
+            cast_op = EmitCCastOp(ptr_ref.result, i32_ptr_type)
+            new_ops.append(cast_op)
+            call_arg = cast_op.result
+
+        vector_type = emitc.EmitC_OpaqueType(StringAttr("vint32m1_t"))
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vlse32_v_i32m1",
+            call_args=[call_arg, op.bstride, op.avl],
+            result_types=[vector_type],
+        )
+        new_ops.append(call_op)
+        rewriter.replace_op(op, new_ops)
+
+
+class ConvertRVV_vse32_v_i32m1_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vse32_v_i32m1Op, rewriter: PatternRewriter):
+        ptr_type = op.memref.type
+        elem_type = getattr(
+            ptr_type, "pointee_type", getattr(ptr_type, "element_type", IntegerType(32))
+        )
+
+        lvalue_type = emitc.EmitC_LValueType(elem_type)
+        subscript = EmitCSubscriptOp(op.memref, op.offset, lvalue_type)
+        rewriter.insert_op_before_matched_op(subscript)
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+        rewriter.insert_op_before_matched_op(ptr_ref)
+
+        call_arg = ptr_ref.result
+        if elem_type != IntegerType(32):
+            i32_ptr_type = emitc.EmitC_PointerType(IntegerType(32))
+            cast_op = EmitCCastOp(ptr_ref.result, i32_ptr_type)
+            rewriter.insert_op_before_matched_op(cast_op)
+            call_arg = cast_op.result
+
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vse32_v_i32m1",
+            call_args=[call_arg, op.vec, op.avl],
+            result_types=[],
+        )
+        rewriter.replace_op(op, call_op)
+
+
 class RVVToEmitCPass(ModulePass):
     name = "rvv_to_emitc"
 
     def apply(self, ctx: Context, op: ModuleOp) -> None:
         patterns = [
             ConvertRVVSetvlToEmitC(),
+            ConvertRVVSetvlM2ToEmitC(),
+            ConvertRVVSetvlMf4ToEmitC(),
+            ConvertRVVSetvlE8M1ToEmitC(),
             ConvertRVV_vle32_v_f32m1_ToEmitC(),
+            ConvertRVV_vlse32_v_f32m1_ToEmitC(),
+            ConvertRVV_vle32_v_f32m2_ToEmitC(),
+            ConvertRVV_vlse32_v_f32m2_ToEmitC(),
+            ConvertRVV_vse32_v_f32m2_ToEmitC(),
             ConvertRVV_vfmacc_vf_f32m1_ToEmitC(),
             ConvertRVV_vfmv_v_f_f32m1_ToEmitC(),
             ConvertRVV_vse32_v_f32m1_ToEmitC(),
+            # Int
+            ConvertRVV_vmv_v_x_i32m4_ToEmitC(),
+            ConvertRVV_vle8_v_i8m1_ToEmitC(),
+            ConvertRVV_vlse8_v_i8m1_ToEmitC(),
+            ConvertRVV_vse8_v_i8m1_ToEmitC(),
+            ConvertRVV_vsse8_v_i8m1_ToEmitC(),
+            ConvertRVV_vle32_v_i32m4_ToEmitC(),
+            ConvertRVV_vwadd_vx_i16m2_ToEmitC(),
+            ConvertRVV_vwmacc_vx_i32m4_ToEmitC(),
+            ConvertRVV_vse32_v_i32m4_ToEmitC(),
+            # Mixed Precision
+            ConvertRVV_vle8_v_i8mf4_ToEmitC(),
+            ConvertRVV_vwmul_vv_i16mf2_ToEmitC(),
+            ConvertRVV_vmv_v_x_i16mf2_ToEmitC(),
+            ConvertRVV_vwmacc_vv_i16mf2_ToEmitC(),
+            ConvertRVV_vwmacc_vx_i16mf2_ToEmitC(),
+            ConvertRVV_vsext_vf2_i16mf2_ToEmitC(),
+            ConvertRVV_vwmacc_vx_i32m1_ToEmitC(),
+            ConvertRVV_vwadd_wv_i32m1_ToEmitC(),
+            ConvertRVV_vle32_v_i32m1_ToEmitC(),
+            ConvertRVV_vlse32_v_i32m1_ToEmitC(),
+            ConvertRVV_vse32_v_i32m1_ToEmitC(),
+            ConvertRVV_vmv_v_x_i32m1_ToEmitC(),
         ]
         for pattern in patterns:
             PatternRewriteWalker(pattern, apply_recursively=True).rewrite_module(op)

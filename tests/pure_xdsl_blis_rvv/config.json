@@ -1,0 +1,50 @@
+[
+    // Configuration Array Format:
+    // [datatype, method, [M, N], vlen, arch, [datasets], skip_ref_run, iterations]
+    // 
+    // Parameters:
+    // - datatype: "int8", "fp32", or "i8i8i32"
+    // - method: Microkernel implementation (e.g. "AXPY_INT8_Pack", "DOT_FP32_LANE_Pack")
+    // - [M, N]: Unrolling dimensions for the microkernel (e.g. [8, 8] or [32, 16]).
+    //           If you want to perform a search, provide multiple sizes: [[8,8], [16,16]]
+    // - vlen: Vector length of the architecture in bits (e.g. 256, 512)
+    // - arch: Architecture name (e.g. "jbpi2")
+    // - datasets: List of .dat file datasets to benchmark against (e.g. ["project_sample.dat"])
+    // - skip_ref_run (optional): true/false. Set to true to skip the slow scalar reference 
+    //                            matmul and correctness check. Packing and Kernel Perf will still run.
+    // - iterations (optional): Number of reps to run for averaging performance. Defaults to 5.
+   
+    // Example: Run an 8x8 kernel at 1000 iterations:
+    // ["fp32", "DOT_FP32_LANE_Pack", [8, 8], 256, "jbpi2", ["project_sample.dat"], true, 1000],
+
+
+    // ["int8", "AXPY_INT8_Pack", [32, 32], 256, "jbpi2", ["project_sample.dat"], true],
+    // ["fp32", "AXPY_FP32_Pack", [32, 16], 256, "jbpi2", ["project_sample.dat"], true],
+
+    
+    // ["fp32", "DOT_FP32_LANE_Pack", [32, 16], 256, "jbpi2", ["project_sample.dat"], true]
+
+
+        // ["fp32", "AXPY_FP32_Pack", [16, 16], 256, "jbpi2", ["testCase.dat"], true],
+    // 9th (optional) arg: {"label-prefix": forced_nc} — per-shape nc override, longest
+    // prefix wins. Mitigation for issue #1 (B3_M7 packing instability): shrinking nc from
+    // the heuristic's 384 down to 128 cuts CV% roughly in half across the whole B3_M7
+    // family (raw + Reuse8/12/24) without touching get_optim_mc_nc_kc. See
+    // .scratch/issues/0001-b3-m7-packing-instability.md for the full before/after data.
+    // Superseded by the issue #2 rows below (same shape, dataset row now labeled "B3"),
+    // kept here as the original repro row for reference.
+    // ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["testCase_repeat.dat"], true, 1000, {"B3_M7_": 128}],
+    // ["fp32", "AXPY_FP32_Pack", [16, 11], 256, "jbpi2", ["testCase.dat"], true, 1000]
+    // ["fp32", "AXPY_FP32_Pack", [16, 17], 256, "jbpi2", ["testCase.dat"], true, 1000],
+    // ["fp32", "AXPY_FP32_Pack", [16, 6], 256, "jbpi2", ["testCase.dat"], true, 1000]
+
+    // Issue #2 test matrix: pinned MR/NR per Square/BERT case (see issue #2 body for the
+    // full m/n/k table). Each pinned (mr, nr) gets its own row/dataset so they land in
+    // distinct pj_gen/ dirs (see config.compute_out_dir) instead of colliding on the same
+    // datatype/method/vlen output directory.
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue2_bert_16x15.dat"], true, 1000, {"B3": 128}],
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["issue2_bert_32x6.dat"], true, 1000],
+    // Square goes up to 5000^3; skip_ref_run + a reduced iteration count keep this group's
+    // on-board runtime to minutes instead of hours (see issue2_square_bert_32x7.dat header).
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["issue2_square_bert_32x7.dat"], true, 5]
+]

@@ -1,8 +1,7 @@
 # xdsltemplate/transforms/scf_to_emitc.py
-from typing import cast
 
 from xdsl.context import Context
-from xdsl.dialects import arith, builtin, emitc, scf
+from xdsl.dialects import builtin, emitc, scf
 from xdsl.dialects.builtin import Float32Type, FloatAttr, ModuleOp, StringAttr
 from xdsl.ir import Block, Region, SSAValue
 from xdsl.irdl import IRDLOperation, irdl_op_definition, result_def
@@ -41,9 +40,12 @@ class EmitCYieldOp(IRDLOperation):
 
 def convert_type_for_emitc_variable(ty):
     """Convert RVV types to emitc.opaque, others stay as-is."""
+    if hasattr(ty, "name"):
+        name_str = str(ty.name)
+        if name_str.startswith("rvv."):
+            c_type_name = name_str[4:] + "_t"
+            return emitc.EmitC_OpaqueType(StringAttr(c_type_name))
     if isinstance(ty, RVVFloat32M1Type):
-        return emitc.EmitC_OpaqueType(StringAttr("vfloat32m1_t"))
-    if hasattr(ty, "name") and "rvv" in str(ty.name).lower():
         return emitc.EmitC_OpaqueType(StringAttr("vfloat32m1_t"))
     return ty
 
@@ -52,6 +54,10 @@ def get_emitc_variable_value_attr(ty):
     """Get appropriate value attribute for emitc.variable."""
     if isinstance(ty, emitc.EmitC_OpaqueType):
         return emitc.EmitC_OpaqueAttr(StringAttr(""))
+    if isinstance(ty, builtin.IndexType):
+        return builtin.IntegerAttr(0, builtin.IndexType())
+    if isinstance(ty, builtin.IntegerType):
+        return builtin.IntegerAttr(0, ty)
     return FloatAttr(0.0, Float32Type())
 
 
@@ -63,10 +69,34 @@ class ConvertScfForToEmitCFor(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: scf.ForOp, rewriter: PatternRewriter):
-        # print(f"[SCF] Pattern matched! iter_args count: {len(op.iter_args)}")
-
         if len(op.iter_args) == 0:
-            # Simple for loop without iter_args - just convert directly
+            # Simple for loop without iter_args
+            lb, ub, step = op.lb, op.ub, op.step
+            old_block = op.body.blocks[0]
+            new_block = Block(arg_types=[old_block.args[0].type])
+            value_mapping: dict[SSAValue, SSAValue] = {
+                old_block.args[0]: new_block.args[0]
+            }
+
+            for inner_op in list(old_block.ops):
+                if isinstance(inner_op, scf.YieldOp):
+                    continue
+                new_op = inner_op.clone(value_mapping)
+                new_block.add_op(new_op)
+                for old_res, new_res in zip(inner_op.results, new_op.results):
+                    value_mapping[old_res] = new_res
+
+            emitc_yield = EmitCYieldOp.create(operands=[], result_types=[])
+            new_block.add_op(emitc_yield)
+            new_region = Region()
+            new_region.add_block(new_block)
+
+            emitc_for = EmitCForOp.create(
+                operands=[lb, ub, step],
+                result_types=[],
+                regions=[new_region],
+            )
+            rewriter.replace_op(op, [emitc_for])
             return
 
         # === Step 1: Create variables for each iter_arg ===
@@ -106,9 +136,7 @@ class ConvertScfForToEmitCFor(RewritePattern):
             new_block.args[0].name_hint = old_block.args[0].name_hint
 
         # Value mapping: induction variable
-        value_mapping: dict[SSAValue, SSAValue] = {
-            old_block.args[0]: new_block.args[0]
-        }
+        value_mapping: dict[SSAValue, SSAValue] = {old_block.args[0]: new_block.args[0]}
 
         # Get iter_arg block arguments (args after induction variable)
         iter_arg_block_args = list(old_block.args[1:])  # Skip induction var

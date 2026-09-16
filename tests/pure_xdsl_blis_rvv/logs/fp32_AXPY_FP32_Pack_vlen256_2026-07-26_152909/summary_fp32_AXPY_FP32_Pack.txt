@@ -1,0 +1,2 @@
+▶ B3_M7 (64x384x384)     | MR16_NR11   4.11 Tot GOPs |   6.57 Ker GOPs |   0.4 GB/s RVV Pk |   1.0 GB/s Scl Pk | ⏭️ SKIP
+▶ B2_M5 (384x384x64)     | MR16_NR11   9.64 Tot GOPs |  10.93 Ker GOPs |   1.5 GB/s RVV Pk |   1.3 GB/s Scl Pk | ⏭️ SKIP

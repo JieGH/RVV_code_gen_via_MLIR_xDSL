@@ -31,16 +31,16 @@
 
 #include "gemm_blis.h"
 
-int print_matrix(char *, char, size_t, int, DTYPE *, size_t);
+int print_matrix(char *, char, size_t, int, C_TYPE *, size_t);
 
 
 void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
                        char transA, char transB, 
                        size_t m, size_t n, size_t k, 
-                       DTYPE alpha, DTYPE *A, size_t ldA, 
-		                    DTYPE *B, size_t ldB, 
-		       DTYPE beta,  DTYPE *C, size_t ldC, 
-		       DTYPE *Ac, DTYPE *Bc, 
+                       ALPHA_TYPE alpha, A_TYPE *A, size_t ldA, 
+		                    B_TYPE *B, size_t ldB, 
+		       BETA_TYPE beta,  C_TYPE *C, size_t ldC, 
+		       A_TYPE *Ac, B_TYPE *Bc, 
                        size_t MC, size_t NC, size_t KC,
                        int MR_arg, int NR_arg,
 		       const cntx_t * cntx, auxinfo_t * aux, gemm_ukr_ft gemm_kernel
@@ -51,8 +51,10 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
 #endif  
 
 size_t    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr; 
-  DTYPE  zero = 0.0, one = 1.0, betaI; 
-  DTYPE  *Aptr, *Bptr, *Cptr;
+  C_TYPE  zero = 0.0, one = 1.0, betaI; 
+  A_TYPE  *Aptr;
+  B_TYPE  *Bptr;
+  C_TYPE  *Cptr;
 #if defined(FAMILY_EXO)
    ukrFunction ukr;
 #endif
@@ -166,7 +168,7 @@ size_t    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr;
 }
 
 
-void pack_RB( char orderM, char transM, int mc, int nc, DTYPE *M, int ldM, DTYPE *Mc, int RR ){
+void pack_RB( char orderM, char transM, int mc, int nc, A_TYPE *M, int ldM, A_TYPE *Mc, int RR ){
 /*
   BLIS pack for M-->Mc
 */
@@ -201,7 +203,7 @@ void pack_RB( char orderM, char transM, int mc, int nc, DTYPE *M, int ldM, DTYPE
   }
 }
 
-void pack_CB( char orderM, char transM, int mc, int nc, DTYPE *M, int ldM, DTYPE *Mc, int RR ){
+void pack_CB( char orderM, char transM, int mc, int nc, B_TYPE *M, int ldM, B_TYPE *Mc, int RR ){
 /*
   BLIS pack for M-->Mc
 */
@@ -235,7 +237,7 @@ void pack_CB( char orderM, char transM, int mc, int nc, DTYPE *M, int ldM, DTYPE
     }
 }
 
-void unpack_RB( char orderM, char transM, int mc, int nc, DTYPE *M, int ldM, DTYPE *Mc, int RR ){
+void unpack_RB( char orderM, char transM, int mc, int nc, A_TYPE *M, int ldM, A_TYPE *Mc, int RR ){
 /*
   BLIS unpack for M-->Mc
 */
@@ -269,7 +271,7 @@ void unpack_RB( char orderM, char transM, int mc, int nc, DTYPE *M, int ldM, DTY
   }
 }
 
-void unpack_CB( char orderM, char transM, int mc, int nc, DTYPE *M, int ldM, DTYPE *Mc, int RR ){
+void unpack_CB( char orderM, char transM, int mc, int nc, B_TYPE *M, int ldM, B_TYPE *Mc, int RR ){
 /*
   BLIS unpack for M-->Mc
 */
@@ -304,15 +306,15 @@ void unpack_CB( char orderM, char transM, int mc, int nc, DTYPE *M, int ldM, DTY
 }
 
 void gemm_base_Cresident( char orderC, int m, int n, int k, 
-                          DTYPE alpha, DTYPE *A, int ldA, 
-                                       DTYPE *B, int ldB, 
-                          DTYPE beta,  DTYPE *C, int ldC ){
+                          ALPHA_TYPE alpha, A_TYPE *A, int ldA, 
+                                       B_TYPE *B, int ldB, 
+                          BETA_TYPE beta,  C_TYPE *C, int ldC ){
 /*
   Baseline micro-kernel 
   Replace with specialized micro-kernel where C-->m x n is resident in registers
 */
   int    i, j, p;
-  DTYPE  zero = 0.0, tmp;
+  C_TYPE  zero = 0.0, tmp;
 
   for ( j=0; j<n; j++ )
     for ( i=0; i<m; i++ ) {
@@ -337,15 +339,15 @@ void gemm_base_Cresident( char orderC, int m, int n, int k,
 
 void gemm_base_ABresident( char orderA, char transM, 
                            int m, int n, int k, 
-                           DTYPE alpha, DTYPE *A, int ldA, 
-                                        DTYPE *B, int ldB, 
-                           DTYPE beta,  DTYPE *C, int ldC ){
+                           ALPHA_TYPE alpha, A_TYPE *A, int ldA, 
+                                        B_TYPE *B, int ldB, 
+                           BETA_TYPE beta,  C_TYPE *C, int ldC ){
 /*
   Baseline micro-kernel 
   Replace with specialized micro-kernel where A-->m x k is resident in registers
 */
   int    i, j, p;
-  DTYPE  zero = 0.0, tmp;
+  C_TYPE  zero = 0.0, tmp;
 
   if ( transM=='N' ) {
     for ( j=0; j<n; j++ )

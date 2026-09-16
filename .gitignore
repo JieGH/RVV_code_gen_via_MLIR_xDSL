@@ -236,3 +236,7 @@ tests/output/*.csv
 tests/output/tmp
 tests/output/plot_32x32_sweep.py
 tests/output/plot_retro.py
+
+dev_note.md
+
+.ext

@@ -1,0 +1,11 @@
+# Issue #2 test matrix - Square (S1-S5) and BERT B4, all pinned to MR32_NR7.
+# Square goes up to 5000^3 (~750 GFLOP/rep at N_REPS=5) - this group runs with
+# skip_ref_run=true and a reduced iteration count in config.json so a full
+# scalar reference GEMM and 1000-rep RVV sweep don't take hours on-board.
+# layer  M      N    K
+S1       1000   1000  1000
+S2       2000   2000  2000
+S3       3000   3000  3000
+S4       4000   4000  4000
+S5       5000   5000  5000
+B4       4096   384   1024

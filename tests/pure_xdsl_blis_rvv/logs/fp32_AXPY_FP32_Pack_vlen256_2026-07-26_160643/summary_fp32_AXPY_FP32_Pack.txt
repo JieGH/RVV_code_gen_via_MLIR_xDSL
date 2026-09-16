@@ -1,0 +1,10 @@
+▶ B3_M7_1 (64x384x384)   | MR16_NR11   4.12 Tot GOPs |   6.71 Ker GOPs |   0.4 GB/s RVV Pk |   0.6 GB/s Scl Pk | ⏭️ SKIP
+▶ B3_M7_2 (64x384x384)   | MR16_NR11   3.96 Tot GOPs |   6.41 Ker GOPs |   0.4 GB/s RVV Pk |   0.5 GB/s Scl Pk | ⏭️ SKIP
+▶ B3_M7_3 (64x384x384)   | MR16_NR11   4.09 Tot GOPs |   6.75 Ker GOPs |   0.4 GB/s RVV Pk |   0.6 GB/s Scl Pk | ⏭️ SKIP
+▶ B3_M7_4 (64x384x384)   | MR16_NR11   4.01 Tot GOPs |   6.45 Ker GOPs |   0.4 GB/s RVV Pk |   0.7 GB/s Scl Pk | ⏭️ SKIP
+▶ B3_M7_5 (64x384x384)   | MR16_NR11   4.05 Tot GOPs |   6.63 Ker GOPs |   0.4 GB/s RVV Pk |   0.5 GB/s Scl Pk | ⏭️ SKIP
+▶ B3_M7_6 (64x384x384)   | MR16_NR11   3.90 Tot GOPs |   6.29 Ker GOPs |   0.4 GB/s RVV Pk |   0.5 GB/s Scl Pk | ⏭️ SKIP
+▶ B3_M7_7 (64x384x384)   | MR16_NR11   4.09 Tot GOPs |   6.70 Ker GOPs |   0.4 GB/s RVV Pk |   0.6 GB/s Scl Pk | ⏭️ SKIP
+▶ B3_M7_8 (64x384x384)   | MR16_NR11   4.01 Tot GOPs |   6.47 Ker GOPs |   0.4 GB/s RVV Pk |   0.6 GB/s Scl Pk | ⏭️ SKIP
+▶ B3_M7_9 (64x384x384)   | MR16_NR11   4.23 Tot GOPs |   7.02 Ker GOPs |   0.4 GB/s RVV Pk |   0.5 GB/s Scl Pk | ⏭️ SKIP
+▶ B3_M7_10 (64x384x384)  | MR16_NR11   4.01 Tot GOPs |   6.46 Ker GOPs |   0.4 GB/s RVV Pk |   0.5 GB/s Scl Pk | ⏭️ SKIP

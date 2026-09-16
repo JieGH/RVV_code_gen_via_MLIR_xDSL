@@ -76,6 +76,12 @@ ignore = [
     "PYI041", # https://docs.astral.sh/ruff/rules/redundant-numeric-union
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Emits C++ source as literal f-strings (kernel/dispatch templates); wrapping
+# those would just reformat generated-code text, not Python, so line length
+# isn't a meaningful signal here.
+"tests/pure_xdsl_blis_rvv/generate_pure_blis_project.py" = ["E501"]
+
 [tool.ruff.lint.mccabe]
 max-complexity = 10
 

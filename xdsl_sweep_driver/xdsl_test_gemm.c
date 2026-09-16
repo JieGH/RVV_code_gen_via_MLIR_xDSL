@@ -59,10 +59,10 @@
 #define Crow(a1,a2)  C[ (a1)*(ldC)+(a2) ]
 #define Cgrow(a1,a2) Cg[ (a1)*(ldC)+(a2) ]
 
-extern int    print_matrix( char *, char, size_t, size_t, DTYPE *, size_t );
-extern int    generate_matrix( char, size_t, size_t, DTYPE *, size_t );
+extern int    print_matrix( char *, char, size_t, size_t, void *, size_t, int );
+extern int    generate_matrix( char, size_t, size_t, void *, size_t, int );
 extern double dclock();
-void gemm( char, char, char, char, char, size_t, size_t, size_t, DTYPE, DTYPE *, int, DTYPE *, int, DTYPE, DTYPE *, int );
+void gemm( char, char, char, char, char, size_t, size_t, size_t, ALPHA_TYPE, A_TYPE *, int, B_TYPE *, int, BETA_TYPE, C_TYPE *, int );
 
 void *my_aligned_alloc(size_t alignment, size_t size, int zero) {
     size_t request_size = size + alignment;
@@ -99,14 +99,15 @@ int main(int argc, char *argv[]) {
   
   char  orderA, orderB, orderC, transA, transB, test;
   char variant[20];
-  DTYPE *A  = NULL, 
-	*B  = NULL, 
-	*C  = NULL, 
-	*Cg = NULL, 
-	*Ac = NULL, 
-	*Bc = NULL, 
-	*Cc = NULL;
-  DTYPE alpha, beta;
+  A_TYPE *A  = NULL;
+  B_TYPE *B  = NULL;
+  C_TYPE *C  = NULL;
+  C_TYPE *Cg = NULL;
+  A_TYPE *Ac = NULL; 
+  B_TYPE *Bc = NULL;
+  C_TYPE *Cc = NULL;
+  ALPHA_TYPE alpha;
+  BETA_TYPE beta;
   double t1, t2, time, tmin, error, nrm, tmp, errorthd, flops, GFLOPS;
   size_t i, j, nreps, 
          visual, ldA, ldB, ldC;
@@ -118,6 +119,8 @@ int main(int argc, char *argv[]) {
     errorthd = 1.0e-6;
   #elif defined(FP64)
     errorthd = 1.0e-14;
+  #elif defined(I8I8I32)
+    errorthd = 1.0;
   #endif
 
 
@@ -240,7 +243,7 @@ int main(int argc, char *argv[]) {
     int mc_tmp, nc_tmp, kc_tmp;
     // We pass generic sizes to the block size optimiser or hardcode it.
     // Since MR and NR vary in the loop, we use max_mr and max_nr for block allocation.
-    get_optim_mc_nc_kc(sizeof(DTYPE), mmax, nmax, kmax, max_mr, max_nr, &mc_tmp, &nc_tmp, &kc_tmp);
+    get_optim_mc_nc_kc(sizeof(A_TYPE), mmax, nmax, kmax, max_mr, max_nr, &mc_tmp, &nc_tmp, &kc_tmp);
     
     mc = (size_t)mc_tmp;
     nc = (size_t)nc_tmp;
@@ -262,6 +265,7 @@ int main(int argc, char *argv[]) {
     for(int ti=0; ti<5; ti++) top5[ti].gflops = -1.0;
 
     printf(" | Layer %2d: [M=%4zu, N=%4zu, K=%4zu] (mc=%zu nc=%zu kc=%zu)\n", cnn_i+1, mmax, nmax, kmax, mc, nc, kc);
+    printf(" | > Types  : A=%s, B=%s, C=%s\n", XSTR(A_TYPE), XSTR(B_TYPE), XSTR(C_TYPE));
     printf(" | > Progress:");
     
     /*    
@@ -274,16 +278,16 @@ int main(int argc, char *argv[]) {
     Cc = (DTYPE *) malloc( (MR+mc)*(NR+nc)*sizeof(DTYPE) );
     */
    
-    A  = (DTYPE *)my_aligned_alloc(32, mmax*kmax*sizeof(DTYPE),      1);   
-    B  = (DTYPE *)my_aligned_alloc(32, kmax*nmax*sizeof(DTYPE),      1);   
-    C  = (DTYPE *)my_aligned_alloc(32, mmax*nmax*sizeof(DTYPE), 1);
+    A  = (A_TYPE *)my_aligned_alloc(32, mmax*kmax*sizeof(A_TYPE),      1);   
+    B  = (B_TYPE *)my_aligned_alloc(32, kmax*nmax*sizeof(B_TYPE),      1);   
+    C  = (C_TYPE *)my_aligned_alloc(32, mmax*nmax*sizeof(C_TYPE), 1);
 
-    Ac = (DTYPE *)my_aligned_alloc(32, (max_mr+mc)*(KR+kc)*sizeof(DTYPE), 1);
-    Bc = (DTYPE *)my_aligned_alloc(32, (KR+kc)*(max_nr+nc)*sizeof(DTYPE), 1);
-    Cc = (DTYPE *)my_aligned_alloc(32, (max_mr+mc)*(max_nr+nc)*sizeof(DTYPE), 1);
+    Ac = (A_TYPE *)my_aligned_alloc(32, (max_mr+mc)*(KR+kc)*sizeof(A_TYPE), 1);
+    Bc = (B_TYPE *)my_aligned_alloc(32, (KR+kc)*(max_nr+nc)*sizeof(B_TYPE), 1);
+    Cc = (C_TYPE *)my_aligned_alloc(32, (max_mr+mc)*(max_nr+nc)*sizeof(C_TYPE), 1);
     
     if ( test=='T' )
-      Cg = (DTYPE *) malloc(mmax*nmax*sizeof(DTYPE));   
+      Cg = (C_TYPE *) malloc(mmax*nmax*sizeof(C_TYPE));   
     
 #if defined(FAMILY_EXO) 
     ukrFunction**** ukrmatrix = allocateMatrix();
@@ -303,9 +307,9 @@ int main(int argc, char *argv[]) {
 	    ldA = k;
 	  
 	  if ( transA=='N' ){
-	    generate_matrix( orderA, m, k, A, ldA );
+	    generate_matrix( orderA, m, k, A, ldA, 0 );
 	  }else{
-	    generate_matrix( orderA, k, m, A, ldA );
+	    generate_matrix( orderA, k, m, A, ldA, 0 );
 	  }
 	  
 	  if ( ((transB=='N')&&(orderB=='C'))||
@@ -315,16 +319,16 @@ int main(int argc, char *argv[]) {
 	    ldB = n;
 
 	  if ( transB=='N' )
-	    generate_matrix( orderB, k, n, B, ldB );
+	    generate_matrix( orderB, k, n, B, ldB, 0 );
 	  else
-	    generate_matrix( orderB, n, k, B, ldB );
+	    generate_matrix( orderB, n, k, B, ldB, 0 );
 	  
 	  if ( orderC=='C' )
 	    ldC = m;
 	  else
 	    ldC = n;
 
-	  generate_matrix( orderC, m, n, C, ldC );
+	  generate_matrix( orderC, m, n, C, ldC, 1 );
 	  
 	  if ( test=='T' ) {
 	    if ( orderC=='C' )
@@ -340,14 +344,14 @@ int main(int argc, char *argv[]) {
 	  // Print data
 	  if ( visual == 1 ) {
 	    if ( transB=='N' ) 
-	      print_matrix( "Ai", orderA, m, k, A, ldA );
+	      print_matrix( "Ai", orderA, m, k, A, ldA, 0 );
 	    else
-	      print_matrix( "Ai", orderA, k, m, A, ldA );
+	      print_matrix( "Ai", orderA, k, m, A, ldA, 0 );
 	    if ( transB=='N' ) 
-	      print_matrix( "Bi", orderB, k, n, B, ldB );
+	      print_matrix( "Bi", orderB, k, n, B, ldB, 0 );
 	    else
-	      print_matrix( "Bi", orderB, n, k, B, ldB );
-	    print_matrix( "Ci", orderC, m, n, C, ldC );
+	      print_matrix( "Bi", orderB, n, k, B, ldB, 0 );
+	    print_matrix( "Ci", orderC, m, n, C, ldC, 1 );
 	  }
 
 	  time  = 0.0; 
@@ -404,9 +408,9 @@ int main(int argc, char *argv[]) {
 	  
 	  // Print results
 	  if ( visual == 1 ) {
-	    print_matrix( "Cf", orderC, m, n, C, ldC );
+	    print_matrix( "Cf", orderC, m, n, C, ldC, 1 );
 	    if (test == 'T')
-              print_matrix( "Crf", orderC, m, n, Cg, ldC );
+              print_matrix( "Crf", orderC, m, n, Cg, ldC, 1 );
 	  }	  
 
 	  flops   = 2.0 * m * n * k;
@@ -520,12 +524,12 @@ int main(int argc, char *argv[]) {
 void gemm( char orderA, char orderB, char orderC, 
            char transA, char transB, 
            size_t m, size_t n, size_t k, 
-           DTYPE alpha, DTYPE *A, int ldA, 
-	                DTYPE *B, int ldB, 
-           DTYPE beta,  DTYPE *C, int ldC ){
+           ALPHA_TYPE alpha, A_TYPE *A, int ldA, 
+	                B_TYPE *B, int ldB, 
+           BETA_TYPE beta,  C_TYPE *C, int ldC ){
 
    size_t    ic, jc, i, j, p;
-   DTYPE  zero = 0.0, one = 1.0, tmp;
+   C_TYPE  zero = 0.0, one = 1.0, tmp;
 
    // Quick return if possible
   if ( (m==0)||(n==0) || (((alpha==zero) || (k==0)) && (beta==one)) )

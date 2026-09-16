@@ -130,6 +130,19 @@ class EmitCSubOp(IRDLOperation):
 
 
 @irdl_op_definition
+class EmitCDivOp(IRDLOperation):
+    name = "emitc.div"
+
+    lhs = operand_def()
+    rhs = operand_def()
+    result = result_def()
+
+    def __init__(self, lhs, rhs):
+        result_type = lhs.type
+        super().__init__(operands=[lhs, rhs], result_types=[result_type])
+
+
+@irdl_op_definition
 class EmitCStoreOp(IRDLOperation):
     name = "emitc.store"
 
@@ -151,6 +164,17 @@ class EmitCStoreOp(IRDLOperation):
 #
 #     def __init__(self, src):
 #         super().__init__(operands=[src], result_types=[result_type])
+
+
+@irdl_op_definition
+class EmitCCastOp(IRDLOperation):
+    name = "emitc.cast"
+
+    src = operand_def()
+    result = result_def()
+
+    def __init__(self, src, result_type):
+        super().__init__(operands=[src], result_types=[result_type])
 
 
 @irdl_op_definition

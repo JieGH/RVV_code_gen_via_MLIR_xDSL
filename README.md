@@ -1,16 +1,14 @@
-# RVV 1.0 Microkernel Runner
+# RVV xDSL Microkernel Runner
 
 Generate RVV GEMM microkernels locally, sync them to a RISC-V board, run benchmarks, and fetch results back to your host.
 
+## Introduction
 
+This project generates high-performance RISC-V Vector (RVV) microkernels and macrokernels for BLIS-family GEMM using [xDSL](https://github.com/xdslproject/xdsl) and MLIR compiler pipelines, replacing static handwritten C benchmarks with a parameterized, compiler-driven project generator.
 
+A Python/xDSL project generator emits self-contained kernel families (register-tiled microkernels, packing routines, and macrokernel loop structure) for a target RISC-V board, using an analytical cache model to size blocking dimensions. The end-to-end runner in this repo builds the toolchain, generates and cross-compiles the kernels, syncs them to the board over SSH, runs the benchmark suite there, and pulls the resulting logs, CSVs, and plots back to your host.
 
-<img width="1046" height="581" alt="Screenshot 2026-04-27 at 19 24 58" src="https://github.com/user-attachments/assets/04a4283a-0c45-4368-ad64-f58852cc4632" />
-
-
-
-
-This paper presents a compilation approach that combines MLIR with xDSL to bridge the missing lowering stages required for RVV code generation. Using custom intermediate representations and transformation passes implemented in xDSL, we systematically translate high-level operations into specialized, hardware-aware C code invoking RVV intrinsics. The resulting kernels are emitted as portable C functions that can be directly integrated into existing applications, enabling incremental adoption without modifying surrounding software stacks. We demonstrate the approach on the General Matrix Multiplication (GEMM) kernel and evaluate the generated micro-kernels on two real RISC-V platforms, the K230 and the BananaPi F3, comparing against OpenBLAS for both square-matrix benchmarks and transformer-based workloads derived from the BERT-Large model. When integrated into a matrix multiplication kernel, the proposed approach consistently outperforms OpenBLAS, reaching up to 12.2 GFLOPS compared to the baseline's 5.1 GFLOPS and providing performance improvements between 10--35\% across the evaluated workloads. These results demonstrate that combining MLIR with xDSL provides a practical pathway to portable, optimized code generation for RISC-V platforms.
+See [CONTEXT.md](CONTEXT.md) for the domain vocabulary (microkernel, macrokernel, packer, kernel family, etc.) used throughout this codebase.
 
 ## Quick Start
 
@@ -33,7 +31,7 @@ make install
 
 5. Run the pipeline
 ```bash
-bash compile.sh
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "32,32" --vlen 256 --precision fp32
 ```
 
 Example with explicit connection and tuning options:
@@ -71,8 +69,86 @@ Local MLIR/LLVM build:
 ```bash
 bash setup_env.sh --local-mlir-only --mlir-build-dir ../llvm-project
 ```
-
 Remote OpenBLAS/BLIS build:
 ```bash
 bash setup_env.sh --remote-only --vlen 256 --riscv-workspace xdsl_rvv_microkernel
+```
+
+## Inspecting Assembly
+
+You can dump and inspect the actual RISC-V assembly generated for any microkernel.
+
+### Local Assembly Dump
+Use the dedicated script to cross-compile kernels to assembly locally:
+```bash
+cd tests/api_gen_cpp
+./dump_asm.sh 4x4_b0_fp32       # Dump a single kernel
+./dump_asm.sh --all              # Dump all fp32 kernels
+```
+Files are saved to `tests/api_gen_cpp/asm/`.
+
+### Remote Assembly Dump
+Alternatively, compile natively on the board and pull the `.s` file back:
+```bash
+./compile.sh --dump-asm 4x4_b0_fp32
+```
+
+## Side Note / Dev Note
+
+To compile in **jump-host mode** (x86 → fej → jbpi2), the following command is used:
+```bash
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "32,32" --vlen 256 --precision fp32
+
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "8,4" --vlen 256 --precision fp32 --verbose
+
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "8,8" --vlen 256 --precision fp32
+```
+
+```
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./tests/packing/compile_packing.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22
+```
+
+
+05 may test rvv packing
+```
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" bash tests/gemm_blis_xdsl/compile_merged.sh --jump --riscv-user jlei --riscv-ip jbpi --riscv-port 22
+
+```
+
+### Pure xDSL BLIS macrokernel bench
+
+`tests/pure_xdsl_blis_rvv/compile_macro_bench.sh` builds and benchmarks the generated pure-xDSL BLIS project (the "Project Generator" pipeline, see `CONTEXT.md`) end to end. It activates the local `.venv` itself, generates the kernels, syncs and builds them on the board, and pulls the results back. Run it from the repo root.
+
+Jump-host mode:
+```bash
+source .venv/bin/activate && REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" \
+  ./tests/pure_xdsl_blis_rvv/compile_macro_bench.sh --jump \
+  --riscv-user jlei --riscv-ip jbpi --riscv-port 22
+```
+
+Same jump-host convention as above: `REMOTE_HOST`/`REMOTE_PORT` reach the intermediate host (`fej`), `--riscv-*` reach the board behind it. Add `--config <name>.json` to target a project config other than the default `config.json`.
+
+
+
+int8 int8 int32 design
+
+```
+./compile.sh --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "2,2" --vlen 256 --precision i8i8i32
+```
+
+This is jump host mode, may not apply to you
+```
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh \
+    --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 \
+    --families "8,8" --vlen 256 --precision i8i8i32 \
+    --dump-asm 8x8_b0_i8i8i32 \
+     --skip-unit-test
+```
+
+Or for fp32:
+```bash
+REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh \
+    --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 \
+    --families "8,8" --vlen 256 --precision fp32 \
+    --dump-asm 8x8_b1_fp32
 ```

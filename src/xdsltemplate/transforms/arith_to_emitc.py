@@ -104,6 +104,61 @@ class ConvertArithSubiOpToEmitC(RewritePattern):
         rewriter.replace_matched_op(new_op)
 
 
+class ConvertArithDivSIOpToEmitC(RewritePattern):
+    "Rewrite arith.divsi to emitc.div"
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: arith.DivSIOp, rewriter: PatternRewriter):
+        from xdsltemplate.dialects.emitc_ext import EmitCDivOp
+
+        new_op = EmitCDivOp(op.lhs, op.rhs)
+        rewriter.replace_matched_op(new_op)
+
+
+class ConvertArithMinSIOpToEmitC(RewritePattern):
+    """Rewrite `arith.minsi` to `emitc.call_opaque "std::min"`."""
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: arith.MinSIOp, rewriter: PatternRewriter):
+        from xdsl.dialects import emitc
+
+        new_op = emitc.EmitC_CallOpaqueOp(
+            callee="std::min",
+            call_args=[op.lhs, op.rhs],
+            result_types=[op.results[0].type],
+        )
+        rewriter.replace_matched_op(new_op)
+
+
+class ConvertArithMaxSIOpToEmitC(RewritePattern):
+    """Rewrite `arith.maxsi` to `emitc.call_opaque "std::max"`."""
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: arith.MaxSIOp, rewriter: PatternRewriter):
+        from xdsl.dialects import emitc
+
+        new_op = emitc.EmitC_CallOpaqueOp(
+            callee="std::max",
+            call_args=[op.lhs, op.rhs],
+            result_types=[op.results[0].type],
+        )
+        rewriter.replace_matched_op(new_op)
+
+
+class ConvertArithExtSIToEmitC(RewritePattern):
+    """Rewrite `arith.extsi` to `emitc.cast`."""
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: arith.ExtSIOp, rewriter: PatternRewriter):
+        src = op.input
+        result_type = op.results[0].type
+
+        from xdsltemplate.dialects.emitc_ext import EmitCCastOp
+
+        new_op = EmitCCastOp(src, result_type)
+        rewriter.replace_matched_op(new_op)
+
+
 class ConvertArithIndexCastToEmitC(RewritePattern):
     """Erase arith.index_cast by replacing result with input.
 
@@ -142,7 +197,11 @@ class ArithToEmitCPass(ModulePass):
             ConvertArithAddOpToEmitC(),
             ConvertArithAddiOpToEmitC(),
             ConvertArithSubiOpToEmitC(),
+            ConvertArithDivSIOpToEmitC(),
+            ConvertArithMinSIOpToEmitC(),
+            ConvertArithMaxSIOpToEmitC(),
             ConvertArithIndexCastToEmitC(),
+            ConvertArithExtSIToEmitC(),
         ]
 
         from xdsl.pattern_rewriter import PatternRewriteWalker

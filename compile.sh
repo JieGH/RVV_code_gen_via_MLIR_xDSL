@@ -11,6 +11,10 @@ set -e
 #   --riscv-ip   <host>   Hostname or IP of the board   (default: jbpi2)
 #   --riscv-port <port>   SSH port on the board         (default: 22)
 #
+# Workflow options:
+#   --skip-unit-test      Skip independent kernel compile & benchmark (Step 6)
+#                         and go straight to the BLIS GEMM sweep (Step 7)
+#
 # The script will return benchmarking results and store them in the tests/output directory
 # ============================================================
 
@@ -26,6 +30,7 @@ FAMILIES="32,32"
 FAMILIES="4,4" 
 # FAMILIES="4,4" 
 VLEN_BITS="256"
+PRECISION="fp32"
 # This KC parameter only be used for kc loop per kernel benchmarking, 
 # It does not affect the BLIS test results
 KC_PROFILE="256"
@@ -55,11 +60,13 @@ RISCV_BLIS_DIR_ENV="\$HOME/${RISCV_WORKSPACE}/blis_install"
 # ============================================================
 DATASETS=(
     # "cnn_models/trail.dat"
-    "cnn_models/tiny.dat"
+    # "cnn_models/tiny.dat"
     # "cnn_models/gnn.dat"
-    # "cnn_models/bert_large.dat"
+    "cnn_models/bert_large.dat"
+    # "cnn_models/special.dat"
     # "cnn_models/gpt2_large.dat"
-    # "cnn_models/square.dat"
+    "cnn_models/square.dat"
+    "cnn_models/square_small.dat"
 )
 # ============================================================
 # Configuration End 
@@ -73,11 +80,13 @@ VERBOSE_FLAG=""
 NO_REF_FLAG="--no-ref"
 USE_DIRECT=true   
 SETUP_ENV=false
+SKIP_UNIT_TEST=false
 MLIR_BUILD_DIR="../llvm-project"
 
 # Local paths 
 LOCAL_DIR="tests/api_gen_cpp"
 LOCAL_REF_DIR="tests/rvv_ref"
+DUMP_ASM_KERNEL=""
 
 # ============================================================
 # Argument parsing
@@ -87,6 +96,7 @@ while [[ "$#" -gt 0 ]]; do
     case $1 in
         --families)        FAMILIES="$2";              shift ;;
         --vlen)            VLEN_BITS="$2";             shift ;;
+        --precision)       PRECISION="$2";             shift ;;
         --mlir-translate)  MLIR_TRANSLATE_PATH="$2";   shift ;;
         --verbose)         VERBOSE_FLAG="--verbose"         ;;
         --kc-profile)      KC_PROFILE="$2";            shift ;;
@@ -100,7 +110,9 @@ while [[ "$#" -gt 0 ]]; do
         --riscv-ip)        RISCV_REMOTE_IP="$2";       shift ;;
         --riscv-port)      RISCV_SSH_PORT="$2";        shift ;;
         --setup-env)       SETUP_ENV=true                   ;;
+        --skip-unit-test)  SKIP_UNIT_TEST=true               ;;
         --mlir-build-dir)  MLIR_BUILD_DIR="$2";        shift ;;
+        --dump-asm)        DUMP_ASM_KERNEL="$2";       shift ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
@@ -112,7 +124,7 @@ if [ -z "${MLIR_TRANSLATE_PATH+x}" ]; then
 fi
 
 VLEN=$((VLEN_BITS / 32))
-REF_BASE="kernels_RVV_${VLEN_BITS}_fp32_ldx"
+REF_BASE="kernels_RVV_${VLEN_BITS}_${PRECISION}_ldx"
 
 
 
@@ -126,6 +138,7 @@ SEP="------------------------------------------------------------"
 if [ "$USE_DIRECT" = true ]; then
     echo ""; echo "  Mode: Direct "; echo ""
     ssh_board() { ssh -p ${RISCV_SSH_PORT} -o StrictHostKeyChecking=no ${RISCV_USER}@${RISCV_REMOTE_IP} "$@"; }
+    ssh_board_no_tty() { ssh_board "$@"; }
     rsync_board() { rsync -a -e "ssh -p ${RISCV_SSH_PORT} -o StrictHostKeyChecking=no" "$@"; }
     ssh_host()  { ssh_board "$@"; }
     RSYNC_TARGET="${RISCV_USER}@${RISCV_REMOTE_IP}"
@@ -137,6 +150,13 @@ else
         sshpass -p "${REMOTE_PASS}" ssh -p ${REMOTE_PORT} -o StrictHostKeyChecking=no \
             -t ${RISCV_USER}@${REMOTE_HOST} \
             "ssh -p ${RISCV_SSH_PORT} -o StrictHostKeyChecking=no -t ${RISCV_REMOTE_IP} ${escaped_args}"
+    }
+    ssh_board_no_tty() {
+        local escaped_args
+        escaped_args=$(printf '%q ' "$@")
+        sshpass -p "${REMOTE_PASS}" ssh -p ${REMOTE_PORT} -o StrictHostKeyChecking=no \
+            ${RISCV_USER}@${REMOTE_HOST} \
+            "ssh -p ${RISCV_SSH_PORT} -o StrictHostKeyChecking=no ${RISCV_REMOTE_IP} ${escaped_args}"
     }
     rsync_board() {
         sshpass -p "${REMOTE_PASS}" rsync -a \
@@ -181,18 +201,22 @@ else
     SETUP_ENV=true
 fi
 
-if ssh_host "[ -f \"${RISCV_OPENBLAS_DIR_ENV}/lib/libopenblas.a\" ] || [ -f \"${RISCV_OPENBLAS_DIR_ENV}/lib64/libopenblas.a\" ]" >/dev/null 2>&1; then
-    echo "  [OK] OpenBLAS (Remote): ${RISCV_OPENBLAS_DIR_ENV}"
+if [ "$PRECISION" = "i8i8i32" ]; then
+    echo "  [SKIP] OpenBLAS/BLIS checks (not needed for i8i8i32)"
 else
-    echo "  [INFO] OpenBLAS not found on remote at ${RISCV_OPENBLAS_DIR_ENV}! Auto-enabling setup..."
-    SETUP_ENV=true
-fi
+    if ssh_host "[ -f \"${RISCV_OPENBLAS_DIR_ENV}/lib/libopenblas.a\" ] || [ -f \"${RISCV_OPENBLAS_DIR_ENV}/lib64/libopenblas.a\" ]" >/dev/null 2>&1; then
+        echo "  [OK] OpenBLAS (Remote): ${RISCV_OPENBLAS_DIR_ENV}"
+    else
+        echo "  [INFO] OpenBLAS not found on remote at ${RISCV_OPENBLAS_DIR_ENV}! Auto-enabling setup..."
+        SETUP_ENV=true
+    fi
 
-if ssh_host "[ -f \"${RISCV_BLIS_DIR_ENV}/lib/libblis.a\" ]" >/dev/null 2>&1; then
-    echo "  [OK] BLIS (Remote): ${RISCV_BLIS_DIR_ENV}"
-else
-    echo "  [INFO] BLIS not found on remote at ${RISCV_BLIS_DIR_ENV}! Auto-enabling setup..."
-    SETUP_ENV=true
+    if ssh_host "[ -f \"${RISCV_BLIS_DIR_ENV}/lib/libblis.a\" ]" >/dev/null 2>&1; then
+        echo "  [OK] BLIS (Remote): ${RISCV_BLIS_DIR_ENV}"
+    else
+        echo "  [INFO] BLIS not found on remote at ${RISCV_BLIS_DIR_ENV}! Auto-enabling setup..."
+        SETUP_ENV=true
+    fi
 fi
 
 if [ "$SETUP_ENV" = true ]; then
@@ -250,6 +274,7 @@ echo " Families: $FAMILIES | VLEN: $VLEN | KC: $KC_PROFILE"
 python3 tests/test_codeGeneration.py \
     --families "$FAMILIES" --vlen "$VLEN" \
     --mlir-translate "$MLIR_TRANSLATE_PATH" \
+    --precision "$PRECISION" \
     $VERBOSE_FLAG --kc-profile "$KC_PROFILE" $NO_REF_FLAG
 
 
@@ -301,11 +326,8 @@ rsync_board tests/test_openblas/ ${RSYNC_TARGET}:${RISCV_WORKSPACE}/test_openbla
 
 
 # ============================================================
-# Step 6 — Compile and run unit test on board
+# Compute max family dimensions (needed by later steps)
 # ============================================================
-echo ""; echo "$SEP"; echo " [6/8] Compile & Run Unit Test (test_gemm)"; echo "$SEP"
-ssh_board "cd ${RISCV_WORKSPACE} && make clean && make -j8"
-
 MAX_MR=0; MAX_NR=0
 for fam in $FAMILIES; do
     mr=$(echo $fam | cut -d',' -f1); nr=$(echo $fam | cut -d',' -f2)
@@ -314,27 +336,64 @@ for fam in $FAMILIES; do
 done
 MAX_DIM_STR="${MAX_MR}x${MAX_NR}"
 
-mkdir -p tests/output
-OUT_FILE="tests/output/uK_${MAX_DIM_STR}_${VLEN_BITS}bits_${KC_PROFILE}.txt"
-echo " Saving output to ${OUT_FILE}..."
-ssh_board "cd ${RISCV_WORKSPACE} && ./test_gemm" > "${OUT_FILE}"
-python "tests/output/plot_perf.py" "${OUT_FILE}" \
-    --families "${MAX_DIM_STR}" --vlen "${VLEN_BITS}" --kc "${KC_PROFILE}"
-if [ -z "$NO_REF_FLAG" ]; then
-    python "tests/output/plot_ref_comparison.py" "${OUT_FILE}"
-fi
+# ============================================================
+# Step 6 — Compile and run unit test on board
+# ============================================================
+if [ "$SKIP_UNIT_TEST" = true ]; then
+    echo ""; echo "$SEP"; echo " [6/8] Compile & Run Unit Test — SKIPPED (--skip-unit-test)"; echo "$SEP"
+    BEST_UK=""
+else
+    echo ""; echo "$SEP"; echo " [6/8] Compile & Run Unit Test (test_gemm)"; echo "$SEP"
+    ssh_board "cd ${RISCV_WORKSPACE} && make clean && make -j8"
 
-# Extract best kernel (highest GFLOP/s in the b0 section)
-BEST_UK=$(grep '_b0' "${OUT_FILE}" | grep 'GFLOP/s' | awk '
-    {
-        for (i=1; i<=NF; i++) {
-            if ($i == "GFLOP/s") gval = $(i-1)
+    if [ -n "$DUMP_ASM_KERNEL" ]; then
+        echo ""; echo "$SEP"; echo " [6.5] Assembly Dump from Board"; echo "$SEP"
+        KERNEL_SRC="kernels/xdsl_api_gemm_${DUMP_ASM_KERNEL}.cpp"
+        ASM_OUT_REMOTE="asm/xdsl_api_gemm_${DUMP_ASM_KERNEL}.s"
+        ASM_OUT_LOCAL="tests/api_gen_cpp/asm/xdsl_api_gemm_${DUMP_ASM_KERNEL}.s"
+        
+        echo "  Compiling ${DUMP_ASM_KERNEL} to assembly on board..."
+        if ssh_board "cd ${RISCV_WORKSPACE} && mkdir -p asm && \
+            riscv64-linux-gnu-g++ -march=rv64gcv -mabi=lp64d -O3 -mcmodel=medany \
+            -fverbose-asm -I. -S ${KERNEL_SRC} -o ${ASM_OUT_REMOTE}"; then
+            
+            echo "  Fetching assembly file (clean channel, no TTY)..."
+            mkdir -p tests/api_gen_cpp/asm
+            # ssh_board_no_tty: no -t flags = clean stdout, no terminal artifacts
+            ssh_board_no_tty "cat ${RISCV_WORKSPACE}/${ASM_OUT_REMOTE}" > "${ASM_OUT_LOCAL}"
+            
+            if [ -s "${ASM_OUT_LOCAL}" ]; then
+                echo "  [OK] Assembly saved to: ${ASM_OUT_LOCAL}"
+            else
+                echo "  [FAIL] Assembly file is empty or was not fetched."
+            fi
+        else
+            echo "  [FAIL] Compilation failed on the remote board."
+        fi
+    fi
+
+    mkdir -p tests/output
+    OUT_FILE="tests/output/uK_${MAX_DIM_STR}_${PRECISION}_rvv_vl${VLEN_BITS}_${KC_PROFILE}.txt"
+    echo " Saving output to ${OUT_FILE}..."
+    ssh_board "cd ${RISCV_WORKSPACE} && ./test_gemm" > "${OUT_FILE}"
+    python "tests/output/plot_perf.py" "${OUT_FILE}" \
+        --families "${MAX_DIM_STR}" --vlen "${VLEN_BITS}" --kc "${KC_PROFILE}"
+    if [ -z "$NO_REF_FLAG" ]; then
+        python "tests/output/plot_ref_comparison.py" "${OUT_FILE}"
+    fi
+    cat ${OUT_FILE}
+    # Extract best kernel (highest GFLOP/s in the b0 section)
+    BEST_UK=$(grep '_b0' "${OUT_FILE}" | grep 'GFLOP/s' | awk '
+        {
+            for (i=1; i<=NF; i++) {
+                if ($i == "GFLOP/s") gval = $(i-1)
+            }
+            if (gval+0 > best+0) { best = gval; name = $1 }
         }
-        if (gval+0 > best+0) { best = gval; name = $1 }
-    }
-    END { sub(/_b0$/, "", name); print name }'
-)
-echo " Best kc-loop kernel: ${BEST_UK}  (from ${OUT_FILE})"
+        END { sub(/_b0$/, "", name); print name }'
+    )
+    echo " Best kc-loop kernel: ${BEST_UK}  (from ${OUT_FILE})"
+fi
 
 
 # ============================================================
@@ -342,8 +401,9 @@ echo " Best kc-loop kernel: ${BEST_UK}  (from ${OUT_FILE})"
 # ============================================================
 echo ""; echo "$SEP"; echo " [7/8] XDSL Kernel Sweep (MR=1..${MAX_MR}, NR=1..${MAX_NR})"; echo "$SEP"
 
-# Clone benchmark repo if needed
+# Sync local benchmark repo instead of cloning
 ssh_board "cd ${RISCV_WORKSPACE} && if [ ! -d 'RVV_ukernels_benchmark' ]; then git clone https://github.com/adcastel/RVV_ukernels_benchmark.git; else echo 'RVV_ukernels_benchmark already present.'; fi"
+
 ssh_board "rm -rf ${RISCV_WORKSPACE}/RVV_ukernels_benchmark/kernels/RVV_${VLEN_BITS}_XDSL"
 ssh_host "mkdir -p ${RISCV_WORKSPACE}/RVV_ukernels_benchmark/kernels/"
 rsync_board tests/test_blis/RVV_${VLEN_BITS}_XDSL ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/kernels/
@@ -352,11 +412,16 @@ rsync_board tests/test_openblas/cnn_models ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RV
 rsync_board xdsl_sweep_driver/xdsl_gemm_blis.c ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/src/gemm_blis.c
 rsync_board xdsl_sweep_driver/xdsl_gemm_blis.h ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/src/gemm_blis.h
 rsync_board xdsl_sweep_driver/xdsl_test_gemm.c  ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/src/test_gemm.c
+rsync_board xdsl_sweep_driver/xdsl_dtypes.h     ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/src/dtypes.h
+rsync_board xdsl_sweep_driver/xdsl_sutils.c     ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/src/sutils.c
+rsync_board xdsl_sweep_driver/xdsl_Makefile     ${RSYNC_TARGET}:${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/Makefile
 
 # Render DATASETS into a bash array declaration for the remote script
 DATASETS_BASH_DECL="DATASETS=("
 for ds in "${DATASETS[@]}"; do DATASETS_BASH_DECL+="\"$ds\" "; done
 DATASETS_BASH_DECL+=")"
+
+PREC_UPPER=$(echo $PRECISION | tr 'a-z' 'A-Z')
 
 cat > /tmp/xdsl_sweep.sh << SWEEP_EOF
 #!/bin/bash
@@ -366,19 +431,19 @@ BENCH_DIR=\$HOME/${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family
 cd \$BENCH_DIR
 mkdir -p build out
 
-FIXED_KPATH="../kernels/RVV_${VLEN_BITS}_XDSL/fp32/${MAX_DIM_STR}/"
-FIXED_FILE="kernels_RVV_${MAX_DIM_STR}_fp32"
+FIXED_KPATH="../kernels/RVV_${VLEN_BITS}_XDSL/${PRECISION}/${MAX_DIM_STR}/"
+FIXED_FILE="kernels_RVV_${MAX_DIM_STR}_${PRECISION}"
 
 ${DATASETS_BASH_DECL}
 
 echo "Compiling monolithic driver binary..."
 make clean > /dev/null 2>&1 || true
 
-export CFLAGS="-DLIB_DIR=\"\$FIXED_KPATH\" -DCOMPILER_FLAGS=\"-O3 -mcmodel=medany -march=rv64gcv\""
+export CFLAGS="-DLIB_DIR=\"\$FIXED_KPATH\" -DEXO_MATRIX_HEADER=\"exo_matrix_RVV_${PRECISION}.h\" -DCOMPILER_FLAGS=\"-O3 -mcmodel=medany -march=rv64gcv\""
 
 if ! make MR=1 NR=1 KPATH="\$FIXED_KPATH" FILE="\$FIXED_FILE" \
           OPT=XDSL GATHER=2 SWAP=0 SIMD_MODE=RVV_EXO RUN_MODE=FAMILY_EXO \
-          BLIS_HOME=\$BLIS_HOME > /tmp/make_monolithic.log 2>&1; then
+          DT="${PRECISION}" DTYPE="-D${PREC_UPPER}" BLIS_HOME=\$BLIS_HOME > /tmp/make_monolithic.log 2>&1; then
     echo "ERROR: Compilation failed:"
     cat /tmp/make_monolithic.log
     exit 1
@@ -407,9 +472,9 @@ mkdir -p tests/output
 for DS in "${DATASETS[@]}"; do
     DS_NAME=$(basename "$DS" .dat)
     REMOTE_CSV="${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/out/result_${DS_NAME}_XDSL_sweep_macc.dat"
-    LOCAL_CSV="tests/output/xdsl_${DS_NAME}_${MAX_MR}x${MAX_NR}.csv"
+    LOCAL_CSV="tests/output/xdsl_${DS_NAME}_${MAX_MR}x${MAX_NR}_${PRECISION}_rvv_vl${VLEN_BITS}.csv"
     REMOTE_LOG="${RISCV_WORKSPACE}/RVV_ukernels_benchmark/gemm_blis_family/out/sweep_log_${DS_NAME}.txt"
-    LOCAL_LOG="tests/output/sweep_log_${DS_NAME}_${MAX_MR}x${MAX_NR}.txt"
+    LOCAL_LOG="tests/output/sweep_log_${DS_NAME}_${MAX_MR}x${MAX_NR}_${PRECISION}_rvv_vl${VLEN_BITS}.txt"
     rsync_board "${RSYNC_TARGET}:${REMOTE_CSV}" "${LOCAL_CSV}" || echo " [warn] Could not fetch ${REMOTE_CSV}"
     rsync_board "${RSYNC_TARGET}:${REMOTE_LOG}" "${LOCAL_LOG}" || echo " [warn] Could not fetch ${REMOTE_LOG}"
     echo " Saved: ${LOCAL_CSV}  +  ${LOCAL_LOG}"
@@ -419,32 +484,36 @@ done
 # ============================================================
 # Step 8 — OpenBLAS reference comparison + plot
 # ============================================================
-echo ""; echo "$SEP"; echo " [8/8] OpenBLAS Reference + Comparison Plots"; echo "$SEP"
+if [ "$PRECISION" = "i8i8i32" ]; then
+    echo ""; echo "$SEP"; echo " [8/8] OpenBLAS Reference — SKIPPED (no OpenBLAS i8i8i32 GEMM)"; echo "$SEP"
+else
+    echo ""; echo "$SEP"; echo " [8/8] OpenBLAS Reference + Comparison Plots"; echo "$SEP"
 
-for DS in "${DATASETS[@]}"; do
-    DS_NAME=$(basename "$DS" .dat)
-    LOCAL_OBLAS_OUT="tests/output/openblas_${DS_NAME}.txt"
-    echo " Running OpenBLAS for: $DS"
-    ssh_board "cd ${RISCV_WORKSPACE} && export OPENBLAS_NUM_THREADS=1 && \
-        bash test_openblas/openblassDesign/compile_openblas.sh --dir \"${RISCV_OPENBLAS_DIR_ENV}\" --zvl test_openblas/${DS}" \
-        | tee "${LOCAL_OBLAS_OUT}"
+    for DS in "${DATASETS[@]}"; do
+        DS_NAME=$(basename "$DS" .dat)
+        LOCAL_OBLAS_OUT="tests/output/openblas_${DS_NAME}_${PRECISION}_rvv_vl${VLEN_BITS}.txt"
+        echo " Running OpenBLAS for: $DS"
+        ssh_board "cd ${RISCV_WORKSPACE} && export OPENBLAS_NUM_THREADS=1 && \
+            bash test_openblas/openblassDesign/compile_openblas.sh --dir \"${RISCV_OPENBLAS_DIR_ENV}\" --precision \"${PRECISION}\" --zvl test_openblas/${DS}" \
+            | tee "${LOCAL_OBLAS_OUT}"
 
-    LOCAL_CSV="tests/output/xdsl_${DS_NAME}_${MAX_MR}x${MAX_NR}.csv"
-    OUT_PREFIX="tests/output/${DS_NAME}_${MAX_MR}x${MAX_NR}"
-    if [ -f "${LOCAL_CSV}" ] && [ -f "${LOCAL_OBLAS_OUT}" ]; then
-        echo " Plotting: $DS_NAME"
-        LOCAL_LOG="tests/output/sweep_log_${DS_NAME}_${MAX_MR}x${MAX_NR}.txt"
-        python tests/output/plot_comparison.py \
-            --xdsl "${LOCAL_CSV}" --oblas "${LOCAL_OBLAS_OUT}" \
-            --model "${DS_NAME}" --out "${OUT_PREFIX}" \
-            --vlen "${VLEN_BITS}" --kc "${KC_PROFILE}" \
-            --families "${MAX_DIM_STR}" \
-            ${BEST_UK:+--best-kernel "${BEST_UK}"} \
-            ${LOCAL_LOG:+--sweep-log "${LOCAL_LOG}"}
-    else
-        echo " [skip] Missing data for $DS_NAME"
-    fi
-done
+        LOCAL_CSV="tests/output/xdsl_${DS_NAME}_${MAX_MR}x${MAX_NR}_${PRECISION}_rvv_vl${VLEN_BITS}.csv"
+        OUT_PREFIX="tests/output/${DS_NAME}_${MAX_MR}x${MAX_NR}_${PRECISION}_rvv_vl${VLEN_BITS}"
+        if [ -f "${LOCAL_CSV}" ] && [ -f "${LOCAL_OBLAS_OUT}" ]; then
+            echo " Plotting: $DS_NAME"
+            LOCAL_LOG="tests/output/sweep_log_${DS_NAME}_${MAX_MR}x${MAX_NR}_${PRECISION}_rvv_vl${VLEN_BITS}.txt"
+            python tests/output/plot_comparison.py \
+                --xdsl "${LOCAL_CSV}" --oblas "${LOCAL_OBLAS_OUT}" \
+                --model "${DS_NAME}" --out "${OUT_PREFIX}" \
+                --vlen "${VLEN_BITS}" --kc "${KC_PROFILE}" \
+                --families "${MAX_DIM_STR}" \
+                ${BEST_UK:+--best-kernel "${BEST_UK}"} \
+                ${LOCAL_LOG:+--sweep-log "${LOCAL_LOG}"}
+        else
+            echo " [skip] Missing data for $DS_NAME"
+        fi
+    done
+fi
 
 echo ""
 echo "============================================================"

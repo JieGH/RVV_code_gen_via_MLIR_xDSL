@@ -1,0 +1,10 @@
+▶ MicroTile_8x8 (8x8x8)  | MR2_NR2    0.20 Tot GOPs |   0.43 Ker GOPs |   0.8 GB/s RVV Pk |   0.5 GB/s Scl Pk | ⏭️ SKIP
+▶ MicroTile64x64 (64x64x64) | MR2_NR2    0.85 Tot GOPs |   1.08 Ker GOPs |   1.1 GB/s RVV Pk |   0.8 GB/s Scl Pk | ⏭️ SKIP
+▶ MicroTile8x64 (8x64x64) | MR2_NR2    0.70 Tot GOPs |   1.07 Ker GOPs |   1.0 GB/s RVV Pk |   0.8 GB/s Scl Pk | ⏭️ SKIP
+▶ MicroTile64x8 (64x8x64) | MR2_NR2    0.80 Tot GOPs |   1.20 Ker GOPs |   1.4 GB/s RVV Pk |   0.6 GB/s Scl Pk | ⏭️ SKIP
+▶ MicroTile16x8 (16x8x16) | MR2_NR2    0.38 Tot GOPs |   0.70 Ker GOPs |   1.2 GB/s RVV Pk |   0.7 GB/s Scl Pk | ⏭️ SKIP
+▶ MicroTile8x16 (8x16x16) | MR2_NR2    0.37 Tot GOPs |   0.69 Ker GOPs |   1.0 GB/s RVV Pk |   0.7 GB/s Scl Pk | ⏭️ SKIP
+▶ Pack_Tall (256x8x32)   | MR2_NR2    0.54 Tot GOPs |   0.83 Ker GOPs |   1.0 GB/s RVV Pk |   0.7 GB/s Scl Pk | ⏭️ SKIP
+▶ Pack_Wide (8x256x32)   | MR2_NR2    0.56 Tot GOPs |   0.96 Ker GOPs |   1.0 GB/s RVV Pk |   0.8 GB/s Scl Pk | ⏭️ SKIP
+▶ KC_Cross_K300 (64x64x300) | MR2_NR2    1.17 Tot GOPs |   1.36 Ker GOPs |   0.9 GB/s RVV Pk |   0.6 GB/s Scl Pk | ⏭️ SKIP
+▶ Cache_Fit_L1_128 (128x128x128) | MR2_NR2    1.07 Tot GOPs |   1.26 Ker GOPs |   0.8 GB/s RVV Pk |   0.6 GB/s Scl Pk | ⏭️ SKIP
