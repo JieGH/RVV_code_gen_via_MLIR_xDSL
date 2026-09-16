@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "perf_counters.h"
 
 #define CONFIG_DATATYPE "fp32"
 #define CONFIG_METHOD "AXPY_FP32_Pack"
@@ -28,9 +29,9 @@ void pack_CB_v_else_AXPY_FP32_Pack_fp32_NR32(float*, float*, size_t, size_t, siz
 void pack_RB_v_if_AXPY_FP32_Pack_fp32_MR32(float*, float*, size_t, size_t, size_t);
 void pack_RB_v_else_AXPY_FP32_Pack_fp32_MR32(float*, float*, size_t, size_t, size_t);
 
-void gemm_blis_generic(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack);
+void gemm_blis_generic(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf);
 
-typedef void (*gemm_blis_fn)(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack);
+typedef void (*gemm_blis_fn)(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf);
 
 struct KernelVariant {
     const char* name;

@@ -37,6 +37,26 @@ extern "C" {
 
 using namespace std;
 
+static const char* PERF_REGIONS[] = {"Vector_Pack", "Scalar_Pack", "Compute"};
+
+static void write_perf_metrics(ofstream& out, const perf_metrics& m, bool valid) {
+    double nan_v = std::nan("");
+    double vals[] = {m.cycles, m.instructions, m.ipc, m.l1d_read_miss_pct, m.l1d_write_miss_pct, m.dtlb_misses,
+                     m.stall_be_pct, m.stall_fe_pct, m.branch_misses};
+    for (double v : vals) out << "," << (valid ? v : nan_v);
+}
+
+static double cv_pct_of(vector<double> vals) {
+    if (vals.empty()) return std::nan("");
+    double mean = 0.0, sq = 0.0;
+    for (double v : vals) mean += v;
+    mean /= vals.size();
+    for (double v : vals) sq += (v - mean) * (v - mean);
+    sort(vals.begin(), vals.end());
+    double median = vals[vals.size() / 2];
+    return median > 0 ? 100.0 * std::sqrt(sq / vals.size()) / median : std::nan("");
+}
+
 // Generate random data
 template <typename T>
 void fill_random(T* ptr, size_t size) {
@@ -301,6 +321,33 @@ int main(int argc, char** argv) {
         cerr << "Warning: Could not open " << summary_log_name << " for writing." << endl;
     }
 
+    // Issue #8: hardware counters supplement the wall-clock columns above; they go to a
+    // separate log so the raw log's schema is unchanged.
+    perf_gemm_counters perf;
+    perf_gemm_open(&perf);
+    if (perf.fd < 0) {
+        cout << "[INFO] perf_event_open() counter group unavailable; perf_ log columns will be nan." << endl;
+    }
+    string perf_log_name = string("logs/perf_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + ".txt";
+    bool perf_exists = false;
+    {
+        ifstream check(perf_log_name);
+        perf_exists = check.good() && check.peek() != std::ifstream::traits_type::eof();
+    }
+    ofstream perf_log(perf_log_name, ios_base::app);
+    if (!perf_log.is_open()) {
+        cerr << "Warning: Could not open " << perf_log_name << " for writing." << endl;
+    } else if (!perf_exists) {
+        perf_log << "Layer,M,N,K,Variant,Status,Counters_Valid";
+        for (const char* region : PERF_REGIONS) {
+            for (const char* metric : {"Cycles", "Instructions", "IPC", "L1D_Read_Miss_Pct", "L1D_Write_Miss_Pct", "dTLB_Misses",
+                                       "Stall_BE_Pct", "Stall_FE_Pct", "Branch_Misses"}) {
+                perf_log << "," << region << "_" << metric;
+            }
+        }
+        perf_log << ",Vector_Pack_Cycles_CV_Pct,Compute_Cycles_CV_Pct,Compute_FLOPs_per_Cycle,Arith_Intensity_FLOPs_per_Byte\n";
+    }
+
     ifstream dataset_stream(dataset_file);
     if (!dataset_stream.is_open()) {
         cerr << "Error: Could not open dataset file " << dataset_file << endl;
@@ -411,6 +458,7 @@ int main(int argc, char** argv) {
             int mc;
             int nc;
             int kc;
+            double compute_ipc;
         };
         vector<VariantResult> variant_results;
 
@@ -462,7 +510,7 @@ int main(int argc, char** argv) {
             // A single warmup run is insufficient for large working sets
             for (int w = 0; w < 5; ++w) {
                 double dump_pt=0, dump_kt=0; uint64_t dump_pb=0;
-                variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &dump_pt, &dump_kt, &dump_pb, force_scalar_pack);
+                variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &dump_pt, &dump_kt, &dump_pb, force_scalar_pack, nullptr);
             }
 
             string status = "SKIP";
@@ -532,6 +580,11 @@ int main(int argc, char** argv) {
             double vector_pack_time_val = 0.0;
             double scalar_pack_time_val = 0.0;
             double compute_time_val = 0.0;
+            bool scalar_perf_valid = false, rvv_perf_valid = false;
+            perf_counts scalar_pack_counts = {}, vector_pack_counts = {}, compute_counts = {};
+            vector<double> rep_pack_cycles, rep_compute_cycles;
+            double num_ops = 2.0 * m * n * k;
+            double pack_bytes_per_rep = 0.0;
 
             if (status != "FAIL") {
                 // Benchmark Scalar Packing
@@ -539,12 +592,15 @@ int main(int argc, char** argv) {
                 for (size_t i = 0; i < (size_t)(ldc * n); ++i) C[i] = 0;
                 double total_scalar_pack_time = 0.0;
                 uint64_t total_pack_bytes = 0;
+                perf_gemm_reset(&perf);
                 for (int r = 0; r < N_REPS; ++r) {
                     double pt = 0.0, kt = 0.0; uint64_t pb = 0;
-                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, true);
+                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, true, &perf);
                     total_scalar_pack_time += pt;
                     total_pack_bytes += pb;
                 }
+                scalar_pack_counts = perf.pack;
+                scalar_perf_valid = perf.valid;
                 scl_bw_val = (double)total_pack_bytes / (total_scalar_pack_time * 1e9);
                 // Issue #7: this pass already runs to produce Scl_Pack_GBs above; expose
                 // its per-rep-averaged ms directly instead of adding a second timing pass.
@@ -557,22 +613,30 @@ int main(int argc, char** argv) {
                 double total_kernel_time = 0.0;
                 total_pack_bytes = 0;
                 std::vector<double> rep_kt(N_REPS);
+                perf_gemm_reset(&perf);
 
                 auto start = chrono::high_resolution_clock::now();
                 for (int r = 0; r < N_REPS; ++r) {
                     double pt = 0.0, kt = 0.0; uint64_t pb = 0;
-                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, force_scalar_pack);
+                    uint64_t pack_cycles_before = perf.pack.v[PERF_EV_CYCLES];
+                    uint64_t compute_cycles_before = perf.compute.v[PERF_EV_CYCLES];
+                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, force_scalar_pack, &perf);
                     total_rvv_pack_time += pt;
                     total_kernel_time += kt;
                     total_pack_bytes += pb;
                     rep_kt[r] = kt;
+                    rep_pack_cycles.push_back((double) (perf.pack.v[PERF_EV_CYCLES] - pack_cycles_before));
+                    rep_compute_cycles.push_back((double) (perf.compute.v[PERF_EV_CYCLES] - compute_cycles_before));
                 }
                 auto end = chrono::high_resolution_clock::now();
+                vector_pack_counts = perf.pack;
+                compute_counts = perf.compute;
+                rvv_perf_valid = perf.valid;
+                pack_bytes_per_rep = (double) total_pack_bytes / N_REPS;
 
                 chrono::duration<double> diff = end - start;
                 double avg_time = diff.count() / N_REPS;
                 
-                double num_ops = 2.0 * m * n * k;
                 ker_gflops_val = (num_ops * N_REPS) / (total_kernel_time * 1e9);
                 
                 // Compute per-rep stats
@@ -609,7 +673,25 @@ int main(int argc, char** argv) {
                 compute_time_val = (total_kernel_time / N_REPS) * 1000.0;
             }
 
-            variant_results.push_back({string(variant.name), status, ker_gflops_val, ker_gflops_min, ker_gflops_p5, ker_gflops_p95, ker_gflops_max, ker_gflops_iqr, ker_gflops_mean, ker_gflops_std, ker_gflops_median, rvv_bw_val, scl_bw_val, rvv_time_val, ref_time_val, vector_pack_time_val, scalar_pack_time_val, compute_time_val, sample_rvv, sample_ref, sample_i, sample_j, mc, nc, kc});
+            perf_metrics vector_pack_metrics = perf_metrics_per_rep(&vector_pack_counts, N_REPS);
+            perf_metrics scalar_pack_metrics = perf_metrics_per_rep(&scalar_pack_counts, N_REPS);
+            perf_metrics compute_metrics = perf_metrics_per_rep(&compute_counts, N_REPS);
+            double compute_ipc = rvv_perf_valid ? compute_metrics.ipc : std::nan("");
+
+            variant_results.push_back({string(variant.name), status, ker_gflops_val, ker_gflops_min, ker_gflops_p5, ker_gflops_p95, ker_gflops_max, ker_gflops_iqr, ker_gflops_mean, ker_gflops_std, ker_gflops_median, rvv_bw_val, scl_bw_val, rvv_time_val, ref_time_val, vector_pack_time_val, scalar_pack_time_val, compute_time_val, sample_rvv, sample_ref, sample_i, sample_j, mc, nc, kc, compute_ipc});
+
+            if (perf_log.is_open()) {
+                double nan_v = std::nan("");
+                perf_log << label_str << "," << m << "," << n << "," << k << ","
+                         << variant.name << "," << status << "," << (scalar_perf_valid && rvv_perf_valid ? 1 : 0);
+                write_perf_metrics(perf_log, vector_pack_metrics, rvv_perf_valid);
+                write_perf_metrics(perf_log, scalar_pack_metrics, scalar_perf_valid);
+                write_perf_metrics(perf_log, compute_metrics, rvv_perf_valid);
+                perf_log << "," << (rvv_perf_valid ? cv_pct_of(rep_pack_cycles) : nan_v)
+                         << "," << (rvv_perf_valid ? cv_pct_of(rep_compute_cycles) : nan_v)
+                         << "," << (rvv_perf_valid && compute_metrics.cycles > 0 ? num_ops / compute_metrics.cycles : nan_v)
+                         << "," << (pack_bytes_per_rep > 0 ? num_ops / pack_bytes_per_rep : nan_v) << endl;
+            }
 
             if (raw_log.is_open()) {
                 raw_log << label_str << "," << m << "," << n << "," << k << ","
@@ -664,7 +746,8 @@ int main(int argc, char** argv) {
                  << ", CV:" << fixed << setprecision(0) << cv_pct << "%"
                  << ", mx/md:" << fixed << setprecision(2) << max_md << "] | "
                  << right << setw(4) << fixed << setprecision(1) << vr.rvv_bw << " GB/s Pk | "
-                 << right << setw(4) << fixed << setprecision(1) << vr.scl_bw << " GB/s Scl | ";
+                 << right << setw(4) << fixed << setprecision(1) << vr.scl_bw << " GB/s Scl | "
+                 << "IPC:" << fixed << setprecision(2) << vr.compute_ipc << " | ";
             if (vr.status == "PASS") {
                 ss << "✅ C[" << vr.sample_i << "," << vr.sample_j 
                      << "] " << fixed << setprecision(2) << vr.sample_ref 
@@ -689,5 +772,6 @@ int main(int argc, char** argv) {
         free(Cg);
     }
 
+    perf_gemm_close(&perf);
     return 0;
 }

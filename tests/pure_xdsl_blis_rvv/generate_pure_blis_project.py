@@ -108,7 +108,8 @@ def generate_header(
     with open(header_path, "w") as f:
         f.write("#pragma once\n\n")
         f.write("#include <stddef.h>\n")
-        f.write("#include <stdint.h>\n\n")
+        f.write("#include <stdint.h>\n")
+        f.write('#include "perf_counters.h"\n\n')
         f.write(f'#define CONFIG_DATATYPE "{config.datatype}"\n')
         f.write(f'#define CONFIG_METHOD "{config.method}"\n')
         f.write(f"#define CONFIG_VLEN {config.vlen}\n")
@@ -160,10 +161,10 @@ def generate_header(
         f.write("\n")
 
         f.write(
-            f"void gemm_blis_generic(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack);\n\n"
+            f"void gemm_blis_generic(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf);\n\n"
         )
         f.write(
-            f"typedef void (*gemm_blis_fn)(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack);\n\n"
+            f"typedef void (*gemm_blis_fn)(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf);\n\n"
         )
         f.write("struct KernelVariant {\n")
         f.write("    const char* name;\n")
@@ -429,7 +430,7 @@ def build_project(config: BLISProjectConfig, args):
     with open(headers_path, "w") as f:
         f.write("#ifndef GEMM_HEADERS_H\n#define GEMM_HEADERS_H\n\n")
         f.write(
-            "#include <stddef.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <string>\n#include <algorithm>\n#include <riscv_vector.h>\n#include <chrono>\n\n"
+            "#include <stddef.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <string>\n#include <algorithm>\n#include <riscv_vector.h>\n#include <chrono>\n#include \"perf_counters.h\"\n\n"
         )
         f.write(macros)
         f.write(fwd_decls)
@@ -463,7 +464,7 @@ def build_project(config: BLISProjectConfig, args):
 
     dispatch_body += render_scalar_pack_functions(c_type_a, c_type_b)
     dispatch_body += f"""
-void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c_type_a}* A, int32_t lda, {c_type_b}* B, int32_t ldb, {c_type_alpha} beta, {c_type_c}* C, int32_t ldc, {c_type_a}* Ac, {c_type_b}* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack) {{
+void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c_type_a}* A, int32_t lda, {c_type_b}* B, int32_t ldb, {c_type_alpha} beta, {c_type_c}* C, int32_t ldc, {c_type_a}* Ac, {c_type_b}* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf) {{
 """
     if is_pinned:
         # Pinned mode: declare named pack functions directly — no table needed.
@@ -562,6 +563,9 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
                 memset(Bc + full_nc_elements, 0, pad_nc_elements * sizeof({c_type_b}));
             }}
 
+            // Counter reads sit outside the chrono window so wall-clock pack time is unperturbed.
+            perf_counts perf_snap;
+            if (perf) perf_region_begin(perf, &perf_snap);
             auto t_pack_start_B = std::chrono::high_resolution_clock::now();
             if (use_scalar_pack) {{
                 pack_CB_scalar(cur_kc, cur_nc, b_ptr, ldb, Bc, nr);
@@ -570,6 +574,7 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
             }}
             auto t_pack_end_B = std::chrono::high_resolution_clock::now();
             *pack_time += std::chrono::duration<double>(t_pack_end_B - t_pack_start_B).count();
+            if (perf) perf_region_end(perf, &perf_snap, &perf->pack);
             *pack_bytes += cur_kc * cur_nc * sizeof({c_type_b});
 
             {c_type_alpha} beta_actual = GET_BETA(pc, beta);
@@ -585,6 +590,7 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
                     memset(Ac + full_mc_elements, 0, pad_mc_elements * sizeof({c_type_a}));
                 }}
 
+                if (perf) perf_region_begin(perf, &perf_snap);
                 auto t_pack_start_A = std::chrono::high_resolution_clock::now();
                 if (use_scalar_pack) {{
                     pack_RB_scalar(cur_mc, cur_kc, a_ptr, lda, Ac, mr);
@@ -593,10 +599,14 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
                 }}
                 auto t_pack_end_A = std::chrono::high_resolution_clock::now();
                 *pack_time += std::chrono::duration<double>(t_pack_end_A - t_pack_start_A).count();
+                if (perf) perf_region_end(perf, &perf_snap, &perf->pack);
                 *pack_bytes += cur_mc * cur_kc * sizeof({c_type_a});
 
-
-
+                // Compute counters cover the whole microkernel loop nest, not per tile,
+                // to keep read() syscalls off the hot path. They therefore include the
+                // per-tile chrono::now() pair (~200 instructions on jbpi) that
+                // Compute_Time_ms excludes.
+                if (perf) perf_region_begin(perf, &perf_snap);
                 for (int32_t jr = 0; jr < cur_nc; jr += nr) {{
                     int32_t nr_remain = cur_nc - jr;
                     int32_t cur_nr = std::min(nr_remain, nr);
@@ -616,6 +626,7 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
                         *kernel_time += std::chrono::duration<double>(t_kern_end - t_kern_start).count();
                     }}
                 }}
+                if (perf) perf_region_end(perf, &perf_snap, &perf->compute);
             }}
         }}
     }}
@@ -689,6 +700,7 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
     # 3. Copy static templates
     templates_dir = os.path.join(os.path.dirname(__file__), "templates")
     shutil.copy(os.path.join(templates_dir, "driver_benchmark.cpp"), out_dir)
+    shutil.copy(os.path.join(templates_dir, "perf_counters.h"), out_dir)
 
     # Process Makefile to optionally restrict datasets
     makefile_path = os.path.join(templates_dir, "Makefile")
