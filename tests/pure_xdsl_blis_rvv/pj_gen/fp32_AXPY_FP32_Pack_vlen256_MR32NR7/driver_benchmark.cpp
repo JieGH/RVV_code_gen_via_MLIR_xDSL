@@ -292,7 +292,7 @@ int main(int argc, char** argv) {
     if (!raw_log.is_open()) {
         cerr << "Warning: Could not open " << raw_log_name << " for writing." << endl;
     } else if (!raw_exists) {
-        raw_log << "Layer,M,N,K,Variant,Status,KerGOPs_Harmonic,KerGOPs_Min,KerGOPs_P5,KerGOPs_P95,KerGOPs_Max,KerGOPs_IQR,KerGOPs_Mean,KerGOPs_Std,KerGOPs_Median,RVV_Pack_GBs,Scl_Pack_GBs,RVV_Time_ms,Ref_Time_ms,Pack_Time_ms,Compute_Time_ms\n";
+        raw_log << "Layer,M,N,K,Variant,Status,KerGOPs_Harmonic,KerGOPs_Min,KerGOPs_P5,KerGOPs_P95,KerGOPs_Max,KerGOPs_IQR,KerGOPs_Mean,KerGOPs_Std,KerGOPs_Median,RVV_Pack_GBs,Scl_Pack_GBs,RVV_Time_ms,Ref_Time_ms,Vector_Pack_Time_ms,Scalar_Pack_Time_ms,Compute_Time_ms\n";
     }
 
     string summary_log_name = string("logs/summary_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + ".txt";
@@ -401,7 +401,8 @@ int main(int argc, char** argv) {
             double scl_bw;
             double rvv_time_ms;
             double ref_time_ms;
-            double pack_time_ms;
+            double vector_pack_time_ms;
+            double scalar_pack_time_ms;
             double compute_time_ms;
             double sample_rvv;
             double sample_ref;
@@ -528,7 +529,8 @@ int main(int argc, char** argv) {
             double scl_bw_val = 0.0;
             double rvv_time_val = 0.0;
             double ref_time_val = ref_time_val_global;
-            double pack_time_val = 0.0;
+            double vector_pack_time_val = 0.0;
+            double scalar_pack_time_val = 0.0;
             double compute_time_val = 0.0;
 
             if (status != "FAIL") {
@@ -544,6 +546,9 @@ int main(int argc, char** argv) {
                     total_pack_bytes += pb;
                 }
                 scl_bw_val = (double)total_pack_bytes / (total_scalar_pack_time * 1e9);
+                // Issue #7: this pass already runs to produce Scl_Pack_GBs above; expose
+                // its per-rep-averaged ms directly instead of adding a second timing pass.
+                scalar_pack_time_val = (total_scalar_pack_time / N_REPS) * 1000.0;
 
                 // Benchmark RVV
                 // Reset C again before RVV loop so it starts from the same clean state
@@ -600,11 +605,11 @@ int main(int argc, char** argv) {
                 // Isolated pack-vs-compute breakdown (issue #2): per-rep-averaged
                 // ms, separate from rvv_time_val (combined wall-clock incl. loop
                 // overhead) and rvv_bw_val (pack-only throughput in GB/s, not time).
-                pack_time_val = (total_rvv_pack_time / N_REPS) * 1000.0;
+                vector_pack_time_val = (total_rvv_pack_time / N_REPS) * 1000.0;
                 compute_time_val = (total_kernel_time / N_REPS) * 1000.0;
             }
 
-            variant_results.push_back({string(variant.name), status, ker_gflops_val, ker_gflops_min, ker_gflops_p5, ker_gflops_p95, ker_gflops_max, ker_gflops_iqr, ker_gflops_mean, ker_gflops_std, ker_gflops_median, rvv_bw_val, scl_bw_val, rvv_time_val, ref_time_val, pack_time_val, compute_time_val, sample_rvv, sample_ref, sample_i, sample_j, mc, nc, kc});
+            variant_results.push_back({string(variant.name), status, ker_gflops_val, ker_gflops_min, ker_gflops_p5, ker_gflops_p95, ker_gflops_max, ker_gflops_iqr, ker_gflops_mean, ker_gflops_std, ker_gflops_median, rvv_bw_val, scl_bw_val, rvv_time_val, ref_time_val, vector_pack_time_val, scalar_pack_time_val, compute_time_val, sample_rvv, sample_ref, sample_i, sample_j, mc, nc, kc});
 
             if (raw_log.is_open()) {
                 raw_log << label_str << "," << m << "," << n << "," << k << ","
@@ -617,7 +622,7 @@ int main(int argc, char** argv) {
                         << ker_gflops_median << ","
                         << rvv_bw_val << "," << scl_bw_val << ","
                         << rvv_time_val << "," << ref_time_val << ","
-                        << pack_time_val << "," << compute_time_val << endl;
+                        << vector_pack_time_val << "," << scalar_pack_time_val << "," << compute_time_val << endl;
             }
             
             free(Ac);

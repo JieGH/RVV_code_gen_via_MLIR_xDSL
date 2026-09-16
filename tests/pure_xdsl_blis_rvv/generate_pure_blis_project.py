@@ -186,6 +186,48 @@ def generate_header(
         f.write("#endif\n")
 
 
+def render_scalar_pack_functions(c_type_a: str, c_type_b: str) -> str:
+    """
+    Canonical scalar-pack reference implementation, matching `ext/RVV_ukernels_benchmark`'s
+    `gemm_blis.c` `pack_RB`/`pack_CB` (orderM='C', transM='N' branch) index-for-index.
+
+    Extracted to a single source of truth so the RVV pack correctness test (issue #7)
+    exercises the exact same code the benchmark pipeline compiles, not a hand-copied
+    duplicate that could silently drift from it.
+    """
+    return f"""
+static inline void pack_RB_scalar(int32_t mc, int32_t nc, {c_type_a}* M, int32_t ldM, {c_type_a}* Mc, int32_t RR) {{
+    int32_t i, j, ii, k, rr;
+    for (i = 0; i < mc; i += RR) {{
+        k = i * nc;
+        rr = std::min(mc - i, RR);
+        for (j = 0; j < nc; j++) {{
+            for (ii = 0; ii < rr; ii++) {{
+                Mc[k] = M[(j) * ldM + (i + ii)];
+                k++;
+            }}
+            k += (RR - rr);
+        }}
+    }}
+}}
+
+static inline void pack_CB_scalar(int32_t mc, int32_t nc, {c_type_b}* M, int32_t ldM, {c_type_b}* Mc, int32_t RR) {{
+    int32_t i, j, jj, k, nr;
+    for (j = 0; j < nc; j += RR) {{
+        k = j * mc;
+        nr = std::min(nc - j, RR);
+        for (i = 0; i < mc; i++) {{
+            for (jj = 0; jj < nr; jj++) {{
+                Mc[k] = M[(j + jj) * ldM + (i)];
+                k++;
+            }}
+            k += (RR - nr);
+        }}
+    }}
+}}
+"""
+
+
 def build_project(config: BLISProjectConfig, args):
     # Create project directory
     out_dir = config.out_dir()
@@ -419,37 +461,8 @@ def build_project(config: BLISProjectConfig, args):
         dispatch_body += "    }\n"
         dispatch_body += "}\n"
 
+    dispatch_body += render_scalar_pack_functions(c_type_a, c_type_b)
     dispatch_body += f"""
-static inline void pack_RB_scalar(int32_t mc, int32_t nc, {c_type_a}* M, int32_t ldM, {c_type_a}* Mc, int32_t RR) {{
-    int32_t i, j, ii, k, rr;
-    for (i = 0; i < mc; i += RR) {{
-        k = i * nc;
-        rr = std::min(mc - i, RR);
-        for (j = 0; j < nc; j++) {{
-            for (ii = 0; ii < rr; ii++) {{
-                Mc[k] = M[(j) * ldM + (i + ii)];
-                k++;
-            }}
-            k += (RR - rr);
-        }}
-    }}
-}}
-
-static inline void pack_CB_scalar(int32_t mc, int32_t nc, {c_type_b}* M, int32_t ldM, {c_type_b}* Mc, int32_t RR) {{
-    int32_t i, j, jj, k, nr;
-    for (j = 0; j < nc; j += RR) {{
-        k = j * mc;
-        nr = std::min(nc - j, RR);
-        for (i = 0; i < mc; i++) {{
-            for (jj = 0; jj < nr; jj++) {{
-                Mc[k] = M[(j + jj) * ldM + (i)];
-                k++;
-            }}
-            k += (RR - nr);
-        }}
-    }}
-}}
-
 void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c_type_a}* A, int32_t lda, {c_type_b}* B, int32_t ldb, {c_type_alpha} beta, {c_type_c}* C, int32_t ldc, {c_type_a}* Ac, {c_type_b}* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack) {{
 """
     if is_pinned:

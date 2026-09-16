@@ -81,6 +81,7 @@ ignore = [
 # those would just reformat generated-code text, not Python, so line length
 # isn't a meaningful signal here.
 "tests/pure_xdsl_blis_rvv/generate_pure_blis_project.py" = ["E501"]
+"tests/pure_xdsl_blis_rvv/test_pack_correctness.py" = ["E501"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
