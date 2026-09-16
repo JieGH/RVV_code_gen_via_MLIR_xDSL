@@ -113,7 +113,7 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
                         float* c_ptr = GET_PTR(C, offset_C);
                         float* a_packed = GET_PTR(Ac, ir * kc_pad);
                         float* b_packed = GET_PTR(Bc, jr * kc_pad);
-                        
+
                         auto t_kern_start = std::chrono::high_resolution_clock::now();
                         if (cur_mr < mr || cur_nr < nr) {
                             // Fringe tile: use a temp buffer to avoid OOB write by the 16x15 kernel

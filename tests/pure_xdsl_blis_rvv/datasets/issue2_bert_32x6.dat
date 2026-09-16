@@ -1,0 +1,4 @@
+# Issue #2 test matrix - BERT shapes pinned to MR32_NR6.
+# layer  M      N    K
+B1       1024   384  1024
+B5       1024   384  4096

@@ -188,7 +188,7 @@ def generate_header(
 
 def build_project(config: BLISProjectConfig, args):
     # Create project directory
-    out_dir = f"pj_gen/{config.datatype}_{config.method}_vlen{config.vlen}"
+    out_dir = config.out_dir()
     os.makedirs(out_dir, exist_ok=True)
 
     generated_variants = []
@@ -272,7 +272,6 @@ def build_project(config: BLISProjectConfig, args):
 
     b0_modules = []
     b1_modules = []
-    blis_modules = []
     pack_modules = []
     generated_microkernels_b0 = []
     generated_microkernels_b1 = []
@@ -467,7 +466,7 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
         # Search mode: function pointer tables indexed by dimension.
         dispatch_body += f"""    typedef void (*pack_CB_fn)({c_type_b}*, {c_type_b}*, size_t, size_t, size_t);
     typedef void (*pack_RB_fn)({c_type_a}*, {c_type_a}*, size_t, size_t, size_t);
-    
+
     static const pack_CB_fn pack_CB_funcs[] = {{
         nullptr,
 """
@@ -476,7 +475,7 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
                 f"        pack_CB_v_if_{config.method}_{config.datatype}_NR{dim},\n"
             )
         dispatch_body += """    };
-    
+
     static const pack_RB_fn pack_RB_funcs[] = {
         nullptr,
 """
@@ -597,7 +596,7 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
                         {c_type_c}* c_ptr = GET_PTR(C, offset_C);
                         {c_type_a}* a_packed = GET_PTR(Ac, ir * kc_pad);
                         {c_type_b}* b_packed = GET_PTR(Bc, jr * kc_pad);
-                        
+
                         auto t_kern_start = std::chrono::high_resolution_clock::now();
 {kernel_call_block}
                         auto t_kern_end = std::chrono::high_resolution_clock::now();
@@ -734,7 +733,7 @@ def main():
         )
         print("============================================================")
         build_project(config, args)
-        ordered_dirs.append(f"{config.datatype}_{config.method}_vlen{config.vlen}")
+        ordered_dirs.append(os.path.basename(config.out_dir()))
 
     with open("pj_gen/compile_order.txt", "w") as f:
         for d in ordered_dirs:

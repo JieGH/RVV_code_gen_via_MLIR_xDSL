@@ -31,8 +31,20 @@
     // the heuristic's 384 down to 128 cuts CV% roughly in half across the whole B3_M7
     // family (raw + Reuse8/12/24) without touching get_optim_mc_nc_kc. See
     // .scratch/issues/0001-b3-m7-packing-instability.md for the full before/after data.
-    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["testCase_repeat.dat"], true, 1000, {"B3_M7_": 128}],
+    // Superseded by the issue #2 rows below (same shape, dataset row now labeled "B3"),
+    // kept here as the original repro row for reference.
+    // ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["testCase_repeat.dat"], true, 1000, {"B3_M7_": 128}],
     // ["fp32", "AXPY_FP32_Pack", [16, 11], 256, "jbpi2", ["testCase.dat"], true, 1000]
     // ["fp32", "AXPY_FP32_Pack", [16, 17], 256, "jbpi2", ["testCase.dat"], true, 1000],
     // ["fp32", "AXPY_FP32_Pack", [16, 6], 256, "jbpi2", ["testCase.dat"], true, 1000]
+
+    // Issue #2 test matrix: pinned MR/NR per Square/BERT case (see issue #2 body for the
+    // full m/n/k table). Each pinned (mr, nr) gets its own row/dataset so they land in
+    // distinct pj_gen/ dirs (see config.compute_out_dir) instead of colliding on the same
+    // datatype/method/vlen output directory.
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue2_bert_16x15.dat"], true, 1000, {"B3": 128}],
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["issue2_bert_32x6.dat"], true, 1000],
+    // Square goes up to 5000^3; skip_ref_run + a reduced iteration count keep this group's
+    // on-board runtime to minutes instead of hours (see issue2_square_bert_32x7.dat header).
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["issue2_square_bert_32x7.dat"], true, 5]
 ]

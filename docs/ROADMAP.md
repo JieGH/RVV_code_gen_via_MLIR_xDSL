@@ -10,13 +10,17 @@ Each track is synchronized with an active GitHub issue. When an issue is worked 
 
 ### Track 1: Fixed-Dimension Evaluation & Packing/Compute Breakdown
 - **GitHub Issue:** [#2](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/2)
-- **Status:** `ready-for-agent`
+- **Status:** `results-landed` — all 10 cases ran on `jbpi` 2026-09-16 with the new
+  `Pack_Time_ms`/`Compute_Time_ms` breakdown; correctness not yet verified at these
+  shapes (`skip_ref_run=true` throughout) and a Square-shape perf regression vs. the
+  scalar-pack reference is still open. See `.scratch/issues/0002-fixed-dim-pack-compute-breakdown.md`.
 - **Objective:** Systematically evaluate the pure xDSL BLIS pipeline with fixed $(MR, NR)$ dimensions to measure:
   1. Total GFLOPs
   2. Isolated time breakdown: Packing ($Ac$ and $Bc$) vs. Microkernel compute execution
-- **Target Workload:** Real-world benchmark shapes (`B3_M7`, `B2_M5`, `L3–L7`).
+- **Target Workload:** 10-case Square (`S1-S5`, 1000-5000 square, all `32x7`) + BERT (`B1-B5`, `32x6`/`16x15`/`16x15`/`32x7`/`32x6`) matrix — see Issue #2 for the exact m/n/k/MRxNR table.
 - **Related Investigation:** Linked directly with Issue [#1 (B3_M7 RVV Packing Instability)](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/1).
-- **Workflow Skill:** `/diagnosing-bugs` → `/implement`
+- **Workflow Skill:** `/implement` (re-scoped from `/diagnosing-bugs` → `/implement`: this
+  track turned out to be a build/measurement task, not a bug hunt).
 
 ---
 

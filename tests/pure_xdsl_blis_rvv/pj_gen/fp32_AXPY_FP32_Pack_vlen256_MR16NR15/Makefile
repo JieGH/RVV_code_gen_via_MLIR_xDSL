@@ -28,7 +28,7 @@ $(TARGET): $(CXX_OBJS) $(C_OBJS)
 clean:
 	rm -f *.o $(TARGET)
 
-DATASETS_PATTERN ?= ../../datasets/testCase_repeat.dat
+DATASETS_PATTERN ?= ../../datasets/issue2_bert_16x15.dat
 
 run: $(TARGET)
 	@mkdir -p logs

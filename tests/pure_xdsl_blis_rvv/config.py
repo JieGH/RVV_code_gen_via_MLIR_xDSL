@@ -101,3 +101,17 @@ class BLISProjectConfig:
         os.makedirs(os.path.dirname(file_path) or ".", exist_ok=True)
         with open(file_path, "w") as f:
             json.dump(self.__dict__, f, indent=4)
+
+    def out_dir(self) -> str:
+        """pj_gen/ output directory for this config.
+
+        Pinned configs get an MR/NR suffix so that multiple pinned rows sharing
+        the same (datatype, method, vlen) — e.g. issue #2's per-shape MR/NR
+        matrix — land in distinct directories instead of silently overwriting
+        each other in generate order.
+        """
+        out_dir = f"pj_gen/{self.datatype}_{self.method}_vlen{self.vlen}"
+        if self.is_pinned:
+            mr, nr = self.mr_nr_family[0]
+            out_dir += f"_MR{mr}NR{nr}"
+        return out_dir
