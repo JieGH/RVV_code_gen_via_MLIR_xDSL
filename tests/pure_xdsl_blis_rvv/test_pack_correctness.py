@@ -131,6 +131,10 @@ def _fill_matrix_source():
     # Encodes (row, col) into the value so a transposition/stride bug shows up as a
     # mismatch instead of silently comparing equal (a symmetric fill wouldn't).
     return """
+static int32_t round_up_to_multiple(int32_t x, int32_t multiple) {
+    return ((x + multiple - 1) / multiple) * multiple;
+}
+
 static void fill_known(float* M, int32_t ldM, int32_t rows, int32_t cols) {
     for (int32_t c = 0; c < cols; c++)
         for (int32_t r = 0; r < rows; r++)
@@ -212,8 +216,8 @@ int main() {{
         // destination buffer must be sized on the padded dimension, not mc*nc
         // directly, or the last block overflows it. Padding slots are never written,
         // so zero-initializing both buffers keeps the comparison meaningful there.
-        int32_t mc_pad = ((c.mc + c.RR - 1) / c.RR) * c.RR;
-        int32_t nc_pad = ((c.nc + c.RR - 1) / c.RR) * c.RR;
+        int32_t mc_pad = round_up_to_multiple(c.mc, c.RR);
+        int32_t nc_pad = round_up_to_multiple(c.nc, c.RR);
 
         float* A = new float[ldM_A * c.nc];
         float* Ac_scalar = new float[(size_t)mc_pad * c.nc]();
@@ -340,22 +344,30 @@ def _lower_rvv_pack_functions_to_cpp(rr: int, vlen: int, tmp_path: Path) -> str:
     return cpp_path.read_text()
 
 
+def _ssh_via_jump(
+    remote_cmd: str, connect_timeout: int, overall_timeout: int, batch_mode: bool = False
+) -> subprocess.CompletedProcess[str]:
+    """Runs `remote_cmd` on BOARD_HOST, reached through JUMP_HOST (double-hop SSH:
+    the board is only reachable from the jump host, not directly)."""
+    jump_opts = ["-o", f"ConnectTimeout={connect_timeout}"]
+    if batch_mode:
+        jump_opts += ["-o", "BatchMode=yes"]
+    return subprocess.run(
+        [
+            "ssh",
+            *jump_opts,
+            JUMP_HOST,
+            f"ssh -o ConnectTimeout={connect_timeout} {BOARD_HOST} '{remote_cmd}'",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=overall_timeout,
+    )
+
+
 def _board_reachable() -> bool:
     try:
-        proc = subprocess.run(
-            [
-                "ssh",
-                "-o",
-                "ConnectTimeout=6",
-                "-o",
-                "BatchMode=yes",
-                JUMP_HOST,
-                f"ssh -o ConnectTimeout=6 -o BatchMode=yes {BOARD_HOST} 'echo OK'",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=20,
-        )
+        proc = _ssh_via_jump("echo OK", connect_timeout=6, overall_timeout=20, batch_mode=True)
         return proc.returncode == 0 and "OK" in proc.stdout
     except (subprocess.TimeoutExpired, OSError):
         return False
@@ -402,10 +414,10 @@ int main() {{
     // *other* branch of the reference's if/else (row-major source access) — it is
     // generated but never wired into the dispatcher, so its oracle is the reference
     // function's else-branch directly, not pack_*_scalar.
-    int32_t mc_pad = ((mc + RR - 1) / RR) * RR;
+    int32_t mc_pad = round_up_to_multiple(mc, RR);
     // CB's RR-blocked dimension is its second argument (N-tile width, `mc` here),
     // not its first (`kc`) — see pack_CB_scalar(mc_param=kc, nc_param=mc, ...) below.
-    int32_t nc_pad = ((mc + RR - 1) / RR) * RR;
+    int32_t nc_pad = round_up_to_multiple(mc, RR);
 
     float* A = new float[ldM_A * kc];
     float* Ac_vec_if = new float[(size_t)mc_pad * kc]();
@@ -481,18 +493,7 @@ int main() {{
         "rvv_pack_correctness.cpp -o rvv_pack_correctness.x && "
         "./rvv_pack_correctness.x"
     )
-    run_proc = subprocess.run(
-        [
-            "ssh",
-            "-o",
-            "ConnectTimeout=15",
-            JUMP_HOST,
-            f"ssh -o ConnectTimeout=15 {BOARD_HOST} '{remote_cmd}'",
-        ],
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
+    run_proc = _ssh_via_jump(remote_cmd, connect_timeout=15, overall_timeout=120)
 
     assert run_proc.returncode == 0, (
         f"RVV pack correctness check failed on board:\n"
