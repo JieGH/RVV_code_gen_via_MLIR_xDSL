@@ -2,6 +2,14 @@
 
 Generate RVV GEMM microkernels locally, sync them to a RISC-V board, run benchmarks, and fetch results back to your host.
 
+## Introduction
+
+This project generates high-performance RISC-V Vector (RVV) microkernels and macrokernels for BLIS-family GEMM using [xDSL](https://github.com/xdslproject/xdsl) and MLIR compiler pipelines, replacing static handwritten C benchmarks with a parameterized, compiler-driven project generator.
+
+A Python/xDSL project generator emits self-contained kernel families (register-tiled microkernels, packing routines, and macrokernel loop structure) for a target RISC-V board, using an analytical cache model to size blocking dimensions. The end-to-end runner in this repo builds the toolchain, generates and cross-compiles the kernels, syncs them to the board over SSH, runs the benchmark suite there, and pulls the resulting logs, CSVs, and plots back to your host.
+
+See [CONTEXT.md](CONTEXT.md) for the domain vocabulary (microkernel, macrokernel, packer, kernel family, etc.) used throughout this codebase.
+
 ## Quick Start
 
 1. Install local tools
