@@ -12,6 +12,7 @@ So this script reports BOTH: our raw KerGOPs (what the dashboards plot) and our
 end-to-end 2mnk/(vector_pack + compute). Since Issue #13, these two should be
 nearly identical. Comparing either to the reference column is now apples-to-apples.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,12 +34,22 @@ def load_plan(result_dir: Path) -> list[dict]:
         if not line.strip() or line.startswith("#"):
             continue
         f = line.split("\t")
-        rows.append({
-            "case": f[0], "numid": int(f[1]),
-            "m": int(f[2]), "n": int(f[3]), "k": int(f[4]),
-            "pinned": f"{f[5]}x{f[6]}", "built": f"{f[7]}x{f[8]}",
-            "kind": f[9], "mc": f[10], "nc": f[11], "kc": f[12], "tag": f[13],
-        })
+        rows.append(
+            {
+                "case": f[0],
+                "numid": int(f[1]),
+                "m": int(f[2]),
+                "n": int(f[3]),
+                "k": int(f[4]),
+                "pinned": f"{f[5]}x{f[6]}",
+                "built": f"{f[7]}x{f[8]}",
+                "kind": f[9],
+                "mc": f[10],
+                "nc": f[11],
+                "kc": f[12],
+                "tag": f[13],
+            }
+        )
     return rows
 
 
@@ -52,7 +63,7 @@ def load_reference(result_dir: Path) -> dict[tuple[str, int], tuple[float, str]]
     """
     out: dict[tuple[str, int], tuple[float, str]] = {}
     for csv_path in sorted(result_dir.glob("result_*.csv")):
-        stem = csv_path.stem[len("result_"):]
+        stem = csv_path.stem[len("result_") :]
         if "_" in stem:
             tag, variant = stem.rsplit("_", 1)
         else:
@@ -78,9 +89,14 @@ def load_reference(result_dir: Path) -> dict[tuple[str, int], tuple[float, str]]
 def discover_runs(explicit: list[str] | None) -> list[Path]:
     if explicit:
         return [LOGS / r for r in explicit]
-    runs = sorted((d for d in LOGS.glob("run_*") if
-                   (d / "all_raw_fp32_AXPY_FP32_Pack.txt").is_file()),
-                  key=lambda d: d.name)
+    runs = sorted(
+        (
+            d
+            for d in LOGS.glob("run_*")
+            if (d / "all_raw_fp32_AXPY_FP32_Pack.txt").is_file()
+        ),
+        key=lambda d: d.name,
+    )
     return runs[-5:]
 
 
@@ -100,7 +116,8 @@ def load_ours(runs: list[Path]) -> dict[str, dict]:
         cp = statistics.mean(float(r["Compute_Time_ms"]) for r in rows)
         out[case] = {
             "ker": statistics.mean(float(r["KerGOPs_Median"]) for r in rows),
-            "vpack_ms": vp, "compute_ms": cp,
+            "vpack_ms": vp,
+            "compute_ms": cp,
             "pack_frac": vp / (vp + cp) if (vp + cp) else 0.0,
             "e2e": 2.0 * m * n * k / ((vp + cp) * 1e6) if (vp + cp) else 0.0,
             "nruns": len(rows),
@@ -109,12 +126,21 @@ def load_ours(runs: list[Path]) -> dict[str, dict]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--result-dir", type=Path, required=True,
-                    help="logs/refbase_<stamp>/ produced by run_ref_baseline.sh")
-    ap.add_argument("--runs", nargs="*", default=None,
-                    help="our run_* log dirs to average (default: latest 5)")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "--result-dir",
+        type=Path,
+        required=True,
+        help="logs/refbase_<stamp>/ produced by run_ref_baseline.sh",
+    )
+    ap.add_argument(
+        "--runs",
+        nargs="*",
+        default=None,
+        help="our run_* log dirs to average (default: latest 5)",
+    )
     args = ap.parse_args()
 
     if not args.result_dir.is_dir():
@@ -131,17 +157,20 @@ def main() -> int:
         return 1
 
     print()
-    print(f"  Ours      : mean of {len(runs)} run(s): "
-          + ", ".join(r.name for r in runs))
+    print(
+        f"  Ours      : mean of {len(runs)} run(s): " + ", ".join(r.name for r in runs)
+    )
     print(f"  Reference : {args.result_dir.name}")
     print()
     print("  'ref' is pack-INCLUSIVE. Compare it against 'e2e', not against 'Ker'.")
     print("  'kern' is the reference kernel variant that won this case.")
     print()
 
-    hdr = (f"  {'case':4} {'shape':16} {'pin':>5} {'built':>5} {'kind':>7} "
-           f"{'ref':>6} {'kern':>6} | {'Ker':>6} {'Ker/ref':>8} | "
-           f"{'pack%':>6} {'e2e':>6} {'e2e/ref':>8}")
+    hdr = (
+        f"  {'case':4} {'shape':16} {'pin':>5} {'built':>5} {'kind':>7} "
+        f"{'ref':>6} {'kern':>6} | {'Ker':>6} {'Ker/ref':>8} | "
+        f"{'pack%':>6} {'e2e':>6} {'e2e/ref':>8}"
+    )
     print(hdr)
     print("  " + "-" * (len(hdr) - 2))
 
@@ -154,20 +183,27 @@ def main() -> int:
         g, variant = hit
         shape = f"{row['m']}x{row['n']}x{row['k']}"
         if o is None:
-            print(f"  {row['case']:4} {shape:16} {row['pinned']:>5} {row['built']:>5} "
-                  f"{row['kind']:>7} {g:6.2f} {variant:>6} | {'--':>6} {'--':>8} | "
-                  f"{'--':>6} {'--':>6} {'--':>8}   (no local run data)")
+            print(
+                f"  {row['case']:4} {shape:16} {row['pinned']:>5} {row['built']:>5} "
+                f"{row['kind']:>7} {g:6.2f} {variant:>6} | {'--':>6} {'--':>8} | "
+                f"{'--':>6} {'--':>6} {'--':>8}   (no local run data)"
+            )
             continue
-        print(f"  {row['case']:4} {shape:16} {row['pinned']:>5} {row['built']:>5} "
-              f"{row['kind']:>7} {g:6.2f} {variant:>6} | "
-              f"{o['ker']:6.2f} {100*(o['ker']/g-1):+7.1f}% | "
-              f"{100*o['pack_frac']:5.1f}% {o['e2e']:6.2f} {100*(o['e2e']/g-1):+7.1f}%")
+        print(
+            f"  {row['case']:4} {shape:16} {row['pinned']:>5} {row['built']:>5} "
+            f"{row['kind']:>7} {g:6.2f} {variant:>6} | "
+            f"{o['ker']:6.2f} {100 * (o['ker'] / g - 1):+7.1f}% | "
+            f"{100 * o['pack_frac']:5.1f}% {o['e2e']:6.2f} {100 * (o['e2e'] / g - 1):+7.1f}%"
+        )
 
     bracketed = sorted({r["case"] for r in plan if r["kind"] == "bracket"})
     if bracketed:
         print()
-        print("  NOTE: the reference ships no kernel at the pinned MR/NR for "
-              + ", ".join(bracketed) + ".")
+        print(
+            "  NOTE: the reference ships no kernel at the pinned MR/NR for "
+            + ", ".join(bracketed)
+            + "."
+        )
         print("        Those rows are the nearest even-NR neighbours, so they bracket")
         print("        the true reference number rather than matching it exactly.")
     return 0
