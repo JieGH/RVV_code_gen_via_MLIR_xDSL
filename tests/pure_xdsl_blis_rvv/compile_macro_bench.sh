@@ -146,27 +146,50 @@ ssh_board "cd ${REMOTE_DIR}/pj_gen && while read d; do (cd \"\$d\" && make clean
 echo ""; echo "$SEP"; echo " [4/4] Fetch Logs"; echo "$SEP"
 
 TIMESTAMP=$(date +"%Y-%m-%d_%H%M%S")
-TMP_LOG_DIR="tests/pure_xdsl_blis_rvv/logs/tmp_${TIMESTAMP}"
-mkdir -p "${TMP_LOG_DIR}"
+RUN_DIR="tests/pure_xdsl_blis_rvv/logs/run_${TIMESTAMP}"
+mkdir -p "${RUN_DIR}"
 
 # Rsync the logs folder while preserving the pj_gen project subdirectories locally
-rsync_board -am --include='*/' --include='logs/***' --exclude='*' "${RSYNC_TARGET}:${REMOTE_DIR}/pj_gen/" "${TMP_LOG_DIR}/"
+rsync_board -am --include='*/' --include='logs/***' --exclude='*' "${RSYNC_TARGET}:${REMOTE_DIR}/pj_gen/" "${RUN_DIR}/"
 
-# Reorganize locally into flat, timestamped directories for each configuration
-for proj_dir in "${TMP_LOG_DIR}"/*/; do
-    if [ -d "$proj_dir" ]; then
-        proj_name=$(basename "$proj_dir")
-        final_dir="tests/pure_xdsl_blis_rvv/logs/${proj_name}_${TIMESTAMP}"
-        mkdir -p "$final_dir"
-        # Move the raw and summary files out of the nested logs/ folder into the final directory
-        if [ -d "$proj_dir/logs" ]; then
-            mv "$proj_dir/logs/"* "$final_dir/" 2>/dev/null || true
-        fi
-        echo "  [OK] Fetched logs to ${final_dir}/"
+# One run = one timestamped directory. Flatten each project's nested logs/ into
+# <RUN_DIR>/<project>/ (raw/summary/perf per project, unchanged), and additionally
+# build one merged CSV per log kind (all_raw_*.txt, all_perf_*.txt, all_summary_*.txt)
+# across every project in this run, tagged by a leading Project column, so cross-shape
+# comparisons don't require opening N separate files.
+for proj_dir in "${RUN_DIR}"/*/; do
+    [ -d "$proj_dir" ] || continue
+    proj_name=$(basename "$proj_dir")
+    if [ -d "${proj_dir}logs" ]; then
+        mv "${proj_dir}logs/"* "$proj_dir" 2>/dev/null || true
+        rmdir "${proj_dir}logs" 2>/dev/null || true
     fi
+    for f in "$proj_dir"*.txt; do
+        [ -f "$f" ] || continue
+        kind=$(basename "$f")  # e.g. raw_fp32_AXPY_FP32_Pack.txt
+        merged="${RUN_DIR}/all_${kind}"
+        if [[ "$kind" == summary_* ]]; then
+            { echo "=== ${proj_name} ==="; cat "$f"; echo ""; } >> "$merged"
+        else
+            if [ ! -f "$merged" ]; then
+                head -1 "$f" | sed 's/^/Project,/' > "$merged"
+            fi
+            tail -n +2 "$f" | sed "s/^/${proj_name},/" >> "$merged"
+        fi
+    done
+    echo "  [OK] Fetched logs to ${proj_dir}"
 done
+echo "  [OK] Merged cross-project results into ${RUN_DIR}/all_*.txt"
 
-rm -rf "${TMP_LOG_DIR}"
+# Per-case comparison table (pack/compute ms, pack % of total, KerGOPs, Ref GOPs,
+# speedup vs ref, Vector Pack Gain %) built from all_raw_*.txt. See docs/metrics.md.
+# A bug here must not fail the whole script: the board run and log fetch above
+# already succeeded and are safely on disk regardless of what happens next.
+if python3 tests/pure_xdsl_blis_rvv/summarize_run.py "${RUN_DIR}"; then
+    echo "  [OK] Wrote comparison table to ${RUN_DIR}/comparison.md"
+else
+    echo "  [WARN] comparison.md generation failed (see above); raw logs are still in ${RUN_DIR}"
+fi
 
 echo ""
 echo "$SEP"
