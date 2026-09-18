@@ -57,6 +57,60 @@ static double cv_pct_of(vector<double> vals) {
     return median > 0 ? 100.0 * std::sqrt(sq / vals.size()) / median : std::nan("");
 }
 
+// Issue #9: shared formatting helpers so the live per-variant console block below and
+// the top-1 case summary line stay byte-for-byte in sync (both used to hand-roll this
+// bracket independently), and so they match summarize_run.py's comparison.md columns
+// (see that file's identically-named helpers -- kept in sync by convention, not by
+// sharing code across languages).
+static string short_variant_name(const string& name) {
+    // "MR16_NR15" -> "16x15"
+    string s = name;
+    size_t pos = s.find("MR");
+    if (pos != string::npos) s.replace(pos, 2, "");
+    pos = s.find("_NR");
+    if (pos != string::npos) s.replace(pos, 3, "x");
+    return s;
+}
+
+static string jitter_bracket(double min_v, double p5, double p95, double max_v, double iqr,
+                              double std_, double median) {
+    double cv_pct = (median > 0) ? (std_ / median) * 100.0 : 0.0;
+    double max_md = (median > 0) ? (max_v / median) : 0.0;
+    ostringstream ss;
+    ss << "[min:" << fixed << setprecision(1) << min_v
+       << ", p5:" << p5
+       << ", p95:" << p95
+       << ", max:" << max_v
+       << ", iqr:" << iqr
+       << ", s:" << std_
+       << ", CV:" << setprecision(0) << cv_pct << "%"
+       << ", mx/md:" << setprecision(2) << max_md << "]";
+    return ss.str();
+}
+
+static string pct_of_total(double part_ms, double compute_ms) {
+    double total = part_ms + compute_ms;
+    if (total <= 0) return "N/A";
+    ostringstream ss;
+    ss << fixed << setprecision(1) << (100.0 * part_ms / total) << "%";
+    return ss.str();
+}
+
+static string gain_pct(double scalar_ms, double vector_ms) {
+    if (scalar_ms <= 0) return "N/A";
+    double gain = 100.0 * (scalar_ms - vector_ms) / scalar_ms;
+    ostringstream ss;
+    ss << (gain >= 0 ? "+" : "") << fixed << setprecision(1) << gain << "%";
+    return ss.str();
+}
+
+static string perf_field(bool valid, double v, int decimals, const char* suffix) {
+    if (!valid || v != v) return "N/A";  // v != v catches NaN
+    ostringstream ss;
+    ss << fixed << setprecision(decimals) << v << suffix;
+    return ss.str();
+}
+
 // Generate random data
 template <typename T>
 void fill_random(T* ptr, size_t size) {
@@ -367,6 +421,7 @@ int main(int argc, char** argv) {
     cout << "   - s        : Standard deviation of Kernel GOPs across all runs\n";
     cout << "   - CV%      : Coefficient of Variation (s / median). >15% indicates severe performance instability\n";
     cout << "   - mx/md    : Max / Median ratio. >1.25 indicates extreme cache sensitivity (thrashing)\n";
+    cout << "   Full definitions for every raw/perf log column: docs/metrics.md\n";
     cout << "\n";
 
     cout << "  Layer Name (M x N x K)       | Unroll | Median GOPs [min, p5, p95, max, iqr, s, CV%, mx/md] | RVV Pack | Scl Pack | IPC   | Status\n";
@@ -613,6 +668,7 @@ int main(int argc, char** argv) {
                 double total_kernel_time = 0.0;
                 total_pack_bytes = 0;
                 std::vector<double> rep_kt(N_REPS);
+                std::vector<double> rep_pt(N_REPS);
                 perf_gemm_reset(&perf);
 
                 auto start = chrono::high_resolution_clock::now();
@@ -625,6 +681,7 @@ int main(int argc, char** argv) {
                     total_kernel_time += kt;
                     total_pack_bytes += pb;
                     rep_kt[r] = kt;
+                    rep_pt[r] = pt;
                     rep_pack_cycles.push_back((double) (perf.pack.v[PERF_EV_CYCLES] - pack_cycles_before));
                     rep_compute_cycles.push_back((double) (perf.compute.v[PERF_EV_CYCLES] - compute_cycles_before));
                 }
@@ -637,13 +694,13 @@ int main(int argc, char** argv) {
                 chrono::duration<double> diff = end - start;
                 double avg_time = diff.count() / N_REPS;
                 
-                ker_gflops_val = (num_ops * N_REPS) / (total_kernel_time * 1e9);
+                ker_gflops_val = (num_ops * N_REPS) / ((total_kernel_time + total_rvv_pack_time) * 1e9);
                 
                 // Compute per-rep stats
                 std::vector<double> rep_gops(N_REPS);
                 double sum_gops = 0.0;
                 for (int r = 0; r < N_REPS; ++r) {
-                    rep_gops[r] = num_ops / (rep_kt[r] * 1e9);
+                    rep_gops[r] = num_ops / ((rep_kt[r] + rep_pt[r]) * 1e9);
                     sum_gops += rep_gops[r];
                 }
                 std::sort(rep_gops.begin(), rep_gops.end());
@@ -706,7 +763,51 @@ int main(int argc, char** argv) {
                         << rvv_time_val << "," << ref_time_val << ","
                         << vector_pack_time_val << "," << scalar_pack_time_val << "," << compute_time_val << endl;
             }
-            
+
+            // Issue #9: live per-variant console block mirroring comparison.md's columns
+            // (summarize_run.py), instead of only being visible after the whole run
+            // finishes and the offline summarizer processes the logs.
+            if (status != "FAIL") {
+                string ref_gops_str = "N/A", delta_str = "N/A";
+                if (ref_time_val > 0) {
+                    double ref_gops = num_ops / (ref_time_val / 1000.0) / 1e9;
+                    ostringstream rs; rs << fixed << setprecision(2) << ref_gops;
+                    ref_gops_str = rs.str();
+                    ostringstream ds; ds << fixed << setprecision(1) << (ker_gflops_median / ref_gops) << "x";
+                    delta_str = ds.str();
+                }
+                bool counters_valid = scalar_perf_valid && rvv_perf_valid;
+                double compute_flops_per_cycle = compute_metrics.cycles > 0 ? num_ops / compute_metrics.cycles : std::nan("");
+
+                cout << "\r                                                                               \r";
+                cout << "  +- " << label << " (" << dim_str << ") " << short_variant_name(variant.name)
+                     << " [" << variant.name << "]\n";
+                cout << "  |  Pack:  Scalar " << fixed << setprecision(2) << scalar_pack_time_val << "ms ("
+                     << pct_of_total(scalar_pack_time_val, compute_time_val) << ") | Vector "
+                     << vector_pack_time_val << "ms (" << pct_of_total(vector_pack_time_val, compute_time_val)
+                     << ") | Compute " << compute_time_val << "ms | Pack Gain "
+                     << gain_pct(scalar_pack_time_val, vector_pack_time_val) << "\n";
+                cout << "  |  GOPs:  " << setprecision(2) << ker_gflops_median << " (this run) "
+                     << jitter_bracket(ker_gflops_min, ker_gflops_p5, ker_gflops_p95, ker_gflops_max,
+                                        ker_gflops_iqr, ker_gflops_std, ker_gflops_median)
+                     << " | Ref " << ref_gops_str << " | Delta " << delta_str << "\n";
+                cout << "  |  Counters valid: " << (counters_valid ? "yes" : "no") << "\n";
+                cout << "  |    Vector Pack: IPC " << perf_field(rvv_perf_valid, vector_pack_metrics.ipc, 2, "")
+                     << " | L1D Rd Miss " << perf_field(rvv_perf_valid, vector_pack_metrics.l1d_read_miss_pct, 1, "%")
+                     << " | L1D Wr Miss " << perf_field(rvv_perf_valid, vector_pack_metrics.l1d_write_miss_pct, 1, "%")
+                     << " | Stall BE " << perf_field(rvv_perf_valid, vector_pack_metrics.stall_be_pct, 1, "%") << "\n";
+                cout << "  |    Scalar Pack: IPC " << perf_field(scalar_perf_valid, scalar_pack_metrics.ipc, 2, "")
+                     << " | L1D Rd Miss " << perf_field(scalar_perf_valid, scalar_pack_metrics.l1d_read_miss_pct, 1, "%")
+                     << " | L1D Wr Miss " << perf_field(scalar_perf_valid, scalar_pack_metrics.l1d_write_miss_pct, 1, "%")
+                     << " | Stall BE " << perf_field(scalar_perf_valid, scalar_pack_metrics.stall_be_pct, 1, "%") << "\n";
+                cout << "  |    Compute:     IPC " << perf_field(rvv_perf_valid, compute_metrics.ipc, 2, "")
+                     << " | L1D Rd Miss " << perf_field(rvv_perf_valid, compute_metrics.l1d_read_miss_pct, 1, "%")
+                     << " | L1D Wr Miss " << perf_field(rvv_perf_valid, compute_metrics.l1d_write_miss_pct, 1, "%")
+                     << " | Stall BE " << perf_field(rvv_perf_valid, compute_metrics.stall_be_pct, 1, "%")
+                     << " | FLOPs/Cyc " << perf_field(rvv_perf_valid, compute_flops_per_cycle, 2, "") << "\n";
+                cout << "  +- " << status_str << " (mc:" << mc << " nc:" << nc << " kc:" << kc << ")" << endl;
+            }
+
             free(Ac);
             free(Bc);
         }
@@ -724,27 +825,13 @@ int main(int argc, char** argv) {
         ss << "▶ " << left << setw(22) << problem_str << " | ";
         if (!variant_results.empty()) {
             auto& vr = variant_results[0];
-            
-            // Simplify "MR16_NR15" to "16x15"
-            string short_name = vr.name;
-            size_t pos = short_name.find("MR");
-            if (pos != string::npos) short_name.replace(pos, 2, "");
-            pos = short_name.find("_NR");
-            if (pos != string::npos) short_name.replace(pos, 3, "x");
 
-            double cv_pct = (vr.ker_gflops_median > 0) ? (vr.ker_gflops_std / vr.ker_gflops_median) * 100.0 : 0.0;
-            double max_md = (vr.ker_gflops_median > 0) ? (vr.ker_gflops_max / vr.ker_gflops_median) : 0.0;
+            string short_name = short_variant_name(vr.name);
 
-            ss << left << setw(6) << short_name << " " 
+            ss << left << setw(6) << short_name << " "
                  << right << setw(5) << fixed << setprecision(2) << vr.ker_gflops_median << " KerGOPs "
-                 << "[min:" << fixed << setprecision(1) << vr.ker_gflops_min 
-                 << ", p5:" << vr.ker_gflops_p5
-                 << ", p95:" << vr.ker_gflops_p95
-                 << ", max:" << vr.ker_gflops_max 
-                 << ", iqr:" << vr.ker_gflops_iqr
-                 << ", s:" << vr.ker_gflops_std 
-                 << ", CV:" << fixed << setprecision(0) << cv_pct << "%"
-                 << ", mx/md:" << fixed << setprecision(2) << max_md << "] | "
+                 << jitter_bracket(vr.ker_gflops_min, vr.ker_gflops_p5, vr.ker_gflops_p95, vr.ker_gflops_max,
+                                    vr.ker_gflops_iqr, vr.ker_gflops_std, vr.ker_gflops_median) << " | "
                  << right << setw(4) << fixed << setprecision(1) << vr.rvv_bw << " GB/s Pk | "
                  << right << setw(4) << fixed << setprecision(1) << vr.scl_bw << " GB/s Scl | "
                  << "IPC:" << fixed << setprecision(2) << vr.compute_ipc << " | ";
