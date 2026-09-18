@@ -11,7 +11,7 @@ ARCH_CONFIGS = {
         # Cache Level 2
         "NL2": 1024,
         "CL2": 64,
-        "WL2": 8,
+        "WL2": 8,  # must match modelLevel/archs/bananapi.h (issue #12/#11 finding 1)
         # Cache Level 3
         "NL3": 4096,
         "CL3": 64,
@@ -25,7 +25,7 @@ ARCH_CONFIGS = {
         # Cache Level 2
         "NL2": 1024,
         "CL2": 64,
-        "WL2": 8,
+        "WL2": 8,  # must match modelLevel/archs/bananapi.h (issue #12/#11 finding 1)
         # Cache Level 3
         "NL3": 4096,
         "CL3": 64,
