@@ -12,6 +12,19 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+// Issue #14: instrumentation switch.
+//
+// Every timed region costs a pair of clock reads, and the per-tile pair costs ~125-160
+// ns on jbpi -- roughly half of it lands inside Compute_Time_ms and half falls between
+// tiles, where no timer is running and so it is charged to no column at all. Building
+// with -DRVV_INSTRUMENTED=0 compiles the clock pairs and the counter reads out
+// entirely, leaving only the harness's one wall-clock read per rep: the same shape as
+// the reference design's single gettimeofday. That build reports no pack/compute
+// breakdown and no counters -- use the default build for those.
+#ifndef RVV_INSTRUMENTED
+#define RVV_INSTRUMENTED 1
+#endif
+
 #define PERF_NUM_EVENTS 10
 
 enum {
@@ -104,6 +117,11 @@ static inline void perf_gemm_close(perf_gemm_counters* p) {
 }
 
 static inline void perf_gemm_open(perf_gemm_counters* p) {
+    memset(p, 0, sizeof(*p));
+    for (int i = 0; i < PERF_NUM_EVENTS; i++) p->member_fds[i] = -1;
+    p->fd = -1;
+
+#if RVV_INSTRUMENTED
 #define PERF_CACHE_EV(id, op, res) \
     ((PERF_COUNT_HW_CACHE_##id) | ((PERF_COUNT_HW_CACHE_OP_##op) << 8) | ((PERF_COUNT_HW_CACHE_RESULT_##res) << 16))
     static const struct { uint32_t type; uint64_t config; } events[PERF_NUM_EVENTS] = {
@@ -119,9 +137,6 @@ static inline void perf_gemm_open(perf_gemm_counters* p) {
         {PERF_TYPE_HARDWARE, PERF_COUNT_HW_BRANCH_MISSES},
     };
 #undef PERF_CACHE_EV
-    memset(p, 0, sizeof(*p));
-    for (int i = 0; i < PERF_NUM_EVENTS; i++) p->member_fds[i] = -1;
-    p->fd = -1;
 
     for (int i = 0; i < PERF_NUM_EVENTS; i++) {
         struct perf_event_attr pe;
@@ -147,6 +162,7 @@ static inline void perf_gemm_open(perf_gemm_counters* p) {
         return;
     }
     p->valid = 1;
+#endif  // RVV_INSTRUMENTED
 }
 
 static inline void perf_gemm_reset(perf_gemm_counters* p) {
@@ -162,14 +178,82 @@ static inline void perf_snapshot(perf_gemm_counters* p, perf_counts* out) {
 }
 
 static inline void perf_region_begin(perf_gemm_counters* p, perf_counts* snap) {
+#if RVV_INSTRUMENTED
     if (p->valid) perf_snapshot(p, snap);
+#else
+    (void) p;
+    (void) snap;
+#endif
 }
 
 static inline void perf_region_end(perf_gemm_counters* p, const perf_counts* snap, perf_counts* region) {
+#if RVV_INSTRUMENTED
     if (!p->valid) return;
-    perf_counts now;
+    // Zeroed because perf_snapshot leaves it untouched on a rejected read; the
+    // `p->valid &&` below then skips it, but only the initialiser makes that local.
+    perf_counts now = {};
     perf_snapshot(p, &now);
     if (p->valid && perf_counts_add_delta(region, snap, &now) != 0) p->valid = 0;
+#else
+    (void) p;
+    (void) snap;
+    (void) region;
+#endif
 }
+
+#ifdef __cplusplus
+
+#include <chrono>
+
+// Scoped wall-clock timer: adds its own lifetime, in seconds, to *sink. Under
+// RVV_INSTRUMENTED=0 the object holds nothing and the constructor does nothing, so
+// both clock reads are gone rather than merely branched around -- which is the point,
+// since the tax being measured away IS the pair of reads.
+class rvv_region_timer {
+#if RVV_INSTRUMENTED
+    std::chrono::high_resolution_clock::time_point start_;
+    double* sink_;
+
+  public:
+    explicit rvv_region_timer(double* sink)
+        : start_(std::chrono::high_resolution_clock::now()), sink_(sink) {}
+    ~rvv_region_timer() {
+        *sink_ += std::chrono::duration<double>(
+                      std::chrono::high_resolution_clock::now() - start_)
+                      .count();
+    }
+#else
+  public:
+    explicit rvv_region_timer(double*) {}
+#endif
+    rvv_region_timer(const rvv_region_timer&) = delete;
+    rvv_region_timer& operator=(const rvv_region_timer&) = delete;
+};
+
+// Scoped counter window: adds the group's delta over its lifetime to *region, skipping
+// any window the group was descheduled for. Construct it OUTSIDE the rvv_region_timer
+// it encloses, so its read() syscalls stay out of the wall-clock window.
+class rvv_perf_region {
+#if RVV_INSTRUMENTED
+    perf_gemm_counters* p_;
+    perf_counts* region_;
+    perf_counts snap_{};
+
+  public:
+    rvv_perf_region(perf_gemm_counters* p, perf_counts* region) : p_(p), region_(region) {
+        if (p_) perf_region_begin(p_, &snap_);
+    }
+    ~rvv_perf_region() {
+        if (p_) perf_region_end(p_, &snap_, region_);
+    }
+#else
+  public:
+    rvv_perf_region(perf_gemm_counters*, perf_counts*) {}
+#endif
+    rvv_perf_region(const rvv_perf_region&) = delete;
+    rvv_perf_region& operator=(const rvv_perf_region&) = delete;
+};
+
+#endif  // __cplusplus
 
 #endif // PERF_COUNTERS_H

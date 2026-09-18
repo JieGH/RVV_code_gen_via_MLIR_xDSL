@@ -131,9 +131,31 @@ families.
    accepted but unused). The reference has a specialized kernel for every (mr,nr)
    from 1x1 up to MRxNR and calls the right-sized one. So we do strictly more work
    on every fringe tile.
-2. **Our per-call timers cost us.** We bracket every microkernel invocation with a
-   `chrono::now()` pair, ~36.6k calls/rep at 1000^3 — roughly 1-3% of measured
-   `Compute_Time_ms`, which *deflates* our reported KerGOPs.
+2. **Our per-call timers cost us — far more than this file used to claim.** We
+   bracket every microkernel invocation with a `chrono::now()` pair, ~36.6k
+   calls/rep at 1000^3. The 1-3% figure previously quoted here was inferred from
+   `RVV_Time_ms − (Vector_Pack_Time_ms + Compute_Time_ms)`, which only sees the
+   sliver of the pair that falls *between* tiles. Measured directly by building
+   both ways (issue #14, `make INSTRUMENTED=0`), the real cost on jbpi is:
+
+   | case | instrumented `RVV_Time_ms` | uninstrumented | tax |
+   |---|---|---|---|
+   | B1 (1024x384x1024) | 118.8-119.5 | 98.6-101.4 | 14.6-17.0% |
+   | B5 (1024x384x4096) | 484.0-492.8 | 411.6-423.0 | 13.6-14.9% |
+   | B2 (384x384x64)    | 1.686 (mean of 5) | 1.500 (mean of 5) | 11.0% |
+
+   Ranges are across two A/B sessions on `jbpi`; the spread is board noise, the
+   sign and magnitude are stable.
+
+   A `chrono::now()` pair costs ~160 ns on this board (measured), which for B1's
+   24576 tiles/rep is only ~3.9 ms of the ~17-20 ms removed. The rest is the cost
+   of having an opaque external call sitting in the innermost loop; it cannot be
+   estimated from the timers themselves, only compiled out. B3 is excluded from
+   the table: it is the shape with the packing instability of issue #1 and its
+   uninstrumented numbers swing run-to-run (2.07-3.94 ms) rather than settling.
+
+   So any pack-inclusive number we quote from an instrumented build is **deflated
+   by roughly 11-17%**, not 1-3%. Use `--no-instr` for a headline figure.
 3. **The reference does no warm-up** and averages over however many reps fit in
    `TIMIN`. See the under-sampling warning `gen_ref_datasets.py` prints.
 4. **Neither side multiplies by alpha** — both kernels ignore the `alpha` argument

@@ -12,6 +12,7 @@ Usage: python3 summarize_run.py <run_dir>
 
 import csv
 import glob
+import math
 import os
 import re
 import sys
@@ -24,13 +25,21 @@ def _short_variant(name: str) -> str:
     return f"{m.group(1)}x{m.group(2)}" if m else name
 
 
+def _ms(value: float) -> str:
+    """Issue #14: an uninstrumented run has no inner timers, so its breakdown columns
+    are nan. Render that as N/A rather than letting the string "nan" into the table."""
+    return f"{value:.2f}" if math.isfinite(value) else "N/A"
+
+
 def _pct_of_total(part_ms: float, compute_ms: float) -> str:
     total = part_ms + compute_ms
-    return f"{100.0 * part_ms / total:.1f}%" if total > 0 else "N/A"
+    if not math.isfinite(total) or total <= 0:
+        return "N/A"
+    return f"{100.0 * part_ms / total:.1f}%"
 
 
 def _gain_pct(scalar_ms: float, vector_ms: float) -> str:
-    if scalar_ms <= 0:
+    if not math.isfinite(scalar_ms) or not math.isfinite(vector_ms) or scalar_ms <= 0:
         return "N/A"
     gain = 100.0 * (scalar_ms - vector_ms) / scalar_ms
     return f"+{gain:.1f}%" if gain >= 0 else f"{gain:.1f}%"
@@ -135,9 +144,9 @@ def build_comparison_rows(
                 "Case": r["Layer"],
                 "Shape (m×n×k)": f"{m}×{n}×{k}",
                 "MRxNR": _short_variant(r["Variant"]),
-                "Scalar Pack ms": f"{scalar_pack_ms:.2f}",
-                "Vector Pack ms": f"{vector_pack_ms:.2f}",
-                "Compute ms": f"{compute_ms:.2f}",
+                "Scalar Pack ms": _ms(scalar_pack_ms),
+                "Vector Pack ms": _ms(vector_pack_ms),
+                "Compute ms": _ms(compute_ms),
                 "Scalar Pack % of total": _pct_of_total(scalar_pack_ms, compute_ms),
                 "Vector Pack % of total": _pct_of_total(vector_pack_ms, compute_ms),
                 "KerGOPs (this run)": f"{ker_gops:.2f}",

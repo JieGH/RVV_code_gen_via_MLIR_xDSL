@@ -66,18 +66,17 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
                 memset(Bc + full_nc_elements, 0, pad_nc_elements * sizeof(float));
             }
 
-            // Counter reads sit outside the chrono window so wall-clock pack time is unperturbed.
-            perf_counts perf_snap;
-            if (perf) perf_region_begin(perf, &perf_snap);
-            auto t_pack_start_B = std::chrono::high_resolution_clock::now();
-            if (use_scalar_pack) {
-                pack_CB_scalar(cur_kc, cur_nc, b_ptr, ldb, Bc, nr);
-            } else {
-                pack_CB_direct(b_ptr, Bc, cur_kc, cur_nc, ldb);
+            // Counter reads sit outside the chrono window so wall-clock pack time
+            // is unperturbed. Both wrappers compile away under -DRVV_INSTRUMENTED=0.
+            {
+                rvv_perf_region _pack_counters(perf, perf ? &perf->pack : nullptr);
+                rvv_region_timer _pack_clock(pack_time);
+                if (use_scalar_pack) {
+                    pack_CB_scalar(cur_kc, cur_nc, b_ptr, ldb, Bc, nr);
+                } else {
+                    pack_CB_direct(b_ptr, Bc, cur_kc, cur_nc, ldb);
+                }
             }
-            auto t_pack_end_B = std::chrono::high_resolution_clock::now();
-            *pack_time += std::chrono::duration<double>(t_pack_end_B - t_pack_start_B).count();
-            if (perf) perf_region_end(perf, &perf_snap, &perf->pack);
             *pack_bytes += cur_kc * cur_nc * sizeof(float);
 
             float beta_actual = GET_BETA(pc, beta);
@@ -93,23 +92,26 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
                     memset(Ac + full_mc_elements, 0, pad_mc_elements * sizeof(float));
                 }
 
-                if (perf) perf_region_begin(perf, &perf_snap);
-                auto t_pack_start_A = std::chrono::high_resolution_clock::now();
-                if (use_scalar_pack) {
-                    pack_RB_scalar(cur_mc, cur_kc, a_ptr, lda, Ac, mr);
-                } else {
-                    pack_RB_direct(a_ptr, Ac, cur_mc, cur_kc, lda);
+                // Counter reads sit outside the chrono window so wall-clock pack time
+                // is unperturbed. Both wrappers compile away under -DRVV_INSTRUMENTED=0.
+                {
+                    rvv_perf_region _pack_counters(perf, perf ? &perf->pack : nullptr);
+                    rvv_region_timer _pack_clock(pack_time);
+                    if (use_scalar_pack) {
+                        pack_RB_scalar(cur_mc, cur_kc, a_ptr, lda, Ac, mr);
+                    } else {
+                        pack_RB_direct(a_ptr, Ac, cur_mc, cur_kc, lda);
+                    }
                 }
-                auto t_pack_end_A = std::chrono::high_resolution_clock::now();
-                *pack_time += std::chrono::duration<double>(t_pack_end_A - t_pack_start_A).count();
-                if (perf) perf_region_end(perf, &perf_snap, &perf->pack);
                 *pack_bytes += cur_mc * cur_kc * sizeof(float);
 
                 // Compute counters cover the whole microkernel loop nest, not per tile,
-                // to keep read() syscalls off the hot path. They therefore include the
-                // per-tile chrono::now() pair (~200 instructions on jbpi) that
-                // Compute_Time_ms excludes.
-                if (perf) perf_region_begin(perf, &perf_snap);
+                // to keep read() syscalls off the hot path. In an instrumented build they
+                // therefore include the per-tile chrono::now() pair (~200 instructions on
+                // jbpi) that Compute_Time_ms excludes; under -DRVV_INSTRUMENTED=0 neither
+                // the counters nor that pair exist at all (issue #14).
+                {
+                rvv_perf_region _compute_counters(perf, perf ? &perf->compute : nullptr);
                 for (int32_t jr = 0; jr < cur_nc; jr += nr) {
                     int32_t nr_remain = cur_nc - jr;
                     int32_t cur_nr = std::min(nr_remain, nr);
@@ -123,7 +125,9 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
                         float* a_packed = GET_PTR(Ac, ir * kc_pad);
                         float* b_packed = GET_PTR(Bc, jr * kc_pad);
 
-                        auto t_kern_start = std::chrono::high_resolution_clock::now();
+                        // ~125-160 ns per tile in an instrumented build, which is why
+                        // this pair is the thing issue #14 compiles out.
+                        rvv_region_timer _kernel_clock(kernel_time);
                         if (cur_mr < mr || cur_nr < nr) {
                             // Fringe tile: use a temp buffer to avoid OOB write by the 32x6 kernel
                             float tmp_C[32 * 6];
@@ -140,11 +144,9 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
                         } else {
                             gemm_microkernel_v_dispatch_generic(cur_mr, cur_nr, kc_pad, alpha, a_packed, b_packed, beta_actual, c_ptr, ldc, mr, nr);
                         }
-                        auto t_kern_end = std::chrono::high_resolution_clock::now();
-                        *kernel_time += std::chrono::duration<double>(t_kern_end - t_kern_start).count();
                     }
                 }
-                if (perf) perf_region_end(perf, &perf_snap, &perf->compute);
+                }
             }
         }
     }

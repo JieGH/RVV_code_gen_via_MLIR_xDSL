@@ -171,3 +171,25 @@ def test_ref_gops_and_speedup_computed_from_the_standard_flop_count_formula(
     assert r["Ref GOPs"] == "2.00"
     assert r["Δ vs ref"] == "10.0×"
     assert r["additional info"] == "PASS"
+
+
+# Issue #14: an uninstrumented run (`make INSTRUMENTED=0`) writes the same schema with
+# the breakdown columns nan, and compile_macro_bench.sh merges it into its own
+# all_raw_*_noinstr.txt, which this script's glob picks up like any other. Real row,
+# from a jbpi A/B run of the 32x6 project on 2026-09-18.
+B1_ROW_NOINSTR = (
+    "B1,1024,384,1024,MR32_NR6,SKIP,8.16463,8.14996,8.15054,8.19485,8.19587,"
+    "0.0104934,8.16465,0.010476,8.16372,nan,nan,98.6342,0,nan,nan,nan"
+)
+
+
+def test_uninstrumented_rows_render_as_na_not_the_string_nan(tmp_path: Path) -> None:
+    rows = build_comparison_rows(str(_write_csv(tmp_path, [B1_ROW_NOINSTR])))
+
+    row = rows[0]
+    assert row["Case"] == "B1"
+    assert row["KerGOPs (this run)"] == "8.16"  # the one figure this build does produce
+    for column in ("Scalar Pack ms", "Vector Pack ms", "Compute ms",
+                   "Scalar Pack % of total", "Vector Pack % of total",
+                   "Vector Pack Gain %"):
+        assert row[column] == "N/A", f"{column} leaked a nan into the table"

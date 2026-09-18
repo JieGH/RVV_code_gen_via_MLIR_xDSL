@@ -42,6 +42,29 @@ the reference design's `2mnk / wall(gemm_blis)`. Before #13 it was
 before that fix are not comparable to newer ones. The column keeps the name
 `KerGOPs` so existing tooling still reads it.
 
+### Instrumented vs. uninstrumented builds (issue #14)
+
+The timers above are not free. Every microkernel tile is bracketed by a
+`chrono::now()` pair (~160 ns on jbpi) and every pack call and compute nest by a
+`perf_event_open()` read. `make INSTRUMENTED=0` — or `compile_macro_bench.sh
+--no-instr` — compiles all of it out.
+
+|  | `INSTRUMENTED=1` (default) | `INSTRUMENTED=0` |
+|---|---|---|
+| binary / logs | `test_gemm_*.x`, `raw_*.txt` | `test_gemm_*_noinstr.x`, `raw_*_noinstr.txt` |
+| `RVV_Time_ms` | real, but 11-17% inflated by the timers | real, no timer tax |
+| `KerGOPs_*` denominator | `kernel_time + rvv_pack_time` | that rep's own wall clock |
+| pack/compute breakdown, `*_Pack_GBs`, perf counters | yes | `nan` — they do not exist |
+
+Both builds do exactly the same arithmetic (verified `PASS` against the scalar
+reference either way) and run the same passes, including the scalar-pack pass,
+which doubles as the RVV loop's warm-up. They differ in the timers and nothing
+else, which is what makes an A/B between them meaningful.
+
+Use the default build for any question about *where* time goes, and the
+uninstrumented build for any headline number compared against the reference
+design. See `ref_baseline/README.md` for the measured tax per case.
+
 | Column | Meaning |
 |---|---|
 | `KerGOPs_Median` / `_Mean` / `_Std` | Median / mean / standard deviation of per-rep KerGOPs across all `N_REPS` reps |
@@ -52,7 +75,7 @@ before that fix are not comparable to newer ones. The column keeps the name
 | `CV%` (console only) | `Std / Median × 100`. Above ~15% indicates severe run-to-run instability |
 | `mx/md` (console only) | `Max / Median`. Above ~1.25 indicates extreme cache sensitivity (thrashing) — see `.scratch/issues/0001-b3-m7-packing-instability.md` |
 | `RVV_Pack_GBs` / `Scl_Pack_GBs` | Pack throughput (bytes packed / pack time), vector vs. scalar packer |
-| `RVV_Time_ms` | Total wall-clock per rep for the RVV pass (pack + compute + loop overhead +, since issue #8, perf-counter `read()` calls — the only column perf counters measurably perturb, ~2.4% on small cases) |
+| `RVV_Time_ms` | Total wall-clock per rep for the RVV pass (pack + compute + loop overhead + every timer and counter read the build contains). The only column that cannot lose time to the gaps between the inner timers, so it — not `Vector_Pack_Time_ms + Compute_Time_ms` — is what `compare_ref_baseline.py` puts against the reference (issue #14) |
 | `Ref_Time_ms` | Wall-clock for the single scalar reference GEMM run (`gemm_ref`), used only for correctness checking. `0` whenever `skip_ref_run: true` in `config.json` (true for every case in the current config, to keep board time bounded) |
 | `Vector_Pack_Time_ms` / `Scalar_Pack_Time_ms` | Per-rep-averaged wall-clock pack time, RVV vs. scalar packer (issue #7) |
 | `Compute_Time_ms` | Per-rep-averaged wall-clock microkernel time, excluding packing (issue #2) |

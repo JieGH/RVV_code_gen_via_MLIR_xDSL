@@ -29,7 +29,9 @@ import pytest
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 
-def _run_host_harness(body: str, tmp_path: Path) -> dict[str, float]:
+def _run_host_harness(
+    body: str, tmp_path: Path, extra_flags: list[str] | None = None
+) -> dict[str, float]:
     """Compiles `body` (statements inside main) against perf_counters.h and returns the
     `key=value` pairs it prints."""
     compiler = shutil.which("g++") or shutil.which("c++")
@@ -44,7 +46,7 @@ def _run_host_harness(body: str, tmp_path: Path) -> dict[str, float]:
     binary = tmp_path / "harness"
     compile_proc = subprocess.run(
         [compiler, "-O2", "-std=c++17", "-Wall", "-Werror", f"-I{TEMPLATES_DIR}",
-         str(src), "-o", str(binary)],
+         *(extra_flags or []), str(src), "-o", str(binary)],
         capture_output=True,
         text=True,
     )
@@ -346,3 +348,90 @@ def test_real_event_group_is_unmultiplexed_nonzero_and_stable_on_board(tmp_path:
     assert values["cycles_cv_pct"] < 10.0, (
         f"cycles too noisy across {BOARD_REPS} reps of a fixed workload: {values}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Issue #14: the instrumentation switch.
+#
+# Every timed region costs a pair of clock reads, and the per-tile pair is ~125-160 ns
+# on jbpi -- roughly half charged to Compute_Time_ms and half to no timer at all.
+# RVV_INSTRUMENTED=0 must compile the pairs and the counter reads away entirely, not
+# merely branch around them, so the uninstrumented build's timed region has the same
+# shape as the reference harness's: one wall-clock read per rep and nothing inside.
+# ---------------------------------------------------------------------------
+
+# Exercises both wrappers over a workload long enough for any clock to resolve, then
+# reports what survived compilation.
+_INSTRUMENTATION_PROBE = """
+    double pack_seconds = 0.0;
+    perf_gemm_counters perf;
+    perf_gemm_open(&perf);
+    perf_gemm_reset(&perf);
+    volatile double sink = 0.0;
+    {
+        rvv_perf_region _region(&perf, &perf.pack);
+        rvv_region_timer _timer(&pack_seconds);
+        for (int i = 0; i < 4000000; i++) sink += (double) i;
+    }
+    perf_gemm_close(&perf);
+    std::printf("macro=%d pack_seconds=%.9f pack_cycles=%llu timer_bytes=%zu ",
+                (int) RVV_INSTRUMENTED, pack_seconds,
+                (unsigned long long) perf.pack.v[PERF_EV_CYCLES],
+                sizeof(rvv_region_timer));
+"""
+
+
+def test_instrumentation_is_on_by_default(tmp_path: Path) -> None:
+    values = _run_host_harness(_INSTRUMENTATION_PROBE, tmp_path)
+
+    assert values["macro"] == 1, "RVV_INSTRUMENTED must default to on"
+    assert values["pack_seconds"] > 0.0, "the default build must still time its regions"
+
+
+def test_uninstrumented_build_records_no_time_and_no_counters(tmp_path: Path) -> None:
+    values = _run_host_harness(
+        _INSTRUMENTATION_PROBE, tmp_path, extra_flags=["-DRVV_INSTRUMENTED=0"]
+    )
+
+    assert values["macro"] == 0
+    assert values["pack_seconds"] == 0.0
+    assert values["pack_cycles"] == 0
+
+
+def test_uninstrumented_timer_carries_no_state_so_the_clock_reads_are_gone(
+    tmp_path: Path,
+) -> None:
+    """A runtime `if` would still leave the timepoint field and the clock call behind.
+    An empty object (sizeof 1, the C++ minimum) can only mean the pair was compiled out."""
+    off = _run_host_harness(
+        _INSTRUMENTATION_PROBE, tmp_path, extra_flags=["-DRVV_INSTRUMENTED=0"]
+    )
+    on = _run_host_harness(_INSTRUMENTATION_PROBE, tmp_path)
+
+    assert off["timer_bytes"] == 1
+    assert on["timer_bytes"] > 1
+
+
+def test_uninstrumented_build_never_opens_the_counter_group(tmp_path: Path) -> None:
+    """The host's perf_event_paranoid usually refuses the group anyway, so `valid` alone
+    proves nothing here. `sizeof` does: an instrumented region carries a whole
+    perf_counts snapshot, an uninstrumented one carries nothing to read into."""
+    probe = """
+    perf_gemm_counters perf;
+    perf_gemm_open(&perf);
+    std::printf("fd_negative=%d valid=%d region_bytes=%zu ",
+                (int) (perf.fd < 0), perf.valid, sizeof(rvv_perf_region));
+    perf_gemm_close(&perf);
+"""
+    off = _run_host_harness(probe, tmp_path, extra_flags=["-DRVV_INSTRUMENTED=0"])
+    on = _run_host_harness(probe, tmp_path)
+
+    assert off["fd_negative"] == 1
+    assert off["valid"] == 0
+    assert off["region_bytes"] == 1
+    assert on["region_bytes"] > sizeof_perf_counts()
+
+
+def sizeof_perf_counts() -> int:
+    """(3 + PERF_NUM_EVENTS) uint64 fields: the snapshot an instrumented region holds."""
+    return (2 + 10) * 8

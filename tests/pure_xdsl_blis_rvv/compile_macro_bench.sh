@@ -12,6 +12,10 @@ set -e
 #       --jump \
 #       --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 
 #
+# Add --no-instr for a timer-tax-free headline number (issue #14). That build reports
+# no pack/compute breakdown and logs to *_noinstr.txt, so it does not collide with a
+# normal run of the same project.
+#
 # Run this script from the project root!
 # ============================================================
 
@@ -24,6 +28,9 @@ RISCV_WORKSPACE="xdsl_rvv_microkernel"
 CONFIG="config.json"
 TEST_ARGS=""
 FORCE_NC=""
+# Issue #14: 1 keeps the per-tile timers and counters (default), 0 compiles them out
+# so RVV_Time_ms carries no timer tax. The two write to separate logs.
+INSTRUMENTED="1"
 
 SEP="------------------------------------------------------------"
 
@@ -38,6 +45,7 @@ while [[ "$#" -gt 0 ]]; do
         --config)          CONFIG="$2";              shift      ;;
         --scalar-pack)     TEST_ARGS="--scalar-pack"            ;;
         --force-nc)        FORCE_NC="$2";            shift      ;;
+        --no-instr)        INSTRUMENTED="0"                     ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
@@ -138,7 +146,7 @@ FORCE_NC_ENV=""
 if [ -n "${FORCE_NC}" ]; then
     FORCE_NC_ENV="RVV_FORCE_NC=${FORCE_NC} "
 fi
-ssh_board "cd ${REMOTE_DIR}/pj_gen && while read d; do (cd \"\$d\" && make clean && make all && ${FORCE_NC_ENV}make run TEST_ARGS=\"${TEST_ARGS}\"); done < compile_order.txt"
+ssh_board "cd ${REMOTE_DIR}/pj_gen && while read d; do (cd \"\$d\" && make clean && make all INSTRUMENTED=${INSTRUMENTED} && ${FORCE_NC_ENV}make run INSTRUMENTED=${INSTRUMENTED} TEST_ARGS=\"${TEST_ARGS}\"); done < compile_order.txt"
 
 # ============================================================
 # [4/4] Fetch logs
