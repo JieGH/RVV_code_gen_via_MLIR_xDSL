@@ -84,7 +84,9 @@ cd tests/pure_xdsl_blis_rvv && python3 generate_pure_blis_project.py --config co
 source .venv/bin/activate && python3 -m pytest tests/ -q
 ```
 
-These cover the generator, the cache model, packing correctness, the pad zeroing, and the protocol and build flags. They need no board.
+140 tests, of which 134 run on the host alone. Six, named `*_on_board`, ssh through `fej` to `jbpi` and run a harness there; they skip themselves when the board is unreachable. To run the host-only set: `python3 -m pytest tests/ -q -k "not on_board"`.
+
+The tests cover the generated packing and dispatch code (`test_pack_correctness`, `test_pad_zeroing`), the config and cache model, and the benchmark harness itself: the run protocol, core pinning, perf counters, and the comparison and summary scripts. Several read real logs under `logs/` for their expected values, so those log directories must stay.
 
 ## More
 
