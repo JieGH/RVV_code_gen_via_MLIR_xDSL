@@ -183,8 +183,8 @@ be noisier" guess. The 32x6 default runs used `iterations=30`, not the
 | `KerGOPs_P5` / `_P95` | 5th / 95th percentile — ignores bottom 5% OS-interrupt stalls and top 5% lucky spikes |
 | `KerGOPs_IQR` | Interquartile range (P75 − P25): how tightly the middle 50% of reps cluster |
 | `KerGOPs_Harmonic` | Harmonic mean of per-rep GOPs (weights slow reps more than the arithmetic mean) |
-| `CV%` (console only) | `Std / Median × 100`. Above ~15% indicates severe run-to-run instability |
-| `mx/md` (console only) | `Max / Median`. Above ~1.25 indicates extreme cache sensitivity (thrashing) — see `.scratch/issues/0001-b3-m7-packing-instability.md` |
+| `std-dev / median` (console only; formerly `CV%`) | `Std / Median × 100`. Above ~15% indicates severe run-to-run instability |
+| `fastest / median` (console only; formerly `mx/md`) | `Max / Median`. Above ~1.25 indicates extreme cache sensitivity (thrashing) — see `.scratch/issues/0001-b3-m7-packing-instability.md` |
 | `RVV_Pack_GBs` / `Scl_Pack_GBs` | Pack throughput (bytes packed / pack time), vector vs. scalar packer |
 | `RVV_Time_ms` | Total wall-clock per rep for the RVV pass (pack + compute + loop overhead + every timer and counter read the build contains). The only column that cannot lose time to the gaps between the inner timers, so it — not `Vector_Pack_Time_ms + Compute_Time_ms` — is what `compare_ref_baseline.py` puts against the reference (issue #14) |
 | `Ref_Time_ms` | Wall-clock for the single scalar reference GEMM run (`gemm_ref`), used only for correctness checking. `0` whenever `skip_ref_run: true` in `config.json` (true for every case in the current config, to keep board time bounded) |
@@ -225,35 +225,57 @@ comment thread); this is the raw `perf_event_open()` syscall instead.
   (~200 instructions / ~257 cycles on `jbpi`) that `Compute_Time_ms` excludes —
   measurable on small-tile shapes, negligible on large ones.
 
-## Live per-variant console block (issue #9)
+## Terminal report (console block per variant, one-line summary per case)
 
-As each variant finishes benchmarking, `driver_benchmark.cpp` prints a multi-line
-block to the console (in addition to the existing one-line best-of-case summary,
-which is unchanged and still what `summary_<dtype>_<method>.txt` records). The block
-surfaces the same fields as a `comparison.md` row, just reflowed as text instead of a
-wide table so it's readable live during a long run rather than only after
-`summarize_run.py` runs at the end:
+As each variant finishes, `driver_benchmark.cpp` prints a block (issue #9), then a
+one-line best-of-case summary that is also what `summary_<dtype>_<method>[_noinstr[_refproto]].txt`
+records. The wording was rewritten so that every figure says what it measures and a
+`[bracketed note]` says what is inside it, instead of bare abbreviations. In
+particular the old label `KerGOPs` is gone from the terminal: it looked like
+kernel-only speed, but since issue #13 it has included packing. **The log columns
+keep their old names** (`KerGOPs_*`, `RVV_Time_ms`, ...) so existing tooling still
+reads them; this table maps one to the other.
+
+Uninstrumented build (the default): only real numbers are printed, and the pack/compute
+split and counters are replaced by one line saying they need `--instr`:
 
 ```
-  +- B2 (384x384x64) 16x15 [MR16_NR15]
-  |  Pack:  Scalar 3.10ms (32.6%) | Vector 1.05ms (14.1%) | Compute 6.40ms | Pack Gain +66.1%
-  |  GOPs:  12.73 (this run) [min:11.6, p5:12.5, p95:12.8, max:12.9, iqr:0.2, s:0.1, CV:1%, mx/md:1.01] | Ref N/A | Delta N/A
-  |  Counters valid: yes
-  |    Vector Pack: IPC 0.72 | L1D Rd Miss 1.2% | L1D Wr Miss 3.4% | Stall BE 18.0%
-  |    Scalar Pack: IPC 0.55 | L1D Rd Miss 2.1% | L1D Wr Miss 6.6% | Stall BE 25.0%
-  |    Compute:     IPC 0.95 | L1D Rd Miss 0.5% | L1D Wr Miss 0.1% | Stall BE 8.0% | FLOPs/Cyc 20.97
-  +- ✅ PASS (mc:384 nc:384 kc:64)
+  +- B2 (384x384x64) 16x15 [MR16_NR15: 16 rows x 15 columns of C per microkernel tile]
+  |  Speed [GOPs = billions of operations per second = 2*M*N*K / time; higher is better]
+  |    by mean time      : 12.52 GOPs  [mean of 664 reps = 1.508 ms per GEMM call; the reference design's own formula]
+  |    by median rep     : 12.60 GOPs  [median of the per-rep GOPs; not thrown off by a few slow reps]
+  |    what is timed     : the whole GEMM call per rep  [pack A and B + microkernel compute + loop overhead; same region the reference design times]
+  |    spread per rep    : slowest 10.09 | 5th percentile 11.89 | 95th percentile 12.73 | fastest 12.77  [GOPs of single reps]
+  |                        middle-50% width 0.18 | std-dev 0.26 | std-dev / median 2% [above 15% = unstable] | fastest / median 1.01x [above 1.25 = cache thrashing]
+  |    reps              : 664  [until tmin=1 s, reference protocol]
+  |    naive scalar GEMM : not run  [skip_ref_run in config.json]
+  |    pack vs compute   : not available  [per-tile timers are compiled out of this build; rerun with --instr ...]
+  +- ⏭️ SKIP [correctness not checked: skip_ref_run in config.json] [cache blocking: mc=384 rows of A per block, ...]
+▶ B2 (384x384x64) | best variant 16x15 [...] | 12.52 GOPs by mean time [whole GEMM call, packing included] | 12.60 GOPs median rep | 664 reps | ...
 ```
 
-Every field means exactly what its `comparison.md` counterpart means (see below) —
-`Ref`/`Delta` read `N/A` under `skip_ref_run: true` and `Counters valid: no` blanks
-every counter field to `N/A`, same rules as the table. Printed once per `(case,
-variant)`, i.e. one block per row that would appear in `comparison.md`, not just for
-the case's winning variant. `short_variant_name`/`jitter_bracket` in
-`driver_benchmark.cpp` are the single source of formatting shared with the top-1
-summary line; `summarize_run.py`'s identically-named Python helpers are kept in sync
-by convention (cross-language, not shared code) — see that file's `_jitter_bracket`
-comment.
+The instrumented build (`--instr`) adds a "Time split per rep" table (vector pack, scalar
+pack, compute, vector-pack gain) and a "Hardware counters" table (instructions per
+cycle, L1 data-cache miss rates, back-end stall share, FLOPs per cycle), and labels its
+speed rows as a DEBUG number that must not be compared to the reference. Counters that
+cannot be read print `unavailable` instead of rows of `N/A`.
+
+| terminal label | log column it comes from | note |
+|---|---|---|
+| by mean time (GOPs) | `RVV_Time_ms` -> `2*M*N*K / (RVV_Time_ms * 1e6)` | the reference's formula, and `compare_ref_baseline.py`'s `e2e`. **The headline number** |
+| by median rep (GOPs) | `KerGOPs_Median` | robust to slow outliers; previously printed as "KerGOPs" |
+| slowest / 5th percentile / 95th percentile / fastest | `KerGOPs_Min` / `_P5` / `_P95` / `_Max` | GOPs of single reps |
+| middle-50% width / std-dev | `KerGOPs_IQR` / `KerGOPs_Std` | |
+| std-dev / median, fastest / median | `Std / Median`, `Max / Median` (console only) | printed with their thresholds (15%, 1.25) |
+| reps | `N_Reps` | |
+| naive scalar GEMM | `Ref_Time_ms` | our own slow triple loop, used only to check the answer. Previously printed as "Ref" / "Delta", which read like the reference design and are not |
+| vector pack / scalar pack / compute (ms) | `Vector_Pack_Time_ms` / `Scalar_Pack_Time_ms` / `Compute_Time_ms` | instrumented only |
+| GB/s [bytes packed / pack time] | `RVV_Pack_GBs` / `Scl_Pack_GBs` | instrumented only |
+
+Printed once per `(case, variant)`, not just for the case's winning variant. The
+terminal wording and `summarize_run.py`'s `comparison.md` columns are no longer
+kept identical; `comparison.md` still uses the compact names (`KerGOPs`, `Ref GOPs`,
+`Δ vs ref`) and has the same ambiguity, which is a possible follow-up.
 
 ## Comparison table (`comparison.md`)
 

@@ -18,6 +18,7 @@ logging, not kernel speed.
 """
 
 import csv
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -42,6 +43,7 @@ STUB_HEADER = """\
 #define CONFIG_VLEN 256
 #define CONFIG_ARCH "host"
 #define CONFIG_ITERATIONS %(iterations)d
+%(skip_ref)s
 
 struct NcOverrideEntry { const char* prefix; int nc; };
 static const NcOverrideEntry CONFIG_NC_OVERRIDES[] = { {"", 0} };
@@ -92,16 +94,20 @@ void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, in
 class Driver:
     """The driver compiled on the host for one value of RVV_INSTRUMENTED."""
 
-    def __init__(self, root: Path, instrumented: int):
+    def __init__(self, root: Path, instrumented: int, skip_ref_run: bool = False):
         compiler = shutil.which("g++") or shutil.which("c++")
         c_compiler = shutil.which("gcc") or shutil.which("cc")
         if compiler is None or c_compiler is None:
             pytest.skip("no native C/C++ compiler available for the host-side driver tests")
-        self.cwd = root / f"run_instr{instrumented}"
+        self.cwd = root / f"run_instr{instrumented}{'_skipref' if skip_ref_run else ''}"
         proj = self.cwd / "pj" / "proj"
         proj.mkdir(parents=True)
         (proj / "generated_kernels.h").write_text(
-            STUB_HEADER % {"iterations": CONFIG_ITERATIONS}
+            STUB_HEADER
+            % {
+                "iterations": CONFIG_ITERATIONS,
+                "skip_ref": "#define SKIP_REF_RUN 1" if skip_ref_run else "",
+            }
         )
         (proj / "stub_kernel.cpp").write_text(STUB_KERNEL)
         shutil.copy(TEMPLATES_DIR / "driver_benchmark.cpp", proj)
@@ -146,6 +152,11 @@ def uninstrumented(tmp_path_factory: pytest.TempPathFactory) -> Driver:
 
 
 @pytest.fixture(scope="module")
+def uninstrumented_skip_ref(tmp_path_factory: pytest.TempPathFactory) -> Driver:
+    return Driver(tmp_path_factory.mktemp("uninstr_skip"), instrumented=0, skip_ref_run=True)
+
+
+@pytest.fixture(scope="module")
 def instrumented(tmp_path_factory: pytest.TempPathFactory) -> Driver:
     return Driver(tmp_path_factory.mktemp("instr"), instrumented=1)
 
@@ -176,7 +187,8 @@ def test_the_reference_protocol_is_the_default_and_runs_reps_until_tmin(
     assert total_s > 0.3
     assert total_s - rep_s <= 0.3 + 0.005
     assert reps > CONFIG_ITERATIONS
-    assert f"Reps:  {reps} " in proc.stdout  # the rep count is printed, not just logged
+    # the rep count is printed, not just logged
+    assert re.search(rf"\breps\s*:\s*{reps}\s+\[until tmin=0\.3 s, reference protocol\]", proc.stdout)
 
 
 def test_naming_the_flag_explicitly_changes_nothing(uninstrumented: Driver):
@@ -321,6 +333,112 @@ def test_the_overview_marks_what_the_user_set_and_what_the_environment_set(
     assert "[--no-ref-protocol]" in warm.split("Protocol")[1].splitlines()[0]
     assert f"{CONFIG_ITERATIONS} fixed reps" in warm
     assert "BEFORE timing" in warm
+
+
+# ---------------------------------------------------------------------------
+# The terminal report. It has to say what each number measures, in words, so nobody has to
+# know that "Ker" once meant kernel-only. Bracketed notes explain what is inside a figure.
+# ---------------------------------------------------------------------------
+def _variant_block(stdout: str) -> str:
+    start = stdout.index("  +- T1")
+    return stdout[start : stdout.index("\u25b6", start)]
+
+
+def _summary_line(stdout: str) -> str:
+    return next(ln for ln in stdout.splitlines() if "\u25b6" in ln)
+
+
+def test_the_report_says_the_speed_is_the_whole_gemm_call_including_packing(
+    uninstrumented: Driver,
+):
+    proc = uninstrumented.run("--tmin", "0.05")
+    assert "KerGOPs" not in proc.stdout  # the old label promised kernel-only speed
+    block = _variant_block(proc.stdout)
+    assert "GOPs = billions of operations per second" in block
+    assert "the whole GEMM call per rep" in block
+    assert "pack A and B + microkernel compute" in block
+    assert "same region the reference design times" in block
+
+
+def test_the_headline_figure_is_by_mean_time_like_the_reference_and_matches_the_log(
+    uninstrumented: Driver,
+):
+    proc = uninstrumented.run("--tmin", "0.05")
+    (row,) = uninstrumented.raw_rows(REFPROTO_RAW)
+    by_mean = re.search(r"by mean time\s*:\s*([\d.]+) GOPs", proc.stdout)
+    assert by_mean, proc.stdout
+    expected = 2 * 32 * 32 * 32 / (float(row["RVV_Time_ms"]) * 1e6)
+    assert float(by_mean.group(1)) == pytest.approx(expected, abs=0.006)
+    assert "the reference design's own formula" in proc.stdout
+    assert re.search(r"by median rep\s*:\s*[\d.]+ GOPs", proc.stdout)
+
+
+def test_the_spread_is_spelled_out_not_abbreviated(uninstrumented: Driver):
+    block = _variant_block(uninstrumented.run("--tmin", "0.05").stdout)
+    for words in ("slowest", "5th percentile", "95th percentile", "fastest",
+                  "middle-50% width", "std-dev / median", "fastest / median"):
+        assert words in block
+    for acronym in ("p5:", "p95:", "iqr:", "mx/md", "CV:"):
+        assert acronym not in block
+
+
+def test_the_scalar_reference_is_not_called_ref_or_delta(uninstrumented: Driver):
+    block = _variant_block(uninstrumented.run("--tmin", "0.05").stdout)
+    assert "naive scalar GEMM" in block
+    assert "NOT the reference design" in block
+    assert "times faster" in block
+    assert "| Ref " not in block and "Delta" not in block
+
+
+def test_a_skipped_scalar_reference_is_said_to_be_skipped(uninstrumented_skip_ref: Driver):
+    block = _variant_block(uninstrumented_skip_ref.run("--tmin", "0.05").stdout)
+    assert "naive scalar GEMM : not run" in block
+    assert "skip_ref_run in config.json" in block
+    assert "times faster" not in block
+
+
+def test_the_uninstrumented_report_has_no_empty_breakdown_or_counter_lines(
+    uninstrumented: Driver,
+):
+    stdout = uninstrumented.run("--tmin", "0.05").stdout
+    block = _variant_block(stdout)
+    for empty in ("nanms", "L1D", "Stall", "IPC", "Counters valid", "GB/s"):
+        assert empty not in block and empty not in _summary_line(stdout)
+    assert "pack vs compute" in block and "rerun with --instr" in block
+
+
+def test_the_summary_line_names_the_best_variant_and_what_its_figures_mean(
+    uninstrumented: Driver,
+):
+    stdout = uninstrumented.run("--tmin", "0.05").stdout
+    line = _summary_line(stdout)
+    assert "best variant 4x4 [4 rows x 4 columns" in line
+    assert "GOPs by mean time [whole GEMM call, packing included]" in line
+    assert "reps" in line and "\u2705" in line and "[sample entry" in line
+    assert "cache blocking" in line
+    # the same text goes to the summary log
+    log = (uninstrumented.cwd / "logs" / "summary_fp32_STUB_noinstr_refproto.txt").read_text()
+    assert line in log
+
+
+def test_the_status_line_explains_the_cache_blocking_letters(uninstrumented: Driver):
+    block = _variant_block(uninstrumented.run("--tmin", "0.05").stdout)
+    assert "matches the naive scalar GEMM" in block
+    assert "mc=" in block and "rows of A per block" in block
+    assert "kc=" in block and "depth" in block
+
+
+def test_the_instrumented_report_gives_the_split_and_says_it_is_a_debug_number(
+    instrumented: Driver,
+):
+    stdout = instrumented.run().stdout
+    block = _variant_block(stdout)
+    assert "Time split per rep [pack = reorder A and B into contiguous buffers" in block
+    assert "vector pack" in block and "scalar pack" in block and "compute" in block
+    assert "DEBUG build, do not compare to the reference" in block
+    assert "hardware counters" in block.lower()  # a table when valid, "unavailable" here on the host
+    line = _summary_line(stdout)
+    assert "GB/s [bytes packed / pack time]" in line
 
 
 # ---------------------------------------------------------------------------

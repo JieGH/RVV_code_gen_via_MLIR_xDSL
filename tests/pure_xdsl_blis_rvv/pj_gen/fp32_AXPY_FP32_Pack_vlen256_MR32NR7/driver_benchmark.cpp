@@ -66,11 +66,10 @@ static double cv_pct_of(vector<double> vals) {
     return median > 0 ? 100.0 * std::sqrt(sq / vals.size()) / median : std::nan("");
 }
 
-// Issue #9: shared formatting helpers so the live per-variant console block below and
-// the top-1 case summary line stay byte-for-byte in sync (both used to hand-roll this
-// bracket independently), and so they match summarize_run.py's comparison.md columns
-// (see that file's identically-named helpers -- kept in sync by convention, not by
-// sharing code across languages).
+// Terminal-report helpers (issue #9 introduced the live per-variant block; it has since been
+// reworded so every figure says what it measures, with a [bracketed note] explaining what is
+// inside instead of a bare abbreviation). The offline comparison.md built by summarize_run.py
+// keeps its own, more compact column names.
 static string short_variant_name(const string& name) {
     // "MR16_NR15" -> "16x15"
     string s = name;
@@ -81,21 +80,31 @@ static string short_variant_name(const string& name) {
     return s;
 }
 
-static string jitter_bracket(double min_v, double p5, double p95, double max_v, double iqr,
-                              double std_, double median) {
-    double cv_pct = (median > 0) ? (std_ / median) * 100.0 : 0.0;
-    double max_md = (median > 0) ? (max_v / median) : 0.0;
+static string num(double v, int decimals) {
     ostringstream ss;
-    ss << "[min:" << fixed << setprecision(1) << min_v
-       << ", p5:" << p5
-       << ", p95:" << p95
-       << ", max:" << max_v
-       << ", iqr:" << iqr
-       << ", s:" << std_
-       << ", CV:" << setprecision(0) << cv_pct << "%"
-       << ", mx/md:" << setprecision(2) << max_md << "]";
+    ss << fixed << setprecision(decimals) << v;
     return ss.str();
 }
+
+// One "  |    label : value  [note]" row of the per-variant block. `note` says what is inside
+// the value; an empty label continues the row above.
+static void report_row(const string& label, const string& value, const string& note = "") {
+    cout << "  |    " << left << setw(18) << label << (label.empty() ? "  " : ": ") << value;
+    if (!note.empty()) cout << "  [" << note << "]";
+    cout << "\n";
+}
+
+// What the speed figures divide by, per build (issue #14): the whole GEMM call in the
+// uninstrumented build; the inner pack + compute timers in the instrumented one.
+#if RVV_INSTRUMENTED
+static const char* TIMED_VALUE = "pack timer + compute timer per rep";
+static const char* TIMED_NOTE = "inner timers; gaps between them are excluded; they cost 11-17%: DEBUG build, do not compare to the reference";
+static const char* MEAN_TIME_EXTRA = ", outer wall clock with the timers' cost included";
+#else
+static const char* TIMED_VALUE = "the whole GEMM call per rep";
+static const char* TIMED_NOTE = "pack A and B + microkernel compute + loop overhead; same region the reference design times";
+static const char* MEAN_TIME_EXTRA = "";
+#endif
 
 static string pct_of_total(double part_ms, double compute_ms) {
     double total = part_ms + compute_ms;
@@ -554,18 +563,13 @@ int main(int argc, char** argv) {
     cout << " Dataset: " << dataset_file << endl;
     cout << "============================================================\n" << endl;
 
-    cout << " Metric Explanations:\n";
-    cout << "   - p5 / p95 : 5th and 95th percentiles (ignores top 5% lucky spikes and bottom 5% OS interrupts)\n";
-    cout << "   - iqr      : Interquartile Range (P75 - P25), shows how tight the middle 50% of runs are clustered\n";
-    cout << "   - s        : Standard deviation of Kernel GOPs across all runs\n";
-    cout << "   - CV%      : Coefficient of Variation (s / median). >15% indicates severe performance instability\n";
-    cout << "   - mx/md    : Max / Median ratio. >1.25 indicates extreme cache sensitivity (thrashing)\n";
-    cout << "   Full definitions for every raw/perf log column: docs/metrics.md\n";
-    cout << "\n";
-
-    cout << "  Layer Name (M x N x K)       | Unroll | Median GOPs [min, p5, p95, max, iqr, s, CV%, mx/md] | RVV Pack | Scl Pack | IPC   | Status\n";
-    cout << "----------------------------------------------------------------------------------------------------------------------------------" << endl;
-
+    cout << " How to read this output\n";
+    cout << "   GOPs   [billions of operations per second = 2*M*N*K / time; a multiply-add counts as 2; higher is better]\n";
+    cout << "   Timed  [" << TIMED_VALUE << " -- " << TIMED_NOTE << "]\n";
+    cout << "   Spread [each rep's own GOPs: the slowest, 5th percentile, 95th percentile and fastest rep, the width of the middle 50%,\n";
+    cout << "           the standard deviation, and the fastest-to-median ratio; a wide spread means unstable timing]\n";
+    cout << "   Full definitions of every log column: docs/metrics.md\n";
+    cout << "\n" << endl;
 
     string line;
     while (getline(dataset_stream, line)) {
@@ -647,6 +651,10 @@ int main(int argc, char** argv) {
             int nc;
             int kc;
             double compute_ipc;
+            double e2e_gops;  // 2*M*N*K / mean time per rep: the reference design's own formula
+            int n_reps;
+            int mr;
+            int nr;
         };
         vector<VariantResult> variant_results;
 
@@ -936,11 +944,6 @@ int main(int argc, char** argv) {
                 if (do_ref) check_against_reference();
             }
 
-            string status_str;
-            if (status == "PASS") status_str = "✅ PASS";
-            else if (status == "SKIP") status_str = "⏭️ SKIP";
-            else status_str = "❌ FAIL";
-
             // Per-rep denominators. A rep count of 0 (default protocol, FAILed before
             // timing) has no counts to divide, so fall back to the configured count.
             const int metric_reps = n_reps > 0 ? n_reps : N_REPS;
@@ -949,7 +952,8 @@ int main(int argc, char** argv) {
             perf_metrics compute_metrics = perf_metrics_per_rep(&compute_counts, metric_reps);
             double compute_ipc = rvv_perf_valid ? compute_metrics.ipc : std::nan("");
 
-            variant_results.push_back({string(variant.name), status, ker_gflops_val, ker_gflops_min, ker_gflops_p5, ker_gflops_p95, ker_gflops_max, ker_gflops_iqr, ker_gflops_mean, ker_gflops_std, ker_gflops_median, rvv_bw_val, scl_bw_val, rvv_time_val, ref_time_val, vector_pack_time_val, scalar_pack_time_val, compute_time_val, sample_rvv, sample_ref, sample_i, sample_j, mc, nc, kc, compute_ipc});
+            variant_results.push_back({string(variant.name), status, ker_gflops_val, ker_gflops_min, ker_gflops_p5, ker_gflops_p95, ker_gflops_max, ker_gflops_iqr, ker_gflops_mean, ker_gflops_std, ker_gflops_median, rvv_bw_val, scl_bw_val, rvv_time_val, ref_time_val, vector_pack_time_val, scalar_pack_time_val, compute_time_val, sample_rvv, sample_ref, sample_i, sample_j, mc, nc, kc, compute_ipc,
+                                     rvv_time_val > 0 ? num_ops / (rvv_time_val * 1e6) : std::nan(""), n_reps, variant.mr, variant.nr});
 
             if (perf_log.is_open()) {
                 double nan_v = std::nan("");
@@ -979,52 +983,83 @@ int main(int argc, char** argv) {
                         << n_reps << endl;
             }
 
-            // Issue #9: live per-variant console block mirroring comparison.md's columns
-            // (summarize_run.py), instead of only being visible after the whole run
-            // finishes and the offline summarizer processes the logs.
+            // Live per-variant console block (issue #9), reworded so each figure says what it
+            // measures. Only real numbers are printed: the uninstrumented build has no
+            // pack/compute split and no counters, so it says so in one line instead of
+            // printing rows of nan.
             if (status != "FAIL") {
-                string ref_gops_str = "N/A", delta_str = "N/A";
-                if (ref_time_val > 0) {
-                    double ref_gops = num_ops / (ref_time_val / 1000.0) / 1e9;
-                    ostringstream rs; rs << fixed << setprecision(2) << ref_gops;
-                    ref_gops_str = rs.str();
-                    ostringstream ds; ds << fixed << setprecision(1) << (ker_gflops_median / ref_gops) << "x";
-                    delta_str = ds.str();
-                }
-                bool counters_valid = scalar_perf_valid && rvv_perf_valid;
-                double compute_flops_per_cycle = compute_metrics.cycles > 0 ? num_ops / compute_metrics.cycles : std::nan("");
+                const double e2e_gops = rvv_time_val > 0 ? num_ops / (rvv_time_val * 1e6) : std::nan("");
 
                 cout << "\r                                                                               \r";
                 cout << "  +- " << label << " (" << dim_str << ") " << short_variant_name(variant.name)
-                     << " [" << variant.name << "]\n";
-                cout << "  |  Pack:  Scalar " << fixed << setprecision(2) << scalar_pack_time_val << "ms ("
-                     << pct_of_total(scalar_pack_time_val, compute_time_val) << ") | Vector "
-                     << vector_pack_time_val << "ms (" << pct_of_total(vector_pack_time_val, compute_time_val)
-                     << ") | Compute " << compute_time_val << "ms | Pack Gain "
-                     << gain_pct(scalar_pack_time_val, vector_pack_time_val) << "\n";
-                cout << "  |  GOPs:  " << setprecision(2) << ker_gflops_median << " (this run) "
-                     << jitter_bracket(ker_gflops_min, ker_gflops_p5, ker_gflops_p95, ker_gflops_max,
-                                        ker_gflops_iqr, ker_gflops_std, ker_gflops_median)
-                     << " | Ref " << ref_gops_str << " | Delta " << delta_str << "\n";
-                ostringstream reps_note;  // local stream: leaves cout's float format alone
+                     << " [" << variant.name << ": " << variant.mr << " rows x " << variant.nr
+                     << " columns of C per microkernel tile]\n";
+                cout << "  |  Speed [GOPs = billions of operations per second = 2*M*N*K / time; higher is better]\n";
+                report_row("by mean time", num(e2e_gops, 2) + " GOPs",
+                           "mean of " + to_string(n_reps) + " reps = " + num(rvv_time_val, 3) +
+                           " ms per GEMM call" + MEAN_TIME_EXTRA + "; the reference design's own formula");
+                report_row("by median rep", num(ker_gflops_median, 2) + " GOPs",
+                           "median of the per-rep GOPs; not thrown off by a few slow reps");
+                report_row("what is timed", TIMED_VALUE, TIMED_NOTE);
+                report_row("spread per rep",
+                           "slowest " + num(ker_gflops_min, 2) + " | 5th percentile " + num(ker_gflops_p5, 2) +
+                           " | 95th percentile " + num(ker_gflops_p95, 2) + " | fastest " + num(ker_gflops_max, 2),
+                           "GOPs of single reps");
+                const double cv_pct = ker_gflops_median > 0 ? 100.0 * ker_gflops_std / ker_gflops_median : 0.0;
+                const double max_over_median = ker_gflops_median > 0 ? ker_gflops_max / ker_gflops_median : 0.0;
+                report_row("",
+                           "middle-50% width " + num(ker_gflops_iqr, 2) + " | std-dev " + num(ker_gflops_std, 2) +
+                           " | std-dev / median " + num(cv_pct, 0) + "% [above 15% = unstable] | fastest / median " +
+                           num(max_over_median, 2) + "x [above 1.25 = cache thrashing]");
+                ostringstream reps_note;
                 if (ref_protocol) reps_note << "until tmin=" << tmin << " s, reference protocol";
-                else reps_note << "fixed, from config";
-                cout << "  |  Reps:  " << n_reps << " (" << reps_note.str() << ")\n";
-                cout << "  |  Counters valid: " << (counters_valid ? "yes" : "no") << "\n";
-                cout << "  |    Vector Pack: IPC " << perf_field(rvv_perf_valid, vector_pack_metrics.ipc, 2, "")
-                     << " | L1D Rd Miss " << perf_field(rvv_perf_valid, vector_pack_metrics.l1d_read_miss_pct, 1, "%")
-                     << " | L1D Wr Miss " << perf_field(rvv_perf_valid, vector_pack_metrics.l1d_write_miss_pct, 1, "%")
-                     << " | Stall BE " << perf_field(rvv_perf_valid, vector_pack_metrics.stall_be_pct, 1, "%") << "\n";
-                cout << "  |    Scalar Pack: IPC " << perf_field(scalar_perf_valid, scalar_pack_metrics.ipc, 2, "")
-                     << " | L1D Rd Miss " << perf_field(scalar_perf_valid, scalar_pack_metrics.l1d_read_miss_pct, 1, "%")
-                     << " | L1D Wr Miss " << perf_field(scalar_perf_valid, scalar_pack_metrics.l1d_write_miss_pct, 1, "%")
-                     << " | Stall BE " << perf_field(scalar_perf_valid, scalar_pack_metrics.stall_be_pct, 1, "%") << "\n";
-                cout << "  |    Compute:     IPC " << perf_field(rvv_perf_valid, compute_metrics.ipc, 2, "")
-                     << " | L1D Rd Miss " << perf_field(rvv_perf_valid, compute_metrics.l1d_read_miss_pct, 1, "%")
-                     << " | L1D Wr Miss " << perf_field(rvv_perf_valid, compute_metrics.l1d_write_miss_pct, 1, "%")
-                     << " | Stall BE " << perf_field(rvv_perf_valid, compute_metrics.stall_be_pct, 1, "%")
-                     << " | FLOPs/Cyc " << perf_field(rvv_perf_valid, compute_flops_per_cycle, 2, "") << "\n";
-                cout << "  +- " << status_str << " (mc:" << mc << " nc:" << nc << " kc:" << kc << ")" << endl;
+                else reps_note << "fixed, from config.json";
+                report_row("reps", to_string(n_reps), reps_note.str());
+                if (ref_time_val > 0) {
+                    const double ref_gops = num_ops / (ref_time_val / 1000.0) / 1e9;
+                    report_row("naive scalar GEMM", num(ref_gops, 2) + " GOPs",
+                               "our own slow triple loop, run once to check the answer; NOT the reference design");
+                    report_row("", "this run is " + num(e2e_gops / ref_gops, 1) + " times faster than it");
+                } else {
+                    report_row("naive scalar GEMM", "not run", "skip_ref_run in config.json");
+                }
+#if RVV_INSTRUMENTED
+                const bool counters_valid = scalar_perf_valid && rvv_perf_valid;
+                const double compute_flops_per_cycle = compute_metrics.cycles > 0 ? num_ops / compute_metrics.cycles : std::nan("");
+                cout << "  |  Time split per rep [pack = reorder A and B into contiguous buffers; compute = microkernel loops]\n";
+                report_row("vector pack", num(vector_pack_time_val, 2) + " ms (" +
+                           pct_of_total(vector_pack_time_val, compute_time_val) + " of pack + compute)",
+                           "the RVV vector-instruction packer");
+                report_row("scalar pack", num(scalar_pack_time_val, 2) + " ms (" +
+                           pct_of_total(scalar_pack_time_val, compute_time_val) + " of pack + compute)",
+                           "the scalar packer, measured in its own pass");
+                report_row("compute", num(compute_time_val, 2) + " ms", "microkernel loops");
+                report_row("vector-pack gain", gain_pct(scalar_pack_time_val, vector_pack_time_val),
+                           "how much faster the vector packer is than the scalar one");
+                if (counters_valid) {
+                    cout << "  |  Hardware counters [IPC = instructions per cycle; L1D miss = L1 data-cache miss rate on reads / writes;\n"
+                            "  |                     back-end stall = share of cycles waiting on the pipeline back end; FLOPs/cycle = operations per cycle]\n";
+                    auto counters_row = [&](const char* region, const perf_metrics& m, bool valid, const string& extra) {
+                        report_row(region, "IPC " + perf_field(valid, m.ipc, 2, "") +
+                                   " | L1D miss " + perf_field(valid, m.l1d_read_miss_pct, 1, "%") + " read / " +
+                                   perf_field(valid, m.l1d_write_miss_pct, 1, "%") + " write | back-end stall " +
+                                   perf_field(valid, m.stall_be_pct, 1, "%") + extra);
+                    };
+                    counters_row("vector pack", vector_pack_metrics, rvv_perf_valid, "");
+                    counters_row("scalar pack", scalar_pack_metrics, scalar_perf_valid, "");
+                    counters_row("compute", compute_metrics, rvv_perf_valid,
+                                 " | FLOPs/cycle " + perf_field(rvv_perf_valid, compute_flops_per_cycle, 2, ""));
+                } else {
+                    report_row("hardware counters", "unavailable", "perf_event_open() is not permitted or not supported here");
+                }
+#else
+                report_row("pack vs compute", "not available",
+                           "per-tile timers are compiled out of this build; rerun with --instr for the split and the hardware counters");
+#endif
+                cout << "  +- " << (status == "PASS" ? "✅ PASS [result matches the naive scalar GEMM]"
+                                                     : "⏭️ SKIP [correctness not checked: skip_ref_run in config.json]")
+                     << " [cache blocking: mc=" << mc << " rows of A per block, nc=" << nc
+                     << " columns of B per block, kc=" << kc << " depth of each block]" << endl;
             }
 
             free(Ac);
@@ -1047,23 +1082,28 @@ int main(int argc, char** argv) {
 
             string short_name = short_variant_name(vr.name);
 
-            ss << left << setw(6) << short_name << " "
-                 << right << setw(5) << fixed << setprecision(2) << vr.ker_gflops_median << " KerGOPs "
-                 << jitter_bracket(vr.ker_gflops_min, vr.ker_gflops_p5, vr.ker_gflops_p95, vr.ker_gflops_max,
-                                    vr.ker_gflops_iqr, vr.ker_gflops_std, vr.ker_gflops_median) << " | "
-                 << right << setw(4) << fixed << setprecision(1) << vr.rvv_bw << " GB/s Pk | "
-                 << right << setw(4) << fixed << setprecision(1) << vr.scl_bw << " GB/s Scl | "
-                 << "IPC:" << fixed << setprecision(2) << vr.compute_ipc << " | ";
+            ss << "best variant " << short_name << " [" << vr.mr << " rows x " << vr.nr
+               << " columns of C per tile] | "
+               << num(vr.e2e_gops, 2) << " GOPs by mean time [whole GEMM call, packing included"
+#if RVV_INSTRUMENTED
+               << "; DEBUG build, timers inflate this by 11-17%"
+#endif
+               << "] | " << num(vr.ker_gflops_median, 2) << " GOPs median rep | " << vr.n_reps << " reps | "
+#if RVV_INSTRUMENTED
+               << num(vr.rvv_bw, 1) << " GB/s [bytes packed / pack time] vector pack | "
+               << num(vr.scl_bw, 1) << " GB/s scalar pack | compute IPC " << num(vr.compute_ipc, 2)
+               << " [instructions per cycle] | "
+#endif
+               ;
             if (vr.status == "PASS") {
-                ss << "✅ C[" << vr.sample_i << "," << vr.sample_j 
-                     << "] " << fixed << setprecision(2) << vr.sample_ref 
-                     << "==" << vr.sample_rvv;
+                ss << "✅ C[" << vr.sample_i << "," << vr.sample_j << "]: " << fixed << setprecision(2)
+                   << vr.sample_ref << " == " << vr.sample_rvv << " [sample entry vs the naive scalar GEMM]";
             } else if (vr.status == "SKIP") {
-                ss << "⏭️ SKIP";
+                ss << "⏭️ SKIP [correctness not checked]";
             } else {
                 ss << "❌ " << vr.status;
             }
-            ss << " (mc:" << vr.mc << " nc:" << vr.nc << " kc:" << vr.kc << ")";
+            ss << " (cache blocking mc:" << vr.mc << " nc:" << vr.nc << " kc:" << vr.kc << ")";
         }
         string output_line = ss.str();
         cout << output_line << endl;
