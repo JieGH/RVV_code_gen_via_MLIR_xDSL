@@ -1,157 +1,94 @@
-# RVV xDSL Microkernel Runner
+# RVV Code Generation via MLIR & xDSL
 
-Generate RVV GEMM microkernels locally, sync them to a RISC-V board, run benchmarks, and fetch results back to your host.
+Generate BLIS-family GEMM kernels for RISC-V Vector with xDSL, cross-compile them on a RISC-V board, benchmark them, and pull the results back.
 
-## Introduction
+Everything the kernels do — the register-tiled microkernel, the RVV packing routines, and the macrokernel loop structure — is emitted by a Python/xDSL generator, not written by hand. Blocking dimensions (`MC`, `NC`, `KC`) come from an analytical cache model rather than manual tuning.
 
-This project generates high-performance RISC-V Vector (RVV) microkernels and macrokernels for BLIS-family GEMM using [xDSL](https://github.com/xdslproject/xdsl) and MLIR compiler pipelines, replacing static handwritten C benchmarks with a parameterized, compiler-driven project generator.
+See [CONTEXT.md](CONTEXT.md) for the vocabulary used throughout: microkernel, macrokernel, packer, kernel family, reference design, reference protocol.
 
-A Python/xDSL project generator emits self-contained kernel families (register-tiled microkernels, packing routines, and macrokernel loop structure) for a target RISC-V board, using an analytical cache model to size blocking dimensions. The end-to-end runner in this repo builds the toolchain, generates and cross-compiles the kernels, syncs them to the board over SSH, runs the benchmark suite there, and pulls the resulting logs, CSVs, and plots back to your host.
+## Layout
 
-See [CONTEXT.md](CONTEXT.md) for the domain vocabulary (microkernel, macrokernel, packer, kernel family, etc.) used throughout this codebase.
+| Path | What it is |
+|---|---|
+| [src/xdsltemplate/](src/xdsltemplate/) | The xDSL backend. `dialects/` defines the RVV, GEMM and EmitC operations; `transforms/` lowers them to C++. |
+| [tests/pure_xdsl_blis_rvv/](tests/pure_xdsl_blis_rvv/) | The project generator and its benchmark harness. |
+| `tests/pure_xdsl_blis_rvv/pj_gen/` | Generated output: one self-contained project per `(MR, NR)` variant. Regenerated, not edited. |
+| [tests/pure_xdsl_blis_rvv/ref_baseline/](tests/pure_xdsl_blis_rvv/ref_baseline/) | Runs the reference design for comparison. Needs the sibling `../ext/RVV_ukernels_benchmark` tree. |
+| [docs/](docs/) | Metrics definitions, ADRs, and the agent-facing execution notes. |
 
-## Quick Start
+## Requirements
 
-1. Install local tools
-- `git`, `cmake`, `ninja`, a C/C++ compiler, `python3`, `uv`, `ssh`, `rsync`
+**Local:** `python3`, `uv`, `ssh`, `rsync`, and `sshpass` for jump-host mode.
 
-2. Install remote tools (on the RISC-V board)
-- `gcc-14`, `gfortran-14`, `make`, `git`, `ssh`
+**Board** (BananaPi M2 Pro, VLEN 256): GCC 14 or newer, for RVV support, plus `make`. The generated Makefile links only `-lm` — no OpenBLAS or BLIS needed.
 
-3. Create the local Python environment
+Create the local environment:
+
 ```bash
 make install
 ```
 
-4. Edit `compile.sh` (top of file) with your board info
-- `RISCV_USER`
-- `RISCV_REMOTE_IP`
-- `RISCV_SSH_PORT` (optional)
-- Optional tuning: `FAMILIES`, `VLEN_BITS`, `KC_PROFILE`, `DATASETS`
+## Running a benchmark
 
-5. Run the pipeline
-```bash
-REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "32,32" --vlen 256 --precision fp32
-```
+Run from the repo root. The script activates `.venv` itself, generates the kernels, syncs and builds them on the board, then fetches the logs into a timestamped directory under `tests/pure_xdsl_blis_rvv/logs/`.
 
-Example with explicit connection and tuning options:
-```bash
-./compile.sh --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "2,2" --vlen 256
-```
-
-That’s it. The script will:
-- Build `mlir-translate` locally if missing.
-- Build OpenBLAS and BLIS on the board if missing.
-- Generate kernels, compile, benchmark, and pull results back.
-
-## Outputs
-
-Results are saved to `tests/output/` on your local machine:
-- `*.txt` logs
-- `*.csv` sweep tables
-- `*.png` / `*.pdf` plots
-
-## Common Variations
-
-Use a different MLIR build directory:
-```bash
-bash compile.sh --mlir-build-dir ../llvm-project
-```
-
-Override families or VLEN:
-```bash
-bash compile.sh --families "4,4" --vlen 256
-```
-
-## One-Off Setup Only
-
-Local MLIR/LLVM build:
-```bash
-bash setup_env.sh --local-mlir-only --mlir-build-dir ../llvm-project
-```
-Remote OpenBLAS/BLIS build:
-```bash
-bash setup_env.sh --remote-only --vlen 256 --riscv-workspace xdsl_rvv_microkernel
-```
-
-## Inspecting Assembly
-
-You can dump and inspect the actual RISC-V assembly generated for any microkernel.
-
-### Local Assembly Dump
-Use the dedicated script to cross-compile kernels to assembly locally:
-```bash
-cd tests/api_gen_cpp
-./dump_asm.sh 4x4_b0_fp32       # Dump a single kernel
-./dump_asm.sh --all              # Dump all fp32 kernels
-```
-Files are saved to `tests/api_gen_cpp/asm/`.
-
-### Remote Assembly Dump
-Alternatively, compile natively on the board and pull the `.s` file back:
-```bash
-./compile.sh --dump-asm 4x4_b0_fp32
-```
-
-## Side Note / Dev Note
-
-To compile in **jump-host mode** (x86 → fej → jbpi2), the following command is used:
-```bash
-REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "32,32" --vlen 256 --precision fp32
-
-REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "8,4" --vlen 256 --precision fp32 --verbose
-
-REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "8,8" --vlen 256 --precision fp32
-```
-
-```
-REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./tests/packing/compile_packing.sh --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22
-```
-
-
-05 may test rvv packing
-```
-REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" bash tests/gemm_blis_xdsl/compile_merged.sh --jump --riscv-user jlei --riscv-ip jbpi --riscv-port 22
-
-```
-
-### Pure xDSL BLIS macrokernel bench
-
-`tests/pure_xdsl_blis_rvv/compile_macro_bench.sh` builds and benchmarks the generated pure-xDSL BLIS project (the "Project Generator" pipeline, see `CONTEXT.md`) end to end. It activates the local `.venv` itself, generates the kernels, syncs and builds them on the board, and pulls the results back. Run it from the repo root.
-
-Jump-host mode:
 ```bash
 source .venv/bin/activate && REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" \
   ./tests/pure_xdsl_blis_rvv/compile_macro_bench.sh --jump \
   --riscv-user jlei --riscv-ip jbpi --riscv-port 22 \
-  --no-nc-overrides
+  --no-nc-overrides --cpu 0 --tmin 10
 ```
 
-This runs our side alone; the default command for a benchmark run is the head-to-head one in `docs/agents/execution.md` (`run_head_to_head.sh ... --cpu 0`). It is: uninstrumented build, reference protocol, and `--no-nc-overrides` so B3 runs at the heuristic's `nc=384` like the reference design instead of the `nc=128` pinned in `config.json` (issue #16). Drop `--no-nc-overrides` for the shipped-configuration number. Its logs are named `*_noinstr_refproto_no_nc_override.txt`.
+`REMOTE_HOST` and `REMOTE_PORT` reach the intermediate host; the `--riscv-*` flags reach the board behind it. For a board you can reach directly, drop `--jump` and the `REMOTE_*` variables. Add `--config <name>.json` for a project config other than `config.json`.
 
-Same jump-host convention as above: `REMOTE_HOST`/`REMOTE_PORT` reach the intermediate host (`fej`), `--riscv-*` reach the board behind it. Add `--config <name>.json` to target a project config other than the default `config.json`.
+Add `--dry-run` to print the settings and stop without touching the board. Every run opens with that same overview, marking each setting `[default]` or naming the flag that set it.
 
+### The flags that change what a number means
 
+| Flag | Effect |
+|---|---|
+| *(default)* | Uninstrumented build, reference protocol: no warm-up, reps until `--tmin` seconds, correctness checked after timing. These are the numbers comparable to the reference design. |
+| `--instr` | Keeps the per-tile timers and perf counters. They cost 11–17% of measured time, so **never quote these against the reference**. Use it to see where our own time goes. |
+| `--no-ref-protocol` | Warm-up first, then a fixed rep count from `config.json`. Steadier on short shapes, but not the reference's protocol. |
+| `--no-nc-overrides` | Ignores the per-shape `nc` table in `config.json`, so every shape uses the heuristic's `nc`. Needed for a fair head-to-head; the reference has no counterpart for those overrides. Drop it for the shipped-configuration number. |
+| `--cpu N` / `--no-pin` | Pins the timed run to one core. Core 0 also takes every device interrupt, so expect it to be noisier than core 4. |
 
-int8 int8 int32 design
+Each combination writes to its own log name, so the two can never be mixed up: `raw_*_noinstr_refproto_no_nc_override.txt` for the command above.
 
-```
-./compile.sh --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --families "2,2" --vlen 256 --precision i8i8i32
-```
+### Comparing against the reference design
 
-This is jump host mode, may not apply to you
-```
-REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh \
-    --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 \
-    --families "8,8" --vlen 256 --precision i8i8i32 \
-    --dump-asm 8x8_b0_i8i8i32 \
-     --skip-unit-test
-```
+A reference baseline from another day is not comparable. To quote a number against the reference, run both sides back to back on the same pinned core:
 
-Or for fp32:
 ```bash
-REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" ./compile.sh \
-    --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 \
-    --families "8,8" --vlen 256 --precision fp32 \
-    --dump-asm 8x8_b1_fp32
+source .venv/bin/activate && REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" \
+  ./tests/pure_xdsl_blis_rvv/run_head_to_head.sh --jump \
+  --riscv-user jlei --riscv-ip jbpi --riscv-port 22 --cpu 0
 ```
+
+Our KerGOPs figure excludes packing while the reference's numbers include it. [docs/metrics.md](docs/metrics.md) defines each column; [tests/pure_xdsl_blis_rvv/ref_baseline/README.md](tests/pure_xdsl_blis_rvv/ref_baseline/README.md) covers the fringe-tile difference between the two designs.
+
+## Generating without a board
+
+The generator half runs on its own, which is the quick way to inspect the emitted MLIR and C++:
+
+```bash
+source .venv/bin/activate
+cd tests/pure_xdsl_blis_rvv && python3 generate_pure_blis_project.py --config config.json
+```
+
+`pj_gen/` is tracked, so regenerate it before committing after any change to the generator or the templates.
+
+## Tests
+
+```bash
+source .venv/bin/activate && python3 -m pytest tests/ -q
+```
+
+These cover the generator, the cache model, packing correctness, the pad zeroing, and the protocol and build flags. They need no board.
+
+## More
+
+- [docs/agents/execution.md](docs/agents/execution.md) — entry points, connection modes, run protocol in full
+- [docs/metrics.md](docs/metrics.md) — what each reported column means
+- [docs/ROADMAP.md](docs/ROADMAP.md) — planned work
+- `.scratch/issues/` — write-ups of past debugging and performance investigations

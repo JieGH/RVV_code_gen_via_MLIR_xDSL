@@ -7,10 +7,9 @@ Two connection modes reach the board, `jbpi`/`jbpi2` (BananaPi M2 Pro). Both acc
 
 ## Entry points
 
-- **`./compile.sh`** (repo root): top-level pipeline — build `mlir-translate` locally if missing, build OpenBLAS/BLIS on the board if missing, generate kernels, compile, benchmark, pull results to `tests/output/`. Documented in `README.md`.
-- **`tests/pure_xdsl_blis_rvv/compile_macro_bench.sh`**: standalone build & benchmark for the pure xDSL BLIS Project Generator (see `CONTEXT.md`) macrokernel project. Takes `--config <name>.json` (default `config.json`). Activates `.venv` itself; must be run from the repo root.
+- **`tests/pure_xdsl_blis_rvv/compile_macro_bench.sh`**: standalone build & benchmark for the pure xDSL BLIS Project Generator (see `CONTEXT.md`) macrokernel project. Takes `--config <name>.json` (default `config.json`). Activates `.venv` itself; must be run from the repo root. Documented in `README.md`.
 - **`tests/pure_xdsl_blis_rvv/run_head_to_head.sh`**: our macrokernel bench and the reference design back to back on one pinned core, then the comparison. The command for a number quoted against the reference (see below).
-- **`tests/packing/compile_packing.sh`**, **`tests/gemm_blis_xdsl/compile_merged.sh`**: same jump-host convention, scoped to the packing and merged-GEMM subprojects respectively.
+- **`tests/pure_xdsl_blis_rvv/ref_baseline/run_ref_baseline.sh`**: the reference design alone, from `../ext/RVV_ukernels_benchmark`. `run_head_to_head.sh` calls it; run it directly only to refresh a reference baseline on its own.
 
 ## Reference command (jump-host, pure xDSL BLIS macrokernel bench)
 
