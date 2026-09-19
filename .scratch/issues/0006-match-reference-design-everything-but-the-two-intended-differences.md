@@ -64,6 +64,14 @@ Reference uses nc=384 there. 3× the Ac and Bc packs, and ~4pp of B3's fringe pe
 The B3 row is comparing two different configurations. Also: plain prefix match, so a
 future `B30` label would inherit it. Plus an undocumented `RVV_FORCE_NC` env escape hatch.
 
+**Status (GitHub #16): fixed by option (a).** `compile_macro_bench.sh --no-nc-overrides`
+(driver `--no-nc-overrides`) ignores `CONFIG_NC_OVERRIDES`, so B3 runs at nc=384 like the
+reference; the run's logs get a `_no_nc_override` suffix so they never mix with the shipped
+(nc=128) run, which is reported separately. The override now matches the label exactly
+(`B30` no longer inherits `B3`). `RVV_FORCE_NC` was already in `docs/metrics.md` and the run
+overview; it is unchanged. No board run was made for this change; the host-side driver
+tests cover the nc selection, log names and overview.
+
 ### 6. No correctness check is running, and the oracle is broken
 `SKIP_REF_RUN` set in all three projects → every row logs `Status=SKIP`.
 Separately, `driver_benchmark.cpp:191-330` (`gemm_ref`) has unbalanced braces: beta is

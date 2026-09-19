@@ -139,9 +139,22 @@ the way the reference does. `--tmin <s>` sets the time budget (default 3.0).
   names. The script prints one at the top; each project's driver prints its fuller one
   on the board. `compile_macro_bench.sh --dry-run` prints the script's and stops
   without touching the board.
+- **`--no-nc-overrides`** (issue #16) ignores the per-shape `nc` overrides in
+  `config.json`. The shipped configuration pins B3 to `nc=128`; the reference design has
+  no such override and runs B3 at the heuristic's `nc=384`. That triples B3's `jc`
+  iterations (3x the Ac/Bc packs) and adds ~4 percentage points of fringe work, so a B3
+  number from the shipped configuration is *not* a like-for-like comparison. For the
+  head-to-head number run with the flag; keep the run without it as the
+  shipped-configuration number and quote the two separately. An override now names a
+  label exactly (`B3` does not match `B30`). `RVV_FORCE_NC` is a separate ad hoc override
+  and still wins over everything.
 - Log names carry the protocol: `raw_*_noinstr_refproto.txt` (reference protocol) vs
   `raw_*_noinstr.txt` (warm-up protocol). `compare_ref_baseline.py` defaults to the
-  instrumented name, so pass `--raw-name all_raw_<...>_noinstr_refproto.txt`.
+  instrumented name, so pass `--raw-name all_raw_<...>_noinstr_refproto.txt`. A
+  `--no-nc-overrides` run adds `_no_nc_override` (`..._refproto_no_nc_override.txt`), so
+  it never lands in the shipped configuration's file; give `compare_ref_baseline.py` that
+  name and it computes its fringe column at the same `nc` on its own. `--force-nc` cannot
+  be combined with `--no-nc-overrides` (the script refuses).
 
 - **No warm-up at all**: neither the 5 kernel calls nor the scalar-pack pass.
   (The issue text named only the scalar-pack pass; the 5 calls before it are also a

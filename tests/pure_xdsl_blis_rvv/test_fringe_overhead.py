@@ -23,6 +23,7 @@ from fringe import (  # noqa: E402
     fringe_for_case,
     load_case_shapes,
     nc_override_for,
+    our_fringe,
 )
 
 
@@ -108,16 +109,28 @@ def test_an_nc_override_is_clamped_to_n_like_the_driver_does():
     )
 
 
-def test_the_longest_matching_label_prefix_wins_and_only_for_the_same_pinning():
+def test_an_override_names_one_label_exactly_and_only_for_the_same_pinning():
+    # Issue #16: the driver matches the label exactly, so a future B30 (or a bare "B")
+    # does not inherit B3's override.
     rows = [
         _row([(16, 15)], {"B": 64, "B3": 128}),
         _row([(32, 6)], {"B3": 999}),
     ]
 
     assert nc_override_for("B3", 16, 15, rows) == 128
-    assert nc_override_for("B2", 16, 15, rows) == 64
+    assert nc_override_for("B", 16, 15, rows) == 64
+    assert nc_override_for("B30", 16, 15, rows) is None
+    assert nc_override_for("B2", 16, 15, rows) is None
     assert nc_override_for("S1", 16, 15, rows) is None
     assert nc_override_for("B3", 32, 7, rows) is None
+
+
+def test_our_fringe_can_ignore_the_overrides_like_the_driver_flag_does():
+    # --no-nc-overrides runs B3 at the heuristic's nc=384: one padded block, not three.
+    assert our_fringe("B3", 64, 384, 384, 16, 15) == pytest.approx(405 / 384 - 1)
+    assert our_fringe("B3", 64, 384, 384, 16, 15, use_overrides=False) == pytest.approx(
+        390 / 384 - 1
+    )
 
 
 def test_the_readme_table_quotes_the_computed_figures():

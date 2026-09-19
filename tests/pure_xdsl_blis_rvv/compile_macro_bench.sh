@@ -29,6 +29,11 @@ set -e
 # The instrumented build (--instr) cannot run the reference protocol, so it defaults to
 # the older one; asking it for --ref-protocol is refused.
 #
+# --no-nc-overrides (issue #16) ignores the per-shape nc overrides in config.json, which the
+# reference design has no counterpart for (B3 ships at nc=128, the reference runs nc=384).
+# Use it for a head-to-head number; a run without it is the shipped configuration. The two
+# never share a log: this one's are named *_no_nc_override.txt.
+#
 # Every run starts by printing an overview of the settings in effect, defaults included.
 # --dry-run prints that overview and stops, without touching the board.
 #
@@ -76,6 +81,7 @@ while [[ "$#" -gt 0 ]]; do
         --dry-run)         DRY_RUN=true                         ;;
         --tmin)            TMIN="$2";                shift      ;;
         --force-nc)        FORCE_NC="$2";            shift      ;;
+        --no-nc-overrides) TEST_ARGS="${TEST_ARGS} --no-nc-overrides" ;;
         --no-instr)        INSTRUMENTED="0"; BUILD_SOURCE="--no-instr" ;;
         --instr)           INSTRUMENTED="1"; BUILD_SOURCE="--instr"    ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
@@ -104,6 +110,12 @@ if [ -n "${TMIN}" ] && [ "${REF_PROTOCOL}" != "1" ]; then
     echo "Error: --tmin only applies to the reference protocol (this run uses the warm-up protocol)."
     exit 1
 fi
+# Issue #16: RVV_FORCE_NC beats every other nc source, so this run would not be at the
+# heuristic's nc yet would carry the head-to-head log name.
+if [ -n "${FORCE_NC}" ] && [[ "${TEST_ARGS}" == *--no-nc-overrides* ]]; then
+    echo "Error: --force-nc cannot be combined with --no-nc-overrides (--force-nc sets nc for every shape)."
+    exit 1
+fi
 TEST_ARGS="${TEST_ARGS}${PROTOCOL_FLAG:+ ${PROTOCOL_FLAG}}${TMIN:+ --tmin ${TMIN}}"
 
 # Issue #14: say which build this is, loudly, at both ends of the run. Quoting an
@@ -119,6 +131,7 @@ else
     BUILD_NOTE="timers cost 11-17% of measured time: do NOT quote these against the reference"
     BUILD_LOGS="raw_*.txt"
 fi
+case "${TEST_ARGS}" in *--no-nc-overrides*) NO_NC_OVERRIDES=true; BUILD_LOGS="${BUILD_LOGS%.txt}_no_nc_override.txt" ;; *) NO_NC_OVERRIDES=false ;; esac
 # Issue #27: every number names its protocol as well as its build.
 if [ "${REF_PROTOCOL}" = "1" ]; then
     PROTOCOL_BANNER="REFERENCE (tmin=${TMIN:-3.0} s) -- no warm-up, reps until tmin"
@@ -150,7 +163,12 @@ else
     ov "Correctness" "checked BEFORE timing (unless skip_ref_run in ${CONFIG})"
 fi
 ov "Packing" "$(case "${TEST_ARGS}" in *--scalar-pack*) echo "scalar packing forced";; *) echo "RVV vector packing";; esac)" "$(case "${TEST_ARGS}" in *--scalar-pack*) echo "--scalar-pack";; *) echo default;; esac)"
-ov "Cache blocking" "analytical model; nc overrides come from ${CONFIG}" "default"
+ov "Cache blocking" "analytical model" "default"
+if [ "${NO_NC_OVERRIDES}" = true ]; then
+    ov "" "nc overrides: OFF (every shape uses the heuristic's nc; the nc table in ${CONFIG} is ignored)" "--no-nc-overrides"
+else
+    ov "" "nc overrides: as listed in ${CONFIG}, applied to the row with exactly that label" "default"
+fi
 ov "" "$([ -n "${FORCE_NC}" ] && echo "RVV_FORCE_NC=${FORCE_NC} overrides nc for every shape" || echo "RVV_FORCE_NC: not set")" "$([ -n "${FORCE_NC}" ] && echo "--force-nc" || echo default)"
 ov "Config" "${CONFIG}" "$([ "${CONFIG}" = "config.json" ] && echo default || echo "--config")"
 ov "Board" "${RISCV_USER}@${RISCV_REMOTE_IP}:${RISCV_SSH_PORT}, ${TARGET_MODE}, workspace ${RISCV_WORKSPACE}"

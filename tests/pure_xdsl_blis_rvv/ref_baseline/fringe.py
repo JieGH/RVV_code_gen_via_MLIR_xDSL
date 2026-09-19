@@ -44,19 +44,15 @@ def nc_override_for(
 ) -> int | None:
     """The nc our binary is forced to for `case`, or None when it keeps the heuristic's.
 
-    config.json rows carry `{"label-prefix": nc}` overrides (issue #1 pins B3 to 128);
-    the driver applies the longest matching prefix, and only within the row whose pinned
-    MR/NR built that binary."""
+    config.json rows carry `{"label": nc}` overrides (issue #1 pins B3 to 128); the driver
+    applies the one whose label is exactly `case` (issue #16), and only within the row
+    whose pinned MR/NR built that binary."""
     if configs is None:
         configs = BLISProjectConfig.from_json(str(CONFIG_JSON))
-    best_len, best_nc = 0, None
     for row in configs:
-        if (mr, nr) not in row.mr_nr_family:
-            continue
-        for prefix, nc in (row.nc_overrides or {}).items():
-            if case.startswith(prefix) and len(prefix) > best_len:
-                best_len, best_nc = len(prefix), nc
-    return best_nc
+        if (mr, nr) in row.mr_nr_family and case in (row.nc_overrides or {}):
+            return row.nc_overrides[case]
+    return None
 
 
 def fringe_for_case(
@@ -71,9 +67,13 @@ def fringe_for_case(
     return fringe_extra_macs(m, n, mr, nr, mc, nc)
 
 
-def our_fringe(case: str, m: int, n: int, k: int, mr: int, nr: int) -> float:
-    """fringe_for_case for a named case, with the nc override config.json gives it."""
-    return fringe_for_case(m, n, k, mr, nr, nc_override_for(case, mr, nr))
+def our_fringe(
+    case: str, m: int, n: int, k: int, mr: int, nr: int, use_overrides: bool = True
+) -> float:
+    """fringe_for_case for a named case, with the nc override config.json gives it.
+    `use_overrides=False` is a run made with the driver's --no-nc-overrides (issue #16)."""
+    nc_override = nc_override_for(case, mr, nr) if use_overrides else None
+    return fringe_for_case(m, n, k, mr, nr, nc_override)
 
 
 def load_case_shapes(cases_tsv: Path = HERE / "cases.tsv") -> dict[str, float]:

@@ -45,9 +45,8 @@ STUB_HEADER = """\
 #define CONFIG_ITERATIONS %(iterations)d
 %(skip_ref)s
 
-struct NcOverrideEntry { const char* prefix; int nc; };
-static const NcOverrideEntry CONFIG_NC_OVERRIDES[] = { {"", 0} };
-static const size_t CONFIG_NC_OVERRIDES_COUNT = 0;
+struct NcOverrideEntry { const char* label; int nc; };
+%(nc_overrides)s
 
 void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf);
 
@@ -94,12 +93,30 @@ void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, in
 class Driver:
     """The driver compiled on the host for one value of RVV_INSTRUMENTED."""
 
-    def __init__(self, root: Path, instrumented: int, skip_ref_run: bool = False):
+    def __init__(
+        self,
+        root: Path,
+        instrumented: int,
+        skip_ref_run: bool = False,
+        nc_overrides: dict[str, int] | None = None,
+    ):
         compiler = shutil.which("g++") or shutil.which("c++")
         c_compiler = shutil.which("gcc") or shutil.which("cc")
         if compiler is None or c_compiler is None:
             pytest.skip("no native C/C++ compiler available for the host-side driver tests")
         self.cwd = root / f"run_instr{instrumented}{'_skipref' if skip_ref_run else ''}"
+        overrides = nc_overrides or {}
+        if overrides:
+            entries = ", ".join(f'{{"{label}", {nc}}}' for label, nc in overrides.items())
+            nc_decl = (
+                f"static const NcOverrideEntry CONFIG_NC_OVERRIDES[] = {{ {entries} }};\n"
+                f"static const size_t CONFIG_NC_OVERRIDES_COUNT = {len(overrides)};"
+            )
+        else:
+            nc_decl = (
+                'static const NcOverrideEntry CONFIG_NC_OVERRIDES[] = { {"", 0} };\n'
+                "static const size_t CONFIG_NC_OVERRIDES_COUNT = 0;"
+            )
         proj = self.cwd / "pj" / "proj"
         proj.mkdir(parents=True)
         (proj / "generated_kernels.h").write_text(
@@ -107,6 +124,7 @@ class Driver:
             % {
                 "iterations": CONFIG_ITERATIONS,
                 "skip_ref": "#define SKIP_REF_RUN 1" if skip_ref_run else "",
+                "nc_overrides": nc_decl,
             }
         )
         (proj / "stub_kernel.cpp").write_text(STUB_KERNEL)
@@ -131,12 +149,14 @@ class Driver:
         assert proc.returncode == 0, proc.stderr
         (self.cwd / "logs").mkdir()
         (self.cwd / "tiny.dat").write_text("T1 32 32 32\n")
+        # T10 shares T1's shape and label prefix, and must not share its override.
+        (self.cwd / "twins.dat").write_text("T1 32 32 32\nT10 32 32 32\n")
 
-    def run(self, *args: str, env: dict[str, str] | None = None):
+    def run(self, *args: str, env: dict[str, str] | None = None, dataset: str = "tiny.dat"):
         for old in (self.cwd / "logs").iterdir():  # every run starts from empty logs
             old.unlink()
         return subprocess.run(
-            [str(self.binary), "tiny.dat", *args],
+            [str(self.binary), dataset, *args],
             cwd=self.cwd, capture_output=True, text=True, timeout=120,
             env={"PATH": "/usr/bin:/bin", **(env or {})},
         )
@@ -154,6 +174,11 @@ def uninstrumented(tmp_path_factory: pytest.TempPathFactory) -> Driver:
 @pytest.fixture(scope="module")
 def uninstrumented_skip_ref(tmp_path_factory: pytest.TempPathFactory) -> Driver:
     return Driver(tmp_path_factory.mktemp("uninstr_skip"), instrumented=0, skip_ref_run=True)
+
+
+@pytest.fixture(scope="module")
+def with_nc_override(tmp_path_factory: pytest.TempPathFactory) -> Driver:
+    return Driver(tmp_path_factory.mktemp("nc_override"), instrumented=0, nc_overrides={"T1": 16})
 
 
 @pytest.fixture(scope="module")
@@ -442,6 +467,96 @@ def test_the_instrumented_report_gives_the_split_and_says_it_is_a_debug_number(
 
 
 # ---------------------------------------------------------------------------
+# Issue #16: the per-shape nc override in config.json (B3 -> 128) has no counterpart in
+# the reference design, so a head-to-head run must be able to switch it off. The override
+# also has to name a label exactly: a future B30 must not inherit B3's.
+# ---------------------------------------------------------------------------
+NO_OVERRIDE_RAW = "raw_fp32_STUB_noinstr_refproto_no_nc_override.txt"
+
+
+def _ncs(stdout: str) -> list[int]:
+    """The nc each row was run at, in row order, from its cache-blocking note."""
+    return [int(n) for n in re.findall(r"\bnc=(\d+) columns of B per block", stdout)]
+
+
+def test_a_config_override_applies_by_default_and_only_to_the_exact_label(
+    with_nc_override: Driver,
+):
+    proc = with_nc_override.run("--tmin", "0.05", dataset="twins.dat")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    t1_nc, t10_nc = _ncs(proc.stdout)
+    assert t1_nc == 16
+    # T10 starts with the label "T1" but is a different shape: it keeps the heuristic's nc.
+    assert t10_nc != 16
+
+
+def test_no_nc_overrides_runs_every_row_at_the_heuristics_nc(with_nc_override: Driver):
+    proc = with_nc_override.run("--tmin", "0.05", "--no-nc-overrides", dataset="twins.dat")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    t1_nc, t10_nc = _ncs(proc.stdout)
+    assert t1_nc == t10_nc != 16
+
+
+def test_no_nc_overrides_writes_its_own_logs_so_it_cannot_mix_with_the_shipped_run(
+    with_nc_override: Driver,
+):
+    with_nc_override.run("--tmin", "0.05", "--no-nc-overrides")
+    for kind in ("raw", "summary", "perf"):
+        assert (
+            with_nc_override.cwd / "logs" / f"{kind}_fp32_STUB_noinstr_refproto_no_nc_override.txt"
+        ).is_file()
+    assert not (with_nc_override.cwd / "logs" / REFPROTO_RAW).exists()
+
+    with_nc_override.run("--tmin", "0.05")
+    assert (with_nc_override.cwd / "logs" / REFPROTO_RAW).is_file()
+    assert not (with_nc_override.cwd / "logs" / NO_OVERRIDE_RAW).exists()
+
+
+def test_the_overview_says_whether_config_overrides_are_applied(with_nc_override: Driver):
+    shipped = _overview(with_nc_override.run("--tmin", "0.05").stdout)
+    assert "nc overrides: T1 -> nc=16" in shipped
+    assert "[config.json]" in shipped.split("nc overrides")[1].splitlines()[0]
+
+    off = _overview(with_nc_override.run("--tmin", "0.05", "--no-nc-overrides").stdout)
+    assert "nc overrides: OFF" in off
+    assert "T1 -> nc=16" in off  # what was switched off is still named
+    assert "[--no-nc-overrides]" in off.split("nc overrides")[1].splitlines()[0]
+    assert "logs/raw_fp32_STUB_noinstr_refproto_no_nc_override.txt" in off
+
+
+def test_no_nc_overrides_with_no_overrides_configured_is_harmless(uninstrumented: Driver):
+    proc = uninstrumented.run("--tmin", "0.05", "--no-nc-overrides")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "nc overrides: OFF" in _overview(proc.stdout)
+
+
+def _results_file(tmp_path: Path, test_args: str) -> str:
+    """The results_*.csv name `make run` tees the driver's output into, from a dry run."""
+    proj = tmp_path / "pj" / "proj"
+    proj.mkdir(parents=True)
+    shutil.copy(TEMPLATES_DIR / "Makefile", proj)
+    shutil.copytree(MODEL_LEVEL_DIR, tmp_path / "modelLevel")
+    out = subprocess.run(
+        ["make", "-n", "-C", str(proj), "run", "INSTRUMENTED=0", "DATASETS_PATTERN=d.dat",
+         f"TEST_ARGS={test_args}"],
+        capture_output=True, text=True, check=True,
+    ).stdout
+    # make -n leaves `$(basename $dataset .dat)` unexpanded, so return only what follows it
+    return re.search(r"\.dat\)(\S*?)\.csv", out).group(1)
+
+
+def test_the_results_file_of_a_no_nc_overrides_run_is_its_own(tmp_path: Path):
+    """`make run` tees the driver's output into results_*.csv: like the logs, it must not be
+    shared between the shipped configuration and a run without the overrides."""
+    assert _results_file(tmp_path / "a", "") == "_noinstr_refproto"
+    assert _results_file(tmp_path / "b", "--no-nc-overrides") == "_noinstr_refproto_no_nc_override"
+    assert (
+        _results_file(tmp_path / "c", "--no-ref-protocol --no-nc-overrides")
+        == "_noinstr_no_nc_override"
+    )
+
+
+# ---------------------------------------------------------------------------
 # compile_macro_bench.sh: the flags that reach the driver, and the refusals that must
 # happen before the script touches the board (or regenerates pj_gen/).
 # ---------------------------------------------------------------------------
@@ -472,6 +587,15 @@ def test_script_refuses_tmin_where_the_reference_protocol_is_not_running(flags: 
     assert "Dependency Check" not in proc.stdout
 
 
+def test_script_refuses_force_nc_with_no_nc_overrides():
+    # RVV_FORCE_NC beats every other nc source, so the run would not be at the heuristic's
+    # nc, yet would carry the head-to-head log name.
+    proc = _run_script("--no-nc-overrides", "--force-nc", "128", "--dry-run")
+    assert proc.returncode != 0
+    assert "--force-nc cannot be combined with --no-nc-overrides" in proc.stdout + proc.stderr
+    assert "Dependency Check" not in proc.stdout
+
+
 def test_script_dry_run_prints_the_overview_of_a_default_run_and_stops():
     proc = _run_script("--dry-run")
     assert proc.returncode == 0, proc.stdout + proc.stderr
@@ -491,6 +615,11 @@ def test_script_dry_run_follows_the_flags_it_is_given():
 
     out = _run_script("--dry-run", "--no-ref-protocol").stdout
     assert "Protocol       : WARM-UP" in out and "raw_*_noinstr.txt" in out
+
+    out = _run_script("--dry-run", "--no-nc-overrides").stdout
+    assert "nc overrides: OFF" in out and "[--no-nc-overrides]" in out
+    assert "not consulted" not in out  # the config is still read: only its nc table is ignored
+    assert "raw_*_noinstr_refproto_no_nc_override.txt" in out  # its own log name
 
     out = _run_script("--dry-run", "--instr").stdout
     assert "Build          : INSTRUMENTED" in out

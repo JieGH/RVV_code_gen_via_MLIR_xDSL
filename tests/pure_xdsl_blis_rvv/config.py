@@ -14,11 +14,12 @@ class BLISProjectConfig:
     skip_ref_run: bool = False
     iterations: int = 1000
     is_pinned: bool = False
-    # Optional: {"label-prefix": forced_nc}. Any dataset row whose label starts with
-    # a key gets its heuristic `nc` (from get_optim_mc_nc_kc) overridden with the
-    # given value, clamped to the row's own N. Longest matching prefix wins.
+    # Optional: {"label": forced_nc}. The dataset row whose label is exactly a key gets
+    # its heuristic `nc` (from get_optim_mc_nc_kc) overridden with the given value,
+    # clamped to the row's own N (issue #16: exact match, so B30 does not inherit B3).
     # Debug/mitigation knob for shape-specific instability (see issue #1) — does not
-    # change the general cache-blocking model for any other shape.
+    # change the general cache-blocking model for any other shape. The reference design
+    # has no such override, so a head-to-head run passes --no-nc-overrides to the driver.
     nc_overrides: dict[str, int] = None
 
     @classmethod

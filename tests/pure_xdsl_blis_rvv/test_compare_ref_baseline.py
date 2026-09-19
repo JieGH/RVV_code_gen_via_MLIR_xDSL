@@ -155,3 +155,67 @@ def test_the_comparison_table_shows_our_fringe_overhead_and_says_what_it_is(
     b3_line = next(line for line in out.splitlines() if line.strip().startswith("B3"))
     assert "+5.5%" in b3_line
     assert "right-sized" in out
+
+
+def test_a_no_nc_override_log_makes_the_fringe_column_match_a_run_without_overrides(
+    tmp_path: Path, capsys, monkeypatch
+):
+    """Issue #16: a --no-nc-overrides run puts B3 at the heuristic's nc=384, so its fringe
+    figure is +1.6%, not the shipped nc=128 configuration's +5.5%."""
+    import compare_ref_baseline
+
+    ref_dir = tmp_path / "refbase_2026-09-19_000000"
+    ref_dir.mkdir()
+    (ref_dir / "run_plan.tsv").write_text(
+        "# header\n"
+        "B3\t3\t64\t384\t384\t16\t15\t16\t14\tbracket\t64\t384\t128\t16x14\n"
+    )
+    (ref_dir / "result_16x14_macc.csv").write_text("3;64;384;384;7.5\n")
+    run = tmp_path / "run_2026-09-19_130000"
+    run.mkdir()
+    name = "all_raw_fp32_AXPY_FP32_Pack_noinstr_refproto_no_nc_override.txt"
+    row = B1_ROW_NOINSTR.replace(",B1,1024,384,1024,", ",B3,64,384,384,")
+    (run / name).write_text(RAW_HEADER + ",N_Reps\n" + row + ",27\n")
+
+    monkeypatch.setattr(compare_ref_baseline, "LOGS", tmp_path)
+    monkeypatch.setattr(
+        sys, "argv",
+        ["compare_ref_baseline.py", "--result-dir", str(ref_dir), "--runs", run.name,
+         "--raw-name", name],
+    )
+    assert compare_ref_baseline.main() == 0
+    out = capsys.readouterr().out
+
+    b3_line = next(line for line in out.splitlines() if line.strip().startswith("B3"))
+    assert "+1.6%" in b3_line
+    assert "nc overrides are OFF" in out  # the table says which configuration it is showing
+
+
+def test_a_shipped_configuration_log_keeps_the_override_in_the_fringe_column(
+    tmp_path: Path, capsys, monkeypatch
+):
+    import compare_ref_baseline
+
+    ref_dir = tmp_path / "refbase_2026-09-19_000000"
+    ref_dir.mkdir()
+    (ref_dir / "run_plan.tsv").write_text(
+        "# header\n"
+        "B3\t3\t64\t384\t384\t16\t15\t16\t14\tbracket\t64\t384\t128\t16x14\n"
+    )
+    (ref_dir / "result_16x14_macc.csv").write_text("3;64;384;384;7.5\n")
+    run = tmp_path / "run_2026-09-19_130000"
+    run.mkdir()
+    row = B1_ROW_NOINSTR.replace(",B1,1024,384,1024,", ",B3,64,384,384,")
+    (run / RAW_NAME).write_text(RAW_HEADER + "\n" + row + "\n")
+
+    monkeypatch.setattr(compare_ref_baseline, "LOGS", tmp_path)
+    monkeypatch.setattr(
+        sys, "argv",
+        ["compare_ref_baseline.py", "--result-dir", str(ref_dir), "--runs", run.name],
+    )
+    assert compare_ref_baseline.main() == 0
+    out = capsys.readouterr().out
+
+    b3_line = next(line for line in out.splitlines() if line.strip().startswith("B3"))
+    assert "+5.5%" in b3_line
+    assert "nc overrides are ON" in out

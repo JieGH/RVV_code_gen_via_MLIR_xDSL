@@ -145,8 +145,10 @@ families.
    B3 is the high one because `config.json` pins its `nc` to 128 (issue #1): three
    128-wide blocks each pad to 135, so 405 columns of work for 384. At the
    heuristic's own `nc=384` it would be 1.56%, which is what B2 gets, and what the
-   reference's blocking gives B3. `RVV_FORCE_NC` / `--force-nc` change these figures
-   and are not modelled.
+   reference's blocking gives B3. A run made with `--no-nc-overrides` (issue #16) is
+   that configuration: give `compare_ref_baseline.py` its `*_no_nc_override.txt` log
+   with `--raw-name` and the `fringe` column drops B3 to 1.6%. `RVV_FORCE_NC` / `--force-nc` change these figures and are
+   not modelled.
 
    That counts multiply-adds only. The `memset` and the copy in and out of `tmp_C`
    cost time on top and are not in these figures. Dropping the `tmp_C` round trip

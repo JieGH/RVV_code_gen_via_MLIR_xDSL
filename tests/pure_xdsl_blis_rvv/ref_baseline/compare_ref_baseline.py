@@ -46,6 +46,7 @@ LOGS = HERE.parent / "logs"
 # The merged per-run CSV that compile_macro_bench.sh writes. An uninstrumented build
 # writes the same schema under a `_noinstr` name; see --raw-name.
 DEFAULT_RAW_NAME = "all_raw_fp32_AXPY_FP32_Pack.txt"
+NO_NC_OVERRIDE_SUFFIX = "_no_nc_override.txt"
 
 
 def load_plan(result_dir: Path) -> list[dict]:
@@ -181,6 +182,10 @@ def main() -> int:
         print(f"ERROR: no such result dir: {args.result_dir}", file=sys.stderr)
         return 1
 
+    # The driver's --no-nc-overrides run logs under this suffix (issue #16), and the
+    # fringe column has to be computed at the same nc it ran at.
+    no_nc_overrides = args.raw_name.endswith(NO_NC_OVERRIDE_SUFFIX)
+
     plan = load_plan(args.result_dir)
     ref = load_reference(args.result_dir)
     runs = discover_runs(args.runs, args.raw_name)
@@ -202,6 +207,13 @@ def main() -> int:
     print("  'fringe' is the extra multiply-adds our full-size fringe kernels do that the")
     print("  reference's right-sized ones skip (issue #15): a bias against us, not counted")
     print("  in e2e/ref. It leaves out the memset and copy through tmp_C, which cost time too.")
+    if no_nc_overrides:
+        print("  nc overrides are OFF (a --no-nc-overrides run): every case ran at the heuristic's nc,")
+        print("  like the reference. This is the head-to-head configuration.")
+    else:
+        print("  nc overrides are ON (config.json, e.g. B3 at nc=128): the reference has none, so a")
+        print("  case with one is not the same configuration as the reference's. Compare a")
+        print("  --no-nc-overrides run (its *_no_nc_override.txt log) for the head-to-head number.")
     print()
 
     hdr = (
@@ -222,7 +234,8 @@ def main() -> int:
         shape = f"{row['m']}x{row['n']}x{row['k']}"
         pinned_mr, pinned_nr = (int(x) for x in row["pinned"].split("x"))
         fringe = our_fringe(
-            row["case"], row["m"], row["n"], row["k"], pinned_mr, pinned_nr
+            row["case"], row["m"], row["n"], row["k"], pinned_mr, pinned_nr,
+            use_overrides=not no_nc_overrides,
         )
         fringe_col = f"{100 * fringe:+6.1f}%"
         if o is None:

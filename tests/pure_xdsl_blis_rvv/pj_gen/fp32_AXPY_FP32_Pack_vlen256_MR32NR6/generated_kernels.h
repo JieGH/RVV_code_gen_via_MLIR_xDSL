@@ -12,7 +12,7 @@
 
 #define SKIP_REF_RUN 1
 
-struct NcOverrideEntry { const char* prefix; int nc; };
+struct NcOverrideEntry { const char* label; int nc; };
 static const NcOverrideEntry CONFIG_NC_OVERRIDES[] = { {"", 0} };
 static const size_t CONFIG_NC_OVERRIDES_COUNT = 0;
 

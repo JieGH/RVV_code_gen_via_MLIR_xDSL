@@ -121,13 +121,14 @@ def generate_header(
         if config.skip_ref_run:
             f.write("#define SKIP_REF_RUN 1\n\n")
 
-        # Debug/mitigation knob (issue #1): per-shape nc override, keyed by label prefix.
+        # Debug/mitigation knob (issue #1): per-shape nc override, keyed by exact dataset
+        # label (issue #16). The driver's --no-nc-overrides switches it off.
         # Does not modify get_optim_mc_nc_kc or the general cache-blocking model.
         overrides = config.nc_overrides or {}
-        f.write("struct NcOverrideEntry { const char* prefix; int nc; };\n")
+        f.write("struct NcOverrideEntry { const char* label; int nc; };\n")
         if overrides:
             entries = ", ".join(
-                f'{{"{prefix}", {nc}}}' for prefix, nc in overrides.items()
+                f'{{"{label}", {nc}}}' for label, nc in overrides.items()
             )
             f.write(
                 f"static const NcOverrideEntry CONFIG_NC_OVERRIDES[] = {{ {entries} }};\n"

@@ -367,6 +367,7 @@ struct RunSettings {
     string tmin_source;
     bool scalar_pack;
     string scalar_pack_source;
+    bool no_nc_overrides;
     string dataset;
     string raw_log, summary_log, perf_log;
 };
@@ -425,8 +426,15 @@ static void print_run_overview(const RunSettings& r) {
     overview_line("Cache blocking", "analytical model (get_optim_mc_nc_kc)", "default");
     string overrides;
     for (size_t i = 0; i < CONFIG_NC_OVERRIDES_COUNT; ++i)
-        overrides += (i ? ", " : "") + string(CONFIG_NC_OVERRIDES[i].prefix) + " -> nc=" + to_string(CONFIG_NC_OVERRIDES[i].nc);
-    overview_line("", "nc overrides: " + (overrides.empty() ? string("none") : overrides), "config.json");
+        overrides += (i ? ", " : "") + string(CONFIG_NC_OVERRIDES[i].label) + " -> nc=" + to_string(CONFIG_NC_OVERRIDES[i].nc);
+    if (overrides.empty()) overrides = "none";
+    // Issue #16: the reference design has no per-shape nc override, so a head-to-head run
+    // switches them off; the line still names what was switched off.
+    if (r.no_nc_overrides)
+        overview_line("", "nc overrides: OFF (every shape uses the heuristic's nc; config.json has: " + overrides + ")",
+                      "--no-nc-overrides");
+    else
+        overview_line("", "nc overrides: " + overrides + " (applied to the row with exactly that label)", "config.json");
     const char* forced_nc = std::getenv("RVV_FORCE_NC");
     overview_line("", forced_nc ? string("RVV_FORCE_NC=") + forced_nc + " overrides nc for every shape"
                                 : string("RVV_FORCE_NC: not set"),
@@ -440,6 +448,7 @@ static void print_run_overview(const RunSettings& r) {
 int main(int argc, char** argv) {
     bool force_scalar_pack = (getenv("USE_SCALAR_PACK") != NULL);
     string scalar_pack_source = force_scalar_pack ? "USE_SCALAR_PACK" : "default";
+    bool no_nc_overrides = false;
     // Issue #27: the reference design's run protocol (test_gemm.c:339-361) is the default
     // wherever it can run. The instrumented build cannot (its timers make the numbers
     // incomparable, issue #14), so its default is the older warm-up protocol.
@@ -457,6 +466,8 @@ int main(int argc, char** argv) {
         if (string(argv[i]) == "--scalar-pack") {
             force_scalar_pack = true;
             scalar_pack_source = "--scalar-pack";
+        } else if (string(argv[i]) == "--no-nc-overrides") {
+            no_nc_overrides = true;
         } else if (string(argv[i]) == "--ref-protocol") {
             ref_protocol = true;
             protocol_source = "--ref-protocol";
@@ -478,7 +489,7 @@ int main(int argc, char** argv) {
     }
 
     if (dataset_file == "") {
-        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack] [--no-ref-protocol | --ref-protocol] [--tmin <seconds>]" << endl;
+        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack] [--no-ref-protocol | --ref-protocol] [--tmin <seconds>] [--no-nc-overrides]" << endl;
         return 1;
     }
     if (tmin_source != "default" && !ref_protocol) {
@@ -495,14 +506,17 @@ int main(int argc, char** argv) {
     }
 #endif
     // Logs of the two protocols never share a file, so one can never be merged into the other.
-    const string log_suffix = string(RVV_LOG_SUFFIX) + (ref_protocol ? "_refproto" : "");
+    // Likewise a run without the config.json nc overrides never shares a file with one that
+    // has them: they are different configurations (issue #16).
+    const string log_suffix = string(RVV_LOG_SUFFIX) + (ref_protocol ? "_refproto" : "") +
+                              (no_nc_overrides ? "_no_nc_override" : "");
     const string log_stem = string("_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + log_suffix + ".txt";
     // Ensure logs directory exists (handled by Makefile)
     string raw_log_name = "logs/raw" + log_stem;
     string summary_log_name = "logs/summary" + log_stem;
     string perf_log_name = "logs/perf" + log_stem;
     print_run_overview({ref_protocol, protocol_source, tmin, tmin_source, force_scalar_pack,
-                        scalar_pack_source, dataset_file, raw_log_name, summary_log_name, perf_log_name});
+                        scalar_pack_source, no_nc_overrides, dataset_file, raw_log_name, summary_log_name, perf_log_name});
     bool raw_exists = false;
     {
         ifstream check(raw_log_name);
@@ -665,20 +679,17 @@ int main(int argc, char** argv) {
             get_optim_mc_nc_kc(sizeof(float), m, n, k, variant.mr, variant.nr, &mc, &nc, &kc);
 
             // Debug/mitigation override for issue #1 (B3_M7 packing instability): apply a
-            // per-shape nc override from config.json (matched by longest label prefix),
+            // per-shape nc override from config.json to the row with exactly that label,
             // without changing get_optim_mc_nc_kc's general heuristic for any other shape.
-            {
-                size_t best_len = 0;
-                int best_nc = nc;
+            // The reference design has no such override, so --no-nc-overrides skips it (issue #16).
+            if (!no_nc_overrides) {
                 for (size_t oi = 0; oi < CONFIG_NC_OVERRIDES_COUNT; ++oi) {
                     const auto& ov = CONFIG_NC_OVERRIDES[oi];
-                    size_t plen = std::strlen(ov.prefix);
-                    if (plen > best_len && label.compare(0, plen, ov.prefix) == 0) {
-                        best_len = plen;
-                        best_nc = (n < ov.nc) ? n : ov.nc;
+                    if (label == ov.label) {
+                        nc = (n < ov.nc) ? n : ov.nc;
+                        break;
                     }
                 }
-                nc = best_nc;
             }
 
             // Ad hoc override for quick interactive experiments; takes priority over config.json.

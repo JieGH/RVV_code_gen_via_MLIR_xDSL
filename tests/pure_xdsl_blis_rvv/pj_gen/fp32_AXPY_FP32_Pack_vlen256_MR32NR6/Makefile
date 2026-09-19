@@ -40,6 +40,12 @@ RESULT_SUFFIX := $(RESULT_SUFFIX)_refproto
 endif
 endif
 
+# Issue #16: a run without the config.json nc overrides is a different configuration, so
+# it gets its own results file too (the driver does the same for its logs).
+ifneq (,$(findstring --no-nc-overrides,$(TEST_ARGS)))
+RESULT_SUFFIX := $(RESULT_SUFFIX)_no_nc_override
+endif
+
 all: $(TARGET)
 
 $(TARGET): $(CXX_OBJS) $(C_OBJS)
