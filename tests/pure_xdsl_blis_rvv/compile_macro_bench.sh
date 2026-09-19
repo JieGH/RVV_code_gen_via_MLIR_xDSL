@@ -12,9 +12,13 @@ set -e
 #       --jump \
 #       --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 
 #
-# Add --no-instr for a timer-tax-free headline number (issue #14). That build reports
-# no pack/compute breakdown and logs to *_noinstr.txt, so it does not collide with a
-# normal run of the same project.
+# Benchmarking defaults to the UNINSTRUMENTED build (issue #14): its numbers are the
+# ones comparable to the reference design, which carries no per-tile timers of its own.
+# It reports no pack/compute breakdown and logs to *_noinstr.txt.
+#
+# Pass --instr for the instrumented build instead, when you are debugging where our own
+# time goes (pack vs compute, IPC, cache misses). That build's timers cost 11-17% of
+# measured time, so do NOT quote its numbers against the reference.
 #
 # Run this script from the project root!
 # ============================================================
@@ -28,9 +32,10 @@ RISCV_WORKSPACE="xdsl_rvv_microkernel"
 CONFIG="config.json"
 TEST_ARGS=""
 FORCE_NC=""
-# Issue #14: 1 keeps the per-tile timers and counters (default), 0 compiles them out
-# so RVV_Time_ms carries no timer tax. The two write to separate logs.
-INSTRUMENTED="1"
+# Issue #14: 0 (default) compiles the per-tile timers and counters out, so RVV_Time_ms
+# carries no timer tax and is comparable to the reference. 1 keeps them, for debugging
+# our own pack/compute split. The two write to separate logs.
+INSTRUMENTED="0"
 
 SEP="------------------------------------------------------------"
 
@@ -46,10 +51,28 @@ while [[ "$#" -gt 0 ]]; do
         --scalar-pack)     TEST_ARGS="--scalar-pack"            ;;
         --force-nc)        FORCE_NC="$2";            shift      ;;
         --no-instr)        INSTRUMENTED="0"                     ;;
+        --instr)           INSTRUMENTED="1"                     ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
 done
+
+# Issue #14: say which build this is, loudly, at both ends of the run. Quoting an
+# instrumented number against the reference understates us by 11-17%, and the only
+# thing that distinguishes the two logs is a filename suffix.
+if [ "${INSTRUMENTED}" = "0" ]; then
+    BUILD_BANNER="UNINSTRUMENTED (INSTRUMENTED=0) -- comparable to the reference design"
+    BUILD_NOTE="pack/compute breakdown and perf counters are nan in this build"
+    BUILD_LOGS="raw_*_noinstr.txt"
+else
+    BUILD_BANNER="INSTRUMENTED (INSTRUMENTED=1) -- DEBUG BUILD"
+    BUILD_NOTE="timers cost 11-17% of measured time: do NOT quote these against the reference"
+    BUILD_LOGS="raw_*.txt"
+fi
+echo ""; echo "$SEP"
+echo "  Build : ${BUILD_BANNER}"
+echo "  Note  : ${BUILD_NOTE}"
+echo "$SEP"
 
 # Output configuration parsing
 # (Remove .json from config name to get the project name)
@@ -202,4 +225,8 @@ fi
 echo ""
 echo "$SEP"
 echo " Done."
+echo ""
+echo "  Build : ${BUILD_BANNER}"
+echo "  Note  : ${BUILD_NOTE}"
+echo "  Logs  : ${RUN_DIR}/ (${BUILD_LOGS})"
 echo "$SEP"

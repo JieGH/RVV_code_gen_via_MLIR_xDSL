@@ -61,9 +61,18 @@ reference either way) and run the same passes, including the scalar-pack pass,
 which doubles as the RVV loop's warm-up. They differ in the timers and nothing
 else, which is what makes an A/B between them meaningful.
 
-Use the default build for any question about *where* time goes, and the
-uninstrumented build for any headline number compared against the reference
-design. See `ref_baseline/README.md` for the measured tax per case.
+**Which build to use.** Benchmarking means `INSTRUMENTED=0` — that is the build whose
+numbers are comparable to the reference design, and it is the default for any
+figure quoted anywhere. Plain `make` is for debugging our own internals (pack vs
+compute, IPC, cache misses), which is the only thing it can do that the other
+cannot. Neither build does both jobs. See `ref_baseline/README.md` for the
+measured tax per case.
+
+**Always state which build a number came from.** In particular, `KerGOPs` does not
+mean the same thing in the two builds: instrumented divides by `kernel_time +
+pack_time`, uninstrumented by that rep's wall clock. Never put the two in one
+table or one plot. `RVV_Time_ms` is the only column that means the same thing in
+both, which is why the cross-design comparison runs on `e2e` and not on `Ker`.
 
 ### How close the uninstrumented build is to the reference protocol
 
