@@ -348,18 +348,112 @@ static const int N_REPS = 5;
 static const int N_REPS = CONFIG_ITERATIONS;
 #endif
 
+// What this run will do, printed once at the top: every setting in effect, including the
+// ones nobody typed. `source` says where each came from -- "default", the flag or
+// environment variable that set it, or config.json -- so a default is never invisible.
+struct RunSettings {
+    bool ref_protocol;
+    string protocol_source;
+    double tmin;
+    string tmin_source;
+    bool scalar_pack;
+    string scalar_pack_source;
+    string dataset;
+    string raw_log, summary_log, perf_log;
+};
+
+static void overview_line(const char* key, const string& value, const string& source = "") {
+    cout << "  " << left << setw(14) << key << (*key ? " : " : "   ") << value;
+    if (!source.empty()) cout << "   [" << source << "]";
+    cout << "\n";
+}
+
+static void print_run_overview(const RunSettings& r) {
+    cout << "\n============================================================\n"
+         << " Run overview   ([default] = not set by you)\n"
+         << "============================================================\n";
+#if RVV_INSTRUMENTED
+    overview_line("Build", "INSTRUMENTED (RVV_INSTRUMENTED=1) -- DEBUG build",
+                  "fixed at build time: make INSTRUMENTED=");
+    overview_line("", "per-tile timers cost 11-17% of measured time: do NOT quote against the reference");
+    const string protocol_note = r.protocol_source == "default"
+        ? "default for this build: the reference protocol needs the uninstrumented build"
+        : r.protocol_source;
+#else
+    overview_line("Build", "UNINSTRUMENTED (RVV_INSTRUMENTED=0) -- comparable to the reference design",
+                  "fixed at build time: make INSTRUMENTED=");
+    overview_line("", "per-tile timers and perf counters compiled out; pack/compute breakdown = nan");
+    const string protocol_note = r.protocol_source;
+#endif
+    if (r.ref_protocol) {
+        overview_line("Protocol", "REFERENCE (matches test_gemm.c:339-361)", protocol_note);
+        overview_line("Warm-up", "none: the cold first rep is inside the mean");
+        ostringstream reps;
+        reps << "until tmin = " << r.tmin << " s has passed, one clock read per rep";
+        overview_line("Reps", reps.str(), r.tmin_source);
+    } else {
+        overview_line("Protocol", "WARM-UP (stable numbers for short shapes; not the reference's protocol)",
+                      protocol_note);
+        overview_line("Warm-up", "5 kernel calls, then a scalar-pack pass of " + to_string(N_REPS) + " reps");
+        overview_line("Reps", to_string(N_REPS) + " fixed reps", "iterations in config.json");
+    }
+#ifdef SKIP_REF_RUN
+    overview_line("Correctness", "SKIPPED -- no scalar reference GEMM is run", "skip_ref_run in config.json");
+#else
+    overview_line("Correctness",
+                  string("checked against the scalar reference GEMM, ") +
+                      (r.ref_protocol ? "AFTER timing" : "BEFORE timing"),
+                  "skip_ref_run is false in config.json");
+#endif
+    overview_line("Packing", r.scalar_pack ? "scalar packing forced" : "RVV vector packing",
+                  r.scalar_pack ? r.scalar_pack_source : "default");
+    overview_line("Kernel family", string(CONFIG_DATATYPE) + " " + CONFIG_METHOD + " | VLEN " +
+                                       to_string(CONFIG_VLEN) + " | arch " + CONFIG_ARCH,
+                  "config.json");
+    string variants;
+    for (int v = 0; v < num_variants; ++v) variants += (v ? ", " : "") + string(generated_variants[v].name);
+    overview_line("Variants", variants, "config.json");
+    overview_line("Cache blocking", "analytical model (get_optim_mc_nc_kc)", "default");
+    string overrides;
+    for (size_t i = 0; i < CONFIG_NC_OVERRIDES_COUNT; ++i)
+        overrides += (i ? ", " : "") + string(CONFIG_NC_OVERRIDES[i].prefix) + " -> nc=" + to_string(CONFIG_NC_OVERRIDES[i].nc);
+    overview_line("", "nc overrides: " + (overrides.empty() ? string("none") : overrides), "config.json");
+    const char* forced_nc = std::getenv("RVV_FORCE_NC");
+    overview_line("", forced_nc ? string("RVV_FORCE_NC=") + forced_nc + " overrides nc for every shape"
+                                : string("RVV_FORCE_NC: not set"),
+                  forced_nc ? "environment" : "default");
+    overview_line("Dataset", r.dataset);
+    overview_line("Logs", r.raw_log);
+    overview_line("", r.summary_log);
+    overview_line("", r.perf_log);
+}
+
 int main(int argc, char** argv) {
     bool force_scalar_pack = (getenv("USE_SCALAR_PACK") != NULL);
-    // Issue #27: the reference design's run protocol (test_gemm.c:339-361). Off by default.
+    string scalar_pack_source = force_scalar_pack ? "USE_SCALAR_PACK" : "default";
+    // Issue #27: the reference design's run protocol (test_gemm.c:339-361) is the default
+    // wherever it can run. The instrumented build cannot (its timers make the numbers
+    // incomparable, issue #14), so its default is the older warm-up protocol.
+#if RVV_INSTRUMENTED
     bool ref_protocol = false;
+#else
+    bool ref_protocol = true;
+#endif
+    string protocol_source = "default";
     double tmin = 3.0;  // seconds; matches run_ref_baseline.sh
+    string tmin_source = "default";
     string dataset_file = "";
 
     for (int i = 1; i < argc; ++i) {
         if (string(argv[i]) == "--scalar-pack") {
             force_scalar_pack = true;
+            scalar_pack_source = "--scalar-pack";
         } else if (string(argv[i]) == "--ref-protocol") {
             ref_protocol = true;
+            protocol_source = "--ref-protocol";
+        } else if (string(argv[i]) == "--no-ref-protocol") {
+            ref_protocol = false;
+            protocol_source = "--no-ref-protocol";
         } else if (string(argv[i]) == "--tmin") {
             char* end = nullptr;
             tmin = (i + 1 < argc) ? std::strtod(argv[i + 1], &end) : 0.0;
@@ -367,17 +461,20 @@ int main(int argc, char** argv) {
                 cerr << "Error: --tmin needs a positive number of seconds." << endl;
                 return 1;
             }
+            tmin_source = "--tmin";
             ++i;
         } else {
             dataset_file = argv[i];
         }
     }
 
-    if (force_scalar_pack) {
-        cout << "[INFO] Scalar pack flag detected! Forcing scalar packing for benchmark runs." << endl;
-    }
     if (dataset_file == "") {
-        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack] [--ref-protocol [--tmin <seconds>]]" << endl;
+        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack] [--no-ref-protocol | --ref-protocol] [--tmin <seconds>]" << endl;
+        return 1;
+    }
+    if (tmin_source != "default" && !ref_protocol) {
+        cerr << "Error: --tmin only applies to the reference protocol (this run uses the warm-up protocol:\n"
+                "       " << (protocol_source == "default" ? "the instrumented build's default" : "--no-ref-protocol") << ")." << endl;
         return 1;
     }
 #if RVV_INSTRUMENTED
@@ -390,16 +487,13 @@ int main(int argc, char** argv) {
 #endif
     // Logs of the two protocols never share a file, so one can never be merged into the other.
     const string log_suffix = string(RVV_LOG_SUFFIX) + (ref_protocol ? "_refproto" : "");
-    if (ref_protocol) {
-        cout << "[INFO] Protocol: REFERENCE (--ref-protocol, tmin=" << tmin << " s): no warm-up, reps run\n"
-                "       until tmin has passed, correctness checked after timing. Matches test_gemm.c." << endl;
-    } else {
-        cout << "[INFO] Protocol: DEFAULT (warm-up first, " << N_REPS
-             << " fixed reps). Pass --ref-protocol for the like-for-like reference comparison." << endl;
-    }
-
+    const string log_stem = string("_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + log_suffix + ".txt";
     // Ensure logs directory exists (handled by Makefile)
-    string raw_log_name = string("logs/raw_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + log_suffix + ".txt";
+    string raw_log_name = "logs/raw" + log_stem;
+    string summary_log_name = "logs/summary" + log_stem;
+    string perf_log_name = "logs/perf" + log_stem;
+    print_run_overview({ref_protocol, protocol_source, tmin, tmin_source, force_scalar_pack,
+                        scalar_pack_source, dataset_file, raw_log_name, summary_log_name, perf_log_name});
     bool raw_exists = false;
     {
         ifstream check(raw_log_name);
@@ -414,7 +508,6 @@ int main(int argc, char** argv) {
         raw_log << "Layer,M,N,K,Variant,Status,KerGOPs_Harmonic,KerGOPs_Min,KerGOPs_P5,KerGOPs_P95,KerGOPs_Max,KerGOPs_IQR,KerGOPs_Mean,KerGOPs_Std,KerGOPs_Median,RVV_Pack_GBs,Scl_Pack_GBs,RVV_Time_ms,Ref_Time_ms,Vector_Pack_Time_ms,Scalar_Pack_Time_ms,Compute_Time_ms,N_Reps\n";
     }
 
-    string summary_log_name = string("logs/summary_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + log_suffix + ".txt";
     ofstream summary_log(summary_log_name, ios_base::app);
     if (!summary_log.is_open()) {
         cerr << "Warning: Could not open " << summary_log_name << " for writing." << endl;
@@ -428,13 +521,7 @@ int main(int argc, char** argv) {
     if (perf.fd < 0) {
         cout << "[INFO] perf_event_open() counter group unavailable; perf_ log columns will be nan." << endl;
     }
-#else
-    // Not "unavailable" -- this build never asks for it (issue #14).
-    cout << "[INFO] Uninstrumented build (RVV_INSTRUMENTED=0): per-tile timers and perf\n"
-            "       counters are compiled out. RVV_Time_ms is the only timing reported;\n"
-            "       the pack/compute breakdown and every counter column will be nan." << endl;
 #endif
-    string perf_log_name = string("logs/perf_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + log_suffix + ".txt";
     bool perf_exists = false;
     {
         ifstream check(perf_log_name);
@@ -920,7 +1007,7 @@ int main(int argc, char** argv) {
                                         ker_gflops_iqr, ker_gflops_std, ker_gflops_median)
                      << " | Ref " << ref_gops_str << " | Delta " << delta_str << "\n";
                 ostringstream reps_note;  // local stream: leaves cout's float format alone
-                if (ref_protocol) reps_note << "until tmin=" << tmin << " s, --ref-protocol";
+                if (ref_protocol) reps_note << "until tmin=" << tmin << " s, reference protocol";
                 else reps_note << "fixed, from config";
                 cout << "  |  Reps:  " << n_reps << " (" << reps_note.str() << ")\n";
                 cout << "  |  Counters valid: " << (counters_valid ? "yes" : "no") << "\n";

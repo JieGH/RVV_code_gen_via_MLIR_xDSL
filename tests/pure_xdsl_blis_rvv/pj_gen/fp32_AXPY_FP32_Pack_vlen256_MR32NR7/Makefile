@@ -31,9 +31,13 @@ ifneq ($(INSTRUMENTED),1)
 TARGET := $(TARGET:.x=_noinstr.x)
 RESULT_SUFFIX = _noinstr
 endif
-# Issue #27: a --ref-protocol run gets its own results file too, like its logs.
-ifneq (,$(findstring --ref-protocol,$(TEST_ARGS)))
+# Issue #27: the uninstrumented build runs the reference protocol unless TEST_ARGS says
+# --no-ref-protocol (the driver's own default; keep the two in step), and such a run gets
+# its own results file, like its logs.
+ifneq ($(INSTRUMENTED),1)
+ifeq (,$(findstring --no-ref-protocol,$(TEST_ARGS)))
 RESULT_SUFFIX := $(RESULT_SUFFIX)_refproto
+endif
 endif
 
 all: $(TARGET)

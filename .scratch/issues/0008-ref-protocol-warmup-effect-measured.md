@@ -1,5 +1,9 @@
 # Issue #27 (local): `--ref-protocol`, and what the warm-up was worth (under 1% on B1/B5/B2, unsettled on B3)
 
+**Follow-up:** the reference protocol was later made the *default* of the uninstrumented build
+(`--no-ref-protocol` brings the old one back), and every run now prints an overview of its
+settings. Below, "default" means the protocol that was the default *at measurement time*,
+now called the warm-up protocol. See `docs/metrics.md`.
 **Role / Label:** `done` — implemented and measured on hardware
 **Status:** 🟢 `--ref-protocol` shipped. This note records the measurement that replaces the
 "under 1%, favours us" estimate in `docs/metrics.md` and [[0006-match-reference-design-everything-but-the-two-intended-differences]].

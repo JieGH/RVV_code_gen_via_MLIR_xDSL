@@ -32,7 +32,7 @@ python3 tests/pure_xdsl_blis_rvv/summarize_run.py tests/pure_xdsl_blis_rvv/logs/
 ## Timing / GOPs metrics (raw log + console table)
 
 Each case runs `N_REPS` times (from `config.json`'s `iterations` field, or 5 by
-default), or, under `--ref-protocol` (issue #27), for as many reps as fit in `tmin`. `KerGOPs_*` are computed per-rep from
+default), or, under the reference protocol (the default in the uninstrumented build, issue #27), for as many reps as fit in `tmin`, in which case `iterations` is unused. `KerGOPs_*` are computed per-rep from
 `2*M*N*K / (kernel_time + rvv_pack_time)`, i.e. microkernel compute **plus** the
 RVV pack. Since issue #13 packing time is included, so the number is comparable to
 the reference design's `2mnk / wall(gemm_blis)`. Before #13 it was
@@ -94,9 +94,10 @@ time = time/nreps;                // mean
 GFLOPS = 2.0*m*n*k / (1.0e+9 * time);
 ```
 
-Matching, as of issue #14 (any uninstrumented run) and issue #27 (`--ref-protocol`):
+Matching, as of issue #14 (any uninstrumented run) and issue #27 (the reference
+protocol, which is the uninstrumented build's default; `--no-ref-protocol` turns it off):
 
-| | reference | uninstrumented build | + `--ref-protocol` |
+| | reference | uninstrumented, `--no-ref-protocol` | uninstrumented, default (reference protocol) |
 |---|---|---|---|
 | formula | `2mnk / mean per-rep wall` | same | same |
 | packing inside the timed region | yes | yes | yes |
@@ -113,38 +114,53 @@ Still differing — quote these alongside any cross-design number:
 |---|---|
 | `compare_ref_baseline.py` keeps the reference's *best* kernel variant per case; we report one pinned kernel | favours the reference |
 
-Without `--ref-protocol` the three rows in bold above (warm-up, rep count,
-correctness-check timing) still differ, so a default run is **not** a like-for-like
-protocol match.
+With `--no-ref-protocol` the three rows in bold above (warm-up, rep count,
+correctness-check timing) differ, so that run is **not** a like-for-like protocol match.
+The instrumented build always runs the warm-up protocol.
 
-### `--ref-protocol` (issue #27)
+### The reference protocol (issue #27) is the default
 
-`compile_macro_bench.sh --ref-protocol [--tmin <s>]`, or `./test_gemm_*_noinstr.x
-<dataset> --ref-protocol [--tmin <s>]`. Off by default, because short shapes need
-the warm-up for stable numbers (dropping it by accident made B3 14% slower and
-swing 2.07–3.94 ms during issue #14). It only runs in the uninstrumented build and
-refuses otherwise. The run banner prints `Protocol : REFERENCE (...)` or
-`Protocol : DEFAULT (...)`, next to the build line.
+No flag needed: `compile_macro_bench.sh` and `./test_gemm_*_noinstr.x <dataset>` time
+the way the reference does. `--tmin <s>` sets the time budget (default 3.0).
+
+- `--no-ref-protocol` gives the older **warm-up protocol** instead: 5 warm-up calls and
+  a scalar-pack pass, then the fixed `iterations` from `config.json`. Use it when you
+  want steadier numbers on short shapes: dropping the warm-up by accident made B3 14%
+  slower and swing 2.07–3.94 ms during issue #14, and B3 is noisy under either
+  protocol (see the measurement below).
+- The **instrumented build** cannot run the reference protocol (its timers make the
+  numbers incomparable), so its default is the warm-up protocol. Explicitly asking it
+  for `--ref-protocol` is refused, as is `--tmin` wherever the reference protocol is not
+  running.
+- **Every run starts with an overview** of the settings in effect, defaults included,
+  each marked `[default]` or with what set it (a flag, an environment variable, or
+  `config.json`): build, protocol, warm-up, reps, correctness check, packing, kernel
+  family, variants, cache blocking (`nc` overrides, `RVV_FORCE_NC`), dataset, log
+  names. The script prints one at the top; each project's driver prints its fuller one
+  on the board. `compile_macro_bench.sh --dry-run` prints the script's and stops
+  without touching the board.
+- Log names carry the protocol: `raw_*_noinstr_refproto.txt` (reference protocol) vs
+  `raw_*_noinstr.txt` (warm-up protocol). `compare_ref_baseline.py` defaults to the
+  instrumented name, so pass `--raw-name all_raw_<...>_noinstr_refproto.txt`.
 
 - **No warm-up at all**: neither the 5 kernel calls nor the scalar-pack pass.
   (The issue text named only the scalar-pack pass; the 5 calls before it are also a
   warm-up, and they are what fills `C` for the correctness check, so that check
   moves after the timed loop, as in `test_gemm.c`.)
 - **Rep count** is whatever fits in `tmin`. It is printed (`Reps:` line) and logged
-  in a new trailing `N_Reps` column. The column is present in default logs too
+  in a new trailing `N_Reps` column. The column is present in warm-up-protocol logs too
   (there it equals `iterations`, or 0 if the case FAILed before timing). A warning prints when `nreps < 3`: the largest
   Square shapes finish in one rep at `tmin=3.0`, so the number is a single cold
   sample.
 - **Logs** are named `raw_*_noinstr_refproto.txt` (and `summary_`/`perf_`,
-  `results_*_noinstr_refproto.csv`), so they cannot be merged into a default run.
-  `compare_ref_baseline.py --raw-name all_raw_<...>_noinstr_refproto.txt` reads them.
+  `results_*_noinstr_refproto.csv`), so they cannot be merged into a warm-up run.
 - The timed loop body is the same code in both protocols; only the stop test differs.
 
-**Measured effect of the warm-up** (`jbpi`, uninstrumented, default vs
-`--ref-protocol`, 6 alternating runs each, `tmin=3.0`; per-rep `RVV_Time_ms`,
+**Measured effect of the warm-up** (`jbpi`, uninstrumented, warm-up protocol
+(then called "default") vs reference protocol, 6 alternating runs each, `tmin=3.0`; per-rep `RVV_Time_ms`,
 mean of the 6):
 
-| case | default | `--ref-protocol` | change | run-to-run CV (default / ref) |
+| case | warm-up protocol | reference protocol | change | run-to-run CV (default / ref) |
 |---|---|---|---|---|
 | B1 | 101.37 ms | 101.13 ms (30–31 reps) | −0.2% | 1.0% / 1.1% |
 | B5 | 421.78 ms | 419.18 ms (8 reps) | −0.6% | 0.8% / 1.6% |
@@ -174,7 +190,7 @@ be noisier" guess. The 32x6 default runs used `iterations=30`, not the
 | `Ref_Time_ms` | Wall-clock for the single scalar reference GEMM run (`gemm_ref`), used only for correctness checking. `0` whenever `skip_ref_run: true` in `config.json` (true for every case in the current config, to keep board time bounded) |
 | `Vector_Pack_Time_ms` / `Scalar_Pack_Time_ms` | Per-rep-averaged wall-clock pack time, RVV vs. scalar packer (issue #7) |
 | `Compute_Time_ms` | Per-rep-averaged wall-clock microkernel time, excluding packing (issue #2) |
-| `N_Reps` | Reps the RVV timing loop ran: `iterations` by default, whatever fit in `tmin` under `--ref-protocol` (issue #27) |
+| `N_Reps` | Reps the RVV timing loop ran: `iterations` under the warm-up protocol, whatever fit in `tmin` under the reference protocol (issue #27) |
 | `Status` | `PASS` (matched the scalar reference), `FAIL` (mismatch beyond tolerance), or `SKIP` (`skip_ref_run: true`, so no reference was computed) |
 
 ## Hardware perf counters (perf log, issue #8)

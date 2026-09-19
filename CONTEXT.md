@@ -45,3 +45,7 @@ A cohesive set of $(MR, NR)$ dimension variants sharing an identical datatype, p
 
 **Reference Design**:
 The legacy, baseline handwritten C implementation (`gemm_blis.c` or `.ext/RVV_ukernels_benchmark`) used for correctness verification and performance baselines.
+
+**Reference Protocol**:
+The Reference Design's way of timing a GEMM (`test_gemm.c`): no warm-up, reps run until `tmin` seconds have passed, one clock read per rep, correctness checked after timing. The default in the uninstrumented build. The alternative is the **Warm-up Protocol** (`--no-ref-protocol`): warm-up calls first, then a fixed number of reps.
+_Avoid_: default protocol (ambiguous: the default changed)

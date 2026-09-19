@@ -20,11 +20,17 @@ set -e
 # time goes (pack vs compute, IPC, cache misses). That build's timers cost 11-17% of
 # measured time, so do NOT quote its numbers against the reference.
 #
-# Pass --ref-protocol (issue #27) to time the way the reference design does: no warm-up,
-# reps run until --tmin seconds (default 3.0) have passed, correctness checked after
-# timing. Off by default, because short shapes need the warm-up for stable numbers. It
-# only works with the uninstrumented build, and its logs are named *_noinstr_refproto.txt
-# so they can never be merged into a default run.
+# The uninstrumented build times the way the reference design does (issue #27): no
+# warm-up, reps run until --tmin seconds (default 3.0) have passed, correctness checked
+# after timing. That is the default; no flag needed. Its logs are named
+# *_noinstr_refproto.txt. Pass --no-ref-protocol for the older protocol instead (5 warm-up
+# calls and a scalar-pack pass, then the fixed `iterations` from config.json), which gives
+# steadier numbers on short shapes such as B3 but is not the reference's protocol.
+# The instrumented build (--instr) cannot run the reference protocol, so it defaults to
+# the older one; asking it for --ref-protocol is refused.
+#
+# Every run starts by printing an overview of the settings in effect, defaults included.
+# --dry-run prints that overview and stops, without touching the board.
 #
 # Run this script from the project root!
 # ============================================================
@@ -42,10 +48,16 @@ FORCE_NC=""
 # carries no timer tax and is comparable to the reference. 1 keeps them, for debugging
 # our own pack/compute split. The two write to separate logs.
 INSTRUMENTED="0"
-# Issue #27: 1 runs the driver with --ref-protocol [--tmin TMIN]. TMIN stays empty unless
-# given, so the driver's own default (3.0 s, matching run_ref_baseline.sh) applies.
-REF_PROTOCOL="0"
+BUILD_SOURCE="default"
+# Issue #27: PROTOCOL_FLAG is only what the user typed (--ref-protocol or
+# --no-ref-protocol); it is passed to the driver as given, so the driver's own default is
+# the one source of truth. REF_PROTOCOL is what this script resolves it to, for the
+# banner and the log names. TMIN stays empty unless given (driver default: 3.0 s,
+# matching run_ref_baseline.sh).
+PROTOCOL_FLAG=""
+REF_PROTOCOL=""
 TMIN=""
+DRY_RUN=false
 
 SEP="------------------------------------------------------------"
 
@@ -59,30 +71,40 @@ while [[ "$#" -gt 0 ]]; do
         --riscv-workspace) RISCV_WORKSPACE="$2";     shift      ;;
         --config)          CONFIG="$2";              shift      ;;
         --scalar-pack)     TEST_ARGS="${TEST_ARGS} --scalar-pack" ;;
-        --ref-protocol)    REF_PROTOCOL="1"                     ;;
+        --ref-protocol)    PROTOCOL_FLAG="--ref-protocol"       ;;
+        --no-ref-protocol) PROTOCOL_FLAG="--no-ref-protocol"    ;;
+        --dry-run)         DRY_RUN=true                         ;;
         --tmin)            TMIN="$2";                shift      ;;
         --force-nc)        FORCE_NC="$2";            shift      ;;
-        --no-instr)        INSTRUMENTED="0"                     ;;
-        --instr)           INSTRUMENTED="1"                     ;;
+        --no-instr)        INSTRUMENTED="0"; BUILD_SOURCE="--no-instr" ;;
+        --instr)           INSTRUMENTED="1"; BUILD_SOURCE="--instr"    ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
 done
 
-# Issue #27: refuse now, during argument parsing, not after generating and syncing.
-if [ "${REF_PROTOCOL}" = "1" ] && [ "${INSTRUMENTED}" != "0" ]; then
+# Issue #27: resolve the protocol and refuse bad combinations now, during argument
+# parsing, not after generating and syncing.
+if [ "${PROTOCOL_FLAG}" = "--ref-protocol" ] && [ "${INSTRUMENTED}" != "0" ]; then
     echo "Error: --ref-protocol needs the uninstrumented build (drop --instr)."
     echo "       The instrumented build's timers cost 11-17% of measured time, so its numbers"
     echo "       are not comparable to the reference design under any protocol (issue #14)."
     exit 1
 fi
+if [ -n "${PROTOCOL_FLAG}" ]; then
+    PROTOCOL_SOURCE="${PROTOCOL_FLAG}"
+    if [ "${PROTOCOL_FLAG}" = "--ref-protocol" ]; then REF_PROTOCOL="1"; else REF_PROTOCOL="0"; fi
+elif [ "${INSTRUMENTED}" = "0" ]; then
+    PROTOCOL_SOURCE="default"; REF_PROTOCOL="1"
+else
+    PROTOCOL_SOURCE="default for this build: the reference protocol needs the uninstrumented build"
+    REF_PROTOCOL="0"
+fi
 if [ -n "${TMIN}" ] && [ "${REF_PROTOCOL}" != "1" ]; then
-    echo "Error: --tmin only applies with --ref-protocol."
+    echo "Error: --tmin only applies to the reference protocol (this run uses the warm-up protocol)."
     exit 1
 fi
-if [ "${REF_PROTOCOL}" = "1" ]; then
-    TEST_ARGS="${TEST_ARGS} --ref-protocol${TMIN:+ --tmin ${TMIN}}"
-fi
+TEST_ARGS="${TEST_ARGS}${PROTOCOL_FLAG:+ ${PROTOCOL_FLAG}}${TMIN:+ --tmin ${TMIN}}"
 
 # Issue #14: say which build this is, loudly, at both ends of the run. Quoting an
 # instrumented number against the reference understates us by 11-17%, and the only
@@ -99,15 +121,45 @@ else
 fi
 # Issue #27: every number names its protocol as well as its build.
 if [ "${REF_PROTOCOL}" = "1" ]; then
-    PROTOCOL_BANNER="REFERENCE (--ref-protocol, tmin=${TMIN:-3.0} s) -- no warm-up, reps until tmin"
+    PROTOCOL_BANNER="REFERENCE (tmin=${TMIN:-3.0} s) -- no warm-up, reps until tmin"
 else
-    PROTOCOL_BANNER="DEFAULT -- warm-up first, fixed rep count from config.json"
+    PROTOCOL_BANNER="WARM-UP -- warm-up first, fixed rep count from config.json"
 fi
+
+# What this run will do: every setting in effect, defaults included, each marked with
+# where it came from. (The driver prints its own, fuller overview per project on the board.)
+ov() {  # key value [source]
+    printf "  %-14s : %s" "$1" "$2"
+    if [ -n "$3" ]; then printf "   [%s]" "$3"; fi
+    printf "\n"
+}
+if [ "${USE_DIRECT}" = true ]; then TARGET_MODE="direct"; else TARGET_MODE="jump-host ${REMOTE_HOST:-?} -> board"; fi
 echo ""; echo "$SEP"
-echo "  Build    : ${BUILD_BANNER}"
-echo "  Protocol : ${PROTOCOL_BANNER}"
-echo "  Note     : ${BUILD_NOTE}"
+echo " Run overview   ([default] = not set by you)"
 echo "$SEP"
+ov "Build" "${BUILD_BANNER}" "${BUILD_SOURCE}"
+if [ "${REF_PROTOCOL}" = "1" ]; then
+    ov "Protocol" "REFERENCE (matches the reference design's test_gemm.c)" "${PROTOCOL_SOURCE}"
+    ov "Warm-up" "none: the cold first rep is inside the mean"
+    ov "Reps" "until tmin = ${TMIN:-3.0} s has passed" "$([ -n "${TMIN}" ] && echo "--tmin" || echo default)"
+    ov "Correctness" "checked AFTER timing (unless skip_ref_run in ${CONFIG})"
+else
+    ov "Protocol" "WARM-UP (steadier on short shapes; not the reference's protocol)" "${PROTOCOL_SOURCE}"
+    ov "Warm-up" "5 kernel calls, then a scalar-pack pass"
+    ov "Reps" "fixed, 'iterations' from ${CONFIG}"
+    ov "Correctness" "checked BEFORE timing (unless skip_ref_run in ${CONFIG})"
+fi
+ov "Packing" "$(case "${TEST_ARGS}" in *--scalar-pack*) echo "scalar packing forced";; *) echo "RVV vector packing";; esac)" "$(case "${TEST_ARGS}" in *--scalar-pack*) echo "--scalar-pack";; *) echo default;; esac)"
+ov "Cache blocking" "analytical model; nc overrides come from ${CONFIG}" "default"
+ov "" "$([ -n "${FORCE_NC}" ] && echo "RVV_FORCE_NC=${FORCE_NC} overrides nc for every shape" || echo "RVV_FORCE_NC: not set")" "$([ -n "${FORCE_NC}" ] && echo "--force-nc" || echo default)"
+ov "Config" "${CONFIG}" "$([ "${CONFIG}" = "config.json" ] && echo default || echo "--config")"
+ov "Board" "${RISCV_USER}@${RISCV_REMOTE_IP}:${RISCV_SSH_PORT}, ${TARGET_MODE}, workspace ${RISCV_WORKSPACE}"
+ov "Logs" "${BUILD_LOGS}"
+echo "$SEP"
+if [ "${DRY_RUN}" = true ]; then
+    echo "  --dry-run: stopping here. Nothing was generated, synced or run."
+    exit 0
+fi
 
 # Output configuration parsing
 # (Remove .json from config name to get the project name)

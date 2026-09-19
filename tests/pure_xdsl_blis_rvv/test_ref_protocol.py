@@ -1,11 +1,13 @@
 """
-Issue #27: `--ref-protocol`, the run protocol of the reference design's test_gemm.c.
+Issue #27: the reference design's run protocol (test_gemm.c), and the run overview.
 
 The reference times its GEMM with no warm-up, and keeps going until `tmin` seconds have
 passed (`while (time <= tmin) {...}`), so its cold first rep sits inside the mean and its
-rep count is whatever fits. The default run keeps a warm-up and a fixed rep count, because
-short shapes need them to give stable numbers (issue #14). `--ref-protocol` drops both,
-for the like-for-like comparison, and must change nothing else.
+rep count is whatever fits. The uninstrumented build now does the same by default. The
+older protocol -- a warm-up and a fixed rep count, steadier on short shapes (issue #14) --
+is `--no-ref-protocol`, and is the instrumented build's default, because the reference
+protocol cannot run there. Switching protocol must change nothing but the warm-up, the
+rep count and when correctness is checked.
 
 Seam: the real `templates/driver_benchmark.cpp` and `modelLevel/model_level.c`, built on
 the host against a stub `generated_kernels.h` whose kernel is a plain scalar GEMM. The
@@ -154,13 +156,18 @@ def _stub_calls(stderr: str) -> tuple[int, int]:
     return int(fields["total"]), int(fields["scalar_pack"])
 
 
-def test_ref_protocol_keeps_running_reps_until_tmin_has_passed(uninstrumented: Driver):
-    proc = uninstrumented.run(
-        "--ref-protocol", "--tmin", "0.3", env={"STUB_SLEEP_MS": "20"}
-    )
+REFPROTO_RAW = "raw_fp32_STUB_noinstr_refproto.txt"
+WARMUP_RAW = "raw_fp32_STUB_noinstr.txt"
+
+
+def test_the_reference_protocol_is_the_default_and_runs_reps_until_tmin(
+    uninstrumented: Driver,
+):
+    # No protocol flag at all: the uninstrumented build times the way the reference does.
+    proc = uninstrumented.run("--tmin", "0.3", env={"STUB_SLEEP_MS": "20"})
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
-    (row,) = uninstrumented.raw_rows("raw_fp32_STUB_noinstr_refproto.txt")
+    (row,) = uninstrumented.raw_rows(REFPROTO_RAW)
     reps = int(row["N_Reps"])
     rep_s = float(row["RVV_Time_ms"]) / 1000.0
     total_s = rep_s * reps
@@ -172,66 +179,80 @@ def test_ref_protocol_keeps_running_reps_until_tmin_has_passed(uninstrumented: D
     assert f"Reps:  {reps} " in proc.stdout  # the rep count is printed, not just logged
 
 
-def test_ref_protocol_has_no_warm_up_and_no_scalar_pack_pass(uninstrumented: Driver):
-    proc = uninstrumented.run(
-        "--ref-protocol", "--tmin", "0.1", env={"STUB_SLEEP_MS": "10"}
-    )
-    (row,) = uninstrumented.raw_rows("raw_fp32_STUB_noinstr_refproto.txt")
+def test_naming_the_flag_explicitly_changes_nothing(uninstrumented: Driver):
+    uninstrumented.run("--ref-protocol", "--tmin", "0.05")
+    assert uninstrumented.raw_rows(REFPROTO_RAW)
+
+
+def test_the_reference_protocol_has_no_warm_up_and_no_scalar_pack_pass(
+    uninstrumented: Driver,
+):
+    proc = uninstrumented.run("--tmin", "0.1", env={"STUB_SLEEP_MS": "10"})
+    (row,) = uninstrumented.raw_rows(REFPROTO_RAW)
     total_calls, scalar_pack_calls = _stub_calls(proc.stderr)
     assert scalar_pack_calls == 0
     assert total_calls == int(row["N_Reps"])  # every kernel call was a timed rep
 
 
-def test_default_protocol_is_unchanged(uninstrumented: Driver):
-    proc = uninstrumented.run()
+def test_no_ref_protocol_brings_back_the_warm_up_and_the_fixed_rep_count(
+    uninstrumented: Driver,
+):
+    proc = uninstrumented.run("--no-ref-protocol")
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
     # Its own log name, a fixed rep count, and the warm-ups it always had: 5 warm-up
     # calls, N scalar-pack calls, N timed calls.
-    (row,) = uninstrumented.raw_rows("raw_fp32_STUB_noinstr.txt")
+    (row,) = uninstrumented.raw_rows(WARMUP_RAW)
     assert int(row["N_Reps"]) == CONFIG_ITERATIONS
     assert _stub_calls(proc.stderr) == (5 + 2 * CONFIG_ITERATIONS, CONFIG_ITERATIONS)
-    assert not (uninstrumented.cwd / "logs" / "raw_fp32_STUB_noinstr_refproto.txt").exists()
-    assert "Protocol: DEFAULT" in proc.stdout
+    assert not (uninstrumented.cwd / "logs" / REFPROTO_RAW).exists()
 
 
-def test_ref_protocol_names_itself_in_the_banner_and_the_other_logs(uninstrumented: Driver):
-    proc = uninstrumented.run("--ref-protocol", "--tmin", "0.05")
-    assert "Protocol: REFERENCE" in proc.stdout
+def test_each_protocol_writes_only_its_own_logs(uninstrumented: Driver):
+    uninstrumented.run("--tmin", "0.05")
     for kind in ("raw", "summary", "perf"):
         assert (uninstrumented.cwd / "logs" / f"{kind}_fp32_STUB_noinstr_refproto.txt").is_file()
     assert not list((uninstrumented.cwd / "logs").glob("*_noinstr.txt"))
 
 
-def test_ref_protocol_still_checks_correctness_against_the_scalar_reference(
+def test_the_reference_protocol_still_checks_correctness_against_the_scalar_reference(
     uninstrumented: Driver,
 ):
-    proc = uninstrumented.run("--ref-protocol", "--tmin", "0.05")
-    (row,) = uninstrumented.raw_rows("raw_fp32_STUB_noinstr_refproto.txt")
+    proc = uninstrumented.run("--tmin", "0.05")
+    (row,) = uninstrumented.raw_rows(REFPROTO_RAW)
     assert row["Status"] == "PASS", proc.stdout
 
     # ... and the check is real: a kernel that computes the wrong answer fails it, even
     # though the check now runs after the timed loop.
-    uninstrumented.run("--ref-protocol", "--tmin", "0.05", env={"STUB_BREAK": "1"})
-    (row,) = uninstrumented.raw_rows("raw_fp32_STUB_noinstr_refproto.txt")
+    uninstrumented.run("--tmin", "0.05", env={"STUB_BREAK": "1"})
+    (row,) = uninstrumented.raw_rows(REFPROTO_RAW)
     assert row["Status"] == "FAIL"
 
 
-def test_ref_protocol_warns_when_fewer_than_three_reps_fit_in_tmin(uninstrumented: Driver):
-    slow = uninstrumented.run(
-        "--ref-protocol", "--tmin", "0.3", env={"STUB_SLEEP_MS": "200"}
-    )
-    (row,) = uninstrumented.raw_rows("raw_fp32_STUB_noinstr_refproto.txt")
+def test_it_warns_when_fewer_than_three_reps_fit_in_tmin(uninstrumented: Driver):
+    slow = uninstrumented.run("--tmin", "0.3", env={"STUB_SLEEP_MS": "200"})
+    (row,) = uninstrumented.raw_rows(REFPROTO_RAW)
     assert int(row["N_Reps"]) == 2
     assert "[WARN]" in slow.stdout and "only 2 rep(s)" in slow.stdout
 
-    fast = uninstrumented.run(
-        "--ref-protocol", "--tmin", "0.1", env={"STUB_SLEEP_MS": "10"}
-    )
+    fast = uninstrumented.run("--tmin", "0.1", env={"STUB_SLEEP_MS": "10"})
     assert "[WARN]" not in fast.stdout
 
 
-def test_ref_protocol_is_refused_by_the_instrumented_build(instrumented: Driver):
+def test_the_instrumented_build_defaults_to_the_warm_up_protocol(instrumented: Driver):
+    # The reference protocol cannot run here (its numbers carry the timer tax), so the
+    # default for this build is the old protocol -- and it says so.
+    proc = instrumented.run()
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    (row,) = instrumented.raw_rows("raw_fp32_STUB.txt")
+    assert int(row["N_Reps"]) == CONFIG_ITERATIONS
+    assert "Protocol       : WARM-UP" in proc.stdout
+    assert "needs the uninstrumented build" in proc.stdout
+
+
+def test_asking_the_instrumented_build_for_the_reference_protocol_is_refused(
+    instrumented: Driver,
+):
     proc = instrumented.run("--ref-protocol")
     assert proc.returncode != 0
     assert "--ref-protocol needs the uninstrumented build" in proc.stderr
@@ -242,9 +263,64 @@ def test_ref_protocol_is_refused_by_the_instrumented_build(instrumented: Driver)
     "bad", [["--tmin"], ["--tmin", "0"], ["--tmin", "soon"], ["--tmin", "0.5abc"]]
 )
 def test_tmin_needs_a_positive_number_of_seconds(uninstrumented: Driver, bad: list[str]):
-    proc = uninstrumented.run("--ref-protocol", *bad)
+    proc = uninstrumented.run(*bad)
     assert proc.returncode != 0
     assert "--tmin needs a positive number" in proc.stderr
+
+
+def test_tmin_is_refused_where_it_would_be_silently_ignored(
+    uninstrumented: Driver, instrumented: Driver
+):
+    for driver, flags in ((uninstrumented, ["--no-ref-protocol"]), (instrumented, [])):
+        proc = driver.run(*flags, "--tmin", "1")
+        assert proc.returncode != 0
+        assert "--tmin only applies to the reference protocol" in proc.stderr
+
+
+# ---------------------------------------------------------------------------
+# The overview printed at the start of every run: every setting in effect, including
+# the ones nobody typed, each marked as a default or as set by the user.
+# ---------------------------------------------------------------------------
+def _overview(stdout: str) -> str:
+    start = stdout.index("Run overview")
+    return stdout[start : stdout.index("Benchmark Config", start)]
+
+
+def test_the_overview_lists_every_setting_and_marks_the_defaults(uninstrumented: Driver):
+    proc = uninstrumented.run()
+    ov = _overview(proc.stdout)
+
+    assert ov.index("Build") < ov.index("Protocol") < ov.index("Logs")  # printed up front
+    assert "Build          : UNINSTRUMENTED" in ov
+    assert "Protocol       : REFERENCE" in ov and "[default]" in ov.split("Protocol")[1].splitlines()[0]
+    assert "Warm-up        : none" in ov
+    assert "until tmin = 3 s" in ov and "[default]" in ov.split("Reps")[1].splitlines()[0]
+    assert "AFTER timing" in ov
+    assert "Packing        : RVV vector packing" in ov
+    assert "Kernel family  : fp32 STUB" in ov
+    assert "Variants       : MR4_NR4" in ov
+    assert "Cache blocking : analytical model" in ov
+    assert "RVV_FORCE_NC: not set" in ov
+    assert "tiny.dat" in ov
+    assert "logs/raw_fp32_STUB_noinstr_refproto.txt" in ov
+
+
+def test_the_overview_marks_what_the_user_set_and_what_the_environment_set(
+    uninstrumented: Driver,
+):
+    proc = uninstrumented.run(
+        "--tmin", "0.05", "--scalar-pack", env={"RVV_FORCE_NC": "16"}
+    )
+    ov = _overview(proc.stdout)
+    assert "until tmin = 0.05 s" in ov and "[--tmin]" in ov.split("Reps")[1].splitlines()[0]
+    assert "scalar packing forced" in ov and "[--scalar-pack]" in ov
+    assert "RVV_FORCE_NC=16" in ov
+
+    warm = _overview(uninstrumented.run("--no-ref-protocol").stdout)
+    assert "Protocol       : WARM-UP" in warm
+    assert "[--no-ref-protocol]" in warm.split("Protocol")[1].splitlines()[0]
+    assert f"{CONFIG_ITERATIONS} fixed reps" in warm
+    assert "BEFORE timing" in warm
 
 
 # ---------------------------------------------------------------------------
@@ -261,15 +337,43 @@ def _run_script(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_script_refuses_ref_protocol_with_the_instrumented_build_before_doing_anything():
+def test_script_refuses_an_explicit_ref_protocol_with_the_instrumented_build():
     proc = _run_script("--ref-protocol", "--instr")
     assert proc.returncode != 0
     assert "--ref-protocol needs the uninstrumented build" in proc.stdout + proc.stderr
     assert "Dependency Check" not in proc.stdout  # refused during argument parsing
 
 
-def test_script_refuses_tmin_without_ref_protocol():
-    proc = _run_script("--tmin", "1.0")
+@pytest.mark.parametrize(
+    "flags", [["--no-ref-protocol", "--tmin", "1.0"], ["--instr", "--tmin", "1.0"]]
+)
+def test_script_refuses_tmin_where_the_reference_protocol_is_not_running(flags: list[str]):
+    proc = _run_script(*flags)
     assert proc.returncode != 0
-    assert "--tmin only applies with --ref-protocol" in proc.stdout + proc.stderr
+    assert "--tmin only applies to the reference protocol" in proc.stdout + proc.stderr
     assert "Dependency Check" not in proc.stdout
+
+
+def test_script_dry_run_prints_the_overview_of_a_default_run_and_stops():
+    proc = _run_script("--dry-run")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    out = proc.stdout
+    assert "Run overview" in out
+    assert "Build          : UNINSTRUMENTED" in out
+    assert "Protocol       : REFERENCE" in out and "[default]" in out.split("Protocol")[1].splitlines()[0]
+    assert "tmin = 3.0 s" in out
+    assert "raw_*_noinstr_refproto.txt" in out
+    assert "Dependency Check" not in out  # it stops before touching anything
+
+
+def test_script_dry_run_follows_the_flags_it_is_given():
+    out = _run_script("--dry-run", "--tmin", "0.5", "--force-nc", "128").stdout
+    assert "tmin = 0.5 s" in out and "[--tmin]" in out
+    assert "RVV_FORCE_NC=128" in out
+
+    out = _run_script("--dry-run", "--no-ref-protocol").stdout
+    assert "Protocol       : WARM-UP" in out and "raw_*_noinstr.txt" in out
+
+    out = _run_script("--dry-run", "--instr").stdout
+    assert "Build          : INSTRUMENTED" in out
+    assert "Protocol       : WARM-UP" in out  # the reference protocol cannot run here
