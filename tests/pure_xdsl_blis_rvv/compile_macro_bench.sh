@@ -34,6 +34,12 @@ set -e
 # Use it for a head-to-head number; a run without it is the shipped configuration. The two
 # never share a log: this one's are named *_no_nc_override.txt.
 #
+# Issue #21: the timed run is pinned to one core (--cpu N, default BENCH_CPU_DEFAULT in
+# board_pin.sh, shared with run_ref_baseline.sh so both sides time on the same one), and the
+# conditions it ran under (governor, /proc/cpuinfo, compiler, load) are written to
+# <run dir>/provenance.txt. --no-pin runs unpinned, to reproduce the old numbers. For a
+# head-to-head, run_head_to_head.sh runs both sides back to back instead of a day apart.
+#
 # Every run starts by printing an overview of the settings in effect, defaults included.
 # --dry-run prints that overview and stops, without touching the board.
 #
@@ -66,6 +72,12 @@ DRY_RUN=false
 
 SEP="------------------------------------------------------------"
 
+source "$(dirname "${BASH_SOURCE[0]}")/board_pin.sh"
+PIN_CPU="${BENCH_CPU_DEFAULT}"
+PIN_SOURCE="default"
+CPU_FLAG=false
+NO_PIN=false
+
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --direct)          USE_DIRECT=true                       ;;
@@ -82,6 +94,8 @@ while [[ "$#" -gt 0 ]]; do
         --tmin)            TMIN="$2";                shift      ;;
         --force-nc)        FORCE_NC="$2";            shift      ;;
         --no-nc-overrides) TEST_ARGS="${TEST_ARGS} --no-nc-overrides" ;;
+        --cpu)             PIN_CPU="$2"; CPU_FLAG=true; shift   ;;
+        --no-pin)          NO_PIN=true                          ;;
         --no-instr)        INSTRUMENTED="0"; BUILD_SOURCE="--no-instr" ;;
         --instr)           INSTRUMENTED="1"; BUILD_SOURCE="--instr"    ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
@@ -117,6 +131,15 @@ if [ -n "${FORCE_NC}" ] && [[ "${TEST_ARGS}" == *--no-nc-overrides* ]]; then
     exit 1
 fi
 TEST_ARGS="${TEST_ARGS}${PROTOCOL_FLAG:+ ${PROTOCOL_FLAG}}${TMIN:+ --tmin ${TMIN}}"
+
+# Issue #21: refuse a bad core, and --cpu with --no-pin, rather than let the later flag win.
+pin_check "${CPU_FLAG}" "${NO_PIN}" "${PIN_CPU}" || exit 1
+if [ "${CPU_FLAG}" = true ]; then
+    PIN_SOURCE="--cpu"
+elif [ "${NO_PIN}" = true ]; then
+    PIN_CPU=""; PIN_SOURCE="--no-pin"
+fi
+PIN_PREFIX="$(pin_prefix "${PIN_CPU}")"
 
 # Issue #14: say which build this is, loudly, at both ends of the run. Quoting an
 # instrumented number against the reference understates us by 11-17%, and the only
@@ -170,6 +193,11 @@ else
     ov "" "nc overrides: as listed in ${CONFIG}, applied to the row with exactly that label" "default"
 fi
 ov "" "$([ -n "${FORCE_NC}" ] && echo "RVV_FORCE_NC=${FORCE_NC} overrides nc for every shape" || echo "RVV_FORCE_NC: not set")" "$([ -n "${FORCE_NC}" ] && echo "--force-nc" || echo default)"
+if [ -n "${PIN_CPU}" ]; then
+    ov "Pinning" "${PIN_PREFIX}make run (the timed run only), cpu ${PIN_CPU}" "${PIN_SOURCE}"
+else
+    ov "Pinning" "NOT pinned: the scheduler may move the run between cores" "${PIN_SOURCE}"
+fi
 ov "Config" "${CONFIG}" "$([ "${CONFIG}" = "config.json" ] && echo default || echo "--config")"
 ov "Board" "${RISCV_USER}@${RISCV_REMOTE_IP}:${RISCV_SSH_PORT}, ${TARGET_MODE}, workspace ${RISCV_WORKSPACE}"
 ov "Logs" "${BUILD_LOGS}"
@@ -246,6 +274,16 @@ python3 generate_pure_blis_project.py --config "$CONFIG"
 cd ../..
 echo "  [OK] Generated project locally."
 
+# Issue #21: find out now, not after the build, that the board cannot pin to this core.
+if [ -n "${PIN_CPU}" ]; then
+    if ! ssh_board_no_tty "${PIN_PREFIX}true" > /dev/null 2>&1; then
+        echo "  [FAIL] the board cannot run '${PIN_PREFIX}true' (no taskset, or no core ${PIN_CPU})."
+        echo "         Pass --cpu <core>, or --no-pin to run unpinned."
+        exit 1
+    fi
+    echo "  [OK] board can pin to core ${PIN_CPU}"
+fi
+
 # ============================================================
 # [2/3] rsync to board
 # ============================================================
@@ -274,7 +312,11 @@ FORCE_NC_ENV=""
 if [ -n "${FORCE_NC}" ]; then
     FORCE_NC_ENV="RVV_FORCE_NC=${FORCE_NC} "
 fi
-ssh_board "cd ${REMOTE_DIR}/pj_gen && while read d; do (cd \"\$d\" && make clean && make all INSTRUMENTED=${INSTRUMENTED} && ${FORCE_NC_ENV}make run INSTRUMENTED=${INSTRUMENTED} TEST_ARGS=\"${TEST_ARGS}\"); done < compile_order.txt"
+# Issue #21: the conditions of this run, taken on the board just before it. If the probe
+# fails, what lands in provenance.txt is the ssh error, and compare_ref_baseline.py then
+# reports the pinning as unknown rather than assume it.
+PROVENANCE="$(board_provenance "${PIN_CPU}" | ssh_board_no_tty "sh -s" 2>&1)" || true
+ssh_board "cd ${REMOTE_DIR}/pj_gen && while read d; do (cd \"\$d\" && make clean && make all INSTRUMENTED=${INSTRUMENTED} && ${FORCE_NC_ENV}${PIN_PREFIX}make run INSTRUMENTED=${INSTRUMENTED} TEST_ARGS=\"${TEST_ARGS}\"); done < compile_order.txt"
 
 # ============================================================
 # [4/4] Fetch logs
@@ -284,6 +326,15 @@ echo ""; echo "$SEP"; echo " [4/4] Fetch Logs"; echo "$SEP"
 TIMESTAMP=$(date +"%Y-%m-%d_%H%M%S")
 RUN_DIR="tests/pure_xdsl_blis_rvv/logs/run_${TIMESTAMP}"
 mkdir -p "${RUN_DIR}"
+
+{
+    echo "Run on the board, generated $(date -Is) by compile_macro_bench.sh"
+    echo "  board          : ${RISCV_USER}@${RISCV_REMOTE_IP}"
+    echo "  build          : ${BUILD_BANNER}"
+    echo "  protocol       : ${PROTOCOL_BANNER}"
+    echo "  logs           : ${BUILD_LOGS}"
+    echo "${PROVENANCE}"
+} > "${RUN_DIR}/provenance.txt"
 
 # Rsync the logs folder while preserving the pj_gen project subdirectories locally
 rsync_board -am --include='*/' --include='logs/***' --exclude='*' "${RSYNC_TARGET}:${REMOTE_DIR}/pj_gen/" "${RUN_DIR}/"

@@ -15,6 +15,11 @@ set -e
 #   ./tests/pure_xdsl_blis_rvv/ref_baseline/run_ref_baseline.sh \
 #       --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --bracket
 #
+# The timed runs are pinned to one core (--cpu N, --no-pin to disable; issue #21), the same
+# default core as compile_macro_bench.sh, and the conditions they ran under are appended to
+# provenance.txt. For a head-to-head against our side, run_head_to_head.sh runs both back
+# to back; --no-compare skips step 5 for it.
+#
 # Run from the project root (RVV_code_gen_via_MLIR_xDSL/).
 # ============================================================
 
@@ -34,6 +39,12 @@ CROSS_CC="/opt/riscv/bin/riscv64-unknown-linux-gnu-gcc"
 
 SEP="------------------------------------------------------------"
 
+source "${BASH_SOURCE[0]%/*}/../board_pin.sh"
+PIN_CPU="${BENCH_CPU_DEFAULT}"
+CPU_FLAG=false
+NO_PIN=false
+COMPARE=true
+
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --direct)          USE_DIRECT=true                       ;;
@@ -51,11 +62,19 @@ while [[ "$#" -gt 0 ]]; do
         --dry-run)         DRY_RUN=true                           ;;
         --no-preflight)    PREFLIGHT=false                        ;;
         --cross-cc)        CROSS_CC="$2";            shift        ;;
-        -h|--help)         sed -n '3,20p' "$0"; exit 0            ;;
+        --cpu)             PIN_CPU="$2"; CPU_FLAG=true; shift     ;;
+        --no-pin)          NO_PIN=true                            ;;
+        --no-compare)      COMPARE=false                          ;;
+        -h|--help)         sed -n '3,24p' "$0"; exit 0            ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
 done
+
+# Issue #21: refuse a bad core, and --cpu with --no-pin, before anything runs.
+pin_check "${CPU_FLAG}" "${NO_PIN}" "${PIN_CPU}" || exit 1
+if [ "${NO_PIN}" = true ]; then PIN_CPU=""; fi
+PIN_PREFIX="$(pin_prefix "${PIN_CPU}")"
 
 vname() { case "$1" in 0) echo bcast ;; 1) echo gather ;; 2) echo macc ;; *) echo "unknown" ;; esac; }
 GATHER_LIST="${GATHER//,/ }"
@@ -93,6 +112,11 @@ echo "$SEP"; echo " Reference-design baseline"; echo "$SEP"
 echo "  Reference tree : ${REF_SRC}"
 VNAMES=""; for gg in ${GATHER_LIST}; do VNAMES="${VNAMES} $(vname ${gg})"; done
 echo "  Variants       : OPT=${OPT_MODE} SWAP=${SWAP} kernel:${VNAMES}"
+if [ -n "${PIN_CPU}" ]; then
+    echo "  Pinning        : ${PIN_PREFIX}./run_gemm.sh (the timed run only), cpu ${PIN_CPU}"
+else
+    echo "  Pinning        : NOT pinned (--no-pin): the scheduler may move the run between cores"
+fi
 echo "  Results        : ${RESULT_DIR}"
 echo ""
 
@@ -160,6 +184,16 @@ if [ "$DRY_RUN" = true ]; then
     echo ""; echo "  --dry-run: stopping before touching the board."; exit 0
 fi
 
+# Issue #21: find out now, not after the build, that the board cannot pin to this core.
+if [ -n "${PIN_CPU}" ]; then
+    if ! ssh_board "${PIN_PREFIX}true" > /dev/null 2>&1; then
+        echo "  [FAIL] the board cannot run '${PIN_PREFIX}true' (no taskset, or no core ${PIN_CPU})."
+        echo "         Pass --cpu <core>, or --no-pin to run unpinned."
+        exit 1
+    fi
+    echo "  [OK] board can pin to core ${PIN_CPU}"
+fi
+
 # ------------------------------------------------------------
 # 2. Stage the reference tree on the board
 # ------------------------------------------------------------
@@ -187,6 +221,10 @@ echo "  [OK] staged -> ${RSYNC_TARGET}:${REMOTE_DIR}/"
 # 3. Build + run one binary per (MR,NR)
 # ------------------------------------------------------------
 echo ""; echo "$SEP"; echo " [3/5] Build + run per (MR,NR)"; echo "$SEP"
+# Issue #21: the conditions of this run, taken on the board just before it. If the probe
+# fails, what lands in provenance.txt is the ssh error, and compare_ref_baseline.py then
+# reports the pinning as unknown rather than assume it.
+PROVENANCE="$(board_provenance "${PIN_CPU}" | ssh_board "sh -s" 2>&1)" || true
 echo "  NOTE: building with blis_shim/ (RUN_MODE=FAMILY_EXO only — the BLIS"
 echo "        ukernel is never invoked on that path; see blis_shim/blis.h)."
 echo ""
@@ -203,7 +241,7 @@ for TAG in ${TAGS}; do
         make MR=${MR} NR=${NR} OPT=${OPT_MODE} GATHER=${GG} SWAP=${SWAP} \
              SIMD_MODE=RVV_EXO RUN_MODE=FAMILY_EXO \
              INCLUDE='-I../blis_shim' LIBS='-lm' 2>&1 | tail -5 && \
-        ./run_gemm.sh xdsl_cases/xdsl_cases_${TAG}.dat \
+        ${PIN_PREFIX}./run_gemm.sh xdsl_cases/xdsl_cases_${TAG}.dat \
                       xdsl_cases/result_${TAG}_${VN}.csv 2>&1 | tail -25" \
         || { echo "  [WARN] ${TAG}/${VN} failed — continuing"; continue; }
     echo ""
@@ -227,12 +265,17 @@ Reference-design baseline, generated $(date -Is)
   metric         : GFLOPS = 2*m*n*k / wall time of gemm_blis_B3A2C0()
                    -> PACK TIME IS INCLUDED (src/test_gemm.c:399-400)
   cases          : see run_plan.tsv (pinned MR/NR vs actually-built MR/NR)
+${PROVENANCE}
 EOF
 echo "  [OK] ${RESULT_DIR}"
 
 # ------------------------------------------------------------
 # 5. Compare against our latest run
 # ------------------------------------------------------------
+if [ "${COMPARE}" = false ]; then
+    echo ""; echo "  --no-compare: skipping the comparison. Results in ${RESULT_DIR}"
+    exit 0
+fi
 echo ""; echo "$SEP"; echo " [5/5] Comparison"; echo "$SEP"
 python3 "${HERE}/compare_ref_baseline.py" --result-dir "${RESULT_DIR}" \
     | tee "${RESULT_DIR}/comparison.txt"

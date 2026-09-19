@@ -27,6 +27,12 @@ An uninstrumented run (`make INSTRUMENTED=0`, Issue #14 part 2) compiles the inn
 timers out entirely: its `Vector_Pack_Time_ms`/`Compute_Time_ms` are nan, `RVV_Time_ms`
 is not, and `pack%` reads `--`. Point `--raw-name` at that run's merged CSV to compare
 it. It carries no timer tax at all, so it is the fairest number we can produce.
+
+Both sides must also have been measured under the same conditions (issue #21). The table is
+preceded by `Gap` and `Pinning` lines, from the timestamps in the two dir names and the
+`cpu pin` line of each `provenance.txt`, and by a `WARNING` when the runs are more than an
+hour apart, when a side was not pinned, when the two were pinned to different cores, or when
+a run predates provenance (its pinning is reported unknown, not guessed).
 """
 
 from __future__ import annotations
@@ -34,8 +40,10 @@ from __future__ import annotations
 import argparse
 import csv
 import math
+import re
 import statistics
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from fringe import our_fringe
@@ -152,6 +160,79 @@ def load_ours(runs: list[Path], raw_name: str = DEFAULT_RAW_NAME) -> dict[str, d
     return out
 
 
+# Issue #21: how far apart the two runs may be before the comparison says so. The board is
+# shared and its thermal state drifts, so a pair taken a day apart carries an
+# unknown-sized variable; one run straight after the other does not.
+MAX_GAP_HOURS = 1.0
+
+STAMP = re.compile(r"_(\d{4}-\d{2}-\d{2}_\d{6})$")
+PIN_LINE = re.compile(r"^\s*cpu pin\s*:\s*(\S+)", re.MULTILINE)
+
+
+def _stamp(d: Path) -> datetime | None:
+    found = STAMP.search(d.name)
+    return datetime.strptime(found.group(1), "%Y-%m-%d_%H%M%S") if found else None
+
+
+def _pin(d: Path) -> str | None:
+    """The core `d` was pinned to ("none" if unpinned), or None if it never said."""
+    try:
+        found = PIN_LINE.search((d / "provenance.txt").read_text())
+    except OSError:
+        return None
+    return found.group(1) if found else None
+
+
+def _pin_words(pin: str | None) -> str:
+    return "unknown" if pin is None else "unpinned" if pin == "none" else f"cpu {pin}"
+
+
+def conditions(result_dir: Path, runs: list[Path]) -> list[str]:
+    """What the two sides ran under, one line each, `WARNING` where the pair is not sound.
+
+    Reads only the dir names (their timestamps) and the `cpu pin` line of each
+    provenance.txt (issue #21): `run_ref_baseline.sh` and `compile_macro_bench.sh` write it.
+    """
+    lines: list[str] = []
+
+    ref_time = _stamp(result_dir)
+    gaps = [
+        abs((ref_time - t).total_seconds()) / 3600
+        for t in map(_stamp, runs)
+        if ref_time is not None and t is not None
+    ]
+    if gaps:
+        worst = max(gaps)
+        lines.append(f"Gap      : the run dir stamps are up to {worst:.1f} h apart")
+        if worst > MAX_GAP_HOURS:
+            lines.append(
+                f"WARNING: {worst:.1f} h apart (more than {MAX_GAP_HOURS:g} h): the board's "
+                "thermal state and load can differ between them. Run both back to back "
+                "(run_head_to_head.sh)."
+            )
+    else:
+        lines.append("Gap      : unknown (no timestamp in a run dir name)")
+
+    ref_pin = _pin(result_dir)
+    our_pins = {_pin(r) for r in runs}
+    lines.append(
+        "Pinning  : ours "
+        + ", ".join(sorted(_pin_words(p) for p in our_pins))
+        + f"; reference {_pin_words(ref_pin)}"
+    )
+    if ref_pin is None or None in our_pins:
+        unknown = [n for n, unk in (("ours", None in our_pins), ("reference", ref_pin is None)) if unk]
+        lines.append(
+            f"WARNING: pinning unknown for {' and '.join(unknown)} (no provenance.txt, or a run "
+            "from before issue #21): cannot tell that both sides ran on the same core."
+        )
+    elif ref_pin == "none" or "none" in our_pins:
+        lines.append("WARNING: a side was not pinned: the scheduler may have moved its run between cores.")
+    elif our_pins != {ref_pin}:
+        lines.append("WARNING: the two sides were pinned to different cores.")
+    return lines
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -200,6 +281,9 @@ def main() -> int:
         f"  Ours      : mean of {len(runs)} run(s): " + ", ".join(r.name for r in runs)
     )
     print(f"  Reference : {args.result_dir.name}")
+    print()
+    for line in conditions(args.result_dir, runs):
+        print(f"  {line}")
     print()
     print("  'ref' is pack-INCLUSIVE. Compare it against 'e2e', not against 'Ker'.")
     print("  'e2e' is 2mnk / RVV_Time_ms (outer wall clock), timer gap included.")

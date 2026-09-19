@@ -20,6 +20,8 @@ REMOTE_PASS="<pw>" REMOTE_HOST="fej" REMOTE_PORT="3322" \
     --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --bracket
 ```
 
+The timed runs are pinned to core 4 (`--cpu N` to change, `--no-pin` to turn off; issue #21) and the run's conditions are written into `provenance.txt`. For a number quoted against our side, use `../run_head_to_head.sh`, which runs both sides back to back on one core instead of leaving them a day apart.
+
 `--dry-run` stops after generating the datasets and run plan, without touching the
 board. Results land in `tests/pure_xdsl_blis_rvv/logs/refbase_<stamp>/`.
 
