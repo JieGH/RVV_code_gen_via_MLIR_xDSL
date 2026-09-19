@@ -129,8 +129,30 @@ families.
    on partial tiles — zero-padded pack, plus a `memset` and gather/scatter through
    a `tmp_C` buffer (`gemm_dispatch_xdsl.cpp:127-139`; `cur_mr`/`cur_nr` are
    accepted but unused). The reference has a specialized kernel for every (mr,nr)
-   from 1x1 up to MRxNR and calls the right-sized one. So we do strictly more work
+   from 1x1 up to MRxNR and calls the right-sized one
+   (`ukrmatrix[mr][nr][be]`, `gemm_blis.c:119`). So we do strictly more work
    on every fringe tile.
+
+   The extra multiply-adds, as a share of the real work
+   (`ref_baseline/fringe.py`; the `fringe` column of `compare_ref_baseline.py`),
+   each block of M and N padding its own last tile at the blocking our binary runs
+   (section 3, plus the `nc_overrides` in `config.json`):
+
+   | case | B1 | B2 | B3 | B4 | B5 | S1 | S2 | S3 | S4 | S5 |
+   |---|---|---|---|---|---|---|---|---|---|---|
+   | extra MACs | 0.00% | 1.56% | 5.47% | 0.26% | 0.00% | 2.50% | 1.25% | 0.60% | 0.45% | 1.00% |
+
+   B3 is the high one because `config.json` pins its `nc` to 128 (issue #1): three
+   128-wide blocks each pad to 135, so 405 columns of work for 384. At the
+   heuristic's own `nc=384` it would be 1.56%, which is what B2 gets, and what the
+   reference's blocking gives B3. `RVV_FORCE_NC` / `--force-nc` change these figures
+   and are not modelled.
+
+   That counts multiply-adds only. The `memset` and the copy in and out of `tmp_C`
+   cost time on top and are not in these figures. Dropping the `tmp_C` round trip
+   (writing the masked tile straight into C) would be the cheap partial fix; it is
+   deferred with the right-sized kernels (issue #10), so quote these percentages
+   next to any comparison instead.
 2. **Our per-call timers cost us — far more than this file used to claim.** We
    bracket every microkernel invocation with a `chrono::now()` pair, ~36.6k
    calls/rep at 1000^3. The 1-3% figure previously quoted here was inferred from

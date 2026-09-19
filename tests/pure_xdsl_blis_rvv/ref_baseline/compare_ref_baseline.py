@@ -19,6 +19,10 @@ us print -2.2% against the reference where the honest figure is -4.8%. `RVV_Time
 cannot lose it, and it is the same shape as the reference's own single wall-clock
 read, so comparing it to the reference column is apples-to-apples.
 
+`fringe` is the extra multiply-adds our full-size fringe kernels do that the reference's
+right-sized ones skip (issue #15, `fringe.py`). It is a bias against us that no other
+column includes, so read it beside `e2e/ref`, not folded into it.
+
 An uninstrumented run (`make INSTRUMENTED=0`, Issue #14 part 2) compiles the inner
 timers out entirely: its `Vector_Pack_Time_ms`/`Compute_Time_ms` are nan, `RVV_Time_ms`
 is not, and `pack%` reads `--`. Point `--raw-name` at that run's merged CSV to compare
@@ -33,6 +37,8 @@ import math
 import statistics
 import sys
 from pathlib import Path
+
+from fringe import our_fringe
 
 HERE = Path(__file__).resolve().parent
 LOGS = HERE.parent / "logs"
@@ -193,12 +199,15 @@ def main() -> int:
     print("  'ref' is pack-INCLUSIVE. Compare it against 'e2e', not against 'Ker'.")
     print("  'e2e' is 2mnk / RVV_Time_ms (outer wall clock), timer gap included.")
     print("  'kern' is the reference kernel variant that won this case.")
+    print("  'fringe' is the extra multiply-adds our full-size fringe kernels do that the")
+    print("  reference's right-sized ones skip (issue #15): a bias against us, not counted")
+    print("  in e2e/ref. It leaves out the memset and copy through tmp_C, which cost time too.")
     print()
 
     hdr = (
         f"  {'case':4} {'shape':16} {'pin':>5} {'built':>5} {'kind':>7} "
         f"{'ref':>6} {'kern':>6} | {'Ker':>6} {'Ker/ref':>8} | "
-        f"{'pack%':>6} {'e2e':>6} {'e2e/ref':>8}"
+        f"{'pack%':>6} {'e2e':>6} {'e2e/ref':>8} | {'fringe':>7}"
     )
     print(hdr)
     print("  " + "-" * (len(hdr) - 2))
@@ -211,11 +220,16 @@ def main() -> int:
             continue
         g, variant = hit
         shape = f"{row['m']}x{row['n']}x{row['k']}"
+        pinned_mr, pinned_nr = (int(x) for x in row["pinned"].split("x"))
+        fringe = our_fringe(
+            row["case"], row["m"], row["n"], row["k"], pinned_mr, pinned_nr
+        )
+        fringe_col = f"{100 * fringe:+6.1f}%"
         if o is None:
             print(
                 f"  {row['case']:4} {shape:16} {row['pinned']:>5} {row['built']:>5} "
                 f"{row['kind']:>7} {g:6.2f} {variant:>6} | {'--':>6} {'--':>8} | "
-                f"{'--':>6} {'--':>6} {'--':>8}   (no local run data)"
+                f"{'--':>6} {'--':>6} {'--':>8} | {fringe_col}   (no local run data)"
             )
             continue
         pack_col = (
@@ -227,7 +241,7 @@ def main() -> int:
             f"  {row['case']:4} {shape:16} {row['pinned']:>5} {row['built']:>5} "
             f"{row['kind']:>7} {g:6.2f} {variant:>6} | "
             f"{o['ker']:6.2f} {100 * (o['ker'] / g - 1):+7.1f}% | "
-            f"{pack_col} {o['e2e']:6.2f} {100 * (o['e2e'] / g - 1):+7.1f}%"
+            f"{pack_col} {o['e2e']:6.2f} {100 * (o['e2e'] / g - 1):+7.1f}% | {fringe_col}"
         )
 
     bracketed = sorted({r["case"] for r in plan if r["kind"] == "bracket"})

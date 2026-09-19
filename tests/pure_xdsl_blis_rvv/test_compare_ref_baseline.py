@@ -122,3 +122,36 @@ def test_a_ref_protocol_run_is_read_by_name_and_never_by_the_default_name(tmp_pa
     assert load_ours([run], raw_name="all_raw_fp32_AXPY_FP32_Pack_noinstr.txt") == {}
     ours = load_ours([run], raw_name=name)["B1"]
     assert ours["e2e"] == pytest.approx(B1_OPS / (120.481 * 1e6))
+
+
+def test_the_comparison_table_shows_our_fringe_overhead_and_says_what_it_is(
+    tmp_path: Path, capsys, monkeypatch
+):
+    """Issue #15: the extra multiply-adds our full-size fringe kernels do must sit in
+    the table next to the numbers it biases, with a note saying what it is."""
+    import compare_ref_baseline
+
+    ref_dir = tmp_path / "refbase_2026-09-19_000000"
+    ref_dir.mkdir()
+    (ref_dir / "run_plan.tsv").write_text(
+        "# header\n"
+        "B3\t3\t64\t384\t384\t16\t15\t16\t14\tbracket\t64\t384\t128\t16x14\n"
+    )
+    (ref_dir / "result_16x14_macc.csv").write_text("3;64;384;384;7.5\n")
+    run = tmp_path / "run_2026-09-18_044110"
+    run.mkdir()
+    row = B1_ROW.replace(",B1,1024,384,1024,", ",B3,64,384,384,")
+    (run / RAW_NAME).write_text(RAW_HEADER + "\n" + row + "\n")
+
+    monkeypatch.setattr(compare_ref_baseline, "LOGS", tmp_path)
+    monkeypatch.setattr(
+        sys, "argv",
+        ["compare_ref_baseline.py", "--result-dir", str(ref_dir), "--runs", run.name],
+    )
+    assert compare_ref_baseline.main() == 0
+    out = capsys.readouterr().out
+
+    assert "fringe" in out
+    b3_line = next(line for line in out.splitlines() if line.strip().startswith("B3"))
+    assert "+5.5%" in b3_line
+    assert "right-sized" in out
