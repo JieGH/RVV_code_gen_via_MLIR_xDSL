@@ -105,3 +105,20 @@ def test_a_named_raw_file_lets_the_uninstrumented_run_be_compared(tmp_path: Path
 
     assert load_ours([run]) == {}
     assert "B1" in load_ours([run], raw_name=name)
+
+
+def test_a_ref_protocol_run_is_read_by_name_and_never_by_the_default_name(tmp_path: Path):
+    """Issue #27: `--ref-protocol` logs carry an extra `N_Reps` column and their own
+    `_noinstr_refproto` name, so they can be compared on request and cannot be merged
+    into a default run's numbers by accident."""
+    name = "all_raw_fp32_AXPY_FP32_Pack_noinstr_refproto.txt"
+    run = tmp_path / "run_2026-09-19_120000"
+    run.mkdir()
+    (run / name).write_text(
+        RAW_HEADER + ",N_Reps\n" + B1_ROW_NOINSTR + ",27\n"
+    )
+
+    assert load_ours([run]) == {}
+    assert load_ours([run], raw_name="all_raw_fp32_AXPY_FP32_Pack_noinstr.txt") == {}
+    ours = load_ours([run], raw_name=name)["B1"]
+    assert ours["e2e"] == pytest.approx(B1_OPS / (120.481 * 1e6))

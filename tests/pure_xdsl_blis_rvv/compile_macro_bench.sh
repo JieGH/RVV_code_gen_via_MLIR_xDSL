@@ -20,6 +20,12 @@ set -e
 # time goes (pack vs compute, IPC, cache misses). That build's timers cost 11-17% of
 # measured time, so do NOT quote its numbers against the reference.
 #
+# Pass --ref-protocol (issue #27) to time the way the reference design does: no warm-up,
+# reps run until --tmin seconds (default 3.0) have passed, correctness checked after
+# timing. Off by default, because short shapes need the warm-up for stable numbers. It
+# only works with the uninstrumented build, and its logs are named *_noinstr_refproto.txt
+# so they can never be merged into a default run.
+#
 # Run this script from the project root!
 # ============================================================
 
@@ -36,6 +42,10 @@ FORCE_NC=""
 # carries no timer tax and is comparable to the reference. 1 keeps them, for debugging
 # our own pack/compute split. The two write to separate logs.
 INSTRUMENTED="0"
+# Issue #27: 1 runs the driver with --ref-protocol [--tmin TMIN]. TMIN stays empty unless
+# given, so the driver's own default (3.0 s, matching run_ref_baseline.sh) applies.
+REF_PROTOCOL="0"
+TMIN=""
 
 SEP="------------------------------------------------------------"
 
@@ -48,7 +58,9 @@ while [[ "$#" -gt 0 ]]; do
         --riscv-port)      RISCV_SSH_PORT="$2";      shift      ;;
         --riscv-workspace) RISCV_WORKSPACE="$2";     shift      ;;
         --config)          CONFIG="$2";              shift      ;;
-        --scalar-pack)     TEST_ARGS="--scalar-pack"            ;;
+        --scalar-pack)     TEST_ARGS="${TEST_ARGS} --scalar-pack" ;;
+        --ref-protocol)    REF_PROTOCOL="1"                     ;;
+        --tmin)            TMIN="$2";                shift      ;;
         --force-nc)        FORCE_NC="$2";            shift      ;;
         --no-instr)        INSTRUMENTED="0"                     ;;
         --instr)           INSTRUMENTED="1"                     ;;
@@ -57,6 +69,21 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
+# Issue #27: refuse now, during argument parsing, not after generating and syncing.
+if [ "${REF_PROTOCOL}" = "1" ] && [ "${INSTRUMENTED}" != "0" ]; then
+    echo "Error: --ref-protocol needs the uninstrumented build (drop --instr)."
+    echo "       The instrumented build's timers cost 11-17% of measured time, so its numbers"
+    echo "       are not comparable to the reference design under any protocol (issue #14)."
+    exit 1
+fi
+if [ -n "${TMIN}" ] && [ "${REF_PROTOCOL}" != "1" ]; then
+    echo "Error: --tmin only applies with --ref-protocol."
+    exit 1
+fi
+if [ "${REF_PROTOCOL}" = "1" ]; then
+    TEST_ARGS="${TEST_ARGS} --ref-protocol${TMIN:+ --tmin ${TMIN}}"
+fi
+
 # Issue #14: say which build this is, loudly, at both ends of the run. Quoting an
 # instrumented number against the reference understates us by 11-17%, and the only
 # thing that distinguishes the two logs is a filename suffix.
@@ -64,14 +91,22 @@ if [ "${INSTRUMENTED}" = "0" ]; then
     BUILD_BANNER="UNINSTRUMENTED (INSTRUMENTED=0) -- comparable to the reference design"
     BUILD_NOTE="pack/compute breakdown and perf counters are nan in this build"
     BUILD_LOGS="raw_*_noinstr.txt"
+    if [ "${REF_PROTOCOL}" = "1" ]; then BUILD_LOGS="raw_*_noinstr_refproto.txt"; fi
 else
     BUILD_BANNER="INSTRUMENTED (INSTRUMENTED=1) -- DEBUG BUILD"
     BUILD_NOTE="timers cost 11-17% of measured time: do NOT quote these against the reference"
     BUILD_LOGS="raw_*.txt"
 fi
+# Issue #27: every number names its protocol as well as its build.
+if [ "${REF_PROTOCOL}" = "1" ]; then
+    PROTOCOL_BANNER="REFERENCE (--ref-protocol, tmin=${TMIN:-3.0} s) -- no warm-up, reps until tmin"
+else
+    PROTOCOL_BANNER="DEFAULT -- warm-up first, fixed rep count from config.json"
+fi
 echo ""; echo "$SEP"
-echo "  Build : ${BUILD_BANNER}"
-echo "  Note  : ${BUILD_NOTE}"
+echo "  Build    : ${BUILD_BANNER}"
+echo "  Protocol : ${PROTOCOL_BANNER}"
+echo "  Note     : ${BUILD_NOTE}"
 echo "$SEP"
 
 # Output configuration parsing
@@ -226,7 +261,8 @@ echo ""
 echo "$SEP"
 echo " Done."
 echo ""
-echo "  Build : ${BUILD_BANNER}"
-echo "  Note  : ${BUILD_NOTE}"
-echo "  Logs  : ${RUN_DIR}/ (${BUILD_LOGS})"
+echo "  Build    : ${BUILD_BANNER}"
+echo "  Protocol : ${PROTOCOL_BANNER}"
+echo "  Note     : ${BUILD_NOTE}"
+echo "  Logs     : ${RUN_DIR}/ (${BUILD_LOGS})"
 echo "$SEP"

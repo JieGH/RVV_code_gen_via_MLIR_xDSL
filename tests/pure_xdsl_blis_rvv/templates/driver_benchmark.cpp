@@ -342,13 +342,32 @@ void gemm_ref( char orderA, char orderB, char orderC,
 // ----------------------------------------------------------------------------
 // BENCHMARK MAIN
 // ----------------------------------------------------------------------------
+#ifndef CONFIG_ITERATIONS
+static const int N_REPS = 5;
+#else
+static const int N_REPS = CONFIG_ITERATIONS;
+#endif
+
 int main(int argc, char** argv) {
     bool force_scalar_pack = (getenv("USE_SCALAR_PACK") != NULL);
+    // Issue #27: the reference design's run protocol (test_gemm.c:339-361). Off by default.
+    bool ref_protocol = false;
+    double tmin = 3.0;  // seconds; matches run_ref_baseline.sh
     string dataset_file = "";
-    
+
     for (int i = 1; i < argc; ++i) {
         if (string(argv[i]) == "--scalar-pack") {
             force_scalar_pack = true;
+        } else if (string(argv[i]) == "--ref-protocol") {
+            ref_protocol = true;
+        } else if (string(argv[i]) == "--tmin") {
+            char* end = nullptr;
+            tmin = (i + 1 < argc) ? std::strtod(argv[i + 1], &end) : 0.0;
+            if (i + 1 >= argc || end == argv[i + 1] || *end != '\0' || !(tmin > 0.0)) {
+                cerr << "Error: --tmin needs a positive number of seconds." << endl;
+                return 1;
+            }
+            ++i;
         } else {
             dataset_file = argv[i];
         }
@@ -358,12 +377,29 @@ int main(int argc, char** argv) {
         cout << "[INFO] Scalar pack flag detected! Forcing scalar packing for benchmark runs." << endl;
     }
     if (dataset_file == "") {
-        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack]" << endl;
+        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack] [--ref-protocol [--tmin <seconds>]]" << endl;
         return 1;
+    }
+#if RVV_INSTRUMENTED
+    if (ref_protocol) {
+        cerr << "Error: --ref-protocol needs the uninstrumented build (make INSTRUMENTED=0).\n"
+                "       The instrumented build's timers cost 11-17% of measured time, so its\n"
+                "       numbers are not comparable to the reference design under any protocol (issue #14)." << endl;
+        return 1;
+    }
+#endif
+    // Logs of the two protocols never share a file, so one can never be merged into the other.
+    const string log_suffix = string(RVV_LOG_SUFFIX) + (ref_protocol ? "_refproto" : "");
+    if (ref_protocol) {
+        cout << "[INFO] Protocol: REFERENCE (--ref-protocol, tmin=" << tmin << " s): no warm-up, reps run\n"
+                "       until tmin has passed, correctness checked after timing. Matches test_gemm.c." << endl;
+    } else {
+        cout << "[INFO] Protocol: DEFAULT (warm-up first, " << N_REPS
+             << " fixed reps). Pass --ref-protocol for the like-for-like reference comparison." << endl;
     }
 
     // Ensure logs directory exists (handled by Makefile)
-    string raw_log_name = string("logs/raw_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + RVV_LOG_SUFFIX + ".txt";
+    string raw_log_name = string("logs/raw_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + log_suffix + ".txt";
     bool raw_exists = false;
     {
         ifstream check(raw_log_name);
@@ -375,10 +411,10 @@ int main(int argc, char** argv) {
     if (!raw_log.is_open()) {
         cerr << "Warning: Could not open " << raw_log_name << " for writing." << endl;
     } else if (!raw_exists) {
-        raw_log << "Layer,M,N,K,Variant,Status,KerGOPs_Harmonic,KerGOPs_Min,KerGOPs_P5,KerGOPs_P95,KerGOPs_Max,KerGOPs_IQR,KerGOPs_Mean,KerGOPs_Std,KerGOPs_Median,RVV_Pack_GBs,Scl_Pack_GBs,RVV_Time_ms,Ref_Time_ms,Vector_Pack_Time_ms,Scalar_Pack_Time_ms,Compute_Time_ms\n";
+        raw_log << "Layer,M,N,K,Variant,Status,KerGOPs_Harmonic,KerGOPs_Min,KerGOPs_P5,KerGOPs_P95,KerGOPs_Max,KerGOPs_IQR,KerGOPs_Mean,KerGOPs_Std,KerGOPs_Median,RVV_Pack_GBs,Scl_Pack_GBs,RVV_Time_ms,Ref_Time_ms,Vector_Pack_Time_ms,Scalar_Pack_Time_ms,Compute_Time_ms,N_Reps\n";
     }
 
-    string summary_log_name = string("logs/summary_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + RVV_LOG_SUFFIX + ".txt";
+    string summary_log_name = string("logs/summary_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + log_suffix + ".txt";
     ofstream summary_log(summary_log_name, ios_base::app);
     if (!summary_log.is_open()) {
         cerr << "Warning: Could not open " << summary_log_name << " for writing." << endl;
@@ -398,7 +434,7 @@ int main(int argc, char** argv) {
             "       counters are compiled out. RVV_Time_ms is the only timing reported;\n"
             "       the pack/compute breakdown and every counter column will be nan." << endl;
 #endif
-    string perf_log_name = string("logs/perf_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + RVV_LOG_SUFFIX + ".txt";
+    string perf_log_name = string("logs/perf_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + log_suffix + ".txt";
     bool perf_exists = false;
     {
         ifstream check(perf_log_name);
@@ -497,12 +533,6 @@ int main(int argc, char** argv) {
             ref_time_str = ss.str();
         }
 
-#ifndef CONFIG_ITERATIONS
-        const int N_REPS = 5;
-#else
-        const int N_REPS = CONFIG_ITERATIONS;
-#endif
-
         struct VariantResult {
             string name;
             string status;
@@ -578,10 +608,15 @@ int main(int argc, char** argv) {
             for (size_t i = 0; i < (size_t)(ldc * n); ++i) C[i] = 0;
 
             // Warmup: run multiple times to bring A, B, Ac, Bc hot into cache
-            // A single warmup run is insufficient for large working sets
-            for (int w = 0; w < 5; ++w) {
-                double dump_pt=0, dump_kt=0; uint64_t dump_pb=0;
-                variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &dump_pt, &dump_kt, &dump_pb, force_scalar_pack, nullptr);
+            // A single warmup run is insufficient for large working sets.
+            // Also what fills C for the correctness check below. Under --ref-protocol
+            // (issue #27) there is no warm-up at all, so the check moves after the timed
+            // loop, as in test_gemm.c, and reads the C that loop left behind.
+            if (!ref_protocol) {
+                for (int w = 0; w < 5; ++w) {
+                    double dump_pt=0, dump_kt=0; uint64_t dump_pb=0;
+                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &dump_pt, &dump_kt, &dump_pb, force_scalar_pack, nullptr);
+                }
             }
 
             string status = "SKIP";
@@ -590,7 +625,7 @@ int main(int argc, char** argv) {
             int sample_i = rand() % m;
             int sample_j = rand() % n;
 
-            if (do_ref) {
+            auto check_against_reference = [&]() {
                 sample_rvv = C[sample_j * ldc + sample_i];
                 sample_ref = Cg[sample_j * ldc + sample_i];
 
@@ -623,15 +658,12 @@ int main(int argc, char** argv) {
                 double tol = GET_ERR_TOL(k);
                 if (error > tol) status = "FAIL";
                 else status = "PASS";
-            }
+            };
+            if (do_ref && !ref_protocol) check_against_reference();
 
             string current_ref_time = ref_time_str;
             string label_str = label;
             string var_str = string("`") + variant.name + "`";
-            string status_str;
-            if (status == "PASS") status_str = "✅ PASS";
-            else if (status == "SKIP") status_str = "⏭️ SKIP";
-            else status_str = "❌ FAIL";
 
             cout << "\r" << "  [" << label << " (" << dim_str << ")] Testing variant " << (v+1) << "/" << num_variants << " : " << left << setw(15) << variant.name << flush;
             
@@ -656,8 +688,10 @@ int main(int argc, char** argv) {
             vector<double> rep_pack_cycles, rep_compute_cycles;
             double num_ops = 2.0 * m * n * k;
             double pack_bytes_per_rep = 0.0;
+            // Reps the RVV loop actually ran; 0 if it did not run (default protocol, FAIL).
+            int n_reps = 0;
 
-            if (status != "FAIL") {
+            if (ref_protocol || status != "FAIL") {
                 uint64_t total_pack_bytes = 0;
                 // Benchmark Scalar Packing
                 // Reset C to zero so each benchmark starts from a consistent state
@@ -670,14 +704,17 @@ int main(int argc, char** argv) {
                 // dropping it made short shapes (B3) come out ~14% SLOWER uninstrumented,
                 // because one cold rep then dominated the mean. The two builds have to
                 // differ in the timers and nothing else, or the A/B means nothing.
-                for (int r = 0; r < N_REPS; ++r) {
+                // Not under --ref-protocol (issue #27): the reference has no such pass.
+                for (int r = 0; !ref_protocol && r < N_REPS; ++r) {
                     double pt = 0.0, kt = 0.0; uint64_t pb = 0;
                     variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, true, &perf);
                     total_scalar_pack_time += pt;
                     total_pack_bytes += pb;
                 }
-                scalar_pack_counts = perf.pack;
-                scalar_perf_valid = perf.valid;
+                if (!ref_protocol) {
+                    scalar_pack_counts = perf.pack;
+                    scalar_perf_valid = perf.valid;
+                }
 #if RVV_INSTRUMENTED
                 scl_bw_val = (double)total_pack_bytes / (total_scalar_pack_time * 1e9);
                 // Issue #7: this pass already runs to produce Scl_Pack_GBs above; expose
@@ -697,7 +734,11 @@ int main(int argc, char** argv) {
                 // Seconds charged to each rep, and the denominator of every KerGOPs
                 // figure below. Instrumented: the inner pack+compute timers, as issue #13
                 // settled. Uninstrumented: this rep's own wall clock (issue #14).
-                std::vector<double> rep_total(N_REPS);
+                // Reserved up front so no push_back reallocates inside the timed loop:
+                // a reallocation would land in one rep's interval, and only under
+                // --ref-protocol, whose rep count is not known in advance.
+                std::vector<double> rep_total;
+                rep_total.reserve(ref_protocol ? (size_t)1 << 20 : (size_t)N_REPS);
                 perf_gemm_reset(&perf);
 
                 auto start = chrono::high_resolution_clock::now();
@@ -709,7 +750,10 @@ int main(int argc, char** argv) {
                 // at the same one-read-per-rep cost, rather than a pair per rep.
                 auto prev_mark = start;
 #endif
-                for (int r = 0; r < N_REPS; ++r) {
+                // Default: N_REPS reps. --ref-protocol (issue #27): the reference's
+                // `while (time <= tmin)` -- stop at the first rep whose end mark is past
+                // tmin. Both run the same body; only the stop test differs.
+                for (;;) {
                     double pt = 0.0, kt = 0.0; uint64_t pb = 0;
 #if RVV_INSTRUMENTED
                     uint64_t pack_cycles_before = perf.pack.v[PERF_EV_CYCLES];
@@ -717,54 +761,62 @@ int main(int argc, char** argv) {
 #endif
                     variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, force_scalar_pack, &perf);
 #if RVV_INSTRUMENTED
-                    rep_total[r] = kt + pt;
+                    rep_total.push_back(kt + pt);
                     rep_pack_cycles.push_back((double) (perf.pack.v[PERF_EV_CYCLES] - pack_cycles_before));
                     rep_compute_cycles.push_back((double) (perf.compute.v[PERF_EV_CYCLES] - compute_cycles_before));
 #else
                     auto rep_mark = chrono::high_resolution_clock::now();
-                    rep_total[r] = chrono::duration<double>(rep_mark - prev_mark).count();
+                    rep_total.push_back(chrono::duration<double>(rep_mark - prev_mark).count());
                     prev_mark = rep_mark;
 #endif
                     total_rvv_pack_time += pt;
                     total_kernel_time += kt;
                     total_pack_bytes += pb;
+                    ++n_reps;
+#if !RVV_INSTRUMENTED
+                    if (ref_protocol) {
+                        if (chrono::duration<double>(rep_mark - start).count() > tmin) break;
+                        continue;
+                    }
+#endif
+                    if (n_reps >= N_REPS) break;
                 }
                 auto end = chrono::high_resolution_clock::now();
                 vector_pack_counts = perf.pack;
                 compute_counts = perf.compute;
                 rvv_perf_valid = perf.valid;
-                pack_bytes_per_rep = (double) total_pack_bytes / N_REPS;
+                pack_bytes_per_rep = (double) total_pack_bytes / n_reps;
 
                 chrono::duration<double> diff = end - start;
-                double avg_time = diff.count() / N_REPS;
+                double avg_time = diff.count() / n_reps;
 
                 double sum_rep_total = 0.0;
-                for (int r = 0; r < N_REPS; ++r) sum_rep_total += rep_total[r];
-                ker_gflops_val = (num_ops * N_REPS) / (sum_rep_total * 1e9);
+                for (int r = 0; r < n_reps; ++r) sum_rep_total += rep_total[r];
+                ker_gflops_val = (num_ops * n_reps) / (sum_rep_total * 1e9);
 
                 // Compute per-rep stats
-                std::vector<double> rep_gops(N_REPS);
+                std::vector<double> rep_gops(n_reps);
                 double sum_gops = 0.0;
-                for (int r = 0; r < N_REPS; ++r) {
+                for (int r = 0; r < n_reps; ++r) {
                     rep_gops[r] = num_ops / (rep_total[r] * 1e9);
                     sum_gops += rep_gops[r];
                 }
                 std::sort(rep_gops.begin(), rep_gops.end());
                 ker_gflops_min = rep_gops.front();
-                ker_gflops_p5 = rep_gops[(int)(0.05 * N_REPS)];
-                ker_gflops_median = rep_gops[N_REPS / 2];
-                ker_gflops_p95 = rep_gops[(int)(0.95 * N_REPS)];
+                ker_gflops_p5 = rep_gops[(int)(0.05 * n_reps)];
+                ker_gflops_median = rep_gops[n_reps / 2];
+                ker_gflops_p95 = rep_gops[(int)(0.95 * n_reps)];
                 ker_gflops_max = rep_gops.back();
-                ker_gflops_iqr = rep_gops[(int)(0.75 * N_REPS)] - rep_gops[(int)(0.25 * N_REPS)];
+                ker_gflops_iqr = rep_gops[(int)(0.75 * n_reps)] - rep_gops[(int)(0.25 * n_reps)];
                 
-                double mean_gops = sum_gops / N_REPS;
+                double mean_gops = sum_gops / n_reps;
                 ker_gflops_mean = mean_gops;
                 
                 double sq_sum = 0.0;
-                for (int r = 0; r < N_REPS; ++r) {
+                for (int r = 0; r < n_reps; ++r) {
                     sq_sum += (rep_gops[r] - mean_gops) * (rep_gops[r] - mean_gops);
                 }
-                ker_gflops_std = std::sqrt(sq_sum / N_REPS);
+                ker_gflops_std = std::sqrt(sq_sum / n_reps);
 
                 rvv_time_val = avg_time * 1000.0;
 
@@ -774,8 +826,8 @@ int main(int argc, char** argv) {
                 // Isolated pack-vs-compute breakdown (issue #2): per-rep-averaged
                 // ms, separate from rvv_time_val (combined wall-clock incl. loop
                 // overhead) and rvv_bw_val (pack-only throughput in GB/s, not time).
-                vector_pack_time_val = (total_rvv_pack_time / N_REPS) * 1000.0;
-                compute_time_val = (total_kernel_time / N_REPS) * 1000.0;
+                vector_pack_time_val = (total_rvv_pack_time / n_reps) * 1000.0;
+                compute_time_val = (total_kernel_time / n_reps) * 1000.0;
 #else
                 // Issue #14: no inner timers exist in this build, so there is no
                 // breakdown to report. RVV_Time_ms above is the whole result.
@@ -785,9 +837,29 @@ int main(int argc, char** argv) {
 #endif
             }
 
-            perf_metrics vector_pack_metrics = perf_metrics_per_rep(&vector_pack_counts, N_REPS);
+            if (ref_protocol) {
+                // At tmin=3.0 the largest shapes finish in one or two reps, so the
+                // reported number is a single cold sample. gen_ref_datasets.py warns
+                // about the same thing on the reference side.
+                if (n_reps < 3) {
+                    cout << "\r                                                                               \r"
+                         << "  [WARN] " << label << " " << variant.name << ": only " << n_reps
+                         << " rep(s) fit in tmin=" << tmin << " s; the number is a near-single cold sample." << endl;
+                }
+                if (do_ref) check_against_reference();
+            }
+
+            string status_str;
+            if (status == "PASS") status_str = "✅ PASS";
+            else if (status == "SKIP") status_str = "⏭️ SKIP";
+            else status_str = "❌ FAIL";
+
+            // Per-rep denominators. A rep count of 0 (default protocol, FAILed before
+            // timing) has no counts to divide, so fall back to the configured count.
+            const int metric_reps = n_reps > 0 ? n_reps : N_REPS;
+            perf_metrics vector_pack_metrics = perf_metrics_per_rep(&vector_pack_counts, metric_reps);
             perf_metrics scalar_pack_metrics = perf_metrics_per_rep(&scalar_pack_counts, N_REPS);
-            perf_metrics compute_metrics = perf_metrics_per_rep(&compute_counts, N_REPS);
+            perf_metrics compute_metrics = perf_metrics_per_rep(&compute_counts, metric_reps);
             double compute_ipc = rvv_perf_valid ? compute_metrics.ipc : std::nan("");
 
             variant_results.push_back({string(variant.name), status, ker_gflops_val, ker_gflops_min, ker_gflops_p5, ker_gflops_p95, ker_gflops_max, ker_gflops_iqr, ker_gflops_mean, ker_gflops_std, ker_gflops_median, rvv_bw_val, scl_bw_val, rvv_time_val, ref_time_val, vector_pack_time_val, scalar_pack_time_val, compute_time_val, sample_rvv, sample_ref, sample_i, sample_j, mc, nc, kc, compute_ipc});
@@ -816,7 +888,8 @@ int main(int argc, char** argv) {
                         << ker_gflops_median << ","
                         << rvv_bw_val << "," << scl_bw_val << ","
                         << rvv_time_val << "," << ref_time_val << ","
-                        << vector_pack_time_val << "," << scalar_pack_time_val << "," << compute_time_val << endl;
+                        << vector_pack_time_val << "," << scalar_pack_time_val << "," << compute_time_val << ","
+                        << n_reps << endl;
             }
 
             // Issue #9: live per-variant console block mirroring comparison.md's columns
@@ -846,6 +919,10 @@ int main(int argc, char** argv) {
                      << jitter_bracket(ker_gflops_min, ker_gflops_p5, ker_gflops_p95, ker_gflops_max,
                                         ker_gflops_iqr, ker_gflops_std, ker_gflops_median)
                      << " | Ref " << ref_gops_str << " | Delta " << delta_str << "\n";
+                ostringstream reps_note;  // local stream: leaves cout's float format alone
+                if (ref_protocol) reps_note << "until tmin=" << tmin << " s, --ref-protocol";
+                else reps_note << "fixed, from config";
+                cout << "  |  Reps:  " << n_reps << " (" << reps_note.str() << ")\n";
                 cout << "  |  Counters valid: " << (counters_valid ? "yes" : "no") << "\n";
                 cout << "  |    Vector Pack: IPC " << perf_field(rvv_perf_valid, vector_pack_metrics.ipc, 2, "")
                      << " | L1D Rd Miss " << perf_field(rvv_perf_valid, vector_pack_metrics.l1d_read_miss_pct, 1, "%")

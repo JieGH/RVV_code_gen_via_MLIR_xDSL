@@ -31,6 +31,10 @@ ifneq ($(INSTRUMENTED),1)
 TARGET := $(TARGET:.x=_noinstr.x)
 RESULT_SUFFIX = _noinstr
 endif
+# Issue #27: a --ref-protocol run gets its own results file too, like its logs.
+ifneq (,$(findstring --ref-protocol,$(TEST_ARGS)))
+RESULT_SUFFIX := $(RESULT_SUFFIX)_refproto
+endif
 
 all: $(TARGET)
 
