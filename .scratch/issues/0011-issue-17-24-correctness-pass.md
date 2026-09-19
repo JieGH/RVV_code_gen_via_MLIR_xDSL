@@ -1,6 +1,6 @@
 # Issues #17 + #24 (local): the correctness check, run on the board, for all three pinnings
 
-**Role / Label:** `done` — the check ran on the board and passed; GitHub #17 and #24 are **not** closed or commented on (left to the owner).
+**Role / Label:** `done` — the check ran on the board and passed; GitHub #17 and #24 closed with a comment each on 2026-09-19, after the push.
 **Status:** 🟢 9 of 9 rows `PASS`, twice, and the vector packers match the oracle at all five shipped `RR`. The shipped shapes (B1–B5, S1–S5) were **not** run through the oracle; see §4.
 **Target:** `jbpi` (BananaPi M2 Pro, VLEN=256), reached via `fej`.
 **Primary Sources:**
@@ -69,6 +69,5 @@ Two review agents (standards, spec). Fixed: a claim that the test "refuses Squar
 
 ## 7. Next
 
-1. Comment on and close #17 and #24 (not done here).
-2. If the tolerance is too loose for the write-up of #11, tighten it per pinning, or add a bitwise check of `C` for the integer-valued case (A, B small integers make every partial sum exact in fp32, so a match can be exact).
-3. A fourth shape with m > mc (800×40×20 gives two `ic` blocks at 768 + 32) would cover the block loops cheaply, if that matters.
+1. If the tolerance is too loose for the write-up of #11, tighten it per pinning, or add a bitwise check of `C` for the integer-valued case (A, B small integers make every partial sum exact in fp32, so a match can be exact).
+2. A fourth shape with m > mc (800×40×20 gives two `ic` blocks at 768 + 32) would cover the block loops cheaply, if that matters.
