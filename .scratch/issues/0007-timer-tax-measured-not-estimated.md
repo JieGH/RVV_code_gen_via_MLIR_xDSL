@@ -112,11 +112,36 @@ conditional. Anything that differs between the two builds besides the timers des
    that comparison — and note the reference harness has its own (much smaller) timing
    overhead that this does not account for, so the true figure is somewhat below that.
 
-## 7. Next steps
+## 7. Protocol parity with the reference
+
+**Standing direction from the user (2026-09-19): keep the design as close to the reference
+as possible.** That reorders the follow-ups below — parity is the priority, not an optional
+refinement, and it overrides the earlier "those residuals are ~1%, don't chase them" reading.
+
+Done here: the uninstrumented build now takes **one** clock read per rep, differenced against
+a single pre-loop mark, exactly as `test_gemm.c:339-361` does with `t1`/`t2`. It was a pair
+per rep. Verified on-board — `2mnk / RVV_Time_ms` = 8.1193 against `KerGOPs_Harmonic`
+8.11934 for B1, i.e. the per-rep marks tile the outer window with no gaps.
+
+Still differing, in priority order:
+
+1. **Warm-up.** Our scalar-pack pass first-touches `Ac`/`Bc`/`C` and trains the predictors;
+   the reference's cold rep sits inside its average (1 in ~27 for B1, 1 in ~7 for B5 at
+   `tmin=3.0`). Favours us, estimated <1%, unmeasured. Removing it costs the stability that
+   §5 shows short shapes need — so it belongs behind a flag (a `--ref-protocol` mode), not as
+   a replacement for the default.
+2. **Rep count.** Ours fixed (`iterations`); the reference runs `while (time <= tmin)`. Same
+   flag as (1).
+3. **Best-of-variants.** `compare_ref_baseline.py:load_reference` keeps the reference's best
+   kernel variant per case while we report one pinned kernel. This one favours the reference
+   and is a deliberate comparison choice — worth re-deciding explicitly, not silently.
+
+## 8. Other next steps
 
 1. Re-run the full `refbase` comparison with `--no-instr` and `--raw-name
    all_raw_fp32_AXPY_FP32_Pack_noinstr.txt` to get a clean cross-design table. Not done here:
-   it needs a full board sweep, not the two-shape A/B above.
+   it needs a full board sweep, not the two-shape A/B above. **This is the largest open item
+   by effect size** — the +13-16% currently rests on two shapes.
 2. Decide whether `KerGOPs` should move to the wall clock in the instrumented build too. It
    currently uses `kernel_time + pack_time`, which is why instrumented and uninstrumented
    `KerGOPs` are not directly comparable even though `RVV_Time_ms` is.

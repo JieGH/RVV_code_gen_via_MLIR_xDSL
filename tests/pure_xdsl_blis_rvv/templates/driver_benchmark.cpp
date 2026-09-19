@@ -696,23 +696,24 @@ int main(int argc, char** argv) {
                 total_pack_bytes = 0;
                 // Seconds charged to each rep, and the denominator of every KerGOPs
                 // figure below. Instrumented: the inner pack+compute timers, as issue #13
-                // settled. Uninstrumented: this rep's own wall clock, which is the only
-                // measurement left -- one clock-read pair per rep, the same shape as the
-                // reference harness's single gettimeofday (issue #14).
+                // settled. Uninstrumented: this rep's own wall clock (issue #14).
                 std::vector<double> rep_total(N_REPS);
                 perf_gemm_reset(&perf);
 
                 auto start = chrono::high_resolution_clock::now();
+#if !RVV_INSTRUMENTED
+                // The reference reads its clock ONCE per rep and differences against a
+                // single t1 taken before the loop (test_gemm.c:339-361):
+                //     t1 = dclock(); while (time <= tmin) { gemm(...); t2 = dclock(); ... }
+                // `start` is our t1. Differencing consecutive marks gives per-rep times
+                // at the same one-read-per-rep cost, rather than a pair per rep.
+                auto prev_mark = start;
+#endif
                 for (int r = 0; r < N_REPS; ++r) {
                     double pt = 0.0, kt = 0.0; uint64_t pb = 0;
 #if RVV_INSTRUMENTED
                     uint64_t pack_cycles_before = perf.pack.v[PERF_EV_CYCLES];
                     uint64_t compute_cycles_before = perf.compute.v[PERF_EV_CYCLES];
-#else
-                    // This build's only measurement, and the only clock read left
-                    // anywhere inside the rep: one pair, the same shape as the
-                    // reference harness's single gettimeofday.
-                    auto rep_start = chrono::high_resolution_clock::now();
 #endif
                     variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, force_scalar_pack, &perf);
 #if RVV_INSTRUMENTED
@@ -720,8 +721,9 @@ int main(int argc, char** argv) {
                     rep_pack_cycles.push_back((double) (perf.pack.v[PERF_EV_CYCLES] - pack_cycles_before));
                     rep_compute_cycles.push_back((double) (perf.compute.v[PERF_EV_CYCLES] - compute_cycles_before));
 #else
-                    rep_total[r] = chrono::duration<double>(
-                        chrono::high_resolution_clock::now() - rep_start).count();
+                    auto rep_mark = chrono::high_resolution_clock::now();
+                    rep_total[r] = chrono::duration<double>(rep_mark - prev_mark).count();
+                    prev_mark = rep_mark;
 #endif
                     total_rvv_pack_time += pt;
                     total_kernel_time += kt;

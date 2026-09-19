@@ -65,6 +65,42 @@ Use the default build for any question about *where* time goes, and the
 uninstrumented build for any headline number compared against the reference
 design. See `ref_baseline/README.md` for the measured tax per case.
 
+### How close the uninstrumented build is to the reference protocol
+
+The reference times its GEMM like this
+(`ext/RVV_ukernels_benchmark/gemm_blis_family/src/test_gemm.c:339-361`):
+
+```c
+time = 0.0;  t1 = dclock();  nreps = 0;
+while (time <= tmin) {
+    nreps++;
+    gemm_blis_B3A2C0(...);        // packing is inside
+    t2 = dclock();                // ONE clock read per rep
+    time = (t2 > t1 ? t2 - t1 : 0.0);
+}
+time = time/nreps;                // mean
+GFLOPS = 2.0*m*n*k / (1.0e+9 * time);
+```
+
+Matching, as of issue #14:
+
+| | reference | uninstrumented build |
+|---|---|---|
+| formula | `2mnk / mean per-rep wall` | same |
+| packing inside the timed region | yes | yes |
+| anything else inside the region | nothing | nothing |
+| statistic | mean | mean (`RVV_Time_ms`) |
+| clock reads per rep | 1, differenced against a single pre-loop `t1` | 1, differenced against a single pre-loop `start` |
+| correctness check | after timing | before the benchmark loops |
+
+Still differing — quote these alongside any cross-design number:
+
+| difference | direction |
+|---|---|
+| we run a scalar-pack pass first, which warms `Ac`/`Bc`/`C`; the reference's cold rep is inside its average (1 in ~27 for B1, 1 in ~7 for B5 at `tmin=3.0`) | favours us, likely <1% |
+| rep count: ours fixed (`iterations`), reference dynamic until `tmin` | mostly affects noise |
+| `compare_ref_baseline.py` keeps the reference's *best* kernel variant per case; we report one pinned kernel | favours the reference |
+
 | Column | Meaning |
 |---|---|
 | `KerGOPs_Median` / `_Mean` / `_Std` | Median / mean / standard deviation of per-rep KerGOPs across all `N_REPS` reps |
