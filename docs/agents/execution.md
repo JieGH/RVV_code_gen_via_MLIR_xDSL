@@ -21,6 +21,20 @@ source .venv/bin/activate && REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322"
 
 Adjust `REMOTE_HOST`/`REMOTE_PORT`/`--riscv-user`/`--riscv-ip`/`--riscv-port` per the operator's actual jump-host and board; the values above are this project's current defaults, not fixed constants.
 
+## Run protocol and build flags (`compile_macro_bench.sh`)
+
+The reference command above needs no protocol flag: the uninstrumented build times the way the reference design does (issue #27) — no warm-up, reps until `--tmin` seconds, correctness checked after timing. Every run opens with an overview of the settings in effect, each marked `[default]` or with what set it.
+
+| flag | effect |
+|---|---|
+| *(none)* | uninstrumented build, **reference protocol**, `tmin` 3.0 s. Logs `raw_*_noinstr_refproto.txt` |
+| `--tmin <s>` | time budget for the reference protocol. Refused where the reference protocol is not running |
+| `--no-ref-protocol` | the older **warm-up protocol** instead: 5 warm-up calls, a scalar-pack pass, then the fixed `iterations` from `config.json`. Logs `raw_*_noinstr.txt` |
+| `--instr` | instrumented debug build. Its default is the warm-up protocol, since the reference protocol cannot run there; asking it for `--ref-protocol` is refused. Logs `raw_*.txt`. Never quote against the reference |
+| `--dry-run` | print the run overview and stop, without generating, syncing or running anything |
+
+`compare_ref_baseline.py` defaults to the instrumented log name; point it at a default run with `--raw-name all_raw_<project>_noinstr_refproto.txt`. Details and the measured warm-up effect: `docs/metrics.md`.
+
 ## One-time dependency builds
 
 Not part of the per-run pipeline above — see `docs/dependencies_setup.md` for building LLVM/MLIR locally and OpenBLAS/BLIS on the board.

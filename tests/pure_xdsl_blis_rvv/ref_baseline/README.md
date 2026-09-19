@@ -157,7 +157,11 @@ families.
    So any pack-inclusive number we quote from an instrumented build is **deflated
    by roughly 11-17%**, not 1-3%. Use `--no-instr` for a headline figure.
 3. **The reference does no warm-up** and averages over however many reps fit in
-   `TIMIN`. See the under-sampling warning `gen_ref_datasets.py` prints.
+   `TIMIN`. See the under-sampling warning `gen_ref_datasets.py` prints. Since
+   issue #27 our uninstrumented build does the same **by default** (the reference
+   protocol; `--tmin` matches `TIMIN`), and warns the same way when fewer than 3 reps
+   fit. `--no-ref-protocol` gives the older warm-up protocol. Measured effect of the
+   warm-up on B1/B5/B2: under 1% (`docs/metrics.md`).
 4. **Neither side multiplies by alpha** — both kernels ignore the `alpha` argument
    and assume alpha=1. Fine for this benchmark (alpha=1, beta=0 on both sides),
    but neither is a general GEMM.

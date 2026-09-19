@@ -1,11 +1,12 @@
 # Issue #27 (local): `--ref-protocol`, and what the warm-up was worth (under 1% on B1/B5/B2, unsettled on B3)
 
-**Follow-up:** the reference protocol was later made the *default* of the uninstrumented build
-(`--no-ref-protocol` brings the old one back), and every run now prints an overview of its
-settings. Below, "default" means the protocol that was the default *at measurement time*,
-now called the warm-up protocol. See `docs/metrics.md`.
-**Role / Label:** `done` — implemented and measured on hardware
-**Status:** 🟢 `--ref-protocol` shipped. This note records the measurement that replaces the
+**Role / Label:** `done` — implemented, measured on hardware, GitHub #27 closed
+**Follow-up:** section 5 below: the reference protocol was made the *default* of the
+uninstrumented build (`--no-ref-protocol` brings the old one back) and every run prints an
+overview of its settings. Sections 1–4 describe the first commit (`--ref-protocol` as an
+opt-in flag); there, "default" means the protocol that was the default *at measurement
+time*, now called the warm-up protocol.
+**Status:** 🟢 `--ref-protocol` shipped, then made the default. This note records the measurement that replaces the
 "under 1%, favours us" estimate in `docs/metrics.md` and [[0006-match-reference-design-everything-but-the-two-intended-differences]].
 **Target:** `jbpi` (BananaPi M2 Pro, VLEN=256), reached via `fej`. Uninstrumented build (`INSTRUMENTED=0`) throughout.
 **Primary Sources:**
@@ -85,6 +86,45 @@ deliberately wrong kernel gets `FAIL` under the flag.
   numbers were not re-taken.
 - B4 and the Square shapes were not run. At `tmin=3.0` the large Square shapes finish in 1–2
   reps, which is what the under-sampling warning is for.
+
+## 5. Follow-up: the reference protocol became the default
+
+Requested after the first commit: nobody should have to type the flag, and a run should say
+up front what it is going to do.
+
+| | before | now |
+|---|---|---|
+| uninstrumented build, no flag | warm-up protocol | **reference protocol** |
+| old protocol | the default | `--no-ref-protocol` |
+| instrumented build, no flag | warm-up protocol | warm-up protocol (unchanged) |
+| `--ref-protocol` with `--instr` | refused | refused (unchanged) |
+| `--tmin` where it would be ignored | accepted silently | **refused** (driver and script) |
+| `iterations` in `config.json` | every run | warm-up protocol only; the reference protocol ignores it |
+
+The instrumented build has to keep the old default: it cannot run the reference protocol (timer
+tax, #14), so a global default of "reference" would refuse every `--instr` debugging run. The
+default is therefore chosen per build, and the overview says when that is why.
+
+**Run overview.** The driver prints, once per project at the start, every setting in effect,
+defaults included, each tagged `[default]` or with what set it (flag, environment variable, or
+`config.json`): build, protocol, warm-up, reps, correctness check and when, packing, kernel
+family, variants, cache blocking (`nc` overrides, `RVV_FORCE_NC`), dataset, log names.
+`compile_macro_bench.sh` prints a shorter one at the top, and `--dry-run` prints it and stops
+(added so the overview can be tested without the board).
+
+**Checked** on `jbpi`, real kernels, no flags, uninstrumented: overview printed; B2 ran 2021 reps
+and B3 989 (both `SKIP`, as `config.json` has `skip_ref_run`); logs written as
+`*_noinstr_refproto.txt`. Host tests cover the rest with a stub kernel (51 tests, all
+passing). The driver also compiles against all three real generated headers in both builds.
+
+**Not re-measured.** Sections 2–3 compare the two protocols and were taken before this
+change; flipping which one is the default does not change what either one does.
+
+**Consequence to remember.** Every default run now spends about `tmin` (3 s) per shape per
+variant, and large Square shapes get 1–2 reps, so the under-3-reps warning will fire on them
+by design. B3 is noisy under the reference protocol as well (CV 36% in the smoke run).
+`compare_ref_baseline.py` still defaults to the instrumented log name, so it needs
+`--raw-name all_raw_<project>_noinstr_refproto.txt` for a default run.
 
 ## 4. Raw data
 
