@@ -12,7 +12,13 @@
     // - datasets: List of .dat file datasets to benchmark against (e.g. ["project_sample.dat"])
     // - skip_ref_run (optional): true/false. Set to true to skip the slow scalar reference 
     //                            matmul and correctness check. Packing and Kernel Perf will still run.
+    //                            The scalar oracle is O(m*n*k): keep it to shapes no bigger than B2
+    //                            (384x384x64). The shipped rows below all skip it; the correctness check
+    //                            lives in config_correctness.json, on small shapes (issues #17, #24).
     // - iterations (optional): Number of reps to run for averaging performance. Defaults to 5.
+    //                          Only used by the warm-up protocol (--no-ref-protocol, or the
+    //                          instrumented build). The default reference protocol runs until
+    //                          --tmin seconds have passed instead, and ignores it.
    
     // Example: Run an 8x8 kernel at 1000 iterations:
     // ["fp32", "DOT_FP32_LANE_Pack", [8, 8], 256, "jbpi2", ["project_sample.dat"], true, 1000],
@@ -26,13 +32,18 @@
 
 
         // ["fp32", "AXPY_FP32_Pack", [16, 16], 256, "jbpi2", ["testCase.dat"], true],
-    // 9th (optional) arg: {"label-prefix": forced_nc} — per-shape nc override, longest
-    // prefix wins. Mitigation for issue #1 (B3_M7 packing instability): shrinking nc from
+    // 9th (optional) arg: {"label": forced_nc} — per-shape nc override for the dataset row
+    // with exactly that label (issue #16). The reference design has no such override (B3
+    // runs at nc=384 there), so pass --no-nc-overrides to compile_macro_bench.sh for the
+    // head-to-head number.
+    //
+    // The override itself is a mitigation for issue #1 (B3_M7 packing instability): shrinking nc from
     // the heuristic's 384 down to 128 cuts CV% roughly in half across the whole B3_M7
     // family (raw + Reuse8/12/24) without touching get_optim_mc_nc_kc. See
     // .scratch/issues/0001-b3-m7-packing-instability.md for the full before/after data.
     // Superseded by the issue #2 rows below (same shape, dataset row now labeled "B3"),
-    // kept here as the original repro row for reference.
+    // kept here as the original repro row for reference (it would match nothing now: labels are
+    // matched exactly, and the rows of that dataset are B3_M7_1, B3_M7_Reuse8_1, ...).
     // ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["testCase_repeat.dat"], true, 1000, {"B3_M7_": 128}],
     // ["fp32", "AXPY_FP32_Pack", [16, 11], 256, "jbpi2", ["testCase.dat"], true, 1000]
     // ["fp32", "AXPY_FP32_Pack", [16, 17], 256, "jbpi2", ["testCase.dat"], true, 1000],

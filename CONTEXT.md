@@ -25,6 +25,9 @@ _Avoid_: inner kernel, sub-kernel
 **Macrokernel**:
 The loop hierarchy that partitions full matrices into $MC \times NC$ blocks and orchestrates packing before dispatching microkernels.
 
+**Fringe Tile**:
+A partial $MR \times NR$ tile at the edge of an $MC \times NC$ block, when the block size is not a multiple of $MR$ or $NR$. Our Macrokernel runs the full Microkernel on it through a `tmp_C` buffer; the Reference Design calls a Microkernel sized to the tile. The extra multiply-adds are quoted next to any comparison (`ref_baseline/README.md`).
+
 **Packer**:
 The transformation routine that reorders non-contiguous matrix panels into contiguous, cache-aligned buffers ($Ac$ and $Bc$) formatted for microkernel vector loads.
 _Avoid_: reshaper, reorderer, buffer copier
@@ -45,3 +48,7 @@ A cohesive set of $(MR, NR)$ dimension variants sharing an identical datatype, p
 
 **Reference Design**:
 The legacy, baseline handwritten C implementation (`gemm_blis.c` or `.ext/RVV_ukernels_benchmark`) used for correctness verification and performance baselines.
+
+**Reference Protocol**:
+The Reference Design's way of timing a GEMM (`test_gemm.c`): no warm-up, reps run until `tmin` seconds have passed, one clock read per rep, correctness checked after timing. The default in the uninstrumented build. The alternative is the **Warm-up Protocol** (`--no-ref-protocol`): warm-up calls first, then a fixed number of reps.
+_Avoid_: default protocol (ambiguous: the default changed)

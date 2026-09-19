@@ -39,7 +39,7 @@ static inline void pack_CB_scalar(int32_t mc, int32_t nc, float* M, int32_t ldM,
     }
 }
 
-void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, int32_t lda, float* B, int32_t ldb, float beta, float* C, int32_t ldc, float* Ac, float* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack) {
+void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, int32_t lda, float* B, int32_t ldb, float beta, float* C, int32_t ldc, float* Ac, float* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf) {
 
     typedef void (*pack_CB_fn)(float*, float*, size_t, size_t, size_t);
     typedef void (*pack_RB_fn)(float*, float*, size_t, size_t, size_t);
@@ -60,20 +60,17 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
             int32_t mc_pad = (mc + mr - 1) / mr * mr;
             int32_t nc_pad = (nc + nr - 1) / nr * nr;
 
-            if (cur_nc % nr != 0) {
-                int32_t full_nc_elements = (cur_nc / nr) * nr * kc_pad;
-                int32_t pad_nc_elements = nr * kc_pad;
-                memset(Bc + full_nc_elements, 0, pad_nc_elements * sizeof(float));
+            // Counter reads sit outside the chrono window so wall-clock pack time
+            // is unperturbed. Both wrappers compile away under -DRVV_INSTRUMENTED=0.
+            {
+                rvv_perf_region _pack_counters(perf, perf ? &perf->pack : nullptr);
+                rvv_region_timer _pack_clock(pack_time);
+                if (use_scalar_pack) {
+                    pack_CB_scalar(cur_kc, cur_nc, b_ptr, ldb, Bc, nr);
+                } else {
+                    pack_CB_direct(b_ptr, Bc, cur_kc, cur_nc, ldb);
+                }
             }
-
-            auto t_pack_start_B = std::chrono::high_resolution_clock::now();
-            if (use_scalar_pack) {
-                pack_CB_scalar(cur_kc, cur_nc, b_ptr, ldb, Bc, nr);
-            } else {
-                pack_CB_direct(b_ptr, Bc, cur_kc, cur_nc, ldb);
-            }
-            auto t_pack_end_B = std::chrono::high_resolution_clock::now();
-            *pack_time += std::chrono::duration<double>(t_pack_end_B - t_pack_start_B).count();
             *pack_bytes += cur_kc * cur_nc * sizeof(float);
 
             float beta_actual = GET_BETA(pc, beta);
@@ -83,24 +80,26 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
                 int32_t offset_A = pc * lda + ic;
                 float* a_ptr = GET_PTR(A, offset_A);
 
-                if (cur_mc % mr != 0) {
-                    int32_t full_mc_elements = (cur_mc / mr) * mr * kc_pad;
-                    int32_t pad_mc_elements = mr * kc_pad;
-                    memset(Ac + full_mc_elements, 0, pad_mc_elements * sizeof(float));
+                // Counter reads sit outside the chrono window so wall-clock pack time
+                // is unperturbed. Both wrappers compile away under -DRVV_INSTRUMENTED=0.
+                {
+                    rvv_perf_region _pack_counters(perf, perf ? &perf->pack : nullptr);
+                    rvv_region_timer _pack_clock(pack_time);
+                    if (use_scalar_pack) {
+                        pack_RB_scalar(cur_mc, cur_kc, a_ptr, lda, Ac, mr);
+                    } else {
+                        pack_RB_direct(a_ptr, Ac, cur_mc, cur_kc, lda);
+                    }
                 }
-
-                auto t_pack_start_A = std::chrono::high_resolution_clock::now();
-                if (use_scalar_pack) {
-                    pack_RB_scalar(cur_mc, cur_kc, a_ptr, lda, Ac, mr);
-                } else {
-                    pack_RB_direct(a_ptr, Ac, cur_mc, cur_kc, lda);
-                }
-                auto t_pack_end_A = std::chrono::high_resolution_clock::now();
-                *pack_time += std::chrono::duration<double>(t_pack_end_A - t_pack_start_A).count();
                 *pack_bytes += cur_mc * cur_kc * sizeof(float);
 
-
-
+                // Compute counters cover the whole microkernel loop nest, not per tile,
+                // to keep read() syscalls off the hot path. In an instrumented build they
+                // therefore include the per-tile chrono::now() pair (~200 instructions on
+                // jbpi) that Compute_Time_ms excludes; under -DRVV_INSTRUMENTED=0 neither
+                // the counters nor that pair exist at all (issue #14).
+                {
+                rvv_perf_region _compute_counters(perf, perf ? &perf->compute : nullptr);
                 for (int32_t jr = 0; jr < cur_nc; jr += nr) {
                     int32_t nr_remain = cur_nc - jr;
                     int32_t cur_nr = std::min(nr_remain, nr);
@@ -114,7 +113,9 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
                         float* a_packed = GET_PTR(Ac, ir * kc_pad);
                         float* b_packed = GET_PTR(Bc, jr * kc_pad);
 
-                        auto t_kern_start = std::chrono::high_resolution_clock::now();
+                        // ~125-160 ns per tile in an instrumented build, which is why
+                        // this pair is the thing issue #14 compiles out.
+                        rvv_region_timer _kernel_clock(kernel_time);
                         if (cur_mr < mr || cur_nr < nr) {
                             // Fringe tile: use a temp buffer to avoid OOB write by the 32x6 kernel
                             float tmp_C[32 * 6];
@@ -131,9 +132,8 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
                         } else {
                             gemm_microkernel_v_dispatch_generic(cur_mr, cur_nr, kc_pad, alpha, a_packed, b_packed, beta_actual, c_ptr, ldc, mr, nr);
                         }
-                        auto t_kern_end = std::chrono::high_resolution_clock::now();
-                        *kernel_time += std::chrono::duration<double>(t_kern_end - t_kern_start).count();
                     }
+                }
                 }
             }
         }

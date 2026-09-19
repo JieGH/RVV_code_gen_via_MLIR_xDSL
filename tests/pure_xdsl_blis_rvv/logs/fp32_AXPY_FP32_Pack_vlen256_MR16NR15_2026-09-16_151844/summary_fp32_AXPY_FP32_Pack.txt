@@ -1,0 +1,2 @@
+▶ B2 (384x384x64)        | 16x15  13.12 KerGOPs [min:12.6, p5:12.9, p95:13.2, max:13.2, iqr:0.2, s:0.1, CV:1%, mx/md:1.01] |  2.5 GB/s Pk |  1.4 GB/s Scl | ⏭️ SKIP (mc:384 nc:384 kc:64)
+▶ B3 (64x384x384)        | 16x15  11.02 KerGOPs [min:8.4, p5:9.2, p95:12.4, max:12.6, iqr:2.0, s:1.2, CV:11%, mx/md:1.14] |  0.7 GB/s Pk |  0.8 GB/s Scl | ⏭️ SKIP (mc:64 nc:128 kc:128)

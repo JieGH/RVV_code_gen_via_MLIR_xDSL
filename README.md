@@ -123,8 +123,11 @@ Jump-host mode:
 ```bash
 source .venv/bin/activate && REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" \
   ./tests/pure_xdsl_blis_rvv/compile_macro_bench.sh --jump \
-  --riscv-user jlei --riscv-ip jbpi --riscv-port 22
+  --riscv-user jlei --riscv-ip jbpi --riscv-port 22 \
+  --no-nc-overrides
 ```
+
+This runs our side alone; the default command for a benchmark run is the head-to-head one in `docs/agents/execution.md` (`run_head_to_head.sh ... --cpu 0`). It is: uninstrumented build, reference protocol, and `--no-nc-overrides` so B3 runs at the heuristic's `nc=384` like the reference design instead of the `nc=128` pinned in `config.json` (issue #16). Drop `--no-nc-overrides` for the shipped-configuration number. Its logs are named `*_noinstr_refproto_no_nc_override.txt`.
 
 Same jump-host convention as above: `REMOTE_HOST`/`REMOTE_PORT` reach the intermediate host (`fej`), `--riscv-*` reach the board behind it. Add `--config <name>.json` to target a project config other than the default `config.json`.
 

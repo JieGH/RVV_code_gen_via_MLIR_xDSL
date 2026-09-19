@@ -1,0 +1,15 @@
+# Issues #17 / #24 correctness pass: small shapes for the scalar oracle, which is O(m*n*k).
+# Every shape is B2-sized (384x384x64) or smaller; test_correctness_pass.py enforces that
+# and checks that each pinning in config_correctness.json (MR 16/32, NR 6/7/15) is
+# exercised on the cases below. VLEN=256 fp32 packs in chunks of 8.
+#
+#   C_full   96 = 3x32 = 6x16 rows, 210 = 14x15 = 35x6 = 30x7 columns, k = kc = 128:
+#            every tile full, one K block.
+#   C_edges  123 rows: tail 27 at MR=32 (in the 4th vector chunk), 11 at MR=16 (in the 2nd).
+#            57 columns: tail 12 at NR=15 (in the 2nd chunk), 3 at NR=6, 1 at NR=7.
+#            k = 300 = 128 + 128 + 44: three K blocks, so the beta=1 kernel runs twice.
+#   C_tiny   the whole matrix is one Fringe Tile (12 < MR, 5 < NR), k < kc.
+# layer      M    N    K
+C_full       96   210  128
+C_edges      123  57   300
+C_tiny       12   5    17

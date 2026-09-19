@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <riscv_vector.h>
 #include <chrono>
+#include "perf_counters.h"
 
 #define GET_PTR(ptr, off) (ptr + off)
 #define GET_BETA(pc, beta) (pc == 0 ? beta : (float)1)

@@ -108,7 +108,8 @@ def generate_header(
     with open(header_path, "w") as f:
         f.write("#pragma once\n\n")
         f.write("#include <stddef.h>\n")
-        f.write("#include <stdint.h>\n\n")
+        f.write("#include <stdint.h>\n")
+        f.write('#include "perf_counters.h"\n\n')
         f.write(f'#define CONFIG_DATATYPE "{config.datatype}"\n')
         f.write(f'#define CONFIG_METHOD "{config.method}"\n')
         f.write(f"#define CONFIG_VLEN {config.vlen}\n")
@@ -120,13 +121,14 @@ def generate_header(
         if config.skip_ref_run:
             f.write("#define SKIP_REF_RUN 1\n\n")
 
-        # Debug/mitigation knob (issue #1): per-shape nc override, keyed by label prefix.
+        # Debug/mitigation knob (issue #1): per-shape nc override, keyed by exact dataset
+        # label (issue #16). The driver's --no-nc-overrides switches it off.
         # Does not modify get_optim_mc_nc_kc or the general cache-blocking model.
         overrides = config.nc_overrides or {}
-        f.write("struct NcOverrideEntry { const char* prefix; int nc; };\n")
+        f.write("struct NcOverrideEntry { const char* label; int nc; };\n")
         if overrides:
             entries = ", ".join(
-                f'{{"{prefix}", {nc}}}' for prefix, nc in overrides.items()
+                f'{{"{label}", {nc}}}' for label, nc in overrides.items()
             )
             f.write(
                 f"static const NcOverrideEntry CONFIG_NC_OVERRIDES[] = {{ {entries} }};\n"
@@ -160,10 +162,10 @@ def generate_header(
         f.write("\n")
 
         f.write(
-            f"void gemm_blis_generic(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack);\n\n"
+            f"void gemm_blis_generic(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf);\n\n"
         )
         f.write(
-            f"typedef void (*gemm_blis_fn)(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack);\n\n"
+            f"typedef void (*gemm_blis_fn)(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf);\n\n"
         )
         f.write("struct KernelVariant {\n")
         f.write("    const char* name;\n")
@@ -184,6 +186,86 @@ def generate_header(
         f.write("#ifdef __cplusplus\n")
         f.write("}\n")
         f.write("#endif\n")
+
+
+def render_scalar_pack_functions(c_type_a: str, c_type_b: str) -> str:
+    """
+    Canonical scalar-pack reference implementation, matching `ext/RVV_ukernels_benchmark`'s
+    `gemm_blis.c` `pack_RB`/`pack_CB` (orderM='C', transM='N' branch) index-for-index.
+
+    Extracted to a single source of truth so the RVV pack correctness test (issue #7)
+    exercises the exact same code the benchmark pipeline compiles, not a hand-copied
+    duplicate that could silently drift from it.
+    """
+    return f"""
+static inline void pack_RB_scalar(int32_t mc, int32_t nc, {c_type_a}* M, int32_t ldM, {c_type_a}* Mc, int32_t RR) {{
+    int32_t i, j, ii, k, rr;
+    for (i = 0; i < mc; i += RR) {{
+        k = i * nc;
+        rr = std::min(mc - i, RR);
+        for (j = 0; j < nc; j++) {{
+            for (ii = 0; ii < rr; ii++) {{
+                Mc[k] = M[(j) * ldM + (i + ii)];
+                k++;
+            }}
+            k += (RR - rr);
+        }}
+    }}
+}}
+
+static inline void pack_CB_scalar(int32_t mc, int32_t nc, {c_type_b}* M, int32_t ldM, {c_type_b}* Mc, int32_t RR) {{
+    int32_t i, j, jj, k, nr;
+    for (j = 0; j < nc; j += RR) {{
+        k = j * mc;
+        nr = std::min(nc - j, RR);
+        for (i = 0; i < mc; i++) {{
+            for (jj = 0; jj < nr; jj++) {{
+                Mc[k] = M[(j + jj) * ldM + (i)];
+                k++;
+            }}
+            k += (RR - nr);
+        }}
+    }}
+}}
+"""
+
+
+def render_pad_zero(buf: str, cur: str, panel: str, c_type: str) -> str:
+    """Zeroes the last, partial panel of `buf` (`cur` valid rows/columns, `panel` wide)."""
+    return (
+        f"if ({cur} % {panel} != 0) "
+        f"memset({buf} + ({cur} / {panel}) * {panel} * kc_pad, 0, {panel} * kc_pad * sizeof({c_type}));"
+    )
+
+
+def render_timed_pack_block(
+    indent: str, scalar_call: str, vector_call: str, pad_zero: str | None = None
+) -> str:
+    """Emits one pack call wrapped in its counter window and its wall-clock timer.
+
+    The counter region is constructed *outside* the timer so its read() syscalls stay
+    out of the wall-clock window. Both wrappers are empty objects under
+    -DRVV_INSTRUMENTED=0, so the whole measurement compiles away (issue #14).
+
+    `pad_zero`, when given, is a statement that runs inside the timer just before the pack,
+    so the work it does is counted as pack time (issue #18).
+    """
+    body = indent + "    "
+    pad_line = f"{body}{pad_zero}\n" if pad_zero else ""
+    return (
+        f"{indent}// Counter reads sit outside the chrono window so wall-clock pack time\n"
+        f"{indent}// is unperturbed. Both wrappers compile away under -DRVV_INSTRUMENTED=0.\n"
+        f"{indent}{{\n"
+        f"{body}rvv_perf_region _pack_counters(perf, perf ? &perf->pack : nullptr);\n"
+        f"{body}rvv_region_timer _pack_clock(pack_time);\n"
+        f"{pad_line}"
+        f"{body}if (use_scalar_pack) {{\n"
+        f"{body}    {scalar_call}\n"
+        f"{body}}} else {{\n"
+        f"{body}    {vector_call}\n"
+        f"{body}}}\n"
+        f"{indent}}}"
+    )
 
 
 def build_project(config: BLISProjectConfig, args):
@@ -387,7 +469,7 @@ def build_project(config: BLISProjectConfig, args):
     with open(headers_path, "w") as f:
         f.write("#ifndef GEMM_HEADERS_H\n#define GEMM_HEADERS_H\n\n")
         f.write(
-            "#include <stddef.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <string>\n#include <algorithm>\n#include <riscv_vector.h>\n#include <chrono>\n\n"
+            "#include <stddef.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <string>\n#include <algorithm>\n#include <riscv_vector.h>\n#include <chrono>\n#include \"perf_counters.h\"\n\n"
         )
         f.write(macros)
         f.write(fwd_decls)
@@ -419,38 +501,9 @@ def build_project(config: BLISProjectConfig, args):
         dispatch_body += "    }\n"
         dispatch_body += "}\n"
 
+    dispatch_body += render_scalar_pack_functions(c_type_a, c_type_b)
     dispatch_body += f"""
-static inline void pack_RB_scalar(int32_t mc, int32_t nc, {c_type_a}* M, int32_t ldM, {c_type_a}* Mc, int32_t RR) {{
-    int32_t i, j, ii, k, rr;
-    for (i = 0; i < mc; i += RR) {{
-        k = i * nc;
-        rr = std::min(mc - i, RR);
-        for (j = 0; j < nc; j++) {{
-            for (ii = 0; ii < rr; ii++) {{
-                Mc[k] = M[(j) * ldM + (i + ii)];
-                k++;
-            }}
-            k += (RR - rr);
-        }}
-    }}
-}}
-
-static inline void pack_CB_scalar(int32_t mc, int32_t nc, {c_type_b}* M, int32_t ldM, {c_type_b}* Mc, int32_t RR) {{
-    int32_t i, j, jj, k, nr;
-    for (j = 0; j < nc; j += RR) {{
-        k = j * mc;
-        nr = std::min(nc - j, RR);
-        for (i = 0; i < mc; i++) {{
-            for (jj = 0; jj < nr; jj++) {{
-                Mc[k] = M[(j + jj) * ldM + (i)];
-                k++;
-            }}
-            k += (RR - nr);
-        }}
-    }}
-}}
-
-void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c_type_a}* A, int32_t lda, {c_type_b}* B, int32_t ldb, {c_type_alpha} beta, {c_type_c}* C, int32_t ldc, {c_type_a}* Ac, {c_type_b}* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack) {{
+void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c_type_a}* A, int32_t lda, {c_type_b}* B, int32_t ldb, {c_type_alpha} beta, {c_type_c}* C, int32_t ldc, {c_type_a}* Ac, {c_type_b}* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf) {{
 """
     if is_pinned:
         # Pinned mode: declare named pack functions directly — no table needed.
@@ -497,20 +550,34 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
             {c_type_b}* b_ptr = GET_PTR(B, offset_B);
             int32_t kc_pad = cur_kc;
 """
-    if "DOT" in config.method:
+    is_dot = "DOT" in config.method
+    if is_dot:
         dispatch_body += """
             kc_pad = ((cur_kc + 3) / 4) * 4;
 """
-    # Pre-compute the pack call lines so we stay inside a single f-string below.
-    pack_cb_call = (
-        "                pack_CB_direct(b_ptr, Bc, cur_kc, cur_nc, ldb);"
+    # Pre-compute the timed pack blocks so we stay inside a single f-string below.
+    #
+    # Pad slots (issue #18): the packers write only valid slots. AXPY pads only feed the
+    # tile's pad lanes, which the fringe path never copies to C, and the driver allocates
+    # Ac/Bc zeroed, so nothing to do. DOT also pads K (`kc_pad`), which feeds every C
+    # entry, so its last panel is zeroed -- inside the pack timer, so the cost counts.
+    pad_zero_cb = render_pad_zero("Bc", "cur_nc", "nr", c_type_b) if is_dot else None
+    pad_zero_rb = render_pad_zero("Ac", "cur_mc", "mr", c_type_a) if is_dot else None
+    pack_cb_block = render_timed_pack_block(
+        " " * 12,
+        "pack_CB_scalar(cur_kc, cur_nc, b_ptr, ldb, Bc, nr);",
+        "pack_CB_direct(b_ptr, Bc, cur_kc, cur_nc, ldb);"
         if is_pinned
-        else "                pack_CB_funcs[nr](b_ptr, Bc, cur_kc, cur_nc, ldb);"
+        else "pack_CB_funcs[nr](b_ptr, Bc, cur_kc, cur_nc, ldb);",
+        pad_zero_cb,
     )
-    pack_rb_call = (
-        "                    pack_RB_direct(a_ptr, Ac, cur_mc, cur_kc, lda);"
+    pack_rb_block = render_timed_pack_block(
+        " " * 16,
+        "pack_RB_scalar(cur_mc, cur_kc, a_ptr, lda, Ac, mr);",
+        "pack_RB_direct(a_ptr, Ac, cur_mc, cur_kc, lda);"
         if is_pinned
-        else "                    pack_RB_funcs[mr](a_ptr, Ac, cur_mc, cur_kc, lda);"
+        else "pack_RB_funcs[mr](a_ptr, Ac, cur_mc, cur_kc, lda);",
+        pad_zero_rb,
     )
 
     # Pre-compute the inner kernel call block.
@@ -543,20 +610,7 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
             int32_t mc_pad = (mc + mr - 1) / mr * mr;
             int32_t nc_pad = (nc + nr - 1) / nr * nr;
 
-            if (cur_nc % nr != 0) {{
-                int32_t full_nc_elements = (cur_nc / nr) * nr * kc_pad;
-                int32_t pad_nc_elements = nr * kc_pad;
-                memset(Bc + full_nc_elements, 0, pad_nc_elements * sizeof({c_type_b}));
-            }}
-
-            auto t_pack_start_B = std::chrono::high_resolution_clock::now();
-            if (use_scalar_pack) {{
-                pack_CB_scalar(cur_kc, cur_nc, b_ptr, ldb, Bc, nr);
-            }} else {{
-{pack_cb_call}
-            }}
-            auto t_pack_end_B = std::chrono::high_resolution_clock::now();
-            *pack_time += std::chrono::duration<double>(t_pack_end_B - t_pack_start_B).count();
+{pack_cb_block}
             *pack_bytes += cur_kc * cur_nc * sizeof({c_type_b});
 
             {c_type_alpha} beta_actual = GET_BETA(pc, beta);
@@ -566,24 +620,16 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
                 int32_t offset_A = pc * lda + ic;
                 {c_type_a}* a_ptr = GET_PTR(A, offset_A);
 
-                if (cur_mc % mr != 0) {{
-                    int32_t full_mc_elements = (cur_mc / mr) * mr * kc_pad;
-                    int32_t pad_mc_elements = mr * kc_pad;
-                    memset(Ac + full_mc_elements, 0, pad_mc_elements * sizeof({c_type_a}));
-                }}
-
-                auto t_pack_start_A = std::chrono::high_resolution_clock::now();
-                if (use_scalar_pack) {{
-                    pack_RB_scalar(cur_mc, cur_kc, a_ptr, lda, Ac, mr);
-                }} else {{
-{pack_rb_call}
-                }}
-                auto t_pack_end_A = std::chrono::high_resolution_clock::now();
-                *pack_time += std::chrono::duration<double>(t_pack_end_A - t_pack_start_A).count();
+{pack_rb_block}
                 *pack_bytes += cur_mc * cur_kc * sizeof({c_type_a});
 
-
-
+                // Compute counters cover the whole microkernel loop nest, not per tile,
+                // to keep read() syscalls off the hot path. In an instrumented build they
+                // therefore include the per-tile chrono::now() pair (~200 instructions on
+                // jbpi) that Compute_Time_ms excludes; under -DRVV_INSTRUMENTED=0 neither
+                // the counters nor that pair exist at all (issue #14).
+                {{
+                rvv_perf_region _compute_counters(perf, perf ? &perf->compute : nullptr);
                 for (int32_t jr = 0; jr < cur_nc; jr += nr) {{
                     int32_t nr_remain = cur_nc - jr;
                     int32_t cur_nr = std::min(nr_remain, nr);
@@ -597,11 +643,12 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
                         {c_type_a}* a_packed = GET_PTR(Ac, ir * kc_pad);
                         {c_type_b}* b_packed = GET_PTR(Bc, jr * kc_pad);
 
-                        auto t_kern_start = std::chrono::high_resolution_clock::now();
+                        // ~125-160 ns per tile in an instrumented build, which is why
+                        // this pair is the thing issue #14 compiles out.
+                        rvv_region_timer _kernel_clock(kernel_time);
 {kernel_call_block}
-                        auto t_kern_end = std::chrono::high_resolution_clock::now();
-                        *kernel_time += std::chrono::duration<double>(t_kern_end - t_kern_start).count();
                     }}
+                }}
                 }}
             }}
         }}
@@ -676,6 +723,7 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
     # 3. Copy static templates
     templates_dir = os.path.join(os.path.dirname(__file__), "templates")
     shutil.copy(os.path.join(templates_dir, "driver_benchmark.cpp"), out_dir)
+    shutil.copy(os.path.join(templates_dir, "perf_counters.h"), out_dir)
 
     # Process Makefile to optionally restrict datasets
     makefile_path = os.path.join(templates_dir, "Makefile")

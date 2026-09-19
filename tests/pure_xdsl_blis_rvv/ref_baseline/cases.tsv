@@ -1,0 +1,16 @@
+# Single source of truth for the reference-baseline run.
+# Mirrors the issue #2 pinning in tests/pure_xdsl_blis_rvv/config.json + datasets/issue2_*.dat.
+# The reference driver parses its own .dat with atoi() on the label column, so each
+# case also carries a numeric id (BERT 1-5, Square 11-15) used in the generated .dat.
+#
+# case	numid	M	N	K	MR	NR
+B1	1	1024	384	1024	32	6
+B2	2	384	384	64	16	15
+B3	3	64	384	384	16	15
+B4	4	4096	384	1024	32	7
+B5	5	1024	384	4096	32	6
+S1	11	1000	1000	1000	32	7
+S2	12	2000	2000	2000	32	7
+S3	13	3000	3000	3000	32	7
+S4	14	4000	4000	4000	32	7
+S5	15	5000	5000	5000	32	7

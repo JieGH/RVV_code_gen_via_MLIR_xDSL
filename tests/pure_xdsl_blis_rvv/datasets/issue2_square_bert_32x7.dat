@@ -2,10 +2,23 @@
 # Square goes up to 5000^3 (~750 GFLOP/rep at N_REPS=5) - this group runs with
 # skip_ref_run=true and a reduced iteration count in config.json so a full
 # scalar reference GEMM and 1000-rep RVV sweep don't take hours on-board.
+#
+# S3-S5 re-enabled per user request to test the model (B4) and the full square
+# family (S1-S5) together in the same run. Previously commented out per the
+# issue #7 future-work note (S1-S5's KerGOPs/pack-vs-compute split all land in
+# the same narrow band regardless of problem size, see .scratch/issues/0003-*.md)
+# to cut board time; that finding was about redundancy, not correctness, so
+# S3-S5 are safe to re-run whenever the larger-size data points are wanted.
+#
+# Row order: BERT (B4) before Square (S1-S5), per user request to run the BERT
+# series before the Square matrix. B4 is the only BERT shape pinned to MR32_NR7 --
+# B1/B5 are pinned to MR32_NR6 and B2/B3 to MR16_NR15 (see issue2_bert_32x6.dat /
+# issue2_bert_16x15.dat), each compiling as its own project, so a single global
+# B1->B5 canonical order across all three pinnings isn't achievable in one run.
 # layer  M      N    K
+B4       4096   384   1024
 S1       1000   1000  1000
 S2       2000   2000  2000
 S3       3000   3000  3000
 S4       4000   4000  4000
 S5       5000   5000  5000
-B4       4096   384   1024
