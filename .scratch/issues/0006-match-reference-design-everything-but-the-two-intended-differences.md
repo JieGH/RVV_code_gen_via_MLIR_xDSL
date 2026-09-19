@@ -105,6 +105,30 @@ sits in every panel, so a later, shorter K block could read stale data there. Un
 At 32x6 our Ac is 512 KB vs the reference's 412 KB — 24% larger footprint, against us.
 Alignment 64 vs 32. The comment at `:556` claiming the sizes match is inaccurate.
 
+**Status (GitHub #19): fixed, sizes checked on the host; not measured on the board.** The
+driver now allocates Ac as `(mr+mc)*(1+kc)` floats and Bc as `(1+kc)*(nr+nc)`, the reference's
+`test_gemm.c:271-272` with its `-DKR=1` (`gemm_blis_family/Makefile:127`). At kc=128 that takes
+Ac from a factor of 160 to 129 (mr=32: 19% smaller, the issue's "24% larger" read from the other
+side) and Bc from 134 to 129 (nr=6: 3.7% smaller); the issue's figure is Ac's. The comment is
+rewritten to say what the sizes are. The allocation is floored at the packed extent
+(`padded_mc * kc_pad`, `padded_nc * kc_pad`), so a DOT kernel, whose K padding can exceed the
+reference's one spare row, cannot write past a smaller buffer; for AXPY the floor never bites.
+
+Checked on the host by `test_ref_protocol.py`, against a stub kernel that reports
+`malloc_usable_size` of Ac and Bc: `test_the_pack_buffers_are_the_size_the_reference_allocates`
+pins the sizes to the reference's formula, and `test_a_dot_kernels_k_padding_still_fits_the_smaller_pack_buffers`
+runs a DOT-method stub on a tall, shallow shape (m=256, k=5) where the floor is what keeps the
+buffer big enough (it fails with the floor removed). Both check the first shape of a run only.
+
+Left alone, and reasoned rather than measured: the alignment, ours 64 bytes and the reference's
+32 (its `my_aligned_alloc`). Ac panels start at multiples of 64 bytes at mr=16 and 32, so a
+256-bit vector load from them never straddles a 64-byte line at either alignment; Bc is read with
+scalar loads. Also unmatched: `alloc_aligned` rounds each size up to 64 bytes and the reference
+does not, at most 63 bytes. What keeps AXPY inside the smaller buffer is read from the generated
+dispatch, not asserted by a test: panel `ir` starts at `ir * kc_pad` and the kernel reads `max_mr`
+rows of `kc_pad` from it, so the touched extent is `padded_mc * kc_pad`, at most `(mr+mc)*(1+kc)`
+when `kc_pad == kc`. No board run was made to see whether the smaller footprint moves any number.
+
 ### 9. Estimator asymmetry in the comparison script
 `compare_ref_baseline.py:74-75` takes best-of-K variants for the reference;
 `:103` takes mean-of-medians over our last 5 run dirs. Not the same statistic.

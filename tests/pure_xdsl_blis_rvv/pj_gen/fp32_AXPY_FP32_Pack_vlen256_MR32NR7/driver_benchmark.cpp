@@ -715,9 +715,12 @@ int main(int argc, char** argv) {
 
             size_t padded_mc = ((mc + variant.mr - 1) / variant.mr) * variant.mr;
             size_t padded_nc = ((nc + variant.nr - 1) / variant.nr) * variant.nr;
-            // Match reference design memory allocation sizes
-            int32_t ac_alloc_size = (variant.mr + mc) * (variant.mr + kc);
-            int32_t bc_alloc_size = (variant.nr + kc) * (variant.nr + nc);
+            // The reference's sizes (test_gemm.c:271-272, built with -DKR=1): Ac holds
+            // (MR+mc)*(1+kc) floats and Bc (1+kc)*(NR+nc), not (mr+kc) / (nr+kc) (issue #19).
+            // The panels the packers fill are never larger, so the floor below only matters for
+            // DOT, whose K padding (kc_pad) can exceed the reference's one spare row.
+            size_t ac_alloc_size = std::max<size_t>((size_t)(variant.mr + mc) * (1 + kc), padded_mc * kc_pad);
+            size_t bc_alloc_size = std::max<size_t>((size_t)(1 + kc) * (variant.nr + nc), padded_nc * kc_pad);
             A_TYPE* Ac = alloc_aligned_zeroed<A_TYPE>(ac_alloc_size);
             B_TYPE* Bc = alloc_aligned_zeroed<B_TYPE>(bc_alloc_size);
      // Re-initialize C for this variant

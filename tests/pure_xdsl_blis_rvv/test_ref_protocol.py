@@ -39,7 +39,7 @@ STUB_HEADER = """\
 #include "perf_counters.h"
 
 #define CONFIG_DATATYPE "fp32"
-#define CONFIG_METHOD "STUB"
+#define CONFIG_METHOD "%(method)s"
 #define CONFIG_VLEN 256
 #define CONFIG_ARCH "host"
 #define CONFIG_ITERATIONS %(iterations)d
@@ -63,22 +63,43 @@ STUB_KERNEL = """\
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <malloc.h>
+#include <string>
 #include <thread>
 #include "generated_kernels.h"
 
 static int calls_total = 0, calls_scalar_pack = 0;
 // Issue #18: non-zero elements Ac/Bc held when a shape first reached the kernel.
 static long fresh_nonzero = 0;
+// Issue #19: the first shape's Ac/Bc as allocated, next to what the reference asks for.
+static size_t ac_usable = 0, bc_usable = 0, ac_wanted = 0, bc_wanted = 0;
+static size_t ac_needed = 0, bc_needed = 0;
 struct StubReport {
     ~StubReport() {
         fprintf(stderr, "STUB_CALLS total=%d scalar_pack=%d\\n", calls_total, calls_scalar_pack);
         fprintf(stderr, "STUB_FRESH_BUFFERS nonzero=%ld\\n", fresh_nonzero);
+        fprintf(stderr, "STUB_BUFFER_BYTES ac=%zu ac_wanted=%zu bc=%zu bc_wanted=%zu "
+                "ac_needed=%zu bc_needed=%zu\\n",
+                ac_usable, ac_wanted, bc_usable, bc_wanted, ac_needed, bc_needed);
     }
 } stub_report;
 
 void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf) {
     calls_total++;
     if (use_scalar_pack) calls_scalar_pack++;
+    if (ac_wanted == 0) {
+        // test_gemm.c:271-272 with -DKR=1: (MR+mc)*(KR+kc) floats for Ac, (KR+kc)*(NR+nc) for Bc.
+        ac_wanted = (size_t)(mr + mc) * (1 + kc) * sizeof(float);
+        bc_wanted = (size_t)(1 + kc) * (nr + nc) * sizeof(float);
+        // What the packed panels occupy: every panel is mr (nr) wide and kc_pad deep, and a
+        // DOT kernel rounds kc up to a multiple of 4 (the generated dispatch's kc_pad).
+        const size_t kc_pad = std::string(CONFIG_METHOD).find("DOT") != std::string::npos
+            ? (size_t)((kc + 3) / 4) * 4 : (size_t)kc;
+        ac_needed = (size_t)((mc + mr - 1) / mr) * mr * kc_pad * sizeof(float);
+        bc_needed = (size_t)((nc + nr - 1) / nr) * nr * kc_pad * sizeof(float);
+        ac_usable = malloc_usable_size(Ac);
+        bc_usable = malloc_usable_size(Bc);
+    }
     if (const char* ms = getenv("STUB_SLEEP_MS"))
         std::this_thread::sleep_for(std::chrono::milliseconds(atoi(ms)));
     if (getenv("STUB_DIRTY_BUFFERS")) {
@@ -86,7 +107,7 @@ void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, in
         // allocated Ac/Bc afresh; whatever the previous shape left in a freed chunk of the
         // same size is still there unless the driver cleared it. Leave them dirty again.
         static int seen_m = -1, seen_n = -1, seen_k = -1;
-        const size_t ac_n = (size_t)(mr + mc) * (mr + kc), bc_n = (size_t)(nr + kc) * (nr + nc);
+        const size_t ac_n = (size_t)(mr + mc) * (1 + kc), bc_n = (size_t)(1 + kc) * (nr + nc);
         if (m != seen_m || n != seen_n || k != seen_k) {
             for (size_t i = 0; i < ac_n; ++i) fresh_nonzero += Ac[i] != 0.0f;
             for (size_t i = 0; i < bc_n; ++i) fresh_nonzero += Bc[i] != 0.0f;
@@ -116,12 +137,14 @@ class Driver:
         instrumented: int,
         skip_ref_run: bool = False,
         nc_overrides: dict[str, int] | None = None,
+        method: str = "STUB",
     ):
         compiler = shutil.which("g++") or shutil.which("c++")
         c_compiler = shutil.which("gcc") or shutil.which("cc")
         if compiler is None or c_compiler is None:
             pytest.skip("no native C/C++ compiler available for the host-side driver tests")
         self.cwd = root / f"run_instr{instrumented}{'_skipref' if skip_ref_run else ''}"
+        self.method = method
         overrides = nc_overrides or {}
         if overrides:
             entries = ", ".join(f'{{"{label}", {nc}}}' for label, nc in overrides.items())
@@ -141,6 +164,7 @@ class Driver:
             % {
                 "iterations": CONFIG_ITERATIONS,
                 "skip_ref": "#define SKIP_REF_RUN 1" if skip_ref_run else "",
+                "method": method,
                 "nc_overrides": nc_decl,
             }
         )
@@ -658,3 +682,47 @@ def test_the_pack_buffers_start_zeroed_like_the_references_calloc(
     found = re.search(r"STUB_FRESH_BUFFERS nonzero=(\d+)", proc.stderr)
     assert found is not None, proc.stderr
     assert int(found.group(1)) == 0
+
+
+BUFFER_BYTES = re.compile(
+    r"STUB_BUFFER_BYTES ac=(\d+) ac_wanted=(\d+) bc=(\d+) bc_wanted=(\d+)"
+    r" ac_needed=(\d+) bc_needed=(\d+)"
+)
+
+
+def _buffer_bytes(stderr: str) -> tuple[int, ...]:
+    found = BUFFER_BYTES.search(stderr)
+    assert found is not None, stderr
+    return tuple(map(int, found.groups()))
+
+
+def test_the_pack_buffers_are_the_size_the_reference_allocates(uninstrumented: Driver):
+    # Issue #19: the driver sized Ac as (mr+mc)*(mr+kc), the reference
+    # (MR+mc)*(KR+kc) with -DKR=1 -- 24% more at 32x6. A bigger buffer is a bigger
+    # cache footprint, and it is ours alone. malloc_usable_size is the allocation
+    # rounded up to the allocator's grain, so allow the rounding above the reference's
+    # byte count and nothing more.
+    proc = uninstrumented.run("--tmin", "0.05")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    ac, ac_wanted, bc, bc_wanted, ac_needed, bc_needed = _buffer_bytes(proc.stderr)
+    slack = 64 + 32  # aligned_alloc rounds the size up to 64; malloc's own grain is 16
+    assert ac_wanted <= ac < ac_wanted + slack, (ac, ac_wanted)
+    assert bc_wanted <= bc < bc_wanted + slack, (bc, bc_wanted)
+    assert ac_needed <= ac and bc_needed <= bc  # and still holds every packed panel
+
+
+@pytest.fixture(scope="module")
+def dot_method(tmp_path_factory: pytest.TempPathFactory) -> Driver:
+    return Driver(tmp_path_factory.mktemp("dot"), instrumented=0, method="DOT_STUB")
+
+
+def test_a_dot_kernels_k_padding_still_fits_the_smaller_pack_buffers(dot_method: Driver):
+    # Issue #19: a DOT kernel pads K to a multiple of 4, which can take a panel past the
+    # reference's one spare row of K. Tall and shallow (m=256, k=5 -> kc_pad=8) is where
+    # the panels outgrow (mr+mc)*(1+kc), so the allocation has to be floored at them.
+    (dot_method.cwd / "tall.dat").write_text("T1 256 32 5\n")
+    proc = dot_method.run("--tmin", "0.05", dataset="tall.dat")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    ac, ac_wanted, bc, _, ac_needed, bc_needed = _buffer_bytes(proc.stderr)
+    assert ac_needed > ac_wanted  # this shape does outgrow the reference's formula
+    assert ac_needed <= ac and bc_needed <= bc
