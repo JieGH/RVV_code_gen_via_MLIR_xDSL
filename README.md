@@ -12,7 +12,7 @@ See [CONTEXT.md](CONTEXT.md) for the vocabulary used throughout: microkernel, ma
 |---|---|
 | [src/xdsltemplate/](src/xdsltemplate/) | The xDSL backend. `dialects/` defines the RVV, GEMM and EmitC operations; `transforms/` lowers them to C++. |
 | [tests/pure_xdsl_blis_rvv/](tests/pure_xdsl_blis_rvv/) | The project generator and its benchmark harness. |
-| `tests/pure_xdsl_blis_rvv/pj_gen/` | Generated output: one self-contained project per `(MR, NR)` variant. Regenerated, not edited. |
+| `tests/pure_xdsl_blis_rvv/pj_gen/` | Generated output: one self-contained project per `(MR, NR)` variant. Not tracked by git; wiped and rebuilt on every run. |
 | [tests/pure_xdsl_blis_rvv/ref_baseline/](tests/pure_xdsl_blis_rvv/ref_baseline/) | Runs the reference design for comparison. Needs the sibling `../ext/RVV_ukernels_benchmark` tree. |
 | [docs/](docs/) | Metrics definitions, ADRs, and the agent-facing execution notes. |
 
@@ -76,7 +76,7 @@ source .venv/bin/activate
 cd tests/pure_xdsl_blis_rvv && python3 generate_pure_blis_project.py --config config.json
 ```
 
-`pj_gen/` is tracked, so regenerate it before committing after any change to the generator or the templates.
+`pj_gen/` is gitignored and rebuilt from scratch each run, so never edit it by hand; change the generator or `templates/` instead.
 
 ## Tests
 
