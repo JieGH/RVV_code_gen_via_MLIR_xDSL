@@ -21,7 +21,7 @@ source .venv/bin/activate && REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322"
   --no-nc-overrides
 ```
 
-This is the default command for a benchmark run. `--no-nc-overrides` makes B3 run at the reference's `nc=384`; drop it for the shipped-configuration (`nc=128`) number.
+This runs our side alone (pinned to core 4 by default). The default command for a benchmark run is the head-to-head one below, which runs this same side and the reference together. `--no-nc-overrides` makes B3 run at the reference's `nc=384`; drop it for the shipped-configuration (`nc=128`) number.
 
 Adjust `REMOTE_HOST`/`REMOTE_PORT`/`--riscv-user`/`--riscv-ip`/`--riscv-port` per the operator's actual jump-host and board; the values above are this project's current defaults, not fixed constants.
 
@@ -49,10 +49,11 @@ Every run writes `<run dir>/provenance.txt`: the pin, the affinity `taskset` rep
 ```bash
 source .venv/bin/activate && REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" \
   ./tests/pure_xdsl_blis_rvv/run_head_to_head.sh --jump \
-  --riscv-user jlei --riscv-ip jbpi --riscv-port 22
+  --riscv-user jlei --riscv-ip jbpi --riscv-port 22 \
+  --cpu 0
 ```
 
-Runs our side (`compile_macro_bench.sh --no-nc-overrides`, the default build and protocol) and then the reference side (`run_ref_baseline.sh --bracket`), both pinned to the same core, and compares exactly that pair. This is the command for a number quoted against the reference; a reference baseline from another day is not comparable (issue #21). Take `--cpu`, `--no-pin`, `--tmin` and the connection flags; `--opt OPT|LDX` picks the reference kernel set. For anything else run the two scripts yourself, then `compare_ref_baseline.py --result-dir ... --runs ... --raw-name ...`.
+This is the default command for a benchmark run. It pins both sides to core 0, which is also where the board sends every device interrupt: expect that core to be noisier than the default, core 4. Runs our side (`compile_macro_bench.sh --no-nc-overrides`, the default build and protocol) and then the reference side (`run_ref_baseline.sh --bracket`), both pinned to the same core, and compares exactly that pair. This is the command for a number quoted against the reference; a reference baseline from another day is not comparable (issue #21). Take `--cpu`, `--no-pin`, `--tmin` and the connection flags; `--opt OPT|LDX` picks the reference kernel set. For anything else run the two scripts yourself, then `compare_ref_baseline.py --result-dir ... --runs ... --raw-name ...`.
 
 ## One-time dependency builds
 
