@@ -6,7 +6,7 @@ uninstrumented build (`--no-ref-protocol` brings the old one back) and every run
 overview of its settings. Sections 1–4 describe the first commit (`--ref-protocol` as an
 opt-in flag); there, "default" means the protocol that was the default *at measurement
 time*, now called the warm-up protocol.
-**Status:** 🟢 `--ref-protocol` shipped, then made the default. This note records the measurement that replaces the
+**Status:** 🟢 `--ref-protocol` shipped, made the default, and the terminal report reworded (section 6). This note records the measurement that replaces the
 "under 1%, favours us" estimate in `docs/metrics.md` and [[0006-match-reference-design-everything-but-the-two-intended-differences]].
 **Target:** `jbpi` (BananaPi M2 Pro, VLEN=256), reached via `fej`. Uninstrumented build (`INSTRUMENTED=0`) throughout.
 **Primary Sources:**
@@ -125,6 +125,35 @@ variant, and large Square shapes get 1–2 reps, so the under-3-reps warning wil
 by design. B3 is noisy under the reference protocol as well (CV 36% in the smoke run).
 `compare_ref_baseline.py` still defaults to the instrumented log name, so it needs
 `--raw-name all_raw_<project>_noinstr_refproto.txt` for a default run.
+
+## 6. Follow-up: the terminal report said "Ker" and "Ref" for things that are neither
+
+Question raised after the default flip: does `KerGOPs` in the terminal mean kernel
+performance? No. Since #13 it is 2·M·N·K divided by each rep's whole wall time, packing
+included; the name survived only because the raw-log columns (`KerGOPs_*`) are read by tooling.
+The console also printed `Ref` / `Delta`, which read like the reference design but were our own
+naive scalar `gemm_ref` (used only to check the answer), and, in the default build, rows of
+`nan` for a pack/compute split and counters that do not exist there.
+
+Commit 942fed7 rewrote the report (console only, log columns unchanged):
+
+- headline is **by mean time** = 2·M·N·K / `RVV_Time_ms`, the reference's own formula and
+  `compare_ref_baseline.py`'s `e2e`; **by median rep** is the old `KerGOPs_Median`;
+- `KerGOPs` is gone from the terminal; `Ref`/`Delta` became **naive scalar GEMM** with
+  "NOT the reference design", or "not run [skip_ref_run in config.json]";
+- the spread is spelled out (slowest, 5th percentile, 95th percentile, fastest, middle-50%
+  width, std-dev, std-dev / median, fastest / median) with the 15% and 1.25 thresholds;
+- every figure carries a `[bracketed note]` on what is inside it, including what is timed, the
+  rep count and why (protocol), and what `mc`/`nc`/`kc` mean;
+- the uninstrumented build prints one "pack vs compute: not available [rerun with --instr]"
+  row instead of nan rows; `--instr` adds a time-split and a hardware-counters table and marks
+  its speed as a DEBUG number.
+
+Checked on `jbpi`, real kernels, both builds (counters table showed real values); 60 host tests
+pass. `docs/metrics.md` ("Terminal report") maps each label to its log column.
+
+**Left as is:** `comparison.md` (`summarize_run.py`) keeps `KerGOPs` / `Ref GOPs` / `Δ vs ref`
+and has the same ambiguity. Renaming those means the summarizer and its tests; not done.
 
 ## 4. Raw data
 
