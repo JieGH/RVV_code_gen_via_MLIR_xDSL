@@ -12,6 +12,9 @@
     // - datasets: List of .dat file datasets to benchmark against (e.g. ["project_sample.dat"])
     // - skip_ref_run (optional): true/false. Set to true to skip the slow scalar reference 
     //                            matmul and correctness check. Packing and Kernel Perf will still run.
+    //                            The scalar oracle is O(m*n*k): keep it to shapes no bigger than B2
+    //                            (384x384x64). The shipped rows below all skip it; the correctness check
+    //                            lives in config_correctness.json, on small shapes (issues #17, #24).
     // - iterations (optional): Number of reps to run for averaging performance. Defaults to 5.
     //                          Only used by the warm-up protocol (--no-ref-protocol, or the
     //                          instrumented build). The default reference protocol runs until

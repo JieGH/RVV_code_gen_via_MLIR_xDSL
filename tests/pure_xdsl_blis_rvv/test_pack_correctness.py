@@ -30,6 +30,9 @@ from pathlib import Path
 
 import pytest
 
+# This file's own directory too: `generate_pure_blis_project` lives there, and without it the
+# file only imports when another test module has already put the directory on the path.
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "../gemm_blis_xdsl"))
@@ -40,6 +43,7 @@ from generate_pure_blis_project import (
     rename_symbols,
     render_scalar_pack_functions,
 )
+from config import BLISProjectConfig
 from pack_builder import build_pack_module
 
 MLIR_TRANSLATE_CANDIDATES = [
@@ -373,14 +377,29 @@ def _board_reachable() -> bool:
         return False
 
 
-def test_rvv_vector_pack_matches_scalar_reference_on_board(tmp_path: Path) -> None:
+# Every RR the shipped pinnings pack with (pj_gen/): NR=6, NR=7, MR=NR=15 (16x15), MR=16,
+# MR=32. Issue #24: the test used to hardcode 15, which is two vector chunks (8 + 7), so
+# the 3rd and 4th chunks that only MR=32 needs were never compared with the oracle.
+SHIPPED_RR = [6, 7, 15, 16, 32]
+
+
+def test_shipped_rr_is_every_mr_and_nr_config_json_pins() -> None:
+    # SHIPPED_RR is a copy of the pinnings in config.json; this is what stops it drifting.
+    config = Path(__file__).parent / "config.json"
+    pinned = {dim for row in BLISProjectConfig.from_json(str(config)) for dim in row.mr_nr_family[0]}
+    assert pinned == set(SHIPPED_RR)
+
+
+@pytest.mark.parametrize("rr", SHIPPED_RR, ids=lambda rr: f"RR{rr}")
+def test_rvv_vector_pack_matches_scalar_reference_on_board(
+    tmp_path: Path, rr: int
+) -> None:
     if not _board_reachable():
         pytest.skip(
             f"RVV board not reachable via jump host '{JUMP_HOST}' -> '{BOARD_HOST}'"
         )
 
-    rr = 15  # not a multiple of vlen=8 (VLEN=256, fp32): exercises the vector tail chunk.
-    vlen = 8
+    vlen = 8  # elements per vector register at VLEN=256, fp32
     lowered_cpp = _lower_rvv_pack_functions_to_cpp(rr, vlen, tmp_path)
 
     harness = f"""
@@ -402,53 +421,71 @@ int main() {{
     int failures = 0;
     const int32_t RR = {rr};
 
-    // mc/kc chosen so RR doesn't divide either dimension: exercises both the
-    // partial-final-block tail (rr < RR) and, since RR=15 > vlen=8, the
-    // within-block vector tail chunk (chunk_avl < vlen on the second chunk).
-    int32_t mc = 37, kc = 22;
-    int32_t ldM_A = mc + 3;
-    int32_t ldM_B = kc + 3;
+    // (mc, kc) chosen so RR doesn't divide mc: exercises the partial-final-block tail
+    // (rr < RR) and, when RR > vlen=8, the within-block vector tail chunk (chunk_avl <
+    // vlen on the last chunk). Issue #24: the 3rd and 4th chunks only exist at RR=32,
+    // so the cases also cover a partial block that ends in each of them, and full blocks
+    // (all four chunks whole). CB's RR-blocked dimension is its second argument, `mc`.
+    struct Shape {{ int32_t mc; int32_t kc; }};
+    const Shape shapes[] = {{
+        {{37, 22}},   // tail 5 at RR=32 (1st chunk), 5 at 16, 7 at 15, 2 at 7, 1 at 6
+        {{59, 22}},   // tail 27 at RR=32 (3 whole chunks + 3 in the 4th), 11 at 16, 14 at 15
+        {{51, 9}},    // tail 19 at RR=32 (2 whole chunks + 3 in the 3rd), 3 at 16, 6 at 15
+        {{96, 7}},    // exact multiple of 32, 16 and 6: full blocks only, no tail
+    }};
 
-    // pack_*_v_if implements the same orderM=='C' branch as pack_*_scalar (the only
-    // branch the benchmark dispatcher ever calls); pack_*_v_else implements the
-    // *other* branch of the reference's if/else (row-major source access) — it is
-    // generated but never wired into the dispatcher, so its oracle is the reference
-    // function's else-branch directly, not pack_*_scalar.
-    int32_t mc_pad = round_up_to_multiple(mc, RR);
-    // CB's RR-blocked dimension is its second argument (N-tile width, `mc` here),
-    // not its first (`kc`) — see pack_CB_scalar(mc_param=kc, nc_param=mc, ...) below.
-    int32_t nc_pad = round_up_to_multiple(mc, RR);
+    for (const Shape& sh : shapes) {{
+        const int32_t mc = sh.mc, kc = sh.kc;
+        const int failures_before = failures;
+        int32_t ldM_A = mc + 3;
+        int32_t ldM_B = kc + 3;
 
-    float* A = new float[ldM_A * kc];
-    float* Ac_vec_if = new float[(size_t)mc_pad * kc]();
-    float* Ac_vec_else = new float[(size_t)mc_pad * kc]();
-    float* Ac_scalar = new float[(size_t)mc_pad * kc]();
-    float* Ac_ref_else = new float[(size_t)mc_pad * kc]();
-    fill_known(A, ldM_A, mc, kc);
+        // pack_*_v_if implements the same orderM=='C' branch as pack_*_scalar (the only
+        // branch the benchmark dispatcher ever calls); pack_*_v_else implements the
+        // *other* branch of the reference's if/else (row-major source access) — it is
+        // generated but never wired into the dispatcher, so its oracle is the reference
+        // function's else-branch directly, not pack_*_scalar.
+        int32_t mc_pad = round_up_to_multiple(mc, RR);
+        // CB's RR-blocked dimension is its second argument (N-tile width, `mc` here),
+        // not its first (`kc`) — see pack_CB_scalar(mc_param=kc, nc_param=mc, ...) below.
+        int32_t nc_pad = round_up_to_multiple(mc, RR);
 
-    pack_RB_v_if_AXPY_FP32_Pack_fp32_MR{rr}(A, Ac_vec_if, mc, kc, ldM_A);
-    pack_RB_v_else_AXPY_FP32_Pack_fp32_MR{rr}(A, Ac_vec_else, mc, kc, ldM_A);
-    pack_RB_scalar(mc, kc, A, ldM_A, Ac_scalar, RR);
-    ref_pack_RB(false, mc, kc, A, ldM_A, Ac_ref_else, RR);
-    failures += compare_buffers("pack_RB_v_if", Ac_vec_if, Ac_scalar, (size_t)mc_pad * kc);
-    failures += compare_buffers("pack_RB_v_else", Ac_vec_else, Ac_ref_else, (size_t)mc_pad * kc);
+        // The `_else` packers read their source row-major, M[(i+ii)*ldM + j], which runs past
+        // an ldM*cols column-major buffer whenever rows > cols (it did at 37x22 too, and passed
+        // only because whatever sat beyond the buffer read the same both times). Size the
+        // sources for that read, and zero them so what it reads is the same every time.
+        float* A = new float[(size_t)ldM_A * std::max(kc, mc)]();
+        float* Ac_vec_if = new float[(size_t)mc_pad * kc]();
+        float* Ac_vec_else = new float[(size_t)mc_pad * kc]();
+        float* Ac_scalar = new float[(size_t)mc_pad * kc]();
+        float* Ac_ref_else = new float[(size_t)mc_pad * kc]();
+        fill_known(A, ldM_A, mc, kc);
 
-    float* B = new float[ldM_B * mc];
-    float* Bc_vec_if = new float[(size_t)kc * nc_pad]();
-    float* Bc_vec_else = new float[(size_t)kc * nc_pad]();
-    float* Bc_scalar = new float[(size_t)kc * nc_pad]();
-    float* Bc_ref_else = new float[(size_t)kc * nc_pad]();
-    fill_known(B, ldM_B, kc, mc);
+        pack_RB_v_if_AXPY_FP32_Pack_fp32_MR{rr}(A, Ac_vec_if, mc, kc, ldM_A);
+        pack_RB_v_else_AXPY_FP32_Pack_fp32_MR{rr}(A, Ac_vec_else, mc, kc, ldM_A);
+        pack_RB_scalar(mc, kc, A, ldM_A, Ac_scalar, RR);
+        ref_pack_RB(false, mc, kc, A, ldM_A, Ac_ref_else, RR);
+        failures += compare_buffers("pack_RB_v_if", Ac_vec_if, Ac_scalar, (size_t)mc_pad * kc);
+        failures += compare_buffers("pack_RB_v_else", Ac_vec_else, Ac_ref_else, (size_t)mc_pad * kc);
 
-    pack_CB_v_if_AXPY_FP32_Pack_fp32_NR{rr}(B, Bc_vec_if, kc, mc, ldM_B);
-    pack_CB_v_else_AXPY_FP32_Pack_fp32_NR{rr}(B, Bc_vec_else, kc, mc, ldM_B);
-    pack_CB_scalar(kc, mc, B, ldM_B, Bc_scalar, RR);
-    ref_pack_CB(false, kc, mc, B, ldM_B, Bc_ref_else, RR);
-    failures += compare_buffers("pack_CB_v_if", Bc_vec_if, Bc_scalar, (size_t)kc * nc_pad);
-    failures += compare_buffers("pack_CB_v_else", Bc_vec_else, Bc_ref_else, (size_t)kc * nc_pad);
+        float* B = new float[(size_t)ldM_B * std::max(kc, mc)]();
+        float* Bc_vec_if = new float[(size_t)kc * nc_pad]();
+        float* Bc_vec_else = new float[(size_t)kc * nc_pad]();
+        float* Bc_scalar = new float[(size_t)kc * nc_pad]();
+        float* Bc_ref_else = new float[(size_t)kc * nc_pad]();
+        fill_known(B, ldM_B, kc, mc);
 
-    delete[] A; delete[] Ac_vec_if; delete[] Ac_vec_else; delete[] Ac_scalar; delete[] Ac_ref_else;
-    delete[] B; delete[] Bc_vec_if; delete[] Bc_vec_else; delete[] Bc_scalar; delete[] Bc_ref_else;
+        pack_CB_v_if_AXPY_FP32_Pack_fp32_NR{rr}(B, Bc_vec_if, kc, mc, ldM_B);
+        pack_CB_v_else_AXPY_FP32_Pack_fp32_NR{rr}(B, Bc_vec_else, kc, mc, ldM_B);
+        pack_CB_scalar(kc, mc, B, ldM_B, Bc_scalar, RR);
+        ref_pack_CB(false, kc, mc, B, ldM_B, Bc_ref_else, RR);
+        failures += compare_buffers("pack_CB_v_if", Bc_vec_if, Bc_scalar, (size_t)kc * nc_pad);
+        failures += compare_buffers("pack_CB_v_else", Bc_vec_else, Bc_ref_else, (size_t)kc * nc_pad);
+
+        delete[] A; delete[] Ac_vec_if; delete[] Ac_vec_else; delete[] Ac_scalar; delete[] Ac_ref_else;
+        delete[] B; delete[] Bc_vec_if; delete[] Bc_vec_else; delete[] Bc_scalar; delete[] Bc_ref_else;
+        if (failures != failures_before) std::fprintf(stderr, "  ^ RR=%d mc=%d kc=%d\\n", RR, mc, kc);
+    }}
 
     if (failures == 0) {{
         std::printf("ALL PACK CORRECTNESS CHECKS PASSED\\n");

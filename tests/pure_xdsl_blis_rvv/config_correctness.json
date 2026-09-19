@@ -1,0 +1,16 @@
+[
+    // The correctness pass (issues #17 / #24): the same three pinnings as config.json, with
+    // skip_ref_run OFF so the scalar oracle (gemm_ref) runs and every row logs Status=PASS or
+    // FAIL instead of SKIP. The oracle is O(m*n*k), so this only ever runs the small shapes
+    // in datasets/correctness_small.dat. Keep every shape at or below B2 (384x384x64).
+    //
+    // Run it as the benchmark command (docs/agents/execution.md, "Correctness pass") with
+    // --config config_correctness.json --tmin 0.2 added. Like any --config run it
+    // regenerates the tracked pj_gen/, so regenerate from config.json afterwards.
+    //
+    // Format: [datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run, iterations].
+    // The 8th value (iterations) is what makes a row pinned; the reference protocol ignores it.
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["correctness_small.dat"], false, 5]
+]
