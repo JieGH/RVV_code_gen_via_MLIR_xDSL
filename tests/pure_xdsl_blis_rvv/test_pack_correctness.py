@@ -34,9 +34,6 @@ import pytest
 # file only imports when another test module has already put the directory on the path.
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "../gemm_blis_xdsl"))
-)
 
 from generate_pure_blis_project import (
     merge_modules,
