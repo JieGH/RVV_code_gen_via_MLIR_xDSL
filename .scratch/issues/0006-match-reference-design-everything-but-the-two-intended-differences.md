@@ -77,6 +77,12 @@ tests cover the nc selection, log names and overview.
 Separately, `driver_benchmark.cpp:191-330` (`gemm_ref`) has unbalanced braces: beta is
 applied unconditionally. Harmless at beta=0, wrong the moment the check is re-enabled.
 
+**Status (GitHub #17, #24): done; see [[0011-issue-17-24-correctness-pass]].** The brace bug was
+already fixed in `d6e0a4d` (July) and is now pinned by a host test. The check runs from a separate
+`config_correctness.json` on small shapes: 9 of 9 rows `PASS` on the board for all three pinnings,
+and the vector packers match the oracle at RR 6, 7, 15, 16 and 32. The shipped shapes were not run
+through the oracle.
+
 ### 7. Zero-padding memsets land in neither timer
 `gemm_dispatch_xdsl.cpp:63-67, 90-94`. Extra work the reference never does (it relies on
 Ac/Bc being calloc'd once). Sits before both `t_pack_start_*`, so invisible in
