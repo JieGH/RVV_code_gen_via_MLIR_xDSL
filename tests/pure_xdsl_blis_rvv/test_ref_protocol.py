@@ -67,9 +67,12 @@ STUB_KERNEL = """\
 #include "generated_kernels.h"
 
 static int calls_total = 0, calls_scalar_pack = 0;
+// Issue #18: non-zero elements Ac/Bc held when a shape first reached the kernel.
+static long fresh_nonzero = 0;
 struct StubReport {
     ~StubReport() {
         fprintf(stderr, "STUB_CALLS total=%d scalar_pack=%d\\n", calls_total, calls_scalar_pack);
+        fprintf(stderr, "STUB_FRESH_BUFFERS nonzero=%ld\\n", fresh_nonzero);
     }
 } stub_report;
 
@@ -78,6 +81,20 @@ void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, in
     if (use_scalar_pack) calls_scalar_pack++;
     if (const char* ms = getenv("STUB_SLEEP_MS"))
         std::this_thread::sleep_for(std::chrono::milliseconds(atoi(ms)));
+    if (getenv("STUB_DIRTY_BUFFERS")) {
+        // The driver's own allocation sizes. When the shape changes, the driver has just
+        // allocated Ac/Bc afresh; whatever the previous shape left in a freed chunk of the
+        // same size is still there unless the driver cleared it. Leave them dirty again.
+        static int seen_m = -1, seen_n = -1, seen_k = -1;
+        const size_t ac_n = (size_t)(mr + mc) * (mr + kc), bc_n = (size_t)(nr + kc) * (nr + nc);
+        if (m != seen_m || n != seen_n || k != seen_k) {
+            for (size_t i = 0; i < ac_n; ++i) fresh_nonzero += Ac[i] != 0.0f;
+            for (size_t i = 0; i < bc_n; ++i) fresh_nonzero += Bc[i] != 0.0f;
+            seen_m = m; seen_n = n; seen_k = k;
+        }
+        for (size_t i = 0; i < ac_n; ++i) Ac[i] = 1.0f;
+        for (size_t i = 0; i < bc_n; ++i) Bc[i] = 1.0f;
+    }
     const bool broken = getenv("STUB_BREAK") != nullptr;
     for (int j = 0; j < n; ++j)
         for (int i = 0; i < m; ++i) {
@@ -151,6 +168,8 @@ class Driver:
         (self.cwd / "tiny.dat").write_text("T1 32 32 32\n")
         # T10 shares T1's shape and label prefix, and must not share its override.
         (self.cwd / "twins.dat").write_text("T1 32 32 32\nT10 32 32 32\n")
+        # Two shapes that allocate an Ac of the same size, one after the other.
+        (self.cwd / "two_shapes.dat").write_text("T1 32 32 32\nT2 32 24 32\n")
 
     def run(self, *args: str, env: dict[str, str] | None = None, dataset: str = "tiny.dat"):
         for old in (self.cwd / "logs").iterdir():  # every run starts from empty logs
@@ -624,3 +643,18 @@ def test_script_dry_run_follows_the_flags_it_is_given():
     out = _run_script("--dry-run", "--instr").stdout
     assert "Build          : INSTRUMENTED" in out
     assert "Protocol       : WARM-UP" in out  # the reference protocol cannot run here
+
+
+def test_the_pack_buffers_start_zeroed_like_the_references_calloc(
+    uninstrumented: Driver,
+):
+    # Issue #18: the packers leave the pad slots of a partial panel alone and the dispatch
+    # no longer zeroes them, so the driver must hand over Ac/Bc that are zero to begin
+    # with, not whatever the previous shape left in the heap.
+    proc = uninstrumented.run(
+        "--tmin", "0.05", env={"STUB_DIRTY_BUFFERS": "1"}, dataset="two_shapes.dat"
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    found = re.search(r"STUB_FRESH_BUFFERS nonzero=(\d+)", proc.stderr)
+    assert found is not None, proc.stderr
+    assert int(found.group(1)) == 0

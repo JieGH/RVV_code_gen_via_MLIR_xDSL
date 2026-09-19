@@ -126,9 +126,10 @@ families.
 ## Known bias caveats to quote alongside any number
 
 1. **Fringe tiles penalize us.** Our dispatcher always runs the full MR×NR kernel
-   on partial tiles — zero-padded pack, plus a `memset` and gather/scatter through
-   a `tmp_C` buffer (`gemm_dispatch_xdsl.cpp:127-139`; `cur_mr`/`cur_nr` are
-   accepted but unused). The reference has a specialized kernel for every (mr,nr)
+   on partial tiles — a padded pack (the pad slots are never written by the pack: they
+   start zero, as with the reference's calloc, and later hold stale packed data), plus a `memset`
+   and gather/scatter through a `tmp_C` buffer (`gemm_dispatch_xdsl.cpp:120-133`;
+   `cur_mr`/`cur_nr` are accepted but unused). The reference has a specialized kernel for every (mr,nr)
    from 1x1 up to MRxNR and calls the right-sized one
    (`ukrmatrix[mr][nr][be]`, `gemm_blis.c:119`). So we do strictly more work
    on every fringe tile.

@@ -84,6 +84,22 @@ Ac/Bc being calloc'd once). Sits before both `t_pack_start_*`, so invisible in
 removable — our fringe path already routes C through `tmp_C`, so the pad values never
 reach C.
 
+**Status (GitHub #18): fixed, verified on the host only.** Removable for the AXPY kernels, so the dispatch no longer
+zeroes anything: the packers write only valid slots, a pad row of Ac / pad column of Bc
+feeds only the pad lanes of the tile, and the fringe path copies just `cur_mr x cur_nr`
+back to C. The driver now zeroes Ac/Bc once when it allocates them (the reference's
+calloc), outside every timer, so the pad starts finite. DOT kernels also pad K, and a K
+pad slot feeds every C entry, so their last-panel memset stays, moved inside the pack
+timer where it is counted. Checked on the host, not on the board: the generated dispatch
+built with NaN in Ac/Bc and a scalar stand-in for the RVV microkernel gives the right C
+(`test_pad_zeroing.py`); the finding-6 correctness pass (#17) is still disabled, so no
+board correctness run was made. Search mode (non-pinned) was reasoned about, not run: its
+right-sized kernels read only `cur_mr` rows of an Ac panel. The host test's kernel and packers
+are stand-ins written to the contract the change relies on (packers write only valid slots),
+so the issue's "re-run the correctness pass" line stays open until #17 lands and a board
+run is made. Not from this change: the DOT path zeroes only the last panel, yet its K pad
+sits in every panel, so a later, shorter K block could read stale data there. Untested.
+
 ### 8. Ac/Bc buffer sizes differ from the reference
 `driver_benchmark.cpp:557-558` substitutes `mr`/`nr` where the reference uses `KR=1`.
 At 32x6 our Ac is 512 KB vs the reference's 412 KB — 24% larger footprint, against us.

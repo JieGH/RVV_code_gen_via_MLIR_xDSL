@@ -60,12 +60,6 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
             int32_t mc_pad = (mc + mr - 1) / mr * mr;
             int32_t nc_pad = (nc + nr - 1) / nr * nr;
 
-            if (cur_nc % nr != 0) {
-                int32_t full_nc_elements = (cur_nc / nr) * nr * kc_pad;
-                int32_t pad_nc_elements = nr * kc_pad;
-                memset(Bc + full_nc_elements, 0, pad_nc_elements * sizeof(float));
-            }
-
             // Counter reads sit outside the chrono window so wall-clock pack time
             // is unperturbed. Both wrappers compile away under -DRVV_INSTRUMENTED=0.
             {
@@ -85,12 +79,6 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, i
                 int32_t cur_mc = std::min(mc_remain, mc);
                 int32_t offset_A = pc * lda + ic;
                 float* a_ptr = GET_PTR(A, offset_A);
-
-                if (cur_mc % mr != 0) {
-                    int32_t full_mc_elements = (cur_mc / mr) * mr * kc_pad;
-                    int32_t pad_mc_elements = mr * kc_pad;
-                    memset(Ac + full_mc_elements, 0, pad_mc_elements * sizeof(float));
-                }
 
                 // Counter reads sit outside the chrono window so wall-clock pack time
                 // is unperturbed. Both wrappers compile away under -DRVV_INSTRUMENTED=0.

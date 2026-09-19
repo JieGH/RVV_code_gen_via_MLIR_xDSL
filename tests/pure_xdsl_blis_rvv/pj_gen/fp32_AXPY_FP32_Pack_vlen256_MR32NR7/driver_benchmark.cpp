@@ -155,6 +155,16 @@ T* alloc_aligned(size_t size_elems) {
     return static_cast<T*>(ptr);
 }
 
+// Zeroed like the reference design's calloc'd Ac/Bc (issue #18). The packers write only the
+// valid slots of a partial panel, and the dispatch no longer zeroes the pad slots inside the
+// timed region, so the pad must start out finite. Done once here, outside every timer.
+template <typename T>
+T* alloc_aligned_zeroed(size_t size_elems) {
+    T* ptr = alloc_aligned<T>(size_elems);
+    memset(ptr, 0, size_elems * sizeof(T));
+    return ptr;
+}
+
 // ----------------------------------------------------------------------------
 // LEGACY REFERENCE GEMM
 // ----------------------------------------------------------------------------
@@ -708,8 +718,8 @@ int main(int argc, char** argv) {
             // Match reference design memory allocation sizes
             int32_t ac_alloc_size = (variant.mr + mc) * (variant.mr + kc);
             int32_t bc_alloc_size = (variant.nr + kc) * (variant.nr + nc);
-            A_TYPE* Ac = alloc_aligned<A_TYPE>(ac_alloc_size);
-            B_TYPE* Bc = alloc_aligned<B_TYPE>(bc_alloc_size);
+            A_TYPE* Ac = alloc_aligned_zeroed<A_TYPE>(ac_alloc_size);
+            B_TYPE* Bc = alloc_aligned_zeroed<B_TYPE>(bc_alloc_size);
      // Re-initialize C for this variant
             for (size_t i = 0; i < (size_t)(ldc * n); ++i) C[i] = 0;
 
@@ -806,7 +816,8 @@ int main(int argc, char** argv) {
                 perf_gemm_reset(&perf);
                 // This pass runs in BOTH builds even though an uninstrumented one can
                 // measure nothing from it (issue #14). It is the RVV loop's de facto
-                // warm-up -- it first-touches Ac/Bc/C and trains the predictors -- and
+                // warm-up -- it first-touches C, warms Ac/Bc (already page-touched: they are
+                // allocated zeroed, issue #18) and trains the predictors -- and
                 // dropping it made short shapes (B3) come out ~14% SLOWER uninstrumented,
                 // because one cold rep then dominated the mean. The two builds have to
                 // differ in the timers and nothing else, or the A/B means nothing.

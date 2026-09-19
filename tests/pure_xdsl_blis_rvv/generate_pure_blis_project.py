@@ -230,20 +230,35 @@ static inline void pack_CB_scalar(int32_t mc, int32_t nc, {c_type_b}* M, int32_t
 """
 
 
-def render_timed_pack_block(indent: str, scalar_call: str, vector_call: str) -> str:
+def render_pad_zero(buf: str, cur: str, panel: str, c_type: str) -> str:
+    """Zeroes the last, partial panel of `buf` (`cur` valid rows/columns, `panel` wide)."""
+    return (
+        f"if ({cur} % {panel} != 0) "
+        f"memset({buf} + ({cur} / {panel}) * {panel} * kc_pad, 0, {panel} * kc_pad * sizeof({c_type}));"
+    )
+
+
+def render_timed_pack_block(
+    indent: str, scalar_call: str, vector_call: str, pad_zero: str | None = None
+) -> str:
     """Emits one pack call wrapped in its counter window and its wall-clock timer.
 
     The counter region is constructed *outside* the timer so its read() syscalls stay
     out of the wall-clock window. Both wrappers are empty objects under
     -DRVV_INSTRUMENTED=0, so the whole measurement compiles away (issue #14).
+
+    `pad_zero`, when given, is a statement that runs inside the timer just before the pack,
+    so the work it does is counted as pack time (issue #18).
     """
     body = indent + "    "
+    pad_line = f"{body}{pad_zero}\n" if pad_zero else ""
     return (
         f"{indent}// Counter reads sit outside the chrono window so wall-clock pack time\n"
         f"{indent}// is unperturbed. Both wrappers compile away under -DRVV_INSTRUMENTED=0.\n"
         f"{indent}{{\n"
         f"{body}rvv_perf_region _pack_counters(perf, perf ? &perf->pack : nullptr);\n"
         f"{body}rvv_region_timer _pack_clock(pack_time);\n"
+        f"{pad_line}"
         f"{body}if (use_scalar_pack) {{\n"
         f"{body}    {scalar_call}\n"
         f"{body}}} else {{\n"
@@ -535,17 +550,26 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
             {c_type_b}* b_ptr = GET_PTR(B, offset_B);
             int32_t kc_pad = cur_kc;
 """
-    if "DOT" in config.method:
+    is_dot = "DOT" in config.method
+    if is_dot:
         dispatch_body += """
             kc_pad = ((cur_kc + 3) / 4) * 4;
 """
     # Pre-compute the timed pack blocks so we stay inside a single f-string below.
+    #
+    # Pad slots (issue #18): the packers write only valid slots. AXPY pads only feed the
+    # tile's pad lanes, which the fringe path never copies to C, and the driver allocates
+    # Ac/Bc zeroed, so nothing to do. DOT also pads K (`kc_pad`), which feeds every C
+    # entry, so its last panel is zeroed -- inside the pack timer, so the cost counts.
+    pad_zero_cb = render_pad_zero("Bc", "cur_nc", "nr", c_type_b) if is_dot else None
+    pad_zero_rb = render_pad_zero("Ac", "cur_mc", "mr", c_type_a) if is_dot else None
     pack_cb_block = render_timed_pack_block(
         " " * 12,
         "pack_CB_scalar(cur_kc, cur_nc, b_ptr, ldb, Bc, nr);",
         "pack_CB_direct(b_ptr, Bc, cur_kc, cur_nc, ldb);"
         if is_pinned
         else "pack_CB_funcs[nr](b_ptr, Bc, cur_kc, cur_nc, ldb);",
+        pad_zero_cb,
     )
     pack_rb_block = render_timed_pack_block(
         " " * 16,
@@ -553,6 +577,7 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
         "pack_RB_direct(a_ptr, Ac, cur_mc, cur_kc, lda);"
         if is_pinned
         else "pack_RB_funcs[mr](a_ptr, Ac, cur_mc, cur_kc, lda);",
+        pad_zero_rb,
     )
 
     # Pre-compute the inner kernel call block.
@@ -585,12 +610,6 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
             int32_t mc_pad = (mc + mr - 1) / mr * mr;
             int32_t nc_pad = (nc + nr - 1) / nr * nr;
 
-            if (cur_nc % nr != 0) {{
-                int32_t full_nc_elements = (cur_nc / nr) * nr * kc_pad;
-                int32_t pad_nc_elements = nr * kc_pad;
-                memset(Bc + full_nc_elements, 0, pad_nc_elements * sizeof({c_type_b}));
-            }}
-
 {pack_cb_block}
             *pack_bytes += cur_kc * cur_nc * sizeof({c_type_b});
 
@@ -600,12 +619,6 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
                 int32_t cur_mc = std::min(mc_remain, mc);
                 int32_t offset_A = pc * lda + ic;
                 {c_type_a}* a_ptr = GET_PTR(A, offset_A);
-
-                if (cur_mc % mr != 0) {{
-                    int32_t full_mc_elements = (cur_mc / mr) * mr * kc_pad;
-                    int32_t pad_mc_elements = mr * kc_pad;
-                    memset(Ac + full_mc_elements, 0, pad_mc_elements * sizeof({c_type_a}));
-                }}
 
 {pack_rb_block}
                 *pack_bytes += cur_mc * cur_kc * sizeof({c_type_a});
