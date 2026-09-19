@@ -1,0 +1,6 @@
+▶ B4 (4096x384x1024)     | 32x7    7.95 KerGOPs [min:7.9, p5:7.9, p95:8.0, max:8.0, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  nan GB/s Pk |  nan GB/s Scl | IPC:nan | ⏭️ SKIP (mc:768 nc:384 kc:128)
+▶ S1 (1000x1000x1000)    | 32x7    8.47 KerGOPs [min:8.4, p5:8.4, p95:8.5, max:8.5, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  nan GB/s Pk |  nan GB/s Scl | IPC:nan | ⏭️ SKIP (mc:768 nc:1000 kc:128)
+▶ S2 (2000x2000x2000)    | 32x7    8.96 KerGOPs [min:9.0, p5:9.0, p95:9.0, max:9.0, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  nan GB/s Pk |  nan GB/s Scl | IPC:nan | ⏭️ SKIP (mc:768 nc:1024 kc:128)
+▶ S3 (3000x3000x3000)    | 32x7    9.06 KerGOPs [min:9.1, p5:9.1, p95:9.1, max:9.1, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  nan GB/s Pk |  nan GB/s Scl | IPC:nan | ⏭️ SKIP (mc:768 nc:1024 kc:128)
+▶ S4 (4000x4000x4000)    | 32x7    8.95 KerGOPs [min:8.9, p5:8.9, p95:8.9, max:8.9, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  nan GB/s Pk |  nan GB/s Scl | IPC:nan | ⏭️ SKIP (mc:768 nc:1024 kc:128)
+▶ S5 (5000x5000x5000)    | 32x7    9.16 KerGOPs [min:9.2, p5:9.2, p95:9.2, max:9.2, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  nan GB/s Pk |  nan GB/s Scl | IPC:nan | ⏭️ SKIP (mc:768 nc:1024 kc:128)

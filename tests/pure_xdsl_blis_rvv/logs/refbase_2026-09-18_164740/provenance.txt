@@ -1,0 +1,9 @@
+Reference-design baseline, generated 2026-09-18T16:49:26+02:00
+  board          : jbpi2 (user jlei)
+  reference tree : /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/ext/RVV_ukernels_benchmark/gemm_blis_family
+  variants       : OPT=LDX SWAP=0 kernel: macc
+  build          : SIMD_MODE=RVV_EXO RUN_MODE=FAMILY_EXO, blis_shim for blis.h
+  tmin           : 3.0 s
+  metric         : GFLOPS = 2*m*n*k / wall time of gemm_blis_B3A2C0()
+                   -> PACK TIME IS INCLUDED (src/test_gemm.c:399-400)
+  cases          : see run_plan.tsv (pinned MR/NR vs actually-built MR/NR)

@@ -1,0 +1,725 @@
+<title>Nightly RVV Benchmark</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#f5f6f8; --surface:#ffffff; --surface-alt:#eef0f4; --border:#dde1e8;
+    --text:#1a2233; --text-dim:#5c6672; --text-faint:#8791a0;
+    --accent:#3a6ea8; --accent-soft:#e7eef7; --accent-text:#2a5a8f;
+    --good:#2f8f5b; --good-soft:#e6f4ec;
+    --warn:#b8791c; --warn-soft:#fbf1e0;
+    --bad:#c1433f; --bad-soft:#fbe9e8;
+    --grid:#e4e7ec;
+    --layer-mr16:#3a6ea8; --layer-mr32-6:#2f8f7a; --layer-mr32-7:#8a5fb0;
+    --s-vector:#3a6ea8; --s-scalar:#c9822f; --s-compute:#8a5fb0;
+    --s-current:#3a6ea8; --s-archived:#b8791c;
+    --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'IBM Plex Sans', -apple-system, Segoe UI, sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#10141b; --surface:#171c26; --surface-alt:#1d2330; --border:#2a3140;
+      --text:#e7eaf0; --text-dim:#9aa3b2; --text-faint:#6b7484;
+      --accent:#7bafe0; --accent-soft:#1c2b3d; --accent-text:#8fc0ef;
+      --good:#57b98a; --good-soft:#132a20;
+      --warn:#e0a352; --warn-soft:#2e2412;
+      --bad:#e5726f; --bad-soft:#2e1817;
+      --grid:#232a37;
+      --layer-mr16:#7bafe0; --layer-mr32-6:#5fc2ab; --layer-mr32-7:#c19be8;
+      --s-vector:#7bafe0; --s-scalar:#e0a352; --s-compute:#c19be8;
+      --s-current:#7bafe0; --s-archived:#e0a352;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#10141b; --surface:#171c26; --surface-alt:#1d2330; --border:#2a3140;
+    --text:#e7eaf0; --text-dim:#9aa3b2; --text-faint:#6b7484;
+    --accent:#7bafe0; --accent-soft:#1c2b3d; --accent-text:#8fc0ef;
+    --good:#57b98a; --good-soft:#132a20;
+    --warn:#e0a352; --warn-soft:#2e2412;
+    --bad:#e5726f; --bad-soft:#2e1817;
+    --grid:#232a37;
+    --layer-mr16:#7bafe0; --layer-mr32-6:#5fc2ab; --layer-mr32-7:#c19be8;
+    --s-vector:#7bafe0; --s-scalar:#e0a352; --s-compute:#c19be8;
+    --s-current:#7bafe0; --s-archived:#e0a352;
+  }
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--sans);
+    padding-inline:16px; padding-block:32px; max-width:1180px; margin:0 auto;
+    font-size:14px; line-height:1.5;
+  }
+  h1,h2,h3{font-family:var(--sans); text-wrap:balance; margin:0;}
+  h1{font-size:26px; font-weight:700; letter-spacing:-0.01em;}
+  h2{font-size:17px; font-weight:700;}
+  h3{font-size:13.5px; font-weight:600; color:var(--text-dim);}
+  .lede{color:var(--text-dim); font-size:13.5px; margin-top:6px; max-width:72ch;}
+  .mono{font-family:var(--mono); font-variant-numeric:tabular-nums;}
+  header{margin-bottom:20px;}
+  .meta-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--text-faint);}
+  .meta-row span{background:var(--surface-alt); border:1px solid var(--border); border-radius:5px; padding:3px 8px;}
+
+  .banner{
+    display:flex; gap:12px; align-items:flex-start; background:var(--bad-soft); border:1px solid var(--bad);
+    border-radius:10px; padding:14px 16px; margin:18px 0; color:var(--text);
+  }
+  .banner .dot{width:9px;height:9px;border-radius:50%;background:var(--bad); margin-top:6px; flex:none;}
+  .banner b{color:var(--bad);}
+  .banner .sub{color:var(--text-dim); font-size:12.5px; margin-top:4px;}
+
+  .note{
+    background:var(--warn-soft); border:1px solid var(--warn); border-radius:8px;
+    padding:10px 13px; font-size:12.5px; color:var(--text-dim); margin:10px 0 16px;
+  }
+  .note b{color:var(--warn);}
+
+  .findings{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px; margin:22px 0;}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px;}
+  .card .tag{font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint); font-weight:600;}
+  .card .num{font-family:var(--mono); font-size:22px; font-weight:600; margin:5px 0 2px; letter-spacing:-0.01em;}
+  .card .num.good{color:var(--good);} .card .num.warn{color:var(--warn);} .card .num.bad{color:var(--bad);}
+  .card .desc{font-size:12.5px; color:var(--text-dim);}
+
+  section{margin-top:34px;}
+  .section-head{margin-bottom:12px;}
+
+  .chartbox{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 18px 10px;}
+  .legend{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;}
+  .legend .chip{
+    display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
+    padding:4px 10px 4px 8px; border-radius:20px; border:1px solid var(--border);
+    background:var(--surface-alt); cursor:pointer; user-select:none; color:var(--text);
+    transition:opacity .15s;
+  }
+  .legend .chip .sw{width:10px;height:10px;border-radius:3px; flex:none;}
+  .legend .chip.off{opacity:.38;}
+  .legend .chip.off .sw{background:transparent !important; border:1.5px solid var(--text-faint);}
+  .legend .hint{font-size:11px; color:var(--text-faint); align-self:center; margin-left:2px;}
+  svg.chart{width:100%; height:auto; display:block; overflow:visible;}
+  svg.chart text{fill:var(--text-dim); font-family:var(--sans);}
+  svg.chart .axis-line{stroke:var(--border);}
+  svg.chart .grid-line{stroke:var(--grid);}
+  svg.chart .cat-label{fill:var(--text); font-weight:600; font-size:10.5px;}
+  svg.chart .cat-sub{fill:var(--text-faint); font-size:9px;}
+  svg.chart .bar{stroke:none;}
+  svg.chart .dot{fill:var(--text); opacity:.55;}
+  svg.chart .errbar{stroke:var(--text); stroke-width:1.2; opacity:.6;}
+  svg.chart .val-label{font-size:9px; fill:var(--text-faint);}
+  svg.chart .cat-badge{font-weight:700; font-size:10.5px; font-family:var(--mono);}
+  svg.chart .cat-badge.good{fill:var(--good);} svg.chart .cat-badge.bad{fill:var(--bad);}
+
+  .tablewrap{overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:var(--surface);}
+  table{border-collapse:collapse; width:100%; font-size:12px;}
+  th,td{padding:6px 8px; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap;}
+  th:first-child,td:first-child{text-align:left;}
+  th:nth-child(2),td:nth-child(2){text-align:left;}
+  thead th{color:var(--text-faint); font-weight:600; font-size:10px; text-transform:uppercase; letter-spacing:.04em; position:sticky; top:0; background:var(--surface);}
+  tbody tr:hover{background:var(--surface-alt);}
+  .tablewrap table{min-width:760px;}
+
+  .badge{display:inline-block; font-family:var(--mono); font-size:11px; font-weight:600; padding:1px 7px; border-radius:20px;}
+  .badge.good{color:var(--good); background:var(--good-soft);}
+  .badge.warn{color:var(--warn); background:var(--warn-soft);}
+  .badge.bad{color:var(--bad); background:var(--bad-soft);}
+  .flag{font-size:10px; font-weight:700; color:var(--bad); border:1px solid var(--bad); border-radius:4px; padding:0 5px; margin-left:6px; vertical-align:1px;}
+
+  .hw-divider{
+    margin-top:44px; padding-top:6px; border-top:3px solid var(--accent);
+  }
+  .hw-divider .eyebrow{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--accent-text);}
+
+  footer{margin-top:40px; padding-top:16px; border-top:1px solid var(--border); color:var(--text-faint); font-size:11.5px;}
+  footer code{font-family:var(--mono); background:var(--surface-alt); padding:1px 5px; border-radius:4px;}
+
+  details{background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 16px;}
+  details summary{cursor:pointer; font-weight:600; font-size:13.5px;}
+  details[open] summary{margin-bottom:10px;}
+
+  /* ---- interactive tooltip ---- */
+  .tooltip{
+    position:fixed; z-index:999; display:none; background:var(--surface); border:1px solid var(--border);
+    border-radius:8px; padding:8px 10px; font-size:11.5px; line-height:1.5; color:var(--text-dim);
+    box-shadow:0 6px 20px rgba(0,0,0,.2); pointer-events:none; max-width:270px;
+  }
+  .tooltip .tt-title{font-weight:700; color:var(--text); margin-bottom:4px; font-size:11.5px;}
+  .tooltip .tt-row{display:flex; align-items:center; gap:6px; white-space:nowrap;}
+  .tooltip .tt-row + .tt-row{margin-top:2px;}
+  .tooltip .tt-row b{color:var(--text); font-family:var(--mono); font-weight:600;}
+  .tooltip .tt-row.dim{color:var(--text-faint); margin-top:5px; white-space:normal;}
+  .tooltip .tt-sw{width:8px;height:8px;border-radius:2px;flex:none;}
+
+  /* ---- click-to-drilldown panel ---- */
+  .drilldown{margin-top:16px; padding-top:14px; border-top:1px dashed var(--border);}
+  .drilldown .dd-head{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; font-size:12.5px; color:var(--text-dim);}
+  .drilldown .dd-head b{color:var(--text); font-family:var(--mono);}
+  .drilldown .dd-stats{font-size:11.5px; color:var(--text-faint); margin:3px 0 8px;}
+  .drilldown .dd-trend{font-size:11.5px; color:var(--accent-text); margin:0 0 8px; font-weight:600;}
+  .drilldown .dd-close{background:none; border:1px solid var(--border); border-radius:6px; color:var(--text-dim); cursor:pointer; font-size:11px; padding:2px 9px; flex:none;}
+  .drilldown .dd-close:hover{background:var(--surface-alt); color:var(--text);}
+  .drilldown .dd-legend{display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; font-size:11px; color:var(--text-dim);}
+  .drilldown .dd-legend .sw{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px;}
+  svg.dd-chart{width:100%; height:auto; display:block; overflow:visible;}
+  svg.dd-chart text{fill:var(--text-dim); font-family:var(--sans); font-size:9.5px;}
+  svg.dd-chart .dd-line{fill:none; stroke:var(--text-faint); stroke-width:1.4; stroke-dasharray:3 3;}
+  svg.dd-chart .dd-pt{stroke:var(--surface); stroke-width:1.5; cursor:default;}
+  svg.dd-chart .dd-mean-line{stroke:var(--border); stroke-width:1; stroke-dasharray:4 3;}
+  svg.dd-chart .dd-ref-line{stroke:var(--accent); stroke-width:1.3; stroke-dasharray:5 3; opacity:.7;}
+  svg.dd-chart .dd-ref-label{fill:var(--accent-text); font-weight:600; font-size:9.5px;}
+</style>
+
+<header>
+  <h1>Nightly RVV macrokernel benchmark</h1>
+  <p class="lede">Five hourly repeats on <b class="mono">jbpi2</b>, 2026&#8209;09&#8209;18, 00:01&#8211;04:41 &mdash; average GEMM throughput, vector vs. scalar packing, and comparison against the archived reference design, per kernel layer.</p>
+  <div class="meta-row">
+    <span>config.json &middot; fp32_AXPY_FP32_Pack_vlen256</span>
+    <span>10 GEMM shapes (B1&#8211;B5, S1&#8211;S5)</span>
+    <span>N_REPS = 5 per case, per run</span>
+    <span>5 repeats &times; 10 cases = 50 samples</span>
+  </div>
+</header>
+
+<div class="banner">
+  <div class="dot"></div>
+  <div>
+    <div><b>These 5 runs are 5 repeats on one board (jbpi2), not 5 different machines.</b> The other board, <code class="mono">jbpi</code>, failed identically on all 5 of its scheduled runs last night &mdash; <code class="mono">Fatal error: can't create gemm_b1_xdsl.o: Stale file handle</code> during on&#8209;board compile (a remote filesystem fault on that board).</div>
+    <div class="sub">So there is no cross&#8209;machine discrepancy to show yet &mdash; what follows is run&#8209;to&#8209;run repeatability on jbpi2 alone. Once jbpi produces a clean run, the same per&#8209;layer drilldown below (click a bar) extends directly to a real jbpi&nbsp;vs.&nbsp;jbpi2 comparison.</div>
+  </div>
+</div>
+
+<section class="findings">
+  <div class="card">
+    <div class="tag">Repeatability</div>
+    <div class="num good">&plusmn;2&#8211;5%</div>
+    <div class="desc">Spread of median KerGOPs across the 5 repeats, per case &mdash; tight and consistent.</div>
+  </div>
+  <div class="card">
+    <div class="tag">Jitter outlier</div>
+    <div class="num bad">B3: CV 11&#8211;13%</div>
+    <div class="desc">Shape 64&times;384&times;384 (MR16&times;NR15) is unstable in every repeat; every other case holds CV &lt; 1.4%.</div>
+  </div>
+  <div class="card">
+    <div class="tag">Vs. reference design</div>
+    <div class="num bad">0/10 ahead</div>
+    <div class="desc">Corrected 2026&#8209;09&#8209;18 (issue #10): the old &ldquo;split 5/5&rdquo; came from comparing pack&#8209;excluded KerGOPs against a pack&#8209;inclusive reference. On the comparable pack&#8209;inclusive metric (e2e, added below), every case is behind (&#8722;3% to &#8722;34%, worst on B3). See chart below.</div>
+  </div>
+  <div class="card">
+    <div class="tag">Packing efficiency</div>
+    <div class="num warn">+9&#8211;11%, except B3</div>
+    <div class="desc">Vector packing beats scalar almost everywhere; B3 is the one case where scalar packing wins.</div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>Average GEMM performance, by layer</h2>
+    <p class="lede">Bar = mean KerGOPs across the 5 repeats. Whisker = min&#8211;max range. Dots = each individual repeat. Hover any bar or dot for exact values. <b>Click a bar (or a dot) to see every repeat broken out by time and machine</b> &mdash; click a legend chip to hide a layer.</p>
+  </div>
+  <div class="chartbox">
+    <div class="legend" id="legendPerf"></div>
+    <svg class="chart" id="chartPerf" viewBox="0 0 1000 340"></svg>
+    <div class="drilldown" id="drilldownPerf" hidden></div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>Vector vs. scalar packing throughput</h2>
+    <p class="lede">RVV pack vs. scalar pack bandwidth (GB/s), per case, averaged across the 5 repeats. Hover a bar for the ratio and gain over the other series.</p>
+  </div>
+  <div class="chartbox">
+    <div class="legend" id="legendPack"></div>
+    <svg class="chart" id="chartPack" viewBox="0 0 1000 320"></svg>
+  </div>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>Comparison against the reference design</h2>
+    <p class="lede">Three bars per case: compute-only (KerGOPs, packing time excluded), pack&#8209;inclusive (e2e), and the reference design &mdash; same shapes, matched case&#8209;for&#8209;case. The reference number always includes packing, so <b>e2e is the bar that's actually comparable to it</b>; the badge above each triple compares e2e against the reference, not KerGOPs. Hover a bar for the exact value, or <b>click the compute&#8209;only or e2e bar to see all 5 individual repeats</b> behind that mean.</p>
+  </div>
+  <div class="note"><b>Data provenance (corrected 2026&#8209;09&#8209;18, issue #10):</b> the Square (S1&#8211;S5) reference figures previously shown here (8.5/8.7/8.9/9.0/9.0) had no traceable source &mdash; the code comment claimed they were "supplied directly by the user," but no one could confirm that and no file in the repo backs them up. They've been restored to the archived flat values (8.32/8.53/8.51/8.31/8.36), corroborated by three independent sources: <code class="mono">ext/square_comparison.txt</code>, <code class="mono">ext/output/retro_europar_plot.txt</code>, and the <code class="mono">xdsl_gflops</code> array in <code class="mono">ext/plot_square.py</code>. BERT (B1&#8211;B5) reference values are unchanged. This is an interim fix &mdash; a fresh baseline run on <code class="mono">jbpi2</code> via <code class="mono">tests/pure_xdsl_blis_rvv/ref_baseline/</code> is still pending and may supersede these again. The archived OpenBLAS series has been dropped from this chart.</div>
+  <div class="chartbox">
+    <div class="legend" id="legendRef"></div>
+    <svg class="chart" id="chartRef" viewBox="0 0 1000 340"></svg>
+    <div class="drilldown" id="drilldownRef" hidden></div>
+  </div>
+</section>
+
+<section class="hw-divider">
+  <div class="section-head">
+    <div class="eyebrow">Independent section</div>
+    <h2>Hardware performance counters</h2>
+    <p class="lede">Separate from the timing-based charts above &mdash; read from <code class="mono">perf_event_open()</code> counter groups, averaged across the 5 repeats, one set of bars per region (Vector Pack / Scalar Pack / Compute). Hover a bar to compare regions.</p>
+  </div>
+
+  <h3 style="margin:18px 0 8px;">Instructions per cycle (IPC)</h3>
+  <div class="chartbox">
+    <div class="legend" id="legendIPC"></div>
+    <svg class="chart" id="chartIPC" viewBox="0 0 1000 300"></svg>
+  </div>
+
+  <h3 style="margin:22px 0 8px;">Backend stall % (cycles waiting on memory/execution)</h3>
+  <div class="chartbox">
+    <div class="legend" id="legendStall"></div>
+    <svg class="chart" id="chartStall" viewBox="0 0 1000 300"></svg>
+  </div>
+
+  <details style="margin-top:16px;">
+    <summary>L1D miss rates, dTLB, FLOPs/cycle &mdash; full counter table</summary>
+    <div class="tablewrap" style="margin-top:10px;">
+      <table id="hwTable"></table>
+    </div>
+  </details>
+</section>
+
+<footer>
+  Source: <code>tests/pure_xdsl_blis_rvv/logs/run_2026-09-18_{004053,014128,024151,034155,044110}/</code> (all_raw_ and all_perf_ files) &middot;
+  archived comparison data (not the reference design itself &mdash; see issue #10): <code>ext/bert_large_comparison.txt</code>, <code>ext/square_comparison.txt</code> &middot;
+  a fresh baseline against the actual reference design is pending, see <code>tests/pure_xdsl_blis_rvv/ref_baseline/</code> &middot;
+  column definitions: <code>docs/metrics.md</code>.
+</footer>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const RAW = {"cases": [{"LayerShort": "MR32xNR6", "Case": "B1", "Shape": "1024x384x1024", "M": 1024, "N": 384, "K": 1024, "KerGOPs_runs": [8.205, 8.123, 8.242, 8.084, 8.159], "KerGOPs_mean": 8.163, "KerGOPs_min": 8.084, "KerGOPs_max": 8.242, "KerGOPs_std": 0.063, "CV_pct_mean": 0.704, "CV_pct_max": 1.228, "mx_md_mean": 1.015, "RVV_Pack_GBs_mean": 0.31, "RVV_Pack_GBs_runs": [0.31, 0.312, 0.309, 0.314, 0.308], "Scl_Pack_GBs_mean": 0.278, "Scl_Pack_GBs_runs": [0.277, 0.278, 0.278, 0.279, 0.278], "Vector_Pack_Gain_pct_mean": 10.504, "Vector_Pack_Gain_pct_runs": [10.724, 10.845, 10.08, 10.971, 9.898], "Vector_Pack_ms_mean": 18.5776, "Scalar_Pack_ms_mean": 20.7578, "Compute_ms_mean": 98.6965, "e2e_GOPs_mean": 6.867, "ref": {"m": 1024, "n": 384, "k": 1024, "xdsl_ref": 8.0, "openblas": 6.0, "ratio": 1.333}}, {"LayerShort": "MR16xNR15", "Case": "B2", "Shape": "384x384x64", "M": 384, "N": 384, "K": 64, "KerGOPs_runs": [12.791, 12.737, 12.834, 13.084, 13.031], "KerGOPs_mean": 12.895, "KerGOPs_min": 12.737, "KerGOPs_max": 13.084, "KerGOPs_std": 0.153, "CV_pct_mean": 1.95, "CV_pct_max": 4.207, "mx_md_mean": 1.012, "RVV_Pack_GBs_mean": 2.281, "RVV_Pack_GBs_runs": [2.219, 2.206, 2.292, 2.488, 2.198], "Scl_Pack_GBs_mean": 1.31, "Scl_Pack_GBs_runs": [1.279, 1.306, 1.329, 1.357, 1.281], "Vector_Pack_Gain_pct_mean": 42.468, "Vector_Pack_Gain_pct_runs": [42.355, 40.794, 41.997, 45.448, 41.746], "Vector_Pack_ms_mean": 0.0864, "Scalar_Pack_ms_mean": 0.1501, "Compute_ms_mean": 1.4736, "e2e_GOPs_mean": 12.099, "ref": {"m": 384, "n": 384, "k": 64, "xdsl_ref": 12.5, "openblas": 5.1, "ratio": 2.451}}, {"LayerShort": "MR16xNR15", "Case": "B3", "Shape": "64x384x384", "M": 64, "N": 384, "K": 384, "KerGOPs_runs": [8.932, 9.088, 9.248, 9.383, 9.288], "KerGOPs_mean": 9.188, "KerGOPs_min": 8.932, "KerGOPs_max": 9.383, "KerGOPs_std": 0.179, "CV_pct_mean": 12.142, "CV_pct_max": 13.002, "mx_md_mean": 1.353, "RVV_Pack_GBs_mean": 0.669, "RVV_Pack_GBs_runs": [0.644, 0.646, 0.727, 0.651, 0.679], "Scl_Pack_GBs_mean": 0.757, "Scl_Pack_GBs_runs": [0.736, 0.638, 1.023, 0.79, 0.596], "Vector_Pack_Gain_pct_mean": -12.593, "Vector_Pack_Gain_pct_runs": [-14.335, 1.238, -40.763, -21.329, 12.224], "Vector_Pack_ms_mean": 1.3247, "Scalar_Pack_ms_mean": 1.2117, "Compute_ms_mean": 1.9372, "e2e_GOPs_mean": 5.786, "ref": {"m": 64, "n": 384, "k": 384, "xdsl_ref": 8.8, "openblas": 7.3, "ratio": 1.205}}, {"LayerShort": "MR32xNR7", "Case": "B4", "Shape": "4096x384x1024", "M": 4096, "N": 384, "K": 1024, "KerGOPs_runs": [8.368, 8.236, 8.16, 8.171, 8.171], "KerGOPs_mean": 8.221, "KerGOPs_min": 8.16, "KerGOPs_max": 8.368, "KerGOPs_std": 0.087, "CV_pct_mean": 0.107, "CV_pct_max": 0.219, "mx_md_mean": 1.002, "RVV_Pack_GBs_mean": 0.265, "RVV_Pack_GBs_runs": [0.267, 0.265, 0.264, 0.264, 0.265], "Scl_Pack_GBs_mean": 0.238, "Scl_Pack_GBs_runs": [0.24, 0.239, 0.237, 0.237, 0.24], "Vector_Pack_Gain_pct_mean": 10.061, "Vector_Pack_Gain_pct_runs": [10.187, 9.933, 10.397, 10.183, 9.604], "Vector_Pack_ms_mean": 69.2304, "Scalar_Pack_ms_mean": 76.9755, "Compute_ms_mean": 391.8122, "e2e_GOPs_mean": 6.987, "ref": {"m": 4096, "n": 384, "k": 1024, "xdsl_ref": 8.5, "openblas": 5.9, "ratio": 1.441}}, {"LayerShort": "MR32xNR6", "Case": "B5", "Shape": "1024x384x4096", "M": 1024, "N": 384, "K": 4096, "KerGOPs_runs": [8.133, 7.997, 7.871, 8.022, 8.039], "KerGOPs_mean": 8.012, "KerGOPs_min": 7.871, "KerGOPs_max": 8.133, "KerGOPs_std": 0.094, "CV_pct_mean": 0.618, "CV_pct_max": 0.701, "mx_md_mean": 1.011, "RVV_Pack_GBs_mean": 0.29, "RVV_Pack_GBs_runs": [0.288, 0.291, 0.289, 0.294, 0.29], "Scl_Pack_GBs_mean": 0.261, "Scl_Pack_GBs_runs": [0.26, 0.26, 0.259, 0.265, 0.261], "Vector_Pack_Gain_pct_mean": 10.102, "Vector_Pack_Gain_pct_runs": [9.802, 10.379, 10.388, 9.94, 10.002], "Vector_Pack_ms_mean": 79.4769, "Scalar_Pack_ms_mean": 88.4088, "Compute_ms_mean": 402.7974, "e2e_GOPs_mean": 6.679, "ref": {"m": 1024, "n": 384, "k": 4096, "xdsl_ref": 7.5, "openblas": 5.9, "ratio": 1.271}}, {"LayerShort": "MR32xNR7", "Case": "S1", "Shape": "1000x1000x1000", "M": 1000, "N": 1000, "K": 1000, "KerGOPs_runs": [8.666, 8.618, 8.534, 8.542, 8.454], "KerGOPs_mean": 8.563, "KerGOPs_min": 8.454, "KerGOPs_max": 8.666, "KerGOPs_std": 0.082, "CV_pct_mean": 0.131, "CV_pct_max": 0.217, "mx_md_mean": 1.002, "RVV_Pack_GBs_mean": 0.365, "RVV_Pack_GBs_runs": [0.363, 0.364, 0.366, 0.365, 0.365], "Scl_Pack_GBs_mean": 0.345, "Scl_Pack_GBs_runs": [0.341, 0.344, 0.347, 0.342, 0.349], "Vector_Pack_Gain_pct_mean": 5.494, "Vector_Pack_Gain_pct_runs": [6.196, 5.404, 5.193, 6.274, 4.404], "Vector_Pack_ms_mean": 21.9435, "Scalar_Pack_ms_mean": 23.2206, "Compute_ms_mean": 233.6, "e2e_GOPs_mean": 7.826, "ref": {"m": 1000, "n": 1000, "k": 1000, "xdsl_ref": 8.32, "openblas": 6.1, "ratio": 1.393}}, {"LayerShort": "MR32xNR7", "Case": "S2", "Shape": "2000x2000x2000", "M": 2000, "N": 2000, "K": 2000, "KerGOPs_runs": [8.458, 8.322, 8.232, 8.075, 8.255], "KerGOPs_mean": 8.268, "KerGOPs_min": 8.075, "KerGOPs_max": 8.458, "KerGOPs_std": 0.14, "CV_pct_mean": 0.039, "CV_pct_max": 0.066, "mx_md_mean": 1.0, "RVV_Pack_GBs_mean": 0.287, "RVV_Pack_GBs_runs": [0.288, 0.287, 0.286, 0.286, 0.287], "Scl_Pack_GBs_mean": 0.259, "Scl_Pack_GBs_runs": [0.26, 0.26, 0.26, 0.258, 0.261], "Vector_Pack_Gain_pct_mean": 9.574, "Vector_Pack_Gain_pct_runs": [9.798, 9.666, 9.411, 9.82, 9.172], "Vector_Pack_ms_mean": 167.2672, "Scalar_Pack_ms_mean": 184.977, "Compute_ms_mean": 1935.532, "e2e_GOPs_mean": 7.609, "ref": {"m": 2000, "n": 2000, "k": 2000, "xdsl_ref": 8.53, "openblas": 6.8, "ratio": 1.279}}, {"LayerShort": "MR32xNR7", "Case": "S3", "Shape": "3000x3000x3000", "M": 3000, "N": 3000, "K": 3000, "KerGOPs_runs": [8.678, 8.585, 8.314, 8.388, 8.467], "KerGOPs_mean": 8.487, "KerGOPs_min": 8.314, "KerGOPs_max": 8.678, "KerGOPs_std": 0.147, "CV_pct_mean": 0.222, "CV_pct_max": 1.024, "mx_md_mean": 1.0, "RVV_Pack_GBs_mean": 0.291, "RVV_Pack_GBs_runs": [0.293, 0.291, 0.289, 0.292, 0.292], "Scl_Pack_GBs_mean": 0.266, "Scl_Pack_GBs_runs": [0.266, 0.264, 0.265, 0.265, 0.267], "Vector_Pack_Gain_pct_mean": 8.809, "Vector_Pack_Gain_pct_runs": [9.016, 9.084, 8.149, 9.216, 8.582], "Vector_Pack_ms_mean": 494.4882, "Scalar_Pack_ms_mean": 542.261, "Compute_ms_mean": 6372.802, "e2e_GOPs_mean": 7.863, "ref": {"m": 3000, "n": 3000, "k": 3000, "xdsl_ref": 8.51, "openblas": 6.8, "ratio": 1.309}}, {"LayerShort": "MR32xNR7", "Case": "S4", "Shape": "4000x4000x4000", "M": 4000, "N": 4000, "K": 4000, "KerGOPs_runs": [8.381, 8.264, 8.225, 8.072, 8.518], "KerGOPs_mean": 8.292, "KerGOPs_min": 8.072, "KerGOPs_max": 8.518, "KerGOPs_std": 0.168, "CV_pct_mean": 0.31, "CV_pct_max": 1.371, "mx_md_mean": 1.0, "RVV_Pack_GBs_mean": 0.274, "RVV_Pack_GBs_runs": [0.274, 0.274, 0.274, 0.273, 0.274], "Scl_Pack_GBs_mean": 0.247, "Scl_Pack_GBs_runs": [0.246, 0.247, 0.247, 0.246, 0.248], "Vector_Pack_Gain_pct_mean": 9.891, "Vector_Pack_Gain_pct_runs": [9.98, 10.125, 9.692, 10.096, 9.564], "Vector_Pack_ms_mean": 1168.708, "Scalar_Pack_ms_mean": 1297.01, "Compute_ms_mean": 15477.5, "e2e_GOPs_mean": 7.689, "ref": {"m": 4000, "n": 4000, "k": 4000, "xdsl_ref": 8.31, "openblas": 6.9, "ratio": 1.304}}, {"LayerShort": "MR32xNR7", "Case": "S5", "Shape": "5000x5000x5000", "M": 5000, "N": 5000, "K": 5000, "KerGOPs_runs": [8.619, 8.451, 8.322, 8.259, 8.726], "KerGOPs_mean": 8.476, "KerGOPs_min": 8.259, "KerGOPs_max": 8.726, "KerGOPs_std": 0.196, "CV_pct_mean": 0.087, "CV_pct_max": 0.374, "mx_md_mean": 1.0, "RVV_Pack_GBs_mean": 0.29, "RVV_Pack_GBs_runs": [0.291, 0.289, 0.29, 0.289, 0.289], "Scl_Pack_GBs_mean": 0.258, "Scl_Pack_GBs_runs": [0.26, 0.257, 0.26, 0.258, 0.257], "Vector_Pack_Gain_pct_mean": 10.78, "Vector_Pack_Gain_pct_runs": [10.659, 11.112, 10.344, 10.75, 11.034], "Vector_Pack_ms_mean": 2071.85, "Scalar_Pack_ms_mean": 2322.212, "Compute_ms_mean": 29521.52, "e2e_GOPs_mean": 7.913, "ref": {"m": 5000, "n": 5000, "k": 5000, "xdsl_ref": 8.36, "openblas": 7.0, "ratio": 1.286}}], "runs": [{"Run": "run_2026-09-18_004053", "Label": "00:01", "Machine": "jbpi2", "KerGOPs_mean": 8.923, "CV_pct_mean": 1.388, "Vector_Pack_Gain_pct_mean": 10.438, "RVV_Pack_GBs_mean": 0.524, "Scl_Pack_GBs_mean": 0.416}, {"Run": "run_2026-09-18_014128", "Label": "01:01", "Machine": "jbpi2", "KerGOPs_mean": 8.842, "CV_pct_mean": 1.604, "Vector_Pack_Gain_pct_mean": 11.858, "RVV_Pack_GBs_mean": 0.522, "Scl_Pack_GBs_mean": 0.409}, {"Run": "run_2026-09-18_024151", "Label": "02:01", "Machine": "jbpi2", "KerGOPs_mean": 8.798, "CV_pct_mean": 2.067, "Vector_Pack_Gain_pct_mean": 7.489, "RVV_Pack_GBs_mean": 0.539, "Scl_Pack_GBs_mean": 0.45}, {"Run": "run_2026-09-18_034155", "Label": "03:01", "Machine": "jbpi2", "KerGOPs_mean": 8.808, "CV_pct_mean": 1.439, "Vector_Pack_Gain_pct_mean": 10.137, "RVV_Pack_GBs_mean": 0.552, "Scl_Pack_GBs_mean": 0.43}, {"Run": "run_2026-09-18_044110", "Label": "04:01", "Machine": "jbpi2", "KerGOPs_mean": 8.911, "CV_pct_mean": 1.655, "Vector_Pack_Gain_pct_mean": 12.623, "RVV_Pack_GBs_mean": 0.525, "Scl_Pack_GBs_mean": 0.404}], "hw": [{"LayerShort": "MR32xNR6", "Case": "B1", "Counters_Valid_all": true, "Vector_Pack_IPC": 0.042, "Vector_Pack_L1D_Read_Miss_Pct": 10.681, "Vector_Pack_L1D_Write_Miss_Pct": 0.143, "Vector_Pack_Stall_BE_Pct": 94.939, "Vector_Pack_Stall_FE_Pct": 0.26, "Scalar_Pack_IPC": 0.257, "Scalar_Pack_L1D_Read_Miss_Pct": 5.605, "Scalar_Pack_L1D_Write_Miss_Pct": 2.088, "Scalar_Pack_Stall_BE_Pct": 82.391, "Scalar_Pack_Stall_FE_Pct": 0.598, "Compute_IPC": 0.572, "Compute_L1D_Read_Miss_Pct": 1.286, "Compute_L1D_Write_Miss_Pct": 0.05, "Compute_Stall_BE_Pct": 51.666, "Compute_Stall_FE_Pct": 0.33, "Compute_FLOPs_per_Cycle_mean": 4.975, "Vector_Pack_Cycles_CV_Pct_mean": 1.016, "Compute_Cycles_CV_Pct_mean": 0.676}, {"LayerShort": "MR16xNR15", "Case": "B2", "Counters_Valid_all": true, "Vector_Pack_IPC": 0.29, "Vector_Pack_L1D_Read_Miss_Pct": 2.198, "Vector_Pack_L1D_Write_Miss_Pct": 0.578, "Vector_Pack_Stall_BE_Pct": 71.596, "Vector_Pack_Stall_FE_Pct": 0.728, "Scalar_Pack_IPC": 1.166, "Scalar_Pack_L1D_Read_Miss_Pct": 1.418, "Scalar_Pack_L1D_Write_Miss_Pct": 2.279, "Scalar_Pack_Stall_BE_Pct": 22.772, "Scalar_Pack_Stall_FE_Pct": 4.225, "Compute_IPC": 0.959, "Compute_L1D_Read_Miss_Pct": 0.349, "Compute_L1D_Write_Miss_Pct": 0.413, "Compute_Stall_BE_Pct": 31.389, "Compute_Stall_FE_Pct": 0.52, "Compute_FLOPs_per_Cycle_mean": 7.649, "Vector_Pack_Cycles_CV_Pct_mean": 10.05, "Compute_Cycles_CV_Pct_mean": 1.376}, {"LayerShort": "MR16xNR15", "Case": "B3", "Counters_Valid_all": true, "Vector_Pack_IPC": 0.11, "Vector_Pack_L1D_Read_Miss_Pct": 4.754, "Vector_Pack_L1D_Write_Miss_Pct": 1.749, "Vector_Pack_Stall_BE_Pct": 87.226, "Vector_Pack_Stall_FE_Pct": 0.245, "Scalar_Pack_IPC": 0.69, "Scalar_Pack_L1D_Read_Miss_Pct": 2.728, "Scalar_Pack_L1D_Write_Miss_Pct": 4.638, "Scalar_Pack_Stall_BE_Pct": 51.975, "Scalar_Pack_Stall_FE_Pct": 2.095, "Compute_IPC": 0.738, "Compute_L1D_Read_Miss_Pct": 2.551, "Compute_L1D_Write_Miss_Pct": 1.014, "Compute_Stall_BE_Pct": 45.561, "Compute_Stall_FE_Pct": 0.603, "Compute_FLOPs_per_Cycle_mean": 5.821, "Vector_Pack_Cycles_CV_Pct_mean": 21.098, "Compute_Cycles_CV_Pct_mean": 9.362}, {"LayerShort": "MR32xNR7", "Case": "B4", "Counters_Valid_all": true, "Vector_Pack_IPC": 0.034, "Vector_Pack_L1D_Read_Miss_Pct": 19.939, "Vector_Pack_L1D_Write_Miss_Pct": 0.163, "Vector_Pack_Stall_BE_Pct": 95.748, "Vector_Pack_Stall_FE_Pct": 0.21, "Scalar_Pack_IPC": 0.209, "Scalar_Pack_L1D_Read_Miss_Pct": 6.518, "Scalar_Pack_L1D_Write_Miss_Pct": 1.083, "Scalar_Pack_Stall_BE_Pct": 85.278, "Scalar_Pack_Stall_FE_Pct": 0.54, "Compute_IPC": 0.561, "Compute_L1D_Read_Miss_Pct": 1.385, "Compute_L1D_Write_Miss_Pct": 2.137, "Compute_Stall_BE_Pct": 52.764, "Compute_Stall_FE_Pct": 0.305, "Compute_FLOPs_per_Cycle_mean": 5.039, "Vector_Pack_Cycles_CV_Pct_mean": 0.192, "Compute_Cycles_CV_Pct_mean": 0.104}, {"LayerShort": "MR32xNR6", "Case": "B5", "Counters_Valid_all": true, "Vector_Pack_IPC": 0.039, "Vector_Pack_L1D_Read_Miss_Pct": 28.318, "Vector_Pack_L1D_Write_Miss_Pct": 5.836, "Vector_Pack_Stall_BE_Pct": 94.779, "Vector_Pack_Stall_FE_Pct": 0.267, "Scalar_Pack_IPC": 0.242, "Scalar_Pack_L1D_Read_Miss_Pct": 15.056, "Scalar_Pack_L1D_Write_Miss_Pct": 2.091, "Scalar_Pack_Stall_BE_Pct": 83.239, "Scalar_Pack_Stall_FE_Pct": 0.381, "Compute_IPC": 0.561, "Compute_L1D_Read_Miss_Pct": 1.338, "Compute_L1D_Write_Miss_Pct": 0.052, "Compute_Stall_BE_Pct": 51.82, "Compute_Stall_FE_Pct": 0.334, "Compute_FLOPs_per_Cycle_mean": 4.878, "Vector_Pack_Cycles_CV_Pct_mean": 0.54, "Compute_Cycles_CV_Pct_mean": 0.606}, {"LayerShort": "MR32xNR7", "Case": "S1", "Counters_Valid_all": true, "Vector_Pack_IPC": 0.046, "Vector_Pack_L1D_Read_Miss_Pct": 6.446, "Vector_Pack_L1D_Write_Miss_Pct": 0.122, "Vector_Pack_Stall_BE_Pct": 94.042, "Vector_Pack_Stall_FE_Pct": 0.358, "Scalar_Pack_IPC": 0.329, "Scalar_Pack_L1D_Read_Miss_Pct": 4.32, "Scalar_Pack_L1D_Write_Miss_Pct": 2.704, "Scalar_Pack_Stall_BE_Pct": 77.132, "Scalar_Pack_Stall_FE_Pct": 0.817, "Compute_IPC": 0.597, "Compute_L1D_Read_Miss_Pct": 1.34, "Compute_L1D_Write_Miss_Pct": 1.718, "Compute_Stall_BE_Pct": 49.75, "Compute_Stall_FE_Pct": 0.343, "Compute_FLOPs_per_Cycle_mean": 5.243, "Vector_Pack_Cycles_CV_Pct_mean": 0.34, "Compute_Cycles_CV_Pct_mean": 0.124}, {"LayerShort": "MR32xNR7", "Case": "S2", "Counters_Valid_all": true, "Vector_Pack_IPC": 0.036, "Vector_Pack_L1D_Read_Miss_Pct": 9.61, "Vector_Pack_L1D_Write_Miss_Pct": 0.097, "Vector_Pack_Stall_BE_Pct": 95.074, "Vector_Pack_Stall_FE_Pct": 0.276, "Scalar_Pack_IPC": 0.24, "Scalar_Pack_L1D_Read_Miss_Pct": 4.986, "Scalar_Pack_L1D_Write_Miss_Pct": 1.46, "Scalar_Pack_Stall_BE_Pct": 83.12, "Scalar_Pack_Stall_FE_Pct": 0.62, "Compute_IPC": 0.57, "Compute_L1D_Read_Miss_Pct": 1.373, "Compute_L1D_Write_Miss_Pct": 0.677, "Compute_Stall_BE_Pct": 51.995, "Compute_Stall_FE_Pct": 0.322, "Compute_FLOPs_per_Cycle_mean": 5.071, "Vector_Pack_Cycles_CV_Pct_mean": 0.141, "Compute_Cycles_CV_Pct_mean": 0.034}, {"LayerShort": "MR32xNR7", "Case": "S3", "Counters_Valid_all": true, "Vector_Pack_IPC": 0.037, "Vector_Pack_L1D_Read_Miss_Pct": 12.644, "Vector_Pack_L1D_Write_Miss_Pct": 0.144, "Vector_Pack_Stall_BE_Pct": 95.099, "Vector_Pack_Stall_FE_Pct": 0.265, "Scalar_Pack_IPC": 0.241, "Scalar_Pack_L1D_Read_Miss_Pct": 5.752, "Scalar_Pack_L1D_Write_Miss_Pct": 1.582, "Scalar_Pack_Stall_BE_Pct": 83.18, "Scalar_Pack_Stall_FE_Pct": 0.599, "Compute_IPC": 0.58, "Compute_L1D_Read_Miss_Pct": 1.439, "Compute_L1D_Write_Miss_Pct": 1.543, "Compute_Stall_BE_Pct": 51.075, "Compute_Stall_FE_Pct": 0.32, "Compute_FLOPs_per_Cycle_mean": 5.196, "Vector_Pack_Cycles_CV_Pct_mean": 0.202, "Compute_Cycles_CV_Pct_mean": 0.226}, {"LayerShort": "MR32xNR7", "Case": "S4", "Counters_Valid_all": true, "Vector_Pack_IPC": 0.035, "Vector_Pack_L1D_Read_Miss_Pct": 13.173, "Vector_Pack_L1D_Write_Miss_Pct": 0.097, "Vector_Pack_Stall_BE_Pct": 95.441, "Vector_Pack_Stall_FE_Pct": 0.268, "Scalar_Pack_IPC": 0.221, "Scalar_Pack_L1D_Read_Miss_Pct": 5.482, "Scalar_Pack_L1D_Write_Miss_Pct": 0.988, "Scalar_Pack_Stall_BE_Pct": 84.537, "Scalar_Pack_Stall_FE_Pct": 0.601, "Compute_IPC": 0.564, "Compute_L1D_Read_Miss_Pct": 1.396, "Compute_L1D_Write_Miss_Pct": 0.269, "Compute_Stall_BE_Pct": 52.85, "Compute_Stall_FE_Pct": 0.301, "Compute_FLOPs_per_Cycle_mean": 5.073, "Vector_Pack_Cycles_CV_Pct_mean": 0.122, "Compute_Cycles_CV_Pct_mean": 0.301}, {"LayerShort": "MR32xNR7", "Case": "S5", "Counters_Valid_all": true, "Vector_Pack_IPC": 0.037, "Vector_Pack_L1D_Read_Miss_Pct": 15.746, "Vector_Pack_L1D_Write_Miss_Pct": 0.14, "Vector_Pack_Stall_BE_Pct": 95.409, "Vector_Pack_Stall_FE_Pct": 0.275, "Scalar_Pack_IPC": 0.23, "Scalar_Pack_L1D_Read_Miss_Pct": 6.168, "Scalar_Pack_L1D_Write_Miss_Pct": 1.274, "Scalar_Pack_Stall_BE_Pct": 84.122, "Scalar_Pack_Stall_FE_Pct": 0.61, "Compute_IPC": 0.58, "Compute_L1D_Read_Miss_Pct": 1.436, "Compute_L1D_Write_Miss_Pct": 1.358, "Compute_Stall_BE_Pct": 51.712, "Compute_Stall_FE_Pct": 0.308, "Compute_FLOPs_per_Cycle_mean": 5.193, "Vector_Pack_Cycles_CV_Pct_mean": 0.052, "Compute_Cycles_CV_Pct_mean": 0.081}], "run_labels": ["00:01", "01:01", "02:01", "03:01", "04:01"]};
+// groupby(LayerShort,Layer) in the data-prep script sorts by layer name first,
+// which scrambles case order (B2,B3,B1,B5,B4,S1..S5). Force natural order here too.
+const CASE_ORDER = ["B1","B2","B3","B4","B5","S1","S2","S3","S4","S5"];
+const byCaseOrder = (a,b) => CASE_ORDER.indexOf(a.Case) - CASE_ORDER.indexOf(b.Case);
+RAW.cases.sort(byCaseOrder);
+RAW.hw.sort(byCaseOrder);
+const CASES = RAW.cases;
+const HW = RAW.hw;
+const LAYER_COLOR_VAR = {"MR16xNR15":"--layer-mr16","MR32xNR6":"--layer-mr32-6","MR32xNR7":"--layer-mr32-7"};
+const LAYER_LABEL = {"MR16xNR15":"MR16×NR15","MR32xNR6":"MR32×NR6","MR32xNR7":"MR32×NR7"};
+const MACHINE_COLOR_VAR = {"jbpi2":"--s-vector","jbpi":"--s-scalar"};
+const MACHINE_PALETTE = ["--s-vector","--s-scalar","--s-compute","--layer-mr32-6","--layer-mr32-7"];
+
+function fmt(n,d=2){ return (typeof n==='number') ? n.toFixed(d) : n; }
+function cssvar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || name; }
+function machineColorVar(m, seen){
+  if(MACHINE_COLOR_VAR[m]) return MACHINE_COLOR_VAR[m];
+  const idx = seen.indexOf(m) % MACHINE_PALETTE.length;
+  return MACHINE_PALETTE[idx];
+}
+
+// ---------------------------------------------------------------
+// Tooltip: a real mousemove-tracked div (not the native <title>).
+// ---------------------------------------------------------------
+function showTooltip(html, evt){
+  const tt = document.getElementById('tooltip');
+  tt.innerHTML = html;
+  tt.style.display = 'block';
+  const pad = 14;
+  let x = evt.clientX + pad, y = evt.clientY + pad;
+  const rect = tt.getBoundingClientRect();
+  if(x + rect.width > window.innerWidth - 8) x = evt.clientX - rect.width - pad;
+  if(y + rect.height > window.innerHeight - 8) y = evt.clientY - rect.height - pad;
+  tt.style.left = Math.max(4,x) + 'px';
+  tt.style.top = Math.max(4,y) + 'px';
+}
+function hideTooltip(){ document.getElementById('tooltip').style.display = 'none'; }
+
+// ---------------------------------------------------------------
+// Generic grouped/sparse bar chart.
+// seriesList: [{key,label,colorVar, values:[...n], errRange:[[lo,hi]|null,...] , dots:[[..]|null,...]}]
+// Any category where a series' value is null is skipped for that series.
+// opts.onBarClick(catIndex) — if set, clicking a bar or dot fires this (used for drilldown).
+// opts.clickableKeys — if set, only bars/dots whose series key is in this list are clickable
+//   (default: any series, when onBarClick is set).
+// opts.runsMeta — [{Label,Machine},...] aligned with each series' dots array, used in dot tooltips.
+// opts.badges — [{text,cls}|null, ...] one per category, drawn above that category's bars
+//   (used for a plain-language "+X% faster/slower" readout instead of eyeballing bar heights).
+// ---------------------------------------------------------------
+function BarChart(svgEl, legendEl, categories, catSub, seriesList, opts={}){
+  const height = opts.height || 320;
+  const width = 1000;
+  const margin = {top: opts.topMargin || 20, right:14, bottom: opts.bottomMargin || 46, left:44};
+  const plotW = width - margin.left - margin.right;
+  const plotH = height - margin.top - margin.bottom;
+  const hidden = new Set();
+
+  function activeSeriesAt(i){
+    return seriesList.filter(s => !hidden.has(s.key) && s.values[i] != null);
+  }
+
+  function yMax(){
+    let m = 0;
+    seriesList.forEach(s=>{
+      if (hidden.has(s.key)) return;
+      s.values.forEach((v,i)=>{ if(v!=null) m = Math.max(m, v); });
+      if(s.errRange) s.errRange.forEach(r=>{ if(r) m = Math.max(m, r[1]); });
+    });
+    return m * 1.18 || 1;
+  }
+
+  function seriesTooltipHTML(catIndex, key){
+    const s = seriesList.find(x=>x.key===key);
+    if(!s) return '';
+    const v = s.values[catIndex];
+    const others = activeSeriesAt(catIndex).filter(o=>o.key!==key);
+    let html = `<div class="tt-title">${categories[catIndex]}${catSub? ' · '+catSub[catIndex] : ''}</div>`;
+    html += `<div class="tt-row"><span class="tt-sw" style="background:${cssvar(s.colorVar)}"></span>${s.label}: <b>${fmt(v, opts.yDec ?? 2)}${opts.unit||''}</b></div>`;
+    others.forEach(o=>{
+      const ov = o.values[catIndex];
+      const ratio = ov ? v/ov : null;
+      const delta = ov ? (v-ov)/ov*100 : null;
+      html += `<div class="tt-row"><span class="tt-sw" style="background:${cssvar(o.colorVar)}"></span>${o.label}: ${fmt(ov, opts.yDec ?? 2)}${opts.unit||''}`;
+      if(ratio!=null) html += ` &mdash; ${fmt(ratio,2)}&times;, ${delta>=0?'+':''}${fmt(delta,1)}%`;
+      html += `</div>`;
+    });
+    if(s.errRange && s.errRange[catIndex]){
+      const [lo,hi] = s.errRange[catIndex];
+      html += `<div class="tt-row dim">range across repeats: ${fmt(lo,opts.yDec??2)}&#8211;${fmt(hi,opts.yDec??2)}${opts.unit||''}</div>`;
+    }
+    if(opts.onBarClick) html += `<div class="tt-row dim">click to see every repeat</div>`;
+    return html;
+  }
+
+  function dotTooltipHTML(catIndex, key, runIdx){
+    const s = seriesList.find(x=>x.key===key);
+    if(!s || !s.dots || !s.dots[catIndex]) return '';
+    const v = s.dots[catIndex][runIdx];
+    const meta = opts.runsMeta && opts.runsMeta[runIdx];
+    let html = `<div class="tt-title">${categories[catIndex]} &mdash; ${s.label}</div>`;
+    html += `<div class="tt-row"><b>${fmt(v, opts.yDec ?? 2)}${opts.unit||''}</b></div>`;
+    if(meta) html += `<div class="tt-row dim">${meta.Label} &middot; ${meta.Machine||'jbpi2'}</div>`;
+    if(opts.onBarClick) html += `<div class="tt-row dim">click to see every repeat</div>`;
+    return html;
+  }
+
+  function render(){
+    const yM = yMax();
+    const yScale = v => plotH - (v/yM)*plotH;
+    const catW = plotW / categories.length;
+    let svg = '';
+
+    // gridlines + y ticks
+    const ticks = 5;
+    for(let t=0;t<=ticks;t++){
+      const val = yM * t/ticks;
+      const y = margin.top + yScale(val);
+      svg += `<line class="grid-line" x1="${margin.left}" x2="${width-margin.right}" y1="${y}" y2="${y}"/>`;
+      svg += `<text class="val-label" x="${margin.left-6}" y="${y+3}" text-anchor="end">${fmt(val, opts.yDec ?? 1)}</text>`;
+    }
+    svg += `<line class="axis-line" x1="${margin.left}" x2="${margin.left}" y1="${margin.top}" y2="${margin.top+plotH}"/>`;
+    svg += `<line class="axis-line" x1="${margin.left}" x2="${width-margin.right}" y1="${margin.top+plotH}" y2="${margin.top+plotH}"/>`;
+
+    function clickableFor(key){
+      if(!opts.onBarClick) return false;
+      return !opts.clickableKeys || opts.clickableKeys.includes(key);
+    }
+
+    categories.forEach((cat,i)=>{
+      const active = activeSeriesAt(i);
+      const n = active.length;
+      const cx0 = margin.left + i*catW;
+      const gap = catW*0.16;
+      const usable = catW - gap;
+      const bw = n>0 ? usable/n : 0;
+      active.forEach((s,j)=>{
+        const v = s.values[i];
+        const x = cx0 + gap/2 + j*bw;
+        const y = margin.top + yScale(v);
+        const h = plotH - yScale(v);
+        const colorVal = cssvar(s.colorVar);
+        const cursorStyle = clickableFor(s.key) ? 'cursor:pointer;' : '';
+        svg += `<rect class="bar" data-kind="bar" data-idx="${i}" data-key="${s.key}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw*0.82).toFixed(1)}" height="${Math.max(h,0).toFixed(1)}" style="fill:${colorVal};${cursorStyle}"/>`;
+
+        // error whisker
+        if(s.errRange && s.errRange[i]){
+          const [lo,hi] = s.errRange[i];
+          const xw = x + (bw*0.82)/2;
+          const yLo = margin.top + yScale(lo);
+          const yHi = margin.top + yScale(hi);
+          svg += `<line class="errbar" x1="${xw}" x2="${xw}" y1="${yHi}" y2="${yLo}"/>`;
+          svg += `<line class="errbar" x1="${xw-4}" x2="${xw+4}" y1="${yHi}" y2="${yHi}"/>`;
+          svg += `<line class="errbar" x1="${xw-4}" x2="${xw+4}" y1="${yLo}" y2="${yLo}"/>`;
+        }
+        // dots (individual repeats)
+        if(s.dots && s.dots[i]){
+          const xw = x + (bw*0.82)/2;
+          s.dots[i].forEach((dv,k)=>{
+            const jitter = (k - (s.dots[i].length-1)/2) * 3.2;
+            const dy = margin.top + yScale(dv);
+            svg += `<circle class="dot" data-kind="dot" data-idx="${i}" data-key="${s.key}" data-run="${k}" style="${cursorStyle}" cx="${(xw+jitter).toFixed(1)}" cy="${dy.toFixed(1)}" r="2.4"/>`;
+          });
+        }
+      });
+      // category label
+      const lx = margin.left + i*catW + catW/2;
+      svg += `<text class="cat-label" x="${lx}" y="${margin.top+plotH+17}" text-anchor="middle">${cat}</text>`;
+      if(catSub){
+        svg += `<text class="cat-sub" x="${lx}" y="${margin.top+plotH+30}" text-anchor="middle">${catSub[i]}</text>`;
+      }
+      if(opts.badges && opts.badges[i]){
+        svg += `<text class="cat-badge ${opts.badges[i].cls||''}" x="${lx}" y="${margin.top-7}" text-anchor="middle">${opts.badges[i].text}</text>`;
+      }
+    });
+
+    svgEl.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svgEl.innerHTML = svg;
+  }
+
+  function renderLegend(){
+    legendEl.innerHTML = '';
+    seriesList.forEach(s=>{
+      const chip = document.createElement('div');
+      chip.className = 'chip' + (hidden.has(s.key) ? ' off' : '');
+      chip.innerHTML = `<span class="sw" style="background:${cssvar(s.colorVar)}"></span>${s.label}`;
+      chip.onclick = ()=>{
+        if(hidden.has(s.key)) hidden.delete(s.key); else hidden.add(s.key);
+        chip.classList.toggle('off');
+        chip.querySelector('.sw').style.background = hidden.has(s.key) ? 'transparent' : cssvar(s.colorVar);
+        render();
+      };
+      legendEl.appendChild(chip);
+    });
+    const hint = document.createElement('span');
+    hint.className = 'hint';
+    hint.textContent = 'click chip to hide/show';
+    legendEl.appendChild(hint);
+  }
+
+  // Event delegation: attached once on the svg node itself, survives innerHTML re-renders.
+  svgEl.addEventListener('mousemove', evt=>{
+    const t = evt.target.closest('[data-kind]');
+    if(!t){ hideTooltip(); return; }
+    const idx = +t.dataset.idx, key = t.dataset.key;
+    if(t.dataset.kind === 'bar') showTooltip(seriesTooltipHTML(idx, key), evt);
+    else showTooltip(dotTooltipHTML(idx, key, +t.dataset.run), evt);
+  });
+  svgEl.addEventListener('mouseleave', hideTooltip);
+  if(opts.onBarClick){
+    svgEl.addEventListener('click', evt=>{
+      const t = evt.target.closest('[data-kind]');
+      if(!t) return;
+      if(opts.clickableKeys && !opts.clickableKeys.includes(t.dataset.key)) return;
+      opts.onBarClick(+t.dataset.idx);
+    });
+  }
+
+  renderLegend();
+  render();
+}
+
+// ---------------------------------------------------------------
+// Click-to-drilldown: every individual repeat for one case, broken
+// out by time and machine, so a real trend (not just the average)
+// is visible.
+// ---------------------------------------------------------------
+function trendLabel(vals){
+  const n = vals.length;
+  const xs = vals.map((_,i)=>i);
+  const mx = xs.reduce((a,b)=>a+b,0)/n, my = vals.reduce((a,b)=>a+b,0)/n;
+  let num=0, den=0;
+  xs.forEach((x,i)=>{ num += (x-mx)*(vals[i]-my); den += (x-mx)**2; });
+  const slope = den ? num/den : 0;
+  const relPct = my ? slope/my*100 : 0;
+  if(Math.abs(relPct) < 0.3) return 'Flat across repeats — no clear drift.';
+  return relPct>0
+    ? `Drifting up ~${relPct.toFixed(2)}%/repeat.`
+    : `Drifting down ~${Math.abs(relPct).toFixed(2)}%/repeat.`;
+}
+
+function renderDrilldown(containerId, title, points, opts={}){
+  const container = document.getElementById(containerId);
+  container.hidden = false;
+
+  const machines = [...new Set(points.map(p=>p.machine))];
+  const vals = points.map(p=>p.value);
+  const refLine = opts.refLine;
+  const spanVals = refLine ? vals.concat([refLine.value]) : vals;
+  const vMin = Math.min(...spanVals), vMax = Math.max(...spanVals);
+  const vPad = (vMax-vMin)*0.3 || vMax*0.08 || 1;
+  const yLo = vMin - vPad, yHi = vMax + vPad;
+
+  const width=1000, height=190;
+  const margin = {top:14, right:20, bottom:32, left:52};
+  const plotW = width-margin.left-margin.right, plotH = height-margin.top-margin.bottom;
+  const yScale = v => margin.top + plotH - (v-yLo)/(yHi-yLo)*plotH;
+  const xStep = points.length>1 ? plotW/(points.length-1) : 0;
+  const xAt = i => margin.left + i*xStep;
+
+  const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+
+  let svg = '';
+  const ticks = 4;
+  for(let t=0;t<=ticks;t++){
+    const val = yLo + (yHi-yLo)*t/ticks;
+    const y = yScale(val);
+    svg += `<line class="grid-line" x1="${margin.left}" x2="${width-margin.right}" y1="${y}" y2="${y}"/>`;
+    svg += `<text class="val-label" x="${margin.left-6}" y="${y+3}" text-anchor="end">${fmt(val,opts.yDec??2)}</text>`;
+  }
+  svg += `<line class="dd-mean-line" x1="${margin.left}" x2="${width-margin.right}" y1="${yScale(mean)}" y2="${yScale(mean)}"/>`;
+  if(refLine){
+    const ry = yScale(refLine.value);
+    svg += `<line class="dd-ref-line" x1="${margin.left}" x2="${width-margin.right}" y1="${ry}" y2="${ry}"/>`;
+    svg += `<text class="dd-ref-label" x="${width-margin.right}" y="${ry-4}" text-anchor="end">${refLine.label}: ${fmt(refLine.value,opts.yDec??2)}${opts.unit||''}</text>`;
+  }
+  svg += `<line class="axis-line" x1="${margin.left}" x2="${margin.left}" y1="${margin.top}" y2="${margin.top+plotH}"/>`;
+  svg += `<line class="axis-line" x1="${margin.left}" x2="${width-margin.right}" y1="${margin.top+plotH}" y2="${margin.top+plotH}"/>`;
+
+  // connecting line (chronological order)
+  const linePts = points.map((p,i)=>`${xAt(i).toFixed(1)},${yScale(p.value).toFixed(1)}`).join(' ');
+  svg += `<polyline class="dd-line" points="${linePts}"/>`;
+
+  points.forEach((p,i)=>{
+    const cx = xAt(i), cy = yScale(p.value);
+    const colorVal = cssvar(machineColorVar(p.machine, machines));
+    svg += `<circle class="dd-pt" data-kind="ddpt" data-i="${i}" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.5" style="fill:${colorVal}"/>`;
+    svg += `<text x="${cx.toFixed(1)}" y="${margin.top+plotH+16}" text-anchor="middle">${p.label}</text>`;
+  });
+
+  const machineLegend = machines.map(m=>
+    `<span><span class="sw" style="background:${cssvar(machineColorVar(m,machines))}"></span>${m}</span>`
+  ).join('');
+
+  const refNote = refLine ? ` &middot; vs. ${refLine.label} (${fmt(refLine.value,opts.yDec??2)}${opts.unit||''}): ${fmt(mean/refLine.value,2)}&times;, ${mean>=refLine.value?'+':''}${fmt((mean-refLine.value)/refLine.value*100,1)}%` : '';
+  container.innerHTML = `
+    <div class="dd-head">
+      <div><b>${title}</b> &mdash; ${opts.metricLabel||'value'}, every repeat</div>
+      <button class="dd-close" data-kind="ddclose">Close ✕</button>
+    </div>
+    <div class="dd-stats">mean ${fmt(mean,opts.yDec??2)}${opts.unit||''} &middot; min ${fmt(vMin,opts.yDec??2)}${opts.unit||''} &middot; max ${fmt(vMax,opts.yDec??2)}${opts.unit||''} &middot; ${points.length} repeats${machines.length>1? ' across '+machines.length+' machines':''}${refNote}</div>
+    <div class="dd-trend">${trendLabel(vals)}</div>
+    <svg class="dd-chart" viewBox="0 0 ${width} ${height}">${svg}</svg>
+    <div class="dd-legend">${machineLegend}</div>
+  `;
+
+  const svgEl = container.querySelector('svg.dd-chart');
+  svgEl.addEventListener('mousemove', evt=>{
+    const t = evt.target.closest('[data-kind="ddpt"]');
+    if(!t){ hideTooltip(); return; }
+    const p = points[+t.dataset.i];
+    const html = `<div class="tt-title">${title}</div>`
+      + `<div class="tt-row"><b>${fmt(p.value,opts.yDec??2)}${opts.unit||''}</b></div>`
+      + `<div class="tt-row dim">${p.label} &middot; ${p.machine}</div>`;
+    showTooltip(html, evt);
+  });
+  svgEl.addEventListener('mouseleave', hideTooltip);
+  container.querySelector('.dd-close').addEventListener('click', ()=>{ container.hidden = true; hideTooltip(); });
+}
+
+// ---- Chart 1: average performance by layer ----
+{
+  const categories = CASES.map(c=>c.Case);
+  const catSub = CASES.map(c=>c.Shape);
+  const seriesList = Object.keys(LAYER_COLOR_VAR).map(layer=>{
+    const values = CASES.map(c => c.LayerShort===layer ? c.KerGOPs_mean : null);
+    const errRange = CASES.map(c => c.LayerShort===layer ? [c.KerGOPs_min, c.KerGOPs_max] : null);
+    const dots = CASES.map(c => c.LayerShort===layer ? c.KerGOPs_runs : null);
+    return {key:layer, label:LAYER_LABEL[layer], colorVar:LAYER_COLOR_VAR[layer], values, errRange, dots};
+  });
+  BarChart(document.getElementById('chartPerf'), document.getElementById('legendPerf'),
+    categories, catSub, seriesList, {
+      yDec:1, unit:' GOPs', height:340, bottomMargin:46,
+      runsMeta: RAW.runs,
+      onBarClick: (idx)=>{
+        const c = CASES[idx];
+        const points = RAW.runs.map((r,k)=>({label:r.Label, machine:r.Machine||'jbpi2', value:c.KerGOPs_runs[k]}));
+        renderDrilldown('drilldownPerf', `${c.Case} — ${c.Shape} (${LAYER_LABEL[c.LayerShort]})`, points, {yDec:1, unit:' GOPs', metricLabel:'KerGOPs'});
+      }
+    });
+}
+
+// ---- Chart 2: vector vs scalar packing throughput ----
+{
+  const categories = CASES.map(c=>c.Case);
+  const catSub = CASES.map(c=>c.Shape);
+  const seriesList = [
+    {key:'vec', label:'RVV pack', colorVar:'--s-vector', values: CASES.map(c=>c.RVV_Pack_GBs_mean)},
+    {key:'scl', label:'Scalar pack', colorVar:'--s-scalar', values: CASES.map(c=>c.Scl_Pack_GBs_mean)},
+  ];
+  BarChart(document.getElementById('chartPack'), document.getElementById('legendPack'),
+    categories, catSub, seriesList, {yDec:2, unit:' GB/s', height:320, bottomMargin:46});
+}
+
+// ---- Chart 3: reference design comparison ----
+// Vertical grouped bars: compute-only (KerGOPs, packing excluded), the
+// pack-inclusive e2e number, and the reference design (which is always
+// pack-inclusive) side by side per case. A percentage badge is drawn above
+// each triple (green = faster, red = slower). The badge compares e2e against
+// the reference, not KerGOPs — comparing KerGOPs against a pack-inclusive
+// reference is exactly the metric mismatch tracked in issue #10 (Finding 1):
+// packing time is a large, shape-dependent fraction of the total, so the two
+// numbers are not comparable. Only the two "current design" bars are
+// clickable — they drill into the 5 individual repeats behind that mean; the
+// reference is a single archived number with no repeats behind it.
+{
+  const categories = CASES.map(c=>c.Case);
+  const catSub = CASES.map(c=>c.Shape);
+  const seriesList = [
+    {key:'current', label:'Compute-only (KerGOPs)', colorVar:'--s-current', values: CASES.map(c=>c.KerGOPs_mean),
+      errRange: CASES.map(c=>[c.KerGOPs_min, c.KerGOPs_max]), dots: CASES.map(c=>c.KerGOPs_runs)},
+    {key:'e2e', label:'Pack-inclusive (e2e)', colorVar:'--s-compute', values: CASES.map(c=>c.e2e_GOPs_mean)},
+    {key:'archived', label:'Reference design', colorVar:'--s-archived', values: CASES.map(c=>c.ref? c.ref.xdsl_ref: null)},
+  ];
+  const badges = CASES.map(c=>{
+    if(!c.ref) return null;
+    const deltaPct = (c.e2e_GOPs_mean - c.ref.xdsl_ref) / c.ref.xdsl_ref * 100;
+    const faster = deltaPct >= 0;
+    return {text: (faster?'▲+':'▼-')+fmt(Math.abs(deltaPct),1)+'%', cls: faster?'good':'bad'};
+  });
+  BarChart(document.getElementById('chartRef'), document.getElementById('legendRef'),
+    categories, catSub, seriesList, {
+      yDec:1, unit:' GFLOPS', height:340, bottomMargin:46, topMargin:34,
+      badges,
+      runsMeta: RAW.runs,
+      clickableKeys: ['current', 'e2e'],
+      onBarClick: (idx)=>{
+        const c = CASES[idx];
+        const points = RAW.runs.map((r,k)=>({label:r.Label, machine:r.Machine||'jbpi2', value:c.KerGOPs_runs[k]}));
+        renderDrilldown('drilldownRef', `${c.Case} — ${c.Shape}`, points, {
+          yDec:1, unit:' GFLOPS', metricLabel:'GFLOPS',
+          refLine: c.ref ? {value:c.ref.xdsl_ref, label:'Reference design'} : null,
+        });
+      }
+    });
+}
+
+// ---- Chart 4a: HW IPC by region ----
+{
+  const categories = HW.map(c=>c.Case);
+  const catSub = HW.map(c=>c.LayerShort);
+  const seriesList = [
+    {key:'vec', label:'Vector Pack', colorVar:'--s-vector', values: HW.map(c=>c.Vector_Pack_IPC)},
+    {key:'scl', label:'Scalar Pack', colorVar:'--s-scalar', values: HW.map(c=>c.Scalar_Pack_IPC)},
+    {key:'cmp', label:'Compute', colorVar:'--s-compute', values: HW.map(c=>c.Compute_IPC)},
+  ];
+  BarChart(document.getElementById('chartIPC'), document.getElementById('legendIPC'),
+    categories, catSub, seriesList, {yDec:2, unit:' IPC', height:300, bottomMargin:40});
+}
+
+// ---- Chart 4b: HW Stall BE% by region ----
+{
+  const categories = HW.map(c=>c.Case);
+  const catSub = HW.map(c=>c.LayerShort);
+  const seriesList = [
+    {key:'vec', label:'Vector Pack', colorVar:'--s-vector', values: HW.map(c=>c.Vector_Pack_Stall_BE_Pct)},
+    {key:'scl', label:'Scalar Pack', colorVar:'--s-scalar', values: HW.map(c=>c.Scalar_Pack_Stall_BE_Pct)},
+    {key:'cmp', label:'Compute', colorVar:'--s-compute', values: HW.map(c=>c.Compute_Stall_BE_Pct)},
+  ];
+  BarChart(document.getElementById('chartStall'), document.getElementById('legendStall'),
+    categories, catSub, seriesList, {yDec:0, unit:'%', height:300, bottomMargin:40});
+}
+
+// ---- HW detail table ----
+{
+  const cols = [
+    ["Case","Case"], ["LayerShort","Layer"],
+    ["Vector_Pack_IPC","Vec IPC"], ["Vector_Pack_L1D_Read_Miss_Pct","Vec L1D Rd%"], ["Vector_Pack_L1D_Write_Miss_Pct","Vec L1D Wr%"], ["Vector_Pack_Stall_BE_Pct","Vec Stall BE%"],
+    ["Scalar_Pack_IPC","Scl IPC"], ["Scalar_Pack_L1D_Read_Miss_Pct","Scl L1D Rd%"], ["Scalar_Pack_L1D_Write_Miss_Pct","Scl L1D Wr%"], ["Scalar_Pack_Stall_BE_Pct","Scl Stall BE%"],
+    ["Compute_IPC","Cmp IPC"], ["Compute_L1D_Read_Miss_Pct","Cmp L1D Rd%"], ["Compute_Stall_BE_Pct","Cmp Stall BE%"],
+    ["Compute_FLOPs_per_Cycle_mean","FLOPs/Cyc"],
+  ];
+  let thead = '<thead><tr>' + cols.map(c=>`<th>${c[1]}</th>`).join('') + '</tr></thead>';
+  let tbody = '<tbody>' + HW.map(r=>{
+    return '<tr>' + cols.map(c=>{
+      const v = r[c[0]];
+      const isNum = typeof v === 'number';
+      return `<td class="${isNum?'mono':''}">${isNum? fmt(v,2): v}</td>`;
+    }).join('') + '</tr>';
+  }).join('') + '</tbody>';
+  document.getElementById('hwTable').innerHTML = thead + tbody;
+}
+</script>

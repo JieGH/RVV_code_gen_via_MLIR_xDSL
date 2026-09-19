@@ -1,0 +1,6 @@
+▶ B4 (4096x384x1024)     | 32x7    7.92 KerGOPs [min:7.9, p5:7.9, p95:7.9, max:7.9, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  0.3 GB/s Pk |  0.2 GB/s Scl | IPC:0.54 | ⏭️ SKIP (mc:768 nc:384 kc:128)
+▶ S1 (1000x1000x1000)    | 32x7    8.25 KerGOPs [min:8.2, p5:8.2, p95:8.3, max:8.3, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  0.4 GB/s Pk |  0.4 GB/s Scl | IPC:0.58 | ⏭️ SKIP (mc:768 nc:1000 kc:128)
+▶ S2 (2000x2000x2000)    | 32x7    7.82 KerGOPs [min:7.8, p5:7.8, p95:7.8, max:7.8, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  0.3 GB/s Pk |  0.3 GB/s Scl | IPC:0.54 | ⏭️ SKIP (mc:768 nc:1024 kc:128)
+▶ S3 (3000x3000x3000)    | 32x7    7.95 KerGOPs [min:7.9, p5:7.9, p95:7.9, max:7.9, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  0.3 GB/s Pk |  0.3 GB/s Scl | IPC:0.54 | ⏭️ SKIP (mc:768 nc:1024 kc:128)
+▶ S4 (4000x4000x4000)    | 32x7    7.73 KerGOPs [min:7.7, p5:7.7, p95:7.7, max:7.7, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  0.3 GB/s Pk |  0.3 GB/s Scl | IPC:0.53 | ⏭️ SKIP (mc:768 nc:1024 kc:128)
+▶ S5 (5000x5000x5000)    | 32x7    7.84 KerGOPs [min:7.8, p5:7.8, p95:7.8, max:7.8, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  0.3 GB/s Pk |  0.3 GB/s Scl | IPC:0.54 | ⏭️ SKIP (mc:768 nc:1024 kc:128)
