@@ -16,8 +16,11 @@ Two connection modes reach the board, `jbpi`/`jbpi2` (BananaPi M2 Pro). Both acc
 ```bash
 source .venv/bin/activate && REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" \
   ./tests/pure_xdsl_blis_rvv/compile_macro_bench.sh --jump \
-  --riscv-user jlei --riscv-ip jbpi --riscv-port 22
+  --riscv-user jlei --riscv-ip jbpi --riscv-port 22 \
+  --no-nc-overrides
 ```
+
+This is the default command for a benchmark run. `--no-nc-overrides` makes B3 run at the reference's `nc=384`; drop it for the shipped-configuration (`nc=128`) number.
 
 Adjust `REMOTE_HOST`/`REMOTE_PORT`/`--riscv-user`/`--riscv-ip`/`--riscv-port` per the operator's actual jump-host and board; the values above are this project's current defaults, not fixed constants.
 
