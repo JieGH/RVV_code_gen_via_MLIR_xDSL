@@ -90,6 +90,13 @@ def verdict(diff_pct: float, noise_pct: float, single_run: bool) -> str:
     return "scalar pack faster" if diff_pct > 0 else "scalar pack slower"
 
 
+def show_runs(gops: list[float], mean_gops: float) -> str:
+    """Every run's figure when there are few of them, the range when there are many."""
+    if len(gops) <= 4:
+        return " / ".join(f"{g:.2f}" for g in gops) + f" (mean {mean_gops:.2f})"
+    return f"{min(gops):.2f}-{max(gops):.2f} over {len(gops)} runs (mean {mean_gops:.2f})"
+
+
 def render(vector: dict[tuple[str, str], Case], scalar: dict[tuple[str, str], Case]) -> str:
     headers = ["Case", "Shape", "Variant", "vector GOPs", "scalar GOPs", "scalar vs vector",
                "spread vec/scl", "verdict"]
@@ -102,8 +109,8 @@ def render(vector: dict[tuple[str, str], Case], scalar: dict[tuple[str, str], Ca
         single = len(v.gops) < 2 and len(s.gops) < 2
         rows.append([
             v.layer, v.shape, v.variant,
-            " / ".join(f"{g:.2f}" for g in v.gops) + f" (mean {v_mean:.2f})",
-            " / ".join(f"{g:.2f}" for g in s.gops) + f" (mean {s_mean:.2f})",
+            show_runs(v.gops, v_mean),
+            show_runs(s.gops, s_mean),
             f"{diff:+.1f}%",
             f"{spread_pct(v.gops):.1f}% / {spread_pct(s.gops):.1f}%",
             verdict(diff, noise, single),
