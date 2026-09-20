@@ -573,6 +573,57 @@ def test_no_nc_overrides_with_no_overrides_configured_is_harmless(uninstrumented
     assert "nc overrides: OFF" in _overview(proc.stdout)
 
 
+# ---------------------------------------------------------------------------
+# Issue #26: a scalar-pack-live run is a different configuration from the vector-pack one
+# (it is the experiment: which packer decides the end-to-end speed), so it must not share a
+# log with it. Otherwise two runs in one directory append to each other.
+# ---------------------------------------------------------------------------
+SCALARPACK_RAW = "raw_fp32_STUB_noinstr_refproto_scalarpack.txt"
+
+
+def test_a_scalar_pack_run_writes_its_own_logs_and_leaves_the_vector_ones_alone(
+    uninstrumented: Driver,
+):
+    proc = uninstrumented.run("--tmin", "0.05", "--scalar-pack")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    for kind in ("raw", "summary", "perf"):
+        assert (
+            uninstrumented.cwd / "logs" / f"{kind}_fp32_STUB_noinstr_refproto_scalarpack.txt"
+        ).is_file()
+    assert not (uninstrumented.cwd / "logs" / REFPROTO_RAW).exists()
+    # ...and the overview names the file it is about to write
+    assert "logs/raw_fp32_STUB_noinstr_refproto_scalarpack.txt" in _overview(proc.stdout)
+
+    uninstrumented.run("--tmin", "0.05")
+    assert (uninstrumented.cwd / "logs" / REFPROTO_RAW).is_file()
+    assert not (uninstrumented.cwd / "logs" / SCALARPACK_RAW).exists()
+
+
+def test_the_environment_variable_switches_the_log_name_like_the_flag(
+    uninstrumented: Driver,
+):
+    uninstrumented.run("--tmin", "0.05", env={"USE_SCALAR_PACK": "1"})
+    assert (uninstrumented.cwd / "logs" / SCALARPACK_RAW).is_file()
+
+
+def test_a_scalar_pack_run_really_packs_with_the_scalar_packer_in_every_timed_rep(
+    uninstrumented: Driver,
+):
+    proc = uninstrumented.run("--tmin", "0.1", "--scalar-pack", env={"STUB_SLEEP_MS": "10"})
+    (row,) = uninstrumented.raw_rows(SCALARPACK_RAW)
+    total_calls, scalar_pack_calls = _stub_calls(proc.stderr)
+    assert scalar_pack_calls == total_calls == int(row["N_Reps"])
+
+
+def test_the_scalar_pack_name_and_the_no_nc_override_name_combine(with_nc_override: Driver):
+    with_nc_override.run("--tmin", "0.05", "--scalar-pack", "--no-nc-overrides")
+    assert (
+        with_nc_override.cwd
+        / "logs"
+        / "raw_fp32_STUB_noinstr_refproto_scalarpack_no_nc_override.txt"
+    ).is_file()
+
+
 def _results_file(tmp_path: Path, test_args: str) -> str:
     """The results_*.csv name `make run` tees the driver's output into, from a dry run."""
     proj = tmp_path / "pj" / "proj"
@@ -726,3 +777,16 @@ def test_a_dot_kernels_k_padding_still_fits_the_smaller_pack_buffers(dot_method:
     ac, ac_wanted, bc, _, ac_needed, bc_needed = _buffer_bytes(proc.stderr)
     assert ac_needed > ac_wanted  # this shape does outgrow the reference's formula
     assert ac_needed <= ac and bc_needed <= bc
+
+
+def test_the_results_file_of_a_scalar_pack_run_is_its_own(tmp_path: Path):
+    """Same rule as the driver's logs, for the results_*.csv `make run` tees into."""
+    assert _results_file(tmp_path / "a", "--scalar-pack") == "_noinstr_refproto_scalarpack"
+    assert (
+        _results_file(tmp_path / "b", "--scalar-pack --no-nc-overrides")
+        == "_noinstr_refproto_scalarpack_no_nc_override"
+    )
+    assert (
+        _results_file(tmp_path / "c", "--scalar-pack --no-ref-protocol")
+        == "_noinstr_scalarpack"
+    )

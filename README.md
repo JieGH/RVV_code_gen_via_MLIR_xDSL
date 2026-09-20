@@ -51,6 +51,7 @@ Add `--dry-run` to print the settings and stop without touching the board. Every
 | `--instr` | Keeps the per-tile timers and perf counters. They cost 11–17% of measured time, so **never quote these against the reference**. Use it to see where our own time goes. |
 | `--no-ref-protocol` | Warm-up first, then a fixed rep count from `config.json`. Steadier on short shapes, but not the reference's protocol. |
 | `--no-nc-overrides` | Ignores the per-shape `nc` table in `config.json`, so every shape uses the heuristic's `nc`. Needed for a fair head-to-head; the reference has no counterpart for those overrides. Drop it for the shipped-configuration number. |
+| `--scalar-pack` | Every timed call packs with the scalar packer instead of the RVV one (issue #26). Own log names (`_scalarpack`). `run_pack_swap.sh` runs vector-live and scalar-live back to back and compares them; see [docs/metrics.md](docs/metrics.md). |
 | `--cpu N` / `--no-pin` | Pins the timed run to one core. Core 0 also takes every device interrupt, so expect it to be noisier than core 4. |
 
 Each combination writes to its own log name, so the two can never be mixed up: `raw_*_noinstr_refproto_no_nc_override.txt` for the command above.
@@ -84,9 +85,9 @@ cd tests/pure_xdsl_blis_rvv && python3 generate_pure_blis_project.py --config co
 source .venv/bin/activate && python3 -m pytest tests/ -q
 ```
 
-140 tests, of which 134 run on the host alone. Six, named `*_on_board`, ssh through `fej` to `jbpi` and run a harness there; they skip themselves when the board is unreachable. To run the host-only set: `python3 -m pytest tests/ -q -k "not on_board"`.
+145 tests, of which 139 run on the host alone. Six, named `*_on_board`, ssh through `fej` to `jbpi` and run a harness there; they skip themselves when the board is unreachable. To run the host-only set: `python3 -m pytest tests/ -q -k "not on_board"`.
 
-The tests cover the generated packing and dispatch code (`test_pack_correctness`, `test_pad_zeroing`), the config and cache model, and the benchmark harness itself: the run protocol, core pinning, perf counters, and the comparison and summary scripts. Several read real logs under `logs/` for their expected values, so those log directories must stay.
+The tests cover the generated packing and dispatch code (`test_pack_correctness`, `test_pad_zeroing`), the config and cache model, and the benchmark harness itself: the run protocol, core pinning, perf counters, and the comparison and summary scripts (all but `compare_pack_swap.py`, which was checked by hand on real logs). Several read real logs under `logs/` for their expected values, so those log directories must stay.
 
 ## More
 

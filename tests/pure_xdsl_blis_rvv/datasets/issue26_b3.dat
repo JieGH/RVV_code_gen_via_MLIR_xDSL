@@ -1,0 +1,4 @@
+# Issue #26 (pack swap): B3 alone, MR16_NR15. The one shape where packing is a large share
+# of the total (40.6% in issue #10).
+# layer  M   N    K
+B3       64  384  384

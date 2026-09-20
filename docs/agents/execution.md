@@ -9,6 +9,7 @@ Two connection modes reach the board, `jbpi`/`jbpi2` (BananaPi M2 Pro). Both acc
 
 - **`tests/pure_xdsl_blis_rvv/compile_macro_bench.sh`**: standalone build & benchmark for the pure xDSL BLIS Project Generator (see `CONTEXT.md`) macrokernel project. Takes `--config <name>.json` (default `config.json`). Activates `.venv` itself; must be run from the repo root. Documented in `README.md`.
 - **`tests/pure_xdsl_blis_rvv/run_head_to_head.sh`**: our macrokernel bench and the reference design back to back on one pinned core, then the comparison. The command for a number quoted against the reference (see below).
+- **`tests/pure_xdsl_blis_rvv/run_pack_swap.sh`**: vector-pack and scalar-pack GEMM back to back (vector, scalar, scalar, vector) on one pinned core, over B3 and S1, then `compare_pack_swap.py` (issue #26). Takes the connection flags, `--cpu`/`--no-pin`, `--tmin`, `--config` (default `config_pack_swap.json`), `--shipped-nc`, `--dry-run`. Its defaults are the default run command's, not `compile_macro_bench.sh`'s: `--no-nc-overrides --cpu 0 --tmin 10`. Board time: four runs.
 - **`tests/pure_xdsl_blis_rvv/ref_baseline/run_ref_baseline.sh`**: the reference design alone, from `../ext/RVV_ukernels_benchmark`. `run_head_to_head.sh` calls it; run it directly only to refresh a reference baseline on its own.
 
 ## Reference command (jump-host, pure xDSL BLIS macrokernel bench)
@@ -33,6 +34,7 @@ The reference command above needs no protocol flag: the uninstrumented build tim
 | *(none)* | uninstrumented build, **reference protocol**, `tmin` 3.0 s. Logs `raw_*_noinstr_refproto.txt` |
 | `--tmin <s>` | time budget for the reference protocol. Refused where the reference protocol is not running |
 | `--no-ref-protocol` | the older **warm-up protocol** instead: 5 warm-up calls, a scalar-pack pass, then the fixed `iterations` from `config.json`. Logs `raw_*_noinstr.txt` |
+| `--scalar-pack` | every timed call packs with the scalar packer instead of the RVV one (issue #26). Logs get a `_scalarpack` suffix (before `_no_nc_override`), so it never mixes with a vector-live run. See `docs/metrics.md`, "Vector pack against scalar pack, end to end" |
 | `--no-nc-overrides` | ignore the per-shape `nc` overrides in `config.json` (B3 ships at `nc=128`; the reference runs `nc=384`). The head-to-head configuration; a run without it is the shipped one. Logs get a `_no_nc_override` suffix, so the two never mix (issue #16) |
 | `--cpu <n>` | pin the timed run to core `n` with `taskset -c n` (issue #21). Default: core 4, the same default `run_ref_baseline.sh` uses, so both sides time on one core. Not core 0: the board sends every device interrupt there |
 | `--no-pin` | run unpinned, to reproduce the pre-#21 numbers. Refused together with `--cpu` |

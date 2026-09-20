@@ -518,7 +518,10 @@ int main(int argc, char** argv) {
     // Logs of the two protocols never share a file, so one can never be merged into the other.
     // Likewise a run without the config.json nc overrides never shares a file with one that
     // has them: they are different configurations (issue #16).
+    // A scalar-pack-live run is the issue #26 experiment, so it never shares a log with the
+    // vector-pack one either.
     const string log_suffix = string(RVV_LOG_SUFFIX) + (ref_protocol ? "_refproto" : "") +
+                              (force_scalar_pack ? "_scalarpack" : "") +
                               (no_nc_overrides ? "_no_nc_override" : "");
     const string log_stem = string("_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + log_suffix + ".txt";
     // Ensure logs directory exists (handled by Makefile)
