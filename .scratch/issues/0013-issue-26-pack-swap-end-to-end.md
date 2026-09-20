@@ -1,8 +1,8 @@
 # Issue #26: scalar pack live instead of RVV pack, measured end to end (B3, S1)
 
 **Role / Label:** `done` — measured on `jbpi`, tooling and tests written. Two shapes only; question 3 (a block-size threshold) is not answered.
-**Status:** ✅ B3: the scalar-pack GEMM is **44.7% faster end to end** (4.48 → 6.48 GOPs by mean time), much more than the isolated pack times can account for. S1: no difference (8.51 vs 8.51, ±0.3%). The B3 reps are bimodal (see §3), so the mean is the only stable figure, and *why* it moves is not known; see §5.
-**Target:** `jbpi` (BananaPi M2 Pro, VLEN=256), reached via `fej`, one session 2026-09-20 12:06–12:21, core 0, governor `performance`.
+**Status:** ✅ Updated after the second session (§6): B3 is the only shape where the scalar pack wins (+44.7% and +66.5% in the two sessions); on B2 and B4 the vector pack is slightly faster (−3.7%, −2.5% for scalar). First-session result: B3: the scalar-pack GEMM is **44.7% faster end to end** (4.48 → 6.48 GOPs by mean time), much more than the isolated pack times can account for. S1: no difference (8.51 vs 8.51, ±0.3%). The B3 reps are bimodal (see §3), so the mean is the only stable figure, and *why* it moves is not known; see §5.
+**Target:** `jbpi` (BananaPi M2 Pro, VLEN=256), reached via `fej`, two sessions on 2026-09-20 (12:06–12:21 on B3 and S1; 12:41–13:04 on B2, B3 and B4), core 0, governor `performance`.
 **Primary Sources:**
 - [[0005-swap-pack-impl-bottleneck-isolation]] — the local plan this issue came from.
 - [[0003-scalar-vs-vector-pack-timing]] — the isolated pack times (vector 12.7% slower on B3).
@@ -62,3 +62,31 @@ B3 has two speeds, about 4.2 and about 9 GOPs (the bimodal reps of [[0001-b3-m7-
 - **The noise estimate is thin.** Two runs per side, and the spread only shows the mean's stability, not B3's bimodality. S1 drifts upward by 0.3% across the four runs, the same size as its vector/scalar gap, so "same speed" means "within ±0.3%".
 - **Other shapes and the other board.** Two shapes, one board (`jbpi`).
 - **What to do about it.** This issue only measures. Making B3 use the scalar packer (a block-size rule, or fixing whatever makes the vector pack leave the caches cold) is a separate change.
+
+## 6. Second session: B2, B3, B4
+
+`config_pack_swap_b2b3b4.json` (B2 and B3 in one project, B4 in another), `run_pack_swap.sh --tmin 3`, same board and core. Runs `run_2026-09-20_{125019,125335,125649,130004}` (vector, scalar, scalar, vector) and `logs/pack_swap_2026-09-20_125019.txt`. Two more scalar-only runs of the same config were made by hand first: `124115` (tmin 10) and `124503` (tmin 3).
+
+| Case | vector (2 runs) | scalar (2 runs) | scalar vs vector | spread vec / scl |
+|---|---|---|---|---|
+| B2 `384x384x64` | 12.70 / 12.76 (mean 12.73) | 12.26 / 12.25 (mean 12.26) | **−3.7%** | 0.5% / 0.1% |
+| B3 `64x384x384` | 4.97 / 5.08 (mean 5.02) | 8.71 / 8.03 (mean 8.37) | **+66.5%** | 2.3% / 8.1% |
+| B4 `4096x384x1024` | 7.88 / 7.92 (mean 7.90) | 7.61 / 7.78 (mean 7.70) | **−2.5%** | 0.4% / 2.2% |
+
+e2e GOPs by mean time, uninstrumented, reference protocol, `--no-nc-overrides`. Correctness passed on B2 and B3 in every run; B4's was skipped as configured.
+
+- **B3 is the only shape where the scalar pack wins**, and its runs do not overlap (vector 4.97 and 5.08, scalar 8.03 and 8.71). The vector pack is a small, real win on B2 (spread 0.5% and 0.1%, so −3.7% is beyond noise). B4 is borderline: the gap (2.5%) is the size of the spread (2.2%) and each run has only 7-8 reps at tmin 3. With S1 (equal in the first session), B3 is the one clear loss for the vector pack among B2, B3, B4 and S1.
+- **B3's absolute speed depends on the setup, though the sign does not.** In session 1 B3 ran alone in its process: vector 4.48, scalar 6.48 (+44.7%). Here B2 runs first in the same process: vector 5.02, scalar 8.37 (+66.5%). The hand-made scalar runs of this config agree with session 2, not session 1: 8.03 (tmin 10, `124115`) and 8.32 (tmin 3, `124503`). So the change is most likely B2 running before B3, not tmin. This rests on one comparison; heap layout or first-touch effects would fit, but were not tested. The overnight vector-live B3 (5.30, issue 11, config.json also runs B2 before B3) matches the vector 5.02 here.
+- **B3 has two speeds in both sessions** (about 4.2 and about 9 GOPs). In the vector runs the fast speed is rare (95th percentile 9.5, median 4.35-4.40); in the scalar runs it is the usual one (median 8.9-9.0, 5th percentile 5.8-6.2). Percentiles only, as in §3.
+- **Why B3 and not B2.** B2 and B3 do the same arithmetic (384·384·64 multiply-adds each) with the same tile, but B3 packs about 3.5 times more data (A 64×384 = 24.6 K values and B 384×384 = 147 K, against 24.6 K and 24.6 K for B2). Nearly all the difference is the B matrix. That fits B3's 40.6% pack share (issue 10) and shows why the packer matters most there; it does not show why the scalar packer is faster. The guess that the vector pack of B is the slow part is untested.
+- **Against the published table** (issue 11: B3 8.8, B2 12.5, B4 8.5; origin unknown, cross-day): B3 with the vector pack is 5.0-5.3, 40% below it; with the scalar pack 8.0-8.7 (mean of the four B2-first scalar runs 8.27), about 6% below it. B2: vector 12.7, scalar 12.2 (published 12.5). B4: vector 7.8-7.9, scalar 7.4-7.8 (published 8.5): the 8% B4 gap is not a packing effect. The reference's own packers are scalar loops, which makes the B3 result a plausible part of the B3 gap; only a same-session head-to-head can say how much.
+- **Load.** `jbpi` load average was 2.1-3.3 before these runs, as in session 1.
+
+### Answers, after both sessions
+
+1. **Faster or slower end to end:** B3 scalar faster (+44.7%, +66.5%); B2 −3.7%; B4 −2.5% (borderline); S1 equal.
+2. **Same sign as the isolated pack time:** on B3 yes and far larger than pack time alone predicts (+5%); the rest is what the packer leaves for the microkernel. Not confirmed by a counter run.
+3. **Threshold:** still open. The four shapes cannot tell shape from pack size; B3 differs from B2 in aspect and in how much of B is packed, not in arithmetic.
+
+Not done: the instrumented pair (`--instr`, `--instr --scalar-pack`) on B3 alone, which splits pack from compute and gives the counters; B3 alone against B3-after-B2 in the same session with both packers (would confirm the order effect); the shipped `nc=128` case.
+

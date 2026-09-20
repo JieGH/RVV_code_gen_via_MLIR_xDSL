@@ -14,7 +14,8 @@ set -o pipefail
 # thermal state shows up as a gap between the two runs of the same side instead of hiding
 # inside the difference. Then compare_pack_swap.py prints the table.
 #
-# Cases: B3 (MR16_NR15) first, then S1 (MR32_NR7), from config_pack_swap.json.
+# Cases: B3 (MR16_NR15) first, then S1 (MR32_NR7), from config_pack_swap.json; B2, B3 and B4
+# from config_pack_swap_b2b3b4.json (--config).
 # Defaults are the default run command's: --no-nc-overrides --cpu 0 --tmin 10.
 #
 # Usage (jump-host):
@@ -57,7 +58,7 @@ while [[ "$#" -gt 0 ]]; do
         --config)                               CONFIG="$2"; shift         ;;
         --shipped-nc)                           NC_ARGS=(); COMPARE_ARGS=(--shipped-nc) ;;
         --dry-run)                              DRY_RUN=true               ;;
-        -h|--help)                              sed -n '3,33p' "$0"; exit 0 ;;
+        -h|--help)                              sed -n '5,34p' "$0"; exit 0 ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
