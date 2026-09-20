@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overnight GEMM Runs</title>
+<style>
+:root{
+  color-scheme:light;
+  --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --hair:rgba(11,11,11,.10); --wash:rgba(11,11,11,.05);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300;
+  --good:#006300; --bad:#d03b3b;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --page:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --hair:rgba(255,255,255,.10); --wash:rgba(255,255,255,.06);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300;
+    --good:#0ca30c; --bad:#ec835a;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --hair:rgba(255,255,255,.10); --wash:rgba(255,255,255,.06);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300;
+  --good:#0ca30c; --bad:#ec835a;
+}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;margin:0;padding-inline:16px;padding-block:24px 48px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1{font-size:22px;line-height:1.2;font-weight:650;margin:0;text-wrap:balance}
+h2{font-size:15px;font-weight:650;margin:0;text-wrap:balance}
+.sub{color:var(--ink2);margin:6px 0 0;max-width:72ch}
+.sub b{color:var(--ink);font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.tile{background:var(--surface);border-radius:10px;padding:14px 16px;box-shadow:0 0 0 1px var(--hair);display:flex;flex-direction:column;gap:4px}
+.tile .lab{color:var(--ink2);font-size:12.5px}
+.tile .val{font-size:26px;font-weight:650;line-height:1.1}
+.tile .note{color:var(--ink2);font-size:12.5px}
+.bar{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
+.seg{display:inline-flex;border-radius:8px;box-shadow:0 0 0 1px var(--hair);background:var(--surface);padding:2px;gap:2px}
+.seg button,.tabs button{font:inherit;color:var(--ink2);background:none;border:0;border-radius:6px;padding:6px 12px;cursor:pointer}
+.seg button[aria-pressed="true"],.tabs button[aria-selected="true"]{background:var(--wash);color:var(--ink);font-weight:600}
+.seg button:hover,.tabs button:hover,.chip:hover{background:var(--wash)}
+button:focus-visible,select:focus-visible,[tabindex]:focus-visible,input:focus-visible{outline:2px solid var(--s1);outline-offset:2px}
+.lab-inline{color:var(--ink2);font-size:12.5px;margin-right:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;display:inline-flex;align-items:center;gap:7px;padding:5px 10px;border-radius:999px;background:var(--surface);box-shadow:0 0 0 1px var(--hair);color:var(--ink);border:0;cursor:pointer}
+.chip[aria-pressed="false"]{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--axis)}
+.chip[aria-pressed="false"] svg{opacity:.35}
+.chip small{color:var(--ink2);font-size:11.5px}
+.chip[aria-pressed="false"] small{color:var(--muted)}
+.sep{width:1px;height:20px;background:var(--hair)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--hair);overflow-x:auto}
+.tabs button{border-radius:6px 6px 0 0;white-space:nowrap}
+.panel{background:var(--surface);border-radius:12px;box-shadow:0 0 0 1px var(--hair);padding:16px;display:flex;flex-direction:column;gap:12px;position:relative}
+.panel[hidden]{display:none!important}
+.panel .how{color:var(--ink2);margin:0;max-width:78ch}
+.scroll{overflow-x:auto}
+.scroll>svg{display:block;min-width:760px;width:100%;height:auto}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.two .scroll>svg{min-width:0}
+@media (max-width:820px){.two{grid-template-columns:1fr}.two .scroll>svg{min-width:520px}}
+svg text{font-family:inherit;fill:var(--ink2);font-size:12.5px}
+svg .lbl{fill:var(--ink)}
+svg .band{fill:transparent;cursor:crosshair}
+svg .band:hover,svg .band:focus{fill:var(--wash);outline:none}
+.ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+select{font:inherit;color:var(--ink);background:var(--surface);border:0;border-radius:8px;box-shadow:0 0 0 1px var(--hair);padding:6px 10px}
+label.chk{display:inline-flex;align-items:center;gap:6px;color:var(--ink2);cursor:pointer}
+#tip{position:fixed;z-index:10;pointer-events:none;background:var(--surface);color:var(--ink);border-radius:8px;box-shadow:0 0 0 1px var(--hair),0 6px 20px rgba(0,0,0,.18);padding:10px 12px;min-width:210px;max-width:320px;font-size:12.5px}
+#tip[hidden]{display:none}
+#tip .t{font-weight:650;margin-bottom:6px}
+#tip .r{display:grid;grid-template-columns:16px 1fr;gap:1px 8px;margin-top:6px}
+#tip .r .v{font-weight:650;font-size:13.5px}
+#tip .r .n{color:var(--ink2)}
+#tip .r .s{grid-column:2;color:var(--ink2);font-size:11.5px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--grid)}
+th{color:var(--ink2);font-weight:600;font-size:12px;position:sticky;top:0;background:var(--surface)}
+th:first-child,td:first-child,th.l,td.l{text-align:left}
+tr.b2 td{background:var(--wash)}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+details{color:var(--ink2)}
+details summary{cursor:pointer;color:var(--ink);font-weight:600}
+details ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px;max-width:90ch}
+details li b{color:var(--ink);font-weight:600}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Overnight GEMM runs, layer by layer</h1>
+    <p class="sub">Sixteen runs of the generated xDSL BLIS kernels, <b>8 on jbpi and 8 on jbpi2</b>, alternating every 30 min, first started 23:00 on 19 Sep 2026 and last started 06:30 on 20 Sep. Each run took about 7 min. Uninstrumented build, reference protocol (<b>tmin 10 s</b>, no warm-up), pinned to core 0. Every figure is <b>GOPs for the whole GEMM call, packing included</b>, the same region the reference design times.</p>
+  </header>
+
+  <section class="tiles" id="tiles" aria-label="Summary"></section>
+
+  <section class="bar" aria-label="Filters">
+    <div><span class="lab-inline" id="metric-lab">Number shown</span>
+      <span class="seg" role="group" aria-labelledby="metric-lab">
+        <button id="m-mean" aria-pressed="true" title="2·M·N·K ÷ mean wall time per call. The reference design's own formula.">By mean time</button>
+        <button id="m-med" aria-pressed="false" title="Median of the per-rep GOPs. Ignores a few slow reps.">By median rep</button>
+      </span></div>
+    <span class="sep" aria-hidden="true"></span>
+    <div class="chips" id="chips" role="group" aria-label="Series"></div>
+  </section>
+
+  <nav class="tabs" role="tablist" aria-label="Views" id="tabs">
+    <button role="tab" id="t-layers" aria-selected="true" data-tab="layers">Layer by layer</button>
+    <button role="tab" id="t-delta" aria-selected="false" data-tab="delta">Versus reference</button>
+    <button role="tab" id="t-jitter" aria-selected="false" data-tab="jitter">Jitter</button>
+    <button role="tab" id="t-table" aria-selected="false" data-tab="table">Table</button>
+  </nav>
+
+  <section class="panel" id="p-layers" role="tabpanel" aria-labelledby="t-layers">
+    <h2>Performance per layer, both boards against every reference</h2>
+    <p class="how">Dots are the mean of each board's 8 runs. The thick line through a dot spans the lowest to the highest run. The pale band behind it is the middle 90% of single reps inside a run (p5 to p95), averaged over runs. Hover a layer for the numbers. The vertical axis does not start at zero.</p>
+    <div class="ctl"><label class="chk"><input type="checkbox" id="showband" checked> Show within-run spread (p5 to p95)</label></div>
+    <div class="scroll"><svg id="svg-layers" role="img" aria-label="GOPs per layer for jbpi, jbpi2 and the reference series"></svg></div>
+  </section>
+
+  <section class="panel" id="p-delta" role="tabpanel" aria-labelledby="t-delta" hidden>
+    <h2>How far each board is from a reference, per layer</h2>
+    <p class="how">Bars are our mean minus the reference, as a percent of the reference. Above zero is faster than the reference. The whisker spans the lowest to the highest single run.</p>
+    <div class="ctl">
+      <label class="lab-inline" for="refsel">Compare against</label>
+      <select id="refsel"></select>
+      <span class="seg" role="group" aria-label="Scale"><button id="z-zoom" aria-pressed="true">Zoom to ±10%</button><button id="z-full" aria-pressed="false">Show full range</button></span>
+    </div>
+    <div class="scroll"><svg id="svg-delta" role="img" aria-label="Percent difference from the chosen reference per layer"></svg></div>
+    <p class="how" id="delta-note"></p>
+  </section>
+
+  <section class="panel" id="p-jitter" role="tabpanel" aria-labelledby="t-jitter" hidden>
+    <h2>Jitter, two kinds</h2>
+    <p class="how"><b>Inside a run</b> is how much single reps differ from each other (standard deviation ÷ mean, in percent). <b>Between runs</b> is how far the eight run means are apart ((highest − lowest) ÷ mean). S3 has only 2 reps per run and S4, S5 have 1, so they have no inside-a-run figure at all, only the between-runs one.</p>
+    <div class="two">
+      <div><h2 style="margin-bottom:6px">Inside a run, CV %</h2><div class="scroll"><svg id="svg-cv" role="img" aria-label="Within-run coefficient of variation per layer"></svg></div></div>
+      <div><h2 style="margin-bottom:6px">Between runs, spread %</h2><div class="scroll"><svg id="svg-rr" role="img" aria-label="Run-to-run spread per layer"></svg></div></div>
+    </div>
+    <h2 style="margin-top:8px">Every run, in time order</h2>
+    <div class="ctl"><span class="lab-inline" id="layer-lab">Layer</span><span class="seg" id="layersel" role="group" aria-labelledby="layer-lab"></span></div>
+    <div class="scroll"><svg id="svg-time" role="img" aria-label="Per-run GOPs over the night for the chosen layer"></svg></div>
+  </section>
+
+  <section class="panel" id="p-table" role="tabpanel" aria-labelledby="t-table" hidden>
+    <h2>All numbers</h2>
+    <p class="how">One row per layer and board. GOPs use the number chosen above. Reference columns are the four series in the legend; blank means that source has no value for the layer.</p>
+    <div class="scroll" id="tablebox"></div>
+  </section>
+
+  <details open>
+    <summary>Where the reference numbers come from</summary>
+    <ul>
+      <li><b>Past publication ref design.</b> The table you gave, approximate GFLOPS per layer. I have not seen the run behind it, so board, build and timing region are unknown to me.</li>
+      <li><b>Fresh reference run.</b> The reference design built and run on jbpi2 on 18 Sep (32x6, macc kernel, tmin 3 s, packing included). Only B1 and B5 were run, so only those two layers have a value.</li>
+      <li><b>Archived xDSL sweep.</b> <code>ext/*_comparison.txt</code>. These are best-of-sweep numbers from our own older xDSL driver, not from the reference design, even though they carry the same 32x7 and 16x15 labels.</li>
+      <li><b>OpenBLAS (archived).</b> The OpenBLAS column of the same <code>ext</code> files. I did not check where those were measured.</li>
+      <li>The four sources disagree with each other (for B1: 8.0, 7.02, 7.38), so the chart never merges them.</li>
+      <li>Not included: the five jbpi2 runs from 18 Sep. They used the older warm-up protocol, and mixing protocols would blur the comparison.</li>
+    </ul>
+  </details>
+</div>
+<div id="tip" role="tooltip" hidden></div>
+
+<script>
+const RUNS = [{"run":"2026-09-19_230648","board":"jbpi","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.6712,"median":12.7409,"std":0.2838,"mean":12.6806,"min":6.7848,"p5":12.4873,"p95":12.8388,"max":12.9054,"iqr":0.1887,"reps":6714,"cv":2.2382},{"run":"2026-09-19_230648","board":"jbpi","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.3449,"median":4.4774,"std":2.0123,"mean":5.8908,"min":3.5335,"p5":4.261,"p95":9.6301,"max":10.0468,"iqr":3.0537,"reps":2832,"cv":34.1602},{"run":"2026-09-19_230648","board":"jbpi","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":8.1097,"median":8.1189,"std":0.0695,"mean":8.1103,"min":7.821,"p5":8.0709,"p95":8.1602,"max":8.191,"iqr":0.0357,"reps":101,"cv":0.8564},{"run":"2026-09-19_230648","board":"jbpi","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.873,"median":7.8881,"std":0.0309,"mean":7.8731,"min":7.8015,"p5":7.8132,"p95":7.8961,"max":7.9016,"iqr":0.0159,"reps":25,"cv":0.3927},{"run":"2026-09-19_230648","board":"jbpi","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.8425,"median":7.8529,"std":0.0271,"mean":7.8426,"min":7.786,"p5":7.7891,"p95":7.8699,"max":7.8709,"iqr":0.0188,"reps":25,"cv":0.3458},{"run":"2026-09-19_230648","board":"jbpi","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.4472,"median":8.4645,"std":0.0505,"mean":8.4475,"min":8.2986,"p5":8.3182,"p95":8.4827,"max":8.4889,"iqr":0.0188,"reps":43,"cv":0.5979},{"run":"2026-09-19_230648","board":"jbpi","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.8615,"median":8.8617,"std":0.0079,"mean":8.8615,"min":8.8505,"p5":8.8505,"p95":8.8769,"max":8.8769,"iqr":0.0052,"reps":6,"cv":0.0897},{"run":"2026-09-19_230648","board":"jbpi","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":9.079,"median":9.0798,"std":0.0009,"mean":9.079,"min":9.0781,"p5":9.0781,"p95":9.0798,"max":9.0798,"iqr":0.0017,"reps":2,"cv":0.0095},{"run":"2026-09-19_230648","board":"jbpi","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.7065,"median":8.7065,"std":0.0,"mean":8.7065,"min":8.7065,"p5":8.7065,"p95":8.7065,"max":8.7065,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-19_230648","board":"jbpi","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.2145,"median":9.2145,"std":0.0,"mean":9.2145,"min":9.2145,"p5":9.2145,"p95":9.2145,"max":9.2145,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-19_233731","board":"jbpi2","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.7808,"median":12.8206,"std":0.3011,"mean":12.7918,"min":7.1524,"p5":12.6276,"p95":12.9434,"max":12.9946,"iqr":0.1532,"reps":6772,"cv":2.3542},{"run":"2026-09-19_233731","board":"jbpi2","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.3403,"median":4.3959,"std":2.1195,"mean":5.9532,"min":2.9017,"p5":4.147,"p95":9.5875,"max":10.019,"iqr":4.0412,"reps":2830,"cv":35.6038},{"run":"2026-09-19_233731","board":"jbpi2","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":8.0546,"median":8.0676,"std":0.0521,"mean":8.0549,"min":7.8126,"p5":7.9358,"p95":8.0898,"max":8.1094,"iqr":0.0215,"reps":101,"cv":0.6463},{"run":"2026-09-19_233731","board":"jbpi2","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.8062,"median":7.8085,"std":0.0247,"mean":7.8063,"min":7.7563,"p5":7.7566,"p95":7.8415,"max":7.8521,"iqr":0.0268,"reps":25,"cv":0.3164},{"run":"2026-09-19_233731","board":"jbpi2","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.8141,"median":7.8204,"std":0.02,"mean":7.8141,"min":7.7586,"p5":7.7722,"p95":7.8334,"max":7.8338,"iqr":0.0092,"reps":25,"cv":0.2556},{"run":"2026-09-19_233731","board":"jbpi2","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.5109,"median":8.5215,"std":0.0357,"mean":8.5111,"min":8.4004,"p5":8.405,"p95":8.5344,"max":8.5428,"iqr":0.0151,"reps":43,"cv":0.4192},{"run":"2026-09-19_233731","board":"jbpi2","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.8102,"median":8.8111,"std":0.0033,"mean":8.8102,"min":8.8048,"p5":8.8048,"p95":8.8146,"max":8.8146,"iqr":0.0053,"reps":6,"cv":0.0369},{"run":"2026-09-19_233731","board":"jbpi2","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":9.0209,"median":9.0214,"std":0.0005,"mean":9.0209,"min":9.0204,"p5":9.0204,"p95":9.0214,"max":9.0214,"iqr":0.001,"reps":2,"cv":0.0056},{"run":"2026-09-19_233731","board":"jbpi2","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.8514,"median":8.8514,"std":0.0,"mean":8.8514,"min":8.8514,"p5":8.8514,"p95":8.8514,"max":8.8514,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-19_233731","board":"jbpi2","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.1006,"median":9.1006,"std":0.0,"mean":9.1006,"min":9.1006,"p5":9.1006,"p95":9.1006,"max":9.1006,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_000648","board":"jbpi","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.8204,"median":12.8724,"std":0.2547,"mean":12.8276,"min":7.7258,"p5":12.6633,"p95":12.9574,"max":13.0211,"iqr":0.14,"reps":6793,"cv":1.9859},{"run":"2026-09-20_000648","board":"jbpi","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.5082,"median":4.5467,"std":2.0515,"mean":6.0856,"min":3.6869,"p5":4.3082,"p95":9.5563,"max":9.9823,"iqr":3.9177,"reps":2919,"cv":33.7111},{"run":"2026-09-20_000648","board":"jbpi","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":8.0437,"median":8.0499,"std":0.0455,"mean":8.044,"min":7.8414,"p5":7.9735,"p95":8.0893,"max":8.119,"iqr":0.0251,"reps":100,"cv":0.5654},{"run":"2026-09-20_000648","board":"jbpi","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.8601,"median":7.868,"std":0.0232,"mean":7.8601,"min":7.8075,"p5":7.8117,"p95":7.8839,"max":7.8921,"iqr":0.0124,"reps":25,"cv":0.2956},{"run":"2026-09-20_000648","board":"jbpi","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.8851,"median":7.8968,"std":0.0248,"mean":7.8852,"min":7.8225,"p5":7.8393,"p95":7.9108,"max":7.9112,"iqr":0.0303,"reps":25,"cv":0.3149},{"run":"2026-09-20_000648","board":"jbpi","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.4681,"median":8.4797,"std":0.0366,"mean":8.4682,"min":8.3655,"p5":8.3714,"p95":8.4923,"max":8.4983,"iqr":0.0145,"reps":43,"cv":0.432},{"run":"2026-09-20_000648","board":"jbpi","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.8636,"median":8.8643,"std":0.0066,"mean":8.8636,"min":8.8559,"p5":8.8559,"p95":8.8762,"max":8.8762,"iqr":0.0079,"reps":6,"cv":0.0741},{"run":"2026-09-20_000648","board":"jbpi","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":9.0819,"median":9.0858,"std":0.004,"mean":9.0819,"min":9.0779,"p5":9.0779,"p95":9.0858,"max":9.0858,"iqr":0.0079,"reps":2,"cv":0.0437},{"run":"2026-09-20_000648","board":"jbpi","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.9092,"median":8.9092,"std":0.0,"mean":8.9092,"min":8.9092,"p5":8.9092,"p95":8.9092,"max":8.9092,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_000648","board":"jbpi","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.1276,"median":9.1275,"std":0.0,"mean":9.1275,"min":9.1275,"p5":9.1275,"p95":9.1275,"max":9.1275,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_003652","board":"jbpi2","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.3827,"median":12.7041,"std":0.9175,"mean":12.4849,"min":7.3899,"p5":11.9557,"p95":12.8076,"max":12.8702,"iqr":0.1665,"reps":6561,"cv":7.3487},{"run":"2026-09-20_003652","board":"jbpi2","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.2217,"median":4.3617,"std":2.1241,"mean":5.8331,"min":3.4042,"p5":4.1701,"p95":9.349,"max":9.9066,"iqr":4.2954,"reps":2767,"cv":36.4147},{"run":"2026-09-20_003652","board":"jbpi2","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":7.9491,"median":7.965,"std":0.0653,"mean":7.9496,"min":7.6662,"p5":7.6977,"p95":7.9892,"max":8.0145,"iqr":0.0159,"reps":99,"cv":0.8217},{"run":"2026-09-20_003652","board":"jbpi2","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.5998,"median":7.7895,"std":0.2731,"mean":7.6098,"min":6.9666,"p5":7.1609,"p95":7.853,"max":7.8553,"iqr":0.5122,"reps":24,"cv":3.5892},{"run":"2026-09-20_003652","board":"jbpi2","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.7998,"median":7.8135,"std":0.0314,"mean":7.7999,"min":7.7334,"p5":7.7336,"p95":7.8281,"max":7.831,"iqr":0.0176,"reps":25,"cv":0.4028},{"run":"2026-09-20_003652","board":"jbpi2","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.4427,"median":8.4613,"std":0.0533,"mean":8.4431,"min":8.27,"p5":8.3066,"p95":8.4732,"max":8.4812,"iqr":0.0184,"reps":43,"cv":0.6309},{"run":"2026-09-20_003652","board":"jbpi2","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.5735,"median":8.8052,"std":0.2426,"mean":8.5804,"min":8.2635,"p5":8.2635,"p95":8.8232,"max":8.8232,"iqr":0.5148,"reps":6,"cv":2.8273},{"run":"2026-09-20_003652","board":"jbpi2","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":8.9929,"median":8.9948,"std":0.002,"mean":8.9929,"min":8.9909,"p5":8.9909,"p95":8.9948,"max":8.9948,"iqr":0.004,"reps":2,"cv":0.0221},{"run":"2026-09-20_003652","board":"jbpi2","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.8485,"median":8.8485,"std":0.0,"mean":8.8485,"min":8.8485,"p5":8.8485,"p95":8.8485,"max":8.8485,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_003652","board":"jbpi2","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.1755,"median":9.1755,"std":0.0,"mean":9.1755,"min":9.1755,"p5":9.1755,"p95":9.1755,"max":9.1755,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_010648","board":"jbpi","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.6382,"median":12.7013,"std":0.2883,"mean":12.6485,"min":6.9291,"p5":12.498,"p95":12.7765,"max":12.8341,"iqr":0.1558,"reps":6696,"cv":2.2795},{"run":"2026-09-20_010648","board":"jbpi","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.2792,"median":4.3662,"std":2.0923,"mean":5.8799,"min":3.1981,"p5":4.1382,"p95":9.5901,"max":10.0024,"iqr":3.2886,"reps":2798,"cv":35.5837},{"run":"2026-09-20_010648","board":"jbpi","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":8.0231,"median":8.0327,"std":0.0584,"mean":8.0236,"min":7.7459,"p5":7.9937,"p95":8.0724,"max":8.0845,"iqr":0.0201,"reps":100,"cv":0.7276},{"run":"2026-09-20_010648","board":"jbpi","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.849,"median":7.8567,"std":0.028,"mean":7.8491,"min":7.783,"p5":7.7968,"p95":7.8797,"max":7.888,"iqr":0.0156,"reps":25,"cv":0.3573},{"run":"2026-09-20_010648","board":"jbpi","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.8698,"median":7.8814,"std":0.0226,"mean":7.8698,"min":7.8238,"p5":7.8273,"p95":7.8936,"max":7.8953,"iqr":0.0359,"reps":25,"cv":0.2875},{"run":"2026-09-20_010648","board":"jbpi","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.5309,"median":8.5421,"std":0.037,"mean":8.531,"min":8.4177,"p5":8.4348,"p95":8.5582,"max":8.5686,"iqr":0.0172,"reps":43,"cv":0.4338},{"run":"2026-09-20_010648","board":"jbpi","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.8618,"median":8.8613,"std":0.0065,"mean":8.8618,"min":8.8537,"p5":8.8537,"p95":8.8724,"max":8.8724,"iqr":0.0114,"reps":6,"cv":0.0731},{"run":"2026-09-20_010648","board":"jbpi","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":9.0674,"median":9.0692,"std":0.0018,"mean":9.0674,"min":9.0656,"p5":9.0656,"p95":9.0692,"max":9.0692,"iqr":0.0035,"reps":2,"cv":0.0196},{"run":"2026-09-20_010648","board":"jbpi","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.9019,"median":8.9019,"std":0.0,"mean":8.9019,"min":8.9019,"p5":8.9019,"p95":8.9019,"max":8.9019,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_010648","board":"jbpi","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.2146,"median":9.2146,"std":0.0,"mean":9.2146,"min":9.2146,"p5":9.2146,"p95":9.2146,"max":9.2146,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_013652","board":"jbpi2","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.8088,"median":12.8556,"std":0.2697,"mean":12.8166,"min":7.875,"p5":12.664,"p95":12.9574,"max":13.0282,"iqr":0.1478,"reps":6787,"cv":2.1043},{"run":"2026-09-20_013652","board":"jbpi2","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.1741,"median":4.4303,"std":1.8856,"mean":5.6544,"min":3.4605,"p5":4.228,"p95":9.3265,"max":9.9046,"iqr":2.8397,"reps":2742,"cv":33.3477},{"run":"2026-09-20_013652","board":"jbpi2","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":8.0437,"median":8.057,"std":0.059,"mean":8.0441,"min":7.7747,"p5":7.9295,"p95":8.0888,"max":8.114,"iqr":0.0208,"reps":100,"cv":0.7332},{"run":"2026-09-20_013652","board":"jbpi2","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.8074,"median":7.8129,"std":0.0194,"mean":7.8074,"min":7.7633,"p5":7.7666,"p95":7.8271,"max":7.8357,"iqr":0.0163,"reps":25,"cv":0.2484},{"run":"2026-09-20_013652","board":"jbpi2","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.8499,"median":7.8562,"std":0.0193,"mean":7.8499,"min":7.7946,"p5":7.8152,"p95":7.8693,"max":7.8731,"iqr":0.0205,"reps":25,"cv":0.2456},{"run":"2026-09-20_013652","board":"jbpi2","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.4983,"median":8.5107,"std":0.0351,"mean":8.4985,"min":8.4,"p5":8.4017,"p95":8.5244,"max":8.5272,"iqr":0.0192,"reps":43,"cv":0.4132},{"run":"2026-09-20_013652","board":"jbpi2","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.8022,"median":8.8014,"std":0.009,"mean":8.8023,"min":8.7904,"p5":8.7904,"p95":8.8202,"max":8.8202,"iqr":0.0047,"reps":6,"cv":0.1022},{"run":"2026-09-20_013652","board":"jbpi2","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":9.0018,"median":9.0026,"std":0.0008,"mean":9.0018,"min":9.001,"p5":9.001,"p95":9.0026,"max":9.0026,"iqr":0.0015,"reps":2,"cv":0.0085},{"run":"2026-09-20_013652","board":"jbpi2","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.7192,"median":8.7192,"std":0.0,"mean":8.7192,"min":8.7192,"p5":8.7192,"p95":8.7192,"max":8.7192,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_013652","board":"jbpi2","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.1709,"median":9.1709,"std":0.0,"mean":9.1709,"min":9.1709,"p5":9.1709,"p95":9.1709,"max":9.1709,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_020648","board":"jbpi","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.5391,"median":12.8661,"std":0.93,"mean":12.6417,"min":7.427,"p5":11.8742,"p95":12.9912,"max":13.0496,"iqr":0.1841,"reps":6644,"cv":7.3564},{"run":"2026-09-20_020648","board":"jbpi","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.4993,"median":4.5682,"std":1.9819,"mean":6.0436,"min":3.5338,"p5":4.2964,"p95":9.5312,"max":10.0174,"iqr":3.1771,"reps":2914,"cv":32.7932},{"run":"2026-09-20_020648","board":"jbpi","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":8.0759,"median":8.0806,"std":0.0541,"mean":8.0762,"min":7.8393,"p5":8.0317,"p95":8.1262,"max":8.144,"iqr":0.0337,"reps":101,"cv":0.6702},{"run":"2026-09-20_020648","board":"jbpi","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.6781,"median":7.8309,"std":0.2126,"mean":7.6841,"min":7.1748,"p5":7.3845,"p95":7.8845,"max":7.8909,"iqr":0.4032,"reps":24,"cv":2.7668},{"run":"2026-09-20_020648","board":"jbpi","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.9027,"median":7.9132,"std":0.0258,"mean":7.9028,"min":7.8424,"p5":7.8515,"p95":7.9246,"max":7.9257,"iqr":0.0118,"reps":25,"cv":0.3268},{"run":"2026-09-20_020648","board":"jbpi","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.5273,"median":8.543,"std":0.0463,"mean":8.5275,"min":8.3941,"p5":8.4,"p95":8.56,"max":8.5647,"iqr":0.0163,"reps":43,"cv":0.5424},{"run":"2026-09-20_020648","board":"jbpi","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.6167,"median":8.8543,"std":0.2808,"mean":8.626,"min":8.1569,"p5":8.1569,"p95":8.8648,"max":8.8648,"iqr":0.5281,"reps":6,"cv":3.2554},{"run":"2026-09-20_020648","board":"jbpi","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":9.0647,"median":9.0676,"std":0.0029,"mean":9.0647,"min":9.0617,"p5":9.0617,"p95":9.0676,"max":9.0676,"iqr":0.0058,"reps":2,"cv":0.0322},{"run":"2026-09-20_020648","board":"jbpi","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.9021,"median":8.9021,"std":0.0,"mean":8.9021,"min":8.9021,"p5":8.9021,"p95":8.9021,"max":8.9021,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_020648","board":"jbpi","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.227,"median":9.227,"std":0.0,"mean":9.227,"min":9.227,"p5":9.227,"p95":9.227,"max":9.227,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_023653","board":"jbpi2","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.8622,"median":12.9234,"std":0.3107,"mean":12.8736,"min":7.2105,"p5":12.7081,"p95":13.0159,"max":13.0636,"iqr":0.1514,"reps":6815,"cv":2.4133},{"run":"2026-09-20_023653","board":"jbpi2","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.3337,"median":4.4186,"std":1.9657,"mean":5.8762,"min":3.1259,"p5":4.1834,"p95":9.4339,"max":9.9294,"iqr":3.1085,"reps":2826,"cv":33.4524},{"run":"2026-09-20_023653","board":"jbpi2","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":8.0479,"median":8.0681,"std":0.0832,"mean":8.0488,"min":7.4732,"p5":7.9571,"p95":8.0923,"max":8.1203,"iqr":0.0209,"reps":100,"cv":1.034},{"run":"2026-09-20_023653","board":"jbpi2","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.7585,"median":7.7726,"std":0.0322,"mean":7.7587,"min":7.69,"p5":7.6918,"p95":7.7919,"max":7.7942,"iqr":0.0239,"reps":25,"cv":0.415},{"run":"2026-09-20_023653","board":"jbpi2","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.8445,"median":7.8539,"std":0.0254,"mean":7.8446,"min":7.7859,"p5":7.793,"p95":7.8671,"max":7.8682,"iqr":0.0186,"reps":25,"cv":0.3235},{"run":"2026-09-20_023653","board":"jbpi2","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.4251,"median":8.4396,"std":0.0451,"mean":8.4253,"min":8.2895,"p5":8.3012,"p95":8.4547,"max":8.4597,"iqr":0.0132,"reps":43,"cv":0.5357},{"run":"2026-09-20_023653","board":"jbpi2","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.7976,"median":8.8003,"std":0.0032,"mean":8.7976,"min":8.7928,"p5":8.7928,"p95":8.8007,"max":8.8007,"iqr":0.0066,"reps":6,"cv":0.0366},{"run":"2026-09-20_023653","board":"jbpi2","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":9.1119,"median":9.1162,"std":0.0044,"mean":9.1119,"min":9.1075,"p5":9.1075,"p95":9.1162,"max":9.1162,"iqr":0.0087,"reps":2,"cv":0.0478},{"run":"2026-09-20_023653","board":"jbpi2","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.9634,"median":8.9634,"std":0.0,"mean":8.9634,"min":8.9634,"p5":8.9634,"p95":8.9634,"max":8.9634,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_023653","board":"jbpi2","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.1411,"median":9.1411,"std":0.0,"mean":9.1411,"min":9.1411,"p5":9.1411,"p95":9.1411,"max":9.1411,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_030648","board":"jbpi","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.8273,"median":12.876,"std":0.2641,"mean":12.8351,"min":7.2728,"p5":12.6583,"p95":12.9864,"max":13.0462,"iqr":0.1678,"reps":6797,"cv":2.0575},{"run":"2026-09-20_030648","board":"jbpi","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.2676,"median":4.4335,"std":2.0667,"mean":5.8395,"min":3.4442,"p5":4.2297,"p95":9.6139,"max":10.0243,"iqr":3.221,"reps":2791,"cv":35.3922},{"run":"2026-09-20_030648","board":"jbpi","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":8.1111,"median":8.1157,"std":0.0558,"mean":8.1115,"min":7.8773,"p5":8.0787,"p95":8.1679,"max":8.229,"iqr":0.0266,"reps":101,"cv":0.6879},{"run":"2026-09-20_030648","board":"jbpi","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.9338,"median":7.941,"std":0.0235,"mean":7.9338,"min":7.8798,"p5":7.8828,"p95":7.9597,"max":7.9677,"iqr":0.0128,"reps":25,"cv":0.2963},{"run":"2026-09-20_030648","board":"jbpi","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.8673,"median":7.8767,"std":0.0306,"mean":7.8674,"min":7.7822,"p5":7.807,"p95":7.8951,"max":7.8979,"iqr":0.0112,"reps":25,"cv":0.3892},{"run":"2026-09-20_030648","board":"jbpi","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.546,"median":8.5623,"std":0.0468,"mean":8.5463,"min":8.395,"p5":8.4134,"p95":8.5828,"max":8.5861,"iqr":0.0189,"reps":43,"cv":0.5472},{"run":"2026-09-20_030648","board":"jbpi","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.8337,"median":8.8291,"std":0.0098,"mean":8.8337,"min":8.8256,"p5":8.8256,"p95":8.8547,"max":8.8547,"iqr":0.0065,"reps":6,"cv":0.111},{"run":"2026-09-20_030648","board":"jbpi","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":9.1095,"median":9.1115,"std":0.002,"mean":9.1095,"min":9.1075,"p5":9.1075,"p95":9.1115,"max":9.1115,"iqr":0.0039,"reps":2,"cv":0.0216},{"run":"2026-09-20_030648","board":"jbpi","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.7603,"median":8.7604,"std":0.0,"mean":8.7604,"min":8.7604,"p5":8.7604,"p95":8.7604,"max":8.7604,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_030648","board":"jbpi","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.2335,"median":9.2335,"std":0.0,"mean":9.2335,"min":9.2335,"p5":9.2335,"p95":9.2335,"max":9.2335,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_033654","board":"jbpi2","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.9371,"median":12.9819,"std":0.2685,"mean":12.9452,"min":7.4743,"p5":12.8029,"p95":13.0741,"max":13.1264,"iqr":0.1215,"reps":6855,"cv":2.0743},{"run":"2026-09-20_033654","board":"jbpi2","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.0073,"median":4.2943,"std":1.9381,"mean":5.5102,"min":3.2492,"p5":4.106,"p95":9.4631,"max":9.9797,"iqr":2.8887,"reps":2654,"cv":35.1729},{"run":"2026-09-20_033654","board":"jbpi2","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":7.9781,"median":7.9906,"std":0.0559,"mean":7.9785,"min":7.7163,"p5":7.9186,"p95":8.0257,"max":8.0307,"iqr":0.0197,"reps":100,"cv":0.7003},{"run":"2026-09-20_033654","board":"jbpi2","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.8745,"median":7.8838,"std":0.0253,"mean":7.8746,"min":7.8175,"p5":7.8268,"p95":7.9029,"max":7.9182,"iqr":0.0169,"reps":25,"cv":0.3209},{"run":"2026-09-20_033654","board":"jbpi2","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.6594,"median":7.6632,"std":0.0192,"mean":7.6595,"min":7.6214,"p5":7.6234,"p95":7.6817,"max":7.6819,"iqr":0.0234,"reps":24,"cv":0.2502},{"run":"2026-09-20_033654","board":"jbpi2","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.4366,"median":8.4488,"std":0.0398,"mean":8.4368,"min":8.3178,"p5":8.3301,"p95":8.4639,"max":8.4657,"iqr":0.0109,"reps":43,"cv":0.4712},{"run":"2026-09-20_033654","board":"jbpi2","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.6528,"median":8.6569,"std":0.0105,"mean":8.6528,"min":8.6331,"p5":8.6331,"p95":8.666,"max":8.666,"iqr":0.0124,"reps":6,"cv":0.121},{"run":"2026-09-20_033654","board":"jbpi2","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":8.918,"median":8.9203,"std":0.0023,"mean":8.918,"min":8.9157,"p5":8.9157,"p95":8.9203,"max":8.9203,"iqr":0.0047,"reps":2,"cv":0.0261},{"run":"2026-09-20_033654","board":"jbpi2","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.6765,"median":8.6765,"std":0.0,"mean":8.6765,"min":8.6765,"p5":8.6765,"p95":8.6765,"max":8.6765,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_033654","board":"jbpi2","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.081,"median":9.081,"std":0.0,"mean":9.081,"min":9.081,"p5":9.081,"p95":9.081,"max":9.081,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_040649","board":"jbpi","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.8909,"median":12.9619,"std":0.2984,"mean":12.9013,"min":7.2015,"p5":12.7384,"p95":13.0335,"max":13.0745,"iqr":0.159,"reps":6830,"cv":2.3129},{"run":"2026-09-20_040649","board":"jbpi","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.2187,"median":4.4448,"std":1.9572,"mean":5.7336,"min":3.2257,"p5":4.2535,"p95":9.5016,"max":9.9845,"iqr":2.9954,"reps":2765,"cv":34.1361},{"run":"2026-09-20_040649","board":"jbpi","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":8.0682,"median":8.0802,"std":0.0675,"mean":8.0688,"min":7.7531,"p5":8.0012,"p95":8.1217,"max":8.1621,"iqr":0.0253,"reps":101,"cv":0.8362},{"run":"2026-09-20_040649","board":"jbpi","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.9255,"median":7.9356,"std":0.0319,"mean":7.9256,"min":7.8518,"p5":7.8557,"p95":7.9607,"max":7.9612,"iqr":0.0209,"reps":25,"cv":0.4025},{"run":"2026-09-20_040649","board":"jbpi","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.8167,"median":7.8269,"std":0.029,"mean":7.8168,"min":7.7447,"p5":7.7633,"p95":7.8464,"max":7.8466,"iqr":0.0161,"reps":25,"cv":0.371},{"run":"2026-09-20_040649","board":"jbpi","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.5432,"median":8.5585,"std":0.0457,"mean":8.5434,"min":8.4075,"p5":8.4226,"p95":8.5715,"max":8.5829,"iqr":0.0128,"reps":43,"cv":0.5349},{"run":"2026-09-20_040649","board":"jbpi","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.8565,"median":8.8554,"std":0.0091,"mean":8.8565,"min":8.8475,"p5":8.8475,"p95":8.8742,"max":8.8742,"iqr":0.0128,"reps":6,"cv":0.1031},{"run":"2026-09-20_040649","board":"jbpi","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":9.0788,"median":9.0809,"std":0.0021,"mean":9.0788,"min":9.0767,"p5":9.0767,"p95":9.0809,"max":9.0809,"iqr":0.0042,"reps":2,"cv":0.0229},{"run":"2026-09-20_040649","board":"jbpi","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.9235,"median":8.9235,"std":0.0,"mean":8.9235,"min":8.9235,"p5":8.9235,"p95":8.9235,"max":8.9235,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_040649","board":"jbpi","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.0726,"median":9.0725,"std":0.0,"mean":9.0725,"min":9.0725,"p5":9.0725,"p95":9.0725,"max":9.0725,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_043651","board":"jbpi2","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.4196,"median":12.8275,"std":1.0977,"mean":12.5758,"min":6.7576,"p5":11.946,"p95":12.9652,"max":13.0181,"iqr":0.1735,"reps":6581,"cv":8.7287},{"run":"2026-09-20_043651","board":"jbpi2","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.0011,"median":4.278,"std":1.961,"mean":5.5165,"min":3.0832,"p5":4.09,"p95":9.4317,"max":9.9479,"iqr":2.7138,"reps":2650,"cv":35.547},{"run":"2026-09-20_043651","board":"jbpi2","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":7.8642,"median":7.8767,"std":0.0549,"mean":7.8646,"min":7.6361,"p5":7.6777,"p95":7.908,"max":7.921,"iqr":0.0232,"reps":98,"cv":0.6985},{"run":"2026-09-20_043651","board":"jbpi2","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.7793,"median":7.9095,"std":0.2068,"mean":7.785,"min":7.2682,"p5":7.5191,"p95":7.9747,"max":7.9848,"iqr":0.3976,"reps":25,"cv":2.6566},{"run":"2026-09-20_043651","board":"jbpi2","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.6903,"median":7.7046,"std":0.0298,"mean":7.6904,"min":7.6217,"p5":7.6339,"p95":7.7167,"max":7.7208,"iqr":0.02,"reps":24,"cv":0.3871},{"run":"2026-09-20_043651","board":"jbpi2","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.4845,"median":8.4981,"std":0.0442,"mean":8.4847,"min":8.3563,"p5":8.3661,"p95":8.5171,"max":8.5192,"iqr":0.0191,"reps":43,"cv":0.521},{"run":"2026-09-20_043651","board":"jbpi2","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.5907,"median":8.7949,"std":0.2302,"mean":8.597,"min":8.2447,"p5":8.2447,"p95":8.807,"max":8.807,"iqr":0.4674,"reps":6,"cv":2.6774},{"run":"2026-09-20_043651","board":"jbpi2","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":9.0998,"median":9.1054,"std":0.0056,"mean":9.0998,"min":9.0942,"p5":9.0942,"p95":9.1054,"max":9.1054,"iqr":0.0113,"reps":2,"cv":0.0618},{"run":"2026-09-20_043651","board":"jbpi2","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.9507,"median":8.9507,"std":0.0,"mean":8.9507,"min":8.9507,"p5":8.9507,"p95":8.9507,"max":8.9507,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_043651","board":"jbpi2","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.2567,"median":9.2567,"std":0.0,"mean":9.2567,"min":9.2567,"p5":9.2567,"p95":9.2567,"max":9.2567,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_050649","board":"jbpi","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.8814,"median":12.9282,"std":0.2695,"mean":12.8895,"min":7.5612,"p5":12.7127,"p95":13.0406,"max":13.093,"iqr":0.1613,"reps":6825,"cv":2.0912},{"run":"2026-09-20_050649","board":"jbpi","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.2166,"median":4.4324,"std":1.8374,"mean":5.686,"min":3.4481,"p5":4.2308,"p95":9.3689,"max":10.0022,"iqr":2.947,"reps":2764,"cv":32.3148},{"run":"2026-09-20_050649","board":"jbpi","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":8.1423,"median":8.1492,"std":0.0578,"mean":8.1427,"min":7.8799,"p5":8.1077,"p95":8.1918,"max":8.206,"iqr":0.0301,"reps":102,"cv":0.7094},{"run":"2026-09-20_050649","board":"jbpi","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.9673,"median":7.9762,"std":0.0243,"mean":7.9674,"min":7.9129,"p5":7.9163,"p95":7.9944,"max":7.9974,"iqr":0.0184,"reps":25,"cv":0.3053},{"run":"2026-09-20_050649","board":"jbpi","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.7374,"median":7.7449,"std":0.0199,"mean":7.7374,"min":7.6955,"p5":7.6963,"p95":7.758,"max":7.7625,"iqr":0.0124,"reps":25,"cv":0.2577},{"run":"2026-09-20_050649","board":"jbpi","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.4913,"median":8.5013,"std":0.033,"mean":8.4915,"min":8.3932,"p5":8.4017,"p95":8.5209,"max":8.5237,"iqr":0.0173,"reps":43,"cv":0.3881},{"run":"2026-09-20_050649","board":"jbpi","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.7544,"median":8.7551,"std":0.004,"mean":8.7544,"min":8.7484,"p5":8.7484,"p95":8.7606,"max":8.7606,"iqr":0.0065,"reps":6,"cv":0.046},{"run":"2026-09-20_050649","board":"jbpi","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":9.004,"median":9.0071,"std":0.0031,"mean":9.004,"min":9.0009,"p5":9.0009,"p95":9.0071,"max":9.0071,"iqr":0.0062,"reps":2,"cv":0.0342},{"run":"2026-09-20_050649","board":"jbpi","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.7795,"median":8.7794,"std":0.0,"mean":8.7794,"min":8.7794,"p5":8.7794,"p95":8.7794,"max":8.7794,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_050649","board":"jbpi","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.1443,"median":9.1444,"std":0.0,"mean":9.1444,"min":9.1444,"p5":9.1444,"p95":9.1444,"max":9.1444,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_053652","board":"jbpi2","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.8494,"median":12.9091,"std":0.2777,"mean":12.858,"min":7.401,"p5":12.6814,"p95":13.0099,"max":13.0745,"iqr":0.1689,"reps":6808,"cv":2.1601},{"run":"2026-09-20_053652","board":"jbpi2","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.5927,"median":5.863,"std":2.0396,"mean":6.1883,"min":3.3626,"p5":4.189,"p95":9.544,"max":10.0428,"iqr":3.9893,"reps":2964,"cv":32.9585},{"run":"2026-09-20_053652","board":"jbpi2","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":8.0422,"median":8.0546,"std":0.053,"mean":8.0426,"min":7.7645,"p5":8.0002,"p95":8.0724,"max":8.093,"iqr":0.016,"reps":100,"cv":0.6595},{"run":"2026-09-20_053652","board":"jbpi2","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.6854,"median":7.6949,"std":0.0236,"mean":7.6854,"min":7.6266,"p5":7.6428,"p95":7.7061,"max":7.7272,"iqr":0.0147,"reps":24,"cv":0.3067},{"run":"2026-09-20_053652","board":"jbpi2","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.8263,"median":7.8417,"std":0.0267,"mean":7.8264,"min":7.7672,"p5":7.7721,"p95":7.8491,"max":7.8502,"iqr":0.0209,"reps":25,"cv":0.3415},{"run":"2026-09-20_053652","board":"jbpi2","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.5229,"median":8.5384,"std":0.041,"mean":8.5231,"min":8.4036,"p5":8.4071,"p95":8.5494,"max":8.5512,"iqr":0.019,"reps":43,"cv":0.4813},{"run":"2026-09-20_053652","board":"jbpi2","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.7688,"median":8.7711,"std":0.006,"mean":8.7688,"min":8.7561,"p5":8.7561,"p95":8.7745,"max":8.7745,"iqr":0.005,"reps":6,"cv":0.0689},{"run":"2026-09-20_053652","board":"jbpi2","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":9.0324,"median":9.035,"std":0.0027,"mean":9.0324,"min":9.0297,"p5":9.0297,"p95":9.035,"max":9.035,"iqr":0.0053,"reps":2,"cv":0.0294},{"run":"2026-09-20_053652","board":"jbpi2","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.7396,"median":8.7396,"std":0.0,"mean":8.7396,"min":8.7396,"p5":8.7396,"p95":8.7396,"max":8.7396,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_053652","board":"jbpi2","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.1936,"median":9.1936,"std":0.0,"mean":9.1936,"min":9.1936,"p5":9.1936,"p95":9.1936,"max":9.1936,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_060649","board":"jbpi","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.4658,"median":12.7909,"std":0.914,"mean":12.5646,"min":6.6071,"p5":11.8801,"p95":12.9205,"max":12.9823,"iqr":0.195,"reps":6605,"cv":7.2742},{"run":"2026-09-20_060649","board":"jbpi","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.3486,"median":4.4647,"std":1.9435,"mean":5.8704,"min":3.484,"p5":4.2311,"p95":9.5332,"max":9.9777,"iqr":3.0482,"reps":2834,"cv":33.1063},{"run":"2026-09-20_060649","board":"jbpi","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":8.1497,"median":8.1633,"std":0.0684,"mean":8.1503,"min":7.893,"p5":7.9957,"p95":8.2227,"max":8.2437,"iqr":0.0398,"reps":102,"cv":0.8396},{"run":"2026-09-20_060649","board":"jbpi","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.7918,"median":7.933,"std":0.2024,"mean":7.7972,"min":7.3604,"p5":7.4289,"p95":7.9958,"max":8.0047,"iqr":0.3793,"reps":25,"cv":2.5956},{"run":"2026-09-20_060649","board":"jbpi","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.6892,"median":7.6973,"std":0.0215,"mean":7.6893,"min":7.6401,"p5":7.6442,"p95":7.7062,"max":7.7156,"iqr":0.0143,"reps":24,"cv":0.2798},{"run":"2026-09-20_060649","board":"jbpi","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.5165,"median":8.53,"std":0.0363,"mean":8.5167,"min":8.4121,"p5":8.4169,"p95":8.5413,"max":8.5518,"iqr":0.0141,"reps":43,"cv":0.4268},{"run":"2026-09-20_060649","board":"jbpi","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.502,"median":8.6733,"std":0.1915,"mean":8.5064,"min":8.2098,"p5":8.2098,"p95":8.6802,"max":8.6802,"iqr":0.3825,"reps":6,"cv":2.251},{"run":"2026-09-20_060649","board":"jbpi","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":9.0714,"median":9.0736,"std":0.0022,"mean":9.0714,"min":9.0692,"p5":9.0692,"p95":9.0736,"max":9.0736,"iqr":0.0044,"reps":2,"cv":0.0241},{"run":"2026-09-20_060649","board":"jbpi","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.8219,"median":8.8219,"std":0.0,"mean":8.8219,"min":8.8219,"p5":8.8219,"p95":8.8219,"max":8.8219,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_060649","board":"jbpi","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.2063,"median":9.2063,"std":0.0,"mean":9.2063,"min":9.2063,"p5":9.2063,"p95":9.2063,"max":9.2063,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_063652","board":"jbpi2","case":"B2","m":384,"n":384,"k":64,"cfg":"16x15","gops_mean_time":12.748,"median":12.8079,"std":0.3119,"mean":12.7593,"min":6.907,"p5":12.4637,"p95":12.9267,"max":12.9864,"iqr":0.1584,"reps":6755,"cv":2.4444},{"run":"2026-09-20_063652","board":"jbpi2","case":"B3","m":64,"n":384,"k":384,"cfg":"16x15","gops_mean_time":5.4352,"median":5.593,"std":2.1031,"mean":6.0795,"min":3.1497,"p5":4.045,"p95":9.3375,"max":9.9786,"iqr":4.3249,"reps":2880,"cv":34.5935},{"run":"2026-09-20_063652","board":"jbpi2","case":"B1","m":1024,"n":384,"k":1024,"cfg":"32x6","gops_mean_time":8.0043,"median":8.0214,"std":0.0724,"mean":8.005,"min":7.6699,"p5":7.8981,"p95":8.0508,"max":8.0596,"iqr":0.02,"reps":100,"cv":0.9041},{"run":"2026-09-20_063652","board":"jbpi2","case":"B5","m":1024,"n":384,"k":4096,"cfg":"32x6","gops_mean_time":7.9644,"median":7.9755,"std":0.0323,"mean":7.9645,"min":7.8885,"p5":7.8898,"p95":7.9943,"max":7.9949,"iqr":0.0146,"reps":25,"cv":0.4061},{"run":"2026-09-20_063652","board":"jbpi2","case":"B4","m":4096,"n":384,"k":1024,"cfg":"32x7","gops_mean_time":7.7775,"median":7.7853,"std":0.0254,"mean":7.7776,"min":7.7172,"p5":7.722,"p95":7.8021,"max":7.8022,"iqr":0.0181,"reps":25,"cv":0.3266},{"run":"2026-09-20_063652","board":"jbpi2","case":"S1","m":1000,"n":1000,"k":1000,"cfg":"32x7","gops_mean_time":8.4552,"median":8.4718,"std":0.0487,"mean":8.4555,"min":8.3162,"p5":8.3285,"p95":8.4855,"max":8.4888,"iqr":0.0175,"reps":43,"cv":0.5758},{"run":"2026-09-20_063652","board":"jbpi2","case":"S2","m":2000,"n":2000,"k":2000,"cfg":"32x7","gops_mean_time":8.7928,"median":8.7953,"std":0.0084,"mean":8.7928,"min":8.7747,"p5":8.7747,"p95":8.8004,"max":8.8004,"iqr":0.0049,"reps":6,"cv":0.0956},{"run":"2026-09-20_063652","board":"jbpi2","case":"S3","m":3000,"n":3000,"k":3000,"cfg":"32x7","gops_mean_time":9.0345,"median":9.0371,"std":0.0026,"mean":9.0345,"min":9.0319,"p5":9.0319,"p95":9.0371,"max":9.0371,"iqr":0.0052,"reps":2,"cv":0.0287},{"run":"2026-09-20_063652","board":"jbpi2","case":"S4","m":4000,"n":4000,"k":4000,"cfg":"32x7","gops_mean_time":8.8936,"median":8.8936,"std":0.0,"mean":8.8936,"min":8.8936,"p5":8.8936,"p95":8.8936,"max":8.8936,"iqr":0.0,"reps":1,"cv":0.0},{"run":"2026-09-20_063652","board":"jbpi2","case":"S5","m":5000,"n":5000,"k":5000,"cfg":"32x7","gops_mean_time":9.0508,"median":9.0508,"std":0.0,"mean":9.0508,"min":9.0508,"p5":9.0508,"p95":9.0508,"max":9.0508,"iqr":0.0,"reps":1,"cv":0.0}];
+const LAYERS = [
+  {id:"S1",m:1000,n:1000,k:1000,cfg:"32x7"},{id:"S2",m:2000,n:2000,k:2000,cfg:"32x7"},
+  {id:"S3",m:3000,n:3000,k:3000,cfg:"32x7"},{id:"S4",m:4000,n:4000,k:4000,cfg:"32x7"},
+  {id:"S5",m:5000,n:5000,k:5000,cfg:"32x7"},
+  {id:"B1",m:1024,n:384,k:1024,cfg:"32x6"},{id:"B2",m:384,n:384,k:64,cfg:"16x15"},
+  {id:"B3",m:64,n:384,k:384,cfg:"16x15"},{id:"B4",m:4096,n:384,k:1024,cfg:"32x7"},
+  {id:"B5",m:1024,n:384,k:4096,cfg:"32x6"}
+];
+const SERIES = {
+  jbpi :{label:"jbpi",  sub:"ours, 8 runs", color:"--s1", shape:"dot",  ours:true},
+  jbpi2:{label:"jbpi2", sub:"ours, 8 runs", color:"--s2", shape:"dot",  ours:true},
+  pub  :{label:"Past publication ref design", sub:"your table", color:"--s3", shape:"line",
+         vals:{S1:8.5,S2:8.7,S3:8.9,S4:9.0,S5:9.0,B1:8.0,B2:12.5,B3:8.8,B4:8.5,B5:7.5}},
+  fresh:{label:"Fresh reference run", sub:"jbpi2, B1 and B5 only", color:"--s4", shape:"tri",
+         vals:{B1:7.02,B5:7.06}},
+  arch :{label:"Archived xDSL sweep", sub:"best-of-sweep", color:"--s5", shape:"diamond",
+         vals:{S1:8.32,S2:8.53,S3:8.51,S4:8.31,S5:8.36,B1:7.38,B2:12.2,B3:8.53,B4:7.46,B5:6.80}},
+  blas :{label:"OpenBLAS (archived)", sub:"ext/*_comparison.txt", color:"--s6", shape:"ring",
+         vals:{S1:6.1,S2:6.8,S3:6.8,S4:6.9,S5:7.0,B1:6.0,B2:5.1,B3:7.3,B4:5.9,B5:5.9}}
+};
+const BOARDS = ["jbpi","jbpi2"];
+const REFS = ["pub","fresh","arch","blas"];
+const state = {metric:"mean", vis:{jbpi:true,jbpi2:true,pub:true,fresh:true,arch:true,blas:false}, tab:"layers",
+               ref:"pub", zoom:true, layer:"B3", band:true};
+
+const NS = "http://www.w3.org/2000/svg";
+function S(tag, attrs, parent, text){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function H(tag, attrs, parent, text){
+  const e = document.createElement(tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const fmt = (x, d=2) => Number(x).toFixed(d);
+const sgn = (x, d=1) => (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toFixed(d);
+const col = v => "var(" + v + ")";
+const mean = a => a.reduce((s,x)=>s+x,0)/a.length;
+
+/* ---------- data ---------- */
+function val(r){ return state.metric === "mean" ? r.gops_mean_time : r.median; }
+function valHead(r){ return r.gops_mean_time; }
+function agg(caseId, board, getter){
+  const g = getter || val;
+  const rs = RUNS.filter(r => r.case === caseId && r.board === board);
+  if (!rs.length) return null;
+  const v = rs.map(g);
+  const m = mean(v), lo = Math.min(...v), hi = Math.max(...v);
+  const reps = mean(rs.map(r => r.reps));
+  return {n:rs.length, mean:m, min:lo, max:hi, p5:mean(rs.map(r=>r.p5)), p95:mean(rs.map(r=>r.p95)),
+          cv:mean(rs.map(r=>r.cv)), reps, spread:(hi-lo)/m*100, runs:rs, multi: reps >= 3};
+}
+function refVal(key, id){ const v = SERIES[key].vals[id]; return v == null ? null : v; }
+function niceStep(range){ const raw = range/6, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw/p;
+  return (f<=1?1:f<=2?2:f<=5?5:10)*p; }
+
+/* ---------- tooltip ---------- */
+const tip = document.getElementById("tip");
+function keyIcon(key, size){
+  const sz = size || 14, s = SERIES[key], c = col(s.color);
+  const svg = S("svg", {width:sz, height:sz, viewBox:"0 0 14 14", "aria-hidden":"true"});
+  drawMark(svg, s.shape, 7, 7, 4.5, c, "var(--surface)", 14);
+  return svg;
+}
+function drawMark(p, shape, x, y, r, c, ring, lineW){
+  if (shape === "dot"){ S("circle", {cx:x, cy:y, r:r+2, fill:ring}, p); S("circle", {cx:x, cy:y, r:r, fill:c}, p); }
+  else if (shape === "line"){ S("rect", {x:x-(lineW||14)/2, y:y-1.5, width:lineW||14, height:3, rx:1.5, fill:c}, p); }
+  else if (shape === "tri"){ S("path", {d:`M${x},${y-r-1}L${x+r+1},${y+r}L${x-r-1},${y+r}Z`, fill:c, stroke:ring, "stroke-width":2, "paint-order":"stroke"}, p); }
+  else if (shape === "diamond"){ S("path", {d:`M${x},${y-r-1}L${x+r+1},${y}L${x},${y+r+1}L${x-r-1},${y}Z`, fill:c, stroke:ring, "stroke-width":2, "paint-order":"stroke"}, p); }
+  else if (shape === "ring"){ S("circle", {cx:x, cy:y, r:r, fill:ring, stroke:c, "stroke-width":2.5}, p); }
+}
+function showTip(cx, cy, title, rows){
+  tip.replaceChildren();
+  H("div", {class:"t"}, tip, title);
+  for (const r of rows){
+    const g = H("div", {class:"r"}, tip);
+    const k = H("span", {}, g); if (r.key) k.appendChild(keyIcon(r.key, 14));
+    const line = H("span", {}, g);
+    H("span", {class:"v"}, line, r.value);
+    H("span", {class:"n"}, line, "  " + r.name);
+    if (r.sub) H("div", {class:"s"}, g, r.sub);
+  }
+  tip.hidden = false;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = cx + 14, y = cy + 14;
+  if (x + w > window.innerWidth - 8) x = cx - w - 14;
+  if (x < 8) x = 8;
+  if (y + h > window.innerHeight - 8) y = window.innerHeight - h - 8;
+  if (y < 8) y = 8;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+function hideTip(){ tip.hidden = true; }
+function bindBand(rect, build){
+  const show = e => { const b = rect.getBoundingClientRect();
+    const px = e.clientX != null && e.type !== "focus" ? e.clientX : b.left + b.width/2;
+    const py = e.clientY != null && e.type !== "focus" ? e.clientY : b.top + 40;
+    const t = build(); showTip(px, py, t.title, t.rows); };
+  rect.addEventListener("pointermove", show); rect.addEventListener("pointerenter", show);
+  rect.addEventListener("focus", show); rect.addEventListener("pointerleave", hideTip); rect.addEventListener("blur", hideTip);
+}
+
+/* ---------- axes helpers ---------- */
+function yTicks(lo, hi){
+  const step = niceStep(hi - lo), out = [];
+  for (let v = Math.ceil(lo/step)*step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
+  return out;
+}
+function layout(W, padL, padR){
+  const gap = 22, gw = (W - padL - padR - gap)/10;
+  return { gw, x: i => padL + i*gw + (i >= 5 ? gap : 0) + gw/2, xl: i => padL + i*gw + (i >= 5 ? gap : 0) };
+}
+function xLabels(svg, L, y){
+  LAYERS.forEach((l, i) => {
+    S("text", {x:L.x(i), y:y, "text-anchor":"middle", class:"lbl", "font-weight":600}, svg, l.id);
+    S("text", {x:L.x(i), y:y+14, "text-anchor":"middle"}, svg, l.cfg);
+  });
+  S("text", {x:L.xl(0), y:y+32, "text-anchor":"start"}, svg, "Square, m=n=k from 1000 to 5000");
+  S("text", {x:L.xl(5), y:y+32, "text-anchor":"start"}, svg, "BERT Large (m×n×k in the tooltip)");
+}
+
+/* ---------- view 1: layer by layer ---------- */
+function drawLayers(){
+  const svg = document.getElementById("svg-layers"); svg.replaceChildren();
+  const W = 1000, Ht = 470, padL = 46, padR = 14, padT = 14, padB = 64;
+  svg.setAttribute("viewBox", `0 0 ${W} ${Ht}`);
+  const L = layout(W, padL, padR);
+  let lo = Infinity, hi = -Infinity;
+  const take = v => { if (v != null && isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } };
+  for (const l of LAYERS){
+    for (const b of BOARDS) if (state.vis[b]){ const a = agg(l.id, b); if (a){ take(a.min); take(a.max);
+      if (state.band && a.multi){ take(a.p5); take(a.p95); } } }
+    for (const r of REFS) if (state.vis[r]) take(refVal(r, l.id));
+  }
+  if (!isFinite(lo)){ lo = 0; hi = 10; }
+  lo = Math.floor(lo - 0.3); hi = Math.ceil(hi + 0.3);
+  const y = v => padT + (hi - v)/(hi - lo)*(Ht - padT - padB);
+  for (const t of yTicks(lo, hi)){
+    S("line", {x1:padL, x2:W-padR, y1:y(t), y2:y(t), stroke:"var(--grid)", "stroke-width":1}, svg);
+    S("text", {x:padL-8, y:y(t)+4, "text-anchor":"end"}, svg, String(t));
+  }
+  S("text", {x:padL, y:10, "text-anchor":"start"}, svg, "GOPs, whole GEMM call");
+  S("line", {x1:padL, x2:W-padR, y1:Ht-padB, y2:Ht-padB, stroke:"var(--axis)"}, svg);
+  xLabels(svg, L, Ht - padB + 18);
+  const off = 15;
+  LAYERS.forEach((l, i) => {
+    const cx = L.x(i);
+    // published: full-width bar, behind
+    if (state.vis.pub){ const v = refVal("pub", l.id); if (v != null)
+      S("rect", {x:cx-L.gw/2+5, y:y(v)-1.5, width:L.gw-10, height:3, rx:1.5, fill:col(SERIES.pub.color)}, svg); }
+    if (state.vis.arch){ const v = refVal("arch", l.id); if (v != null) drawMark(svg, "diamond", cx-L.gw/2+12, y(v), 5, col(SERIES.arch.color), "var(--surface)"); }
+    if (state.vis.fresh){ const v = refVal("fresh", l.id); if (v != null) drawMark(svg, "tri", cx+L.gw/2-12, y(v), 5, col(SERIES.fresh.color), "var(--surface)"); }
+    if (state.vis.blas){ const v = refVal("blas", l.id); if (v != null) drawMark(svg, "ring", cx+L.gw/2-12, y(v), 4.5, col(SERIES.blas.color), "var(--surface)"); }
+    BOARDS.forEach((b, bi) => {
+      if (!state.vis[b]) return;
+      const a = agg(l.id, b); if (!a) return;
+      const x = cx + (bi ? off : -off), c = col(SERIES[b].color);
+      if (state.band && a.multi) S("rect", {x:x-5, y:y(a.p95), width:10, height:Math.max(2, y(a.p5)-y(a.p95)), rx:4, fill:c, opacity:.22}, svg);
+      S("line", {x1:x, x2:x, y1:y(a.max), y2:y(a.min), stroke:c, "stroke-width":2.5, "stroke-linecap":"round"}, svg);
+      drawMark(svg, "dot", x, y(a.mean), 4.5, c, "var(--surface)");
+    });
+    const band = S("rect", {class:"band", x:L.xl(i), y:padT, width:L.gw, height:Ht-padT-padB, tabindex:0,
+                  "aria-label":`${l.id}, ${l.m} by ${l.n} by ${l.k}, config ${l.cfg}`}, svg);
+    bindBand(band, () => layerTip(l));
+  });
+}
+function layerTip(l){
+  const rows = [];
+  for (const b of BOARDS) if (state.vis[b]){
+    const a = agg(l.id, b); if (!a) continue;
+    const parts = [`runs ${fmt(a.min)} to ${fmt(a.max)}`];
+    parts.push(a.multi ? `inside-run CV ${fmt(a.cv,1)}%, p5 ${fmt(a.p5)} to p95 ${fmt(a.p95)}` : `${Math.round(a.reps)} rep${a.reps<1.5?"":"s"} per run, no inside-run spread`);
+    rows.push({key:b, value:fmt(a.mean)+" GOPs", name:SERIES[b].label+" (mean of "+a.n+" runs)", sub:parts.join(" · ")});
+  }
+  for (const r of REFS) if (state.vis[r]){
+    const v = refVal(r, l.id); if (v == null) continue;
+    const ours = BOARDS.filter(b=>state.vis[b]).map(b=>agg(l.id,b)).filter(Boolean);
+    let sub; if (ours.length){ const d = (mean(ours.map(a=>a.mean)) - v)/v*100; sub = `ours are ${sgn(d)}% versus this`; }
+    rows.push({key:r, value:fmt(v)+" GOPs", name:SERIES[r].label, sub});
+  }
+  return {title:`${l.id} · ${l.m}×${l.n}×${l.k} · ${l.cfg}`, rows};
+}
+
+/* ---------- view 2: versus reference ---------- */
+function barPath(x, w, y0, y1, r){
+  const h = Math.abs(y1 - y0); if (h < 0.5) return `M${x},${y0}h${w}`;
+  r = Math.min(r, h, w/2);
+  if (y1 < y0) return `M${x},${y0}V${y1+r}Q${x},${y1} ${x+r},${y1}H${x+w-r}Q${x+w},${y1} ${x+w},${y1+r}V${y0}Z`;
+  return `M${x},${y0}V${y1-r}Q${x},${y1} ${x+r},${y1}H${x+w-r}Q${x+w},${y1} ${x+w},${y1-r}V${y0}Z`;
+}
+function drawDelta(){
+  const svg = document.getElementById("svg-delta"); svg.replaceChildren();
+  const W = 1000, Ht = 440, padL = 46, padR = 14, padT = 26, padB = 64;
+  svg.setAttribute("viewBox", `0 0 ${W} ${Ht}`);
+  const L = layout(W, padL, padR), ref = state.ref;
+  const data = LAYERS.map(l => {
+    const rv = refVal(ref, l.id), out = {l, rv, b:{}};
+    if (rv != null) for (const b of BOARDS){ const a = agg(l.id, b); if (a) out.b[b] = {d:(a.mean-rv)/rv*100, lo:(a.min-rv)/rv*100, hi:(a.max-rv)/rv*100, a}; }
+    return out; });
+  let mx = 0; for (const d of data) for (const b of BOARDS) if (state.vis[b] && d.b[b]) mx = Math.max(mx, Math.abs(d.b[b].d), Math.abs(d.b[b].lo), Math.abs(d.b[b].hi));
+  const lim = state.zoom ? 10 : Math.max(5, Math.ceil(mx/5)*5), dom = lim*1.25;
+  const y = v => padT + (dom - v)/(2*dom)*(Ht - padT - padB);
+  const clip = v => Math.max(-lim, Math.min(lim, v));
+  for (const t of yTicks(-lim, lim)){
+    S("line", {x1:padL, x2:W-padR, y1:y(t), y2:y(t), stroke: t === 0 ? "var(--axis)" : "var(--grid)"}, svg);
+    S("text", {x:padL-8, y:y(t)+4, "text-anchor":"end"}, svg, (t>0?"+":t<0?"−":"") + Math.abs(t) + "%");
+  }
+  S("text", {x:padL, y:12, "text-anchor":"start"}, svg, "Ours minus reference, % of reference");
+  xLabels(svg, L, Ht - padB + 18);
+  const bw = 18, gapb = 2;
+  data.forEach((d, i) => {
+    const cx = L.x(i);
+    if (d.rv == null){ S("text", {x:cx, y:y(0)-8, "text-anchor":"middle", opacity:.8}, svg, "no value"); }
+    BOARDS.forEach((b, bi) => {
+      if (!state.vis[b] || !d.b[b]) return;
+      const v = d.b[b], x = bi ? cx + gapb/2 : cx - bw - gapb/2, c = col(SERIES[b].color);
+      const tipv = clip(v.d);
+      S("path", {d:barPath(x, bw, y(0), y(tipv), 4), fill:c}, svg);
+      const wx = x + bw/2, wl = clip(v.lo), wh = clip(v.hi);
+      S("line", {x1:wx, x2:wx, y1:y(wl), y2:y(wh), stroke:"var(--ink)", "stroke-width":1.5, opacity:.75}, svg);
+      const clipped = Math.abs(v.d) > lim;
+      if (clipped){ const dir = v.d > 0 ? 1 : -1, yy = y(tipv);
+        S("path", {d:`M${x-2},${yy+dir*5}l${bw+4},-6`, stroke:"var(--surface)", "stroke-width":3, fill:"none"}, svg); }
+      if (clipped || Math.abs(v.d) >= 5){
+        const dir = v.d > 0 ? -1 : 1;
+        S("text", {x:wx, y:y(tipv) + (dir < 0 ? -6 : 14), "text-anchor":"middle", class:"lbl", "font-weight":600}, svg, sgn(v.d, 0) + "%");
+      }
+    });
+    const band = S("rect", {class:"band", x:L.xl(i), y:padT, width:L.gw, height:Ht-padT-padB, tabindex:0,
+                  "aria-label":`${d.l.id} versus ${SERIES[ref].label}`}, svg);
+    bindBand(band, () => {
+      const rows = [];
+      for (const b of BOARDS) if (state.vis[b] && d.b[b]){ const v = d.b[b];
+        rows.push({key:b, value:sgn(v.d)+"%", name:SERIES[b].label, sub:`${fmt(v.a.mean)} GOPs, runs ${sgn(v.lo)}% to ${sgn(v.hi)}%`}); }
+      if (d.rv != null) rows.push({key:ref, value:fmt(d.rv)+" GOPs", name:SERIES[ref].label});
+      else rows.push({value:"No value", name:SERIES[ref].label + " has none for " + d.l.id});
+      return {title:`${d.l.id} · ${d.l.m}×${d.l.n}×${d.l.k} · ${d.l.cfg}`, rows};
+    });
+  });
+  const cnt = data.filter(d => d.rv != null).length;
+  const note = document.getElementById("delta-note");
+  note.textContent = cnt < 10 ? `${SERIES[ref].label} has values for ${cnt} of the 10 layers.` : "";
+  if (state.zoom) note.textContent += (note.textContent ? " " : "") + "Bars past ±10% are cut at the edge; the label shows the true value.";
+}
+
+/* ---------- view 3: jitter ---------- */
+function rowsChart(svgId, kind){
+  const svg = document.getElementById(svgId); svg.replaceChildren();
+  const W = 470, rowH = 28, padL = 66, padR = 20, padT = 14, padB = 34, Ht = padT + rowH*10 + padB;
+  svg.setAttribute("viewBox", `0 0 ${W} ${Ht}`);
+  const A = {}; let hi = 0;
+  for (const l of LAYERS) for (const b of BOARDS){ const a = agg(l.id, b, valHead);
+    const v = kind === "cv" ? (a.multi ? a.cv : null) : a.spread; A[l.id+b] = v; if (v != null && state.vis[b]) hi = Math.max(hi, v); }
+  let x, ticks;
+  if (kind === "cv"){
+    const lo = 0.1; hi = Math.max(hi, 1); const top = Math.pow(10, Math.ceil(Math.log10(hi*1.05)));
+    x = v => padL + (Math.log10(Math.max(v, lo)) - Math.log10(lo))/(Math.log10(top) - Math.log10(lo))*(W-padL-padR);
+    ticks = []; for (let t = lo; t <= top*1.001; t *= 10) ticks.push(t);
+  } else {
+    const top = Math.max(2, Math.ceil(hi*1.1)); x = v => padL + v/top*(W-padL-padR); ticks = yTicks(0, top);
+  }
+  const y = i => padT + i*rowH + rowH/2;
+  for (const t of ticks){
+    S("line", {x1:x(t), x2:x(t), y1:padT, y2:Ht-padB, stroke:"var(--grid)"}, svg);
+    S("text", {x:x(t), y:Ht-padB+16, "text-anchor":"middle"}, svg, (t < 1 ? String(t) : String(Math.round(t))) + "%");
+  }
+  if (kind === "cv") S("text", {x:W-padR, y:Ht-4, "text-anchor":"end"}, svg, "log scale");
+  LAYERS.forEach((l, i) => {
+    S("text", {x:padL-10, y:y(i)+4, "text-anchor":"end", class:"lbl", "font-weight":600}, svg, l.id);
+    let any = false;
+    BOARDS.forEach((b, bi) => {
+      if (!state.vis[b]) return;
+      const v = A[l.id+b];
+      if (v == null) return;
+      any = true; drawMark(svg, "dot", x(v), y(i) + (bi ? 5 : -5), 4.5, col(SERIES[b].color), "var(--surface)");
+    });
+    if (kind === "cv" && A[l.id+"jbpi"] == null) S("text", {x:padL+6, y:y(i)+4, opacity:.9}, svg, "1–2 reps per run, not measurable");
+    const band = S("rect", {class:"band", x:0, y:padT+i*rowH, width:W, height:rowH, tabindex:0, "aria-label":l.id}, svg);
+    bindBand(band, () => {
+      const rows = [];
+      for (const b of BOARDS) if (state.vis[b]){ const a = agg(l.id, b, valHead); const v = A[l.id+b];
+        rows.push({key:b, value: v == null ? "n/a" : fmt(v, v < 10 ? 2 : 1) + "%", name:SERIES[b].label,
+          sub: kind === "cv" ? (a.multi ? `${Math.round(a.reps)} reps per run, p5 ${fmt(a.p5)} to p95 ${fmt(a.p95)} GOPs` : `${Math.round(a.reps)} rep${a.reps<1.5?"":"s"} per run`)
+                             : `run means ${fmt(a.min)} to ${fmt(a.max)} GOPs`}); }
+      return {title:`${l.id} · ${l.cfg}`, rows};
+    });
+  });
+}
+function minutes(id){ const m = id.match(/2026-09-(\d\d)_(\d\d)(\d\d)/); return (+m[1]-19)*1440 + (+m[2])*60 + (+m[3]) - 1380; }
+function clock(id){ const m = id.match(/_(\d\d)(\d\d)/); return m[1]+":"+m[2]; }
+function drawTime(){
+  const svg = document.getElementById("svg-time"); svg.replaceChildren();
+  const W = 1000, Ht = 360, padL = 46, padR = 96, padT = 16, padB = 34;
+  svg.setAttribute("viewBox", `0 0 ${W} ${Ht}`);
+  const id = state.layer, rs = RUNS.filter(r => r.case === id);
+  let lo = Infinity, hi = -Infinity; const take = v => { if (v != null && isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } };
+  for (const r of rs) if (state.vis[r.board]){ take(val(r)); if (r.reps >= 3){ take(r.p5); take(r.p95); } }
+  for (const k of REFS) if (state.vis[k]) take(refVal(k, id));
+  if (!isFinite(lo)){ lo = 0; hi = 10; }
+  const padV = Math.max(0.3, (hi-lo)*0.06); lo = Math.floor((lo - padV)*10)/10; hi = Math.ceil((hi + padV)*10)/10;
+  const y = v => padT + (hi - v)/(hi - lo)*(Ht - padT - padB);
+  const x = m => padL + (m + 20)/500*(W - padL - padR);
+  for (const t of yTicks(lo, hi)){
+    S("line", {x1:padL, x2:W-padR, y1:y(t), y2:y(t), stroke:"var(--grid)"}, svg);
+    S("text", {x:padL-8, y:y(t)+4, "text-anchor":"end"}, svg, String(+t.toFixed(2)));
+  }
+  S("line", {x1:padL, x2:W-padR, y1:Ht-padB, y2:Ht-padB, stroke:"var(--axis)"}, svg);
+  for (let m = 0; m <= 420; m += 60){
+    const hh = (23 + m/60) % 24;
+    S("text", {x:x(m), y:Ht-padB+18, "text-anchor":"middle"}, svg, String(hh).padStart(2,"0")+":00");
+  }
+  // reference lines (thin, solid)
+  const ends = [];
+  for (const k of REFS) if (state.vis[k]){ const v = refVal(k, id); if (v == null) continue;
+    S("line", {x1:padL, x2:W-padR, y1:y(v), y2:y(v), stroke:col(SERIES[k].color), "stroke-width":k==="pub"?3:1.5, opacity:k==="pub"?1:.9}, svg);
+    ends.push({k, v}); }
+  ends.sort((a,b)=>a.v-b.v); let lastY = null;
+  for (const e of ends.reverse()){ let yy = y(e.v) + 4; if (lastY != null && yy - lastY < 13) yy = lastY + 13; lastY = yy;
+    S("text", {x:W-padR+8, y:yy, class:"lbl"}, svg, fmt(e.v) + " " + (e.k==="pub"?"published":e.k==="fresh"?"fresh ref":e.k==="arch"?"archived":"OpenBLAS")); }
+  for (const b of BOARDS){
+    if (!state.vis[b]) continue;
+    const pts = rs.filter(r => r.board === b).sort((p, q) => minutes(p.run) - minutes(q.run)), c = col(SERIES[b].color);
+    S("polyline", {points:pts.map(r => x(minutes(r.run)) + "," + y(val(r))).join(" "), fill:"none", stroke:c, "stroke-width":2, "stroke-linejoin":"round", "stroke-linecap":"round"}, svg);
+    for (const r of pts){
+      const px = x(minutes(r.run));
+      if (r.reps >= 3) S("line", {x1:px, x2:px, y1:y(r.p95), y2:y(r.p5), stroke:c, "stroke-width":1.5, opacity:.45}, svg);
+      drawMark(svg, "dot", px, y(val(r)), 4.5, c, "var(--surface)");
+    }
+  }
+  const slots = [...new Set(rs.filter(r => state.vis[r.board]).map(r => r.run))].sort();
+  slots.forEach(run => {
+    const px = x(minutes(run)), bw = (W-padL-padR)/500*24;
+    const band = S("rect", {class:"band", x:px-bw/2, y:padT, width:bw, height:Ht-padT-padB, tabindex:0, "aria-label":"run finished at "+clock(run)}, svg);
+    bindBand(band, () => {
+      const r = rs.find(q => q.run === run), rowsOut = [];
+      const d = state.metric === "mean" ? "by mean time" : "by median rep";
+      rowsOut.push({key:r.board, value:fmt(val(r))+" GOPs", name:SERIES[r.board].label+", "+d,
+        sub: r.reps >= 3 ? `${r.reps} reps, p5 ${fmt(r.p5)} to p95 ${fmt(r.p95)}, CV ${fmt(r.cv,1)}%` : `${r.reps} rep${r.reps===1?"":"s"}`});
+      return {title:`${id} · run finished ${clock(run)}`, rows:rowsOut};
+    });
+  });
+}
+function drawJitter(){ rowsChart("svg-cv", "cv"); rowsChart("svg-rr", "rr"); drawTime(); }
+
+/* ---------- view 4: table ---------- */
+function drawTable(){
+  const box = document.getElementById("tablebox"); box.replaceChildren();
+  const t = H("table", {}, box), hd = H("thead", {}, t), hr = H("tr", {}, hd);
+  const heads = ["Layer","m×n×k","Config","Board","GOPs (mean of runs)","Lowest run","Highest run","Between-run spread %","Inside-run CV %","Reps per run",
+                 "Published","vs published %","Fresh ref","Archived sweep","OpenBLAS"];
+  heads.forEach((h, i) => H("th", i < 4 ? {class:"l"} : {}, hr, h));
+  const tb = H("tbody", {}, t);
+  LAYERS.forEach((l, li) => BOARDS.forEach(b => {
+    if (!state.vis[b]) return;
+    const a = agg(l.id, b); if (!a) return;
+    const tr = H("tr", li % 2 ? {class:"b2"} : {}, tb);
+    const pv = refVal("pub", l.id), d = pv == null ? null : (a.mean - pv)/pv*100;
+    const cells = [l.id, `${l.m}×${l.n}×${l.k}`, l.cfg, b, fmt(a.mean), fmt(a.min), fmt(a.max), fmt(a.spread,1), a.multi ? fmt(a.cv,1) : "n/a", String(Math.round(a.reps)),
+                   pv == null ? "" : fmt(pv,2), d == null ? "" : sgn(d), ...["fresh","arch","blas"].map(k => refVal(k, l.id) == null ? "" : fmt(refVal(k, l.id)))];
+    cells.forEach((c, i) => { const td = H("td", i < 4 ? {class:"l"} : {}, tr, c);
+      if (i === 11 && c) td.className = d > 0 ? "pos" : d < 0 ? "neg" : ""; });
+  }));
+}
+
+/* ---------- tiles ---------- */
+function drawTiles(){
+  const box = document.getElementById("tiles"); box.replaceChildren();
+  const combined = l => mean(BOARDS.map(b => agg(l.id, b, valHead).mean));
+  const rows = LAYERS.map(l => ({l, m:combined(l), d:(combined(l) - refVal("pub", l.id))/refVal("pub", l.id)*100}));
+  const within = rows.filter(r => Math.abs(r.d) <= 3);
+  const out = rows.filter(r => Math.abs(r.d) > 3).sort((a,b) => Math.abs(b.d) - Math.abs(a.d));
+  const worst = out[0], wa = agg(worst.l.id, "jbpi", valHead);
+  let bmax = 0, bl = null; for (const l of LAYERS){ const a = agg(l.id,"jbpi",valHead).mean, b = agg(l.id,"jbpi2",valHead).mean;
+    const dd = Math.abs(a-b)/((a+b)/2)*100; if (dd > bmax){ bmax = dd; bl = l.id; } }
+  const T = (lab, v, n) => { const t = H("div", {class:"tile"}, box); H("span", {class:"lab"}, t, lab); H("span", {class:"val"}, t, v); H("span", {class:"note"}, t, n); };
+  T("Runs finished", "16 of 16", "8 on each board, no failures, no stale-handle errors.");
+  T("Layers within ±3% of published", `${within.length} of 10`, "Both boards averaged. Outside: " + out.map(r => `${r.l.id} ${sgn(r.d,0)}%`).join(", ") + ".");
+  T(`${worst.l.id} against published`, sgn(worst.d,0)+"%", `Inside a run its reps vary by ${fmt(wa.cv,0)}% (CV)` + (wa.cv >= Math.max(...LAYERS.map(l => agg(l.id,"jbpi",valHead).cv)) ? ", the most of any layer." : "."));
+  T("jbpi against jbpi2", "≤ " + fmt(bmax,1) + "%", `Largest gap between the boards' means, on ${bl}.`);
+}
+
+/* ---------- controls ---------- */
+function drawChips(){
+  const box = document.getElementById("chips"); box.replaceChildren();
+  for (const k of Object.keys(SERIES)){
+    const s = SERIES[k], b = H("button", {class:"chip", "aria-pressed":String(state.vis[k]), title:"Show or hide "+s.label}, box);
+    b.appendChild(keyIcon(k, 16)); H("span", {}, b, s.label); H("small", {}, b, s.sub);
+    b.addEventListener("click", () => { state.vis[k] = !state.vis[k]; drawChips(); drawAll(); });
+  }
+}
+function drawLayerSel(){
+  const box = document.getElementById("layersel"); box.replaceChildren();
+  for (const l of LAYERS){ const b = H("button", {"aria-pressed":String(state.layer === l.id)}, box, l.id);
+    b.addEventListener("click", () => { state.layer = l.id; drawLayerSel(); drawTime(); }); }
+}
+function drawAll(){
+  drawLayers(); drawDelta(); drawJitter(); drawTable();
+}
+function setPressed(a, b, first){ document.getElementById(a).setAttribute("aria-pressed", String(first)); document.getElementById(b).setAttribute("aria-pressed", String(!first)); }
+document.getElementById("m-mean").addEventListener("click", () => { state.metric = "mean"; setPressed("m-mean","m-med",true); drawAll(); });
+document.getElementById("m-med").addEventListener("click", () => { state.metric = "median"; setPressed("m-mean","m-med",false); drawAll(); });
+document.getElementById("z-zoom").addEventListener("click", () => { state.zoom = true; setPressed("z-zoom","z-full",true); drawDelta(); });
+document.getElementById("z-full").addEventListener("click", () => { state.zoom = false; setPressed("z-zoom","z-full",false); drawDelta(); });
+document.getElementById("showband").addEventListener("change", e => { state.band = e.target.checked; drawLayers(); });
+const sel = document.getElementById("refsel");
+for (const k of REFS){ const o = H("option", {value:k}, sel, SERIES[k].label + (k==="fresh" ? " (B1, B5)" : "")); }
+sel.addEventListener("change", () => { state.ref = sel.value; state.zoom = sel.value !== "blas"; setPressed("z-zoom","z-full",state.zoom); drawDelta(); });
+document.getElementById("tabs").addEventListener("click", e => {
+  const b = e.target.closest("button[data-tab]"); if (!b) return;
+  state.tab = b.dataset.tab; hideTip();
+  for (const t of document.querySelectorAll("#tabs button")) t.setAttribute("aria-selected", String(t === b));
+  for (const p of document.querySelectorAll(".panel")) p.hidden = p.id !== "p-" + state.tab;
+});
+drawTiles(); drawChips(); drawLayerSel(); drawAll();
+</script>

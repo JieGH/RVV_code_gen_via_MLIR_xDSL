@@ -1,0 +1,585 @@
+<title>Overnight GEMM Runs</title>
+<style>
+:root{
+  color-scheme:light;
+  --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --hair:rgba(11,11,11,.10); --wash:rgba(11,11,11,.05);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300;
+  --good:#006300; --bad:#d03b3b;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --page:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --hair:rgba(255,255,255,.10); --wash:rgba(255,255,255,.06);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300;
+    --good:#0ca30c; --bad:#ec835a;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --hair:rgba(255,255,255,.10); --wash:rgba(255,255,255,.06);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300;
+  --good:#0ca30c; --bad:#ec835a;
+}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;margin:0;padding-inline:16px;padding-block:24px 48px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1{font-size:22px;line-height:1.2;font-weight:650;margin:0;text-wrap:balance}
+h2{font-size:15px;font-weight:650;margin:0;text-wrap:balance}
+.sub{color:var(--ink2);margin:6px 0 0;max-width:72ch}
+.sub b{color:var(--ink);font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.tile{background:var(--surface);border-radius:10px;padding:14px 16px;box-shadow:0 0 0 1px var(--hair);display:flex;flex-direction:column;gap:4px}
+.tile .lab{color:var(--ink2);font-size:12.5px}
+.tile .val{font-size:26px;font-weight:650;line-height:1.1}
+.tile .note{color:var(--ink2);font-size:12.5px}
+.bar{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
+.seg{display:inline-flex;border-radius:8px;box-shadow:0 0 0 1px var(--hair);background:var(--surface);padding:2px;gap:2px}
+.seg button,.tabs button{font:inherit;color:var(--ink2);background:none;border:0;border-radius:6px;padding:6px 12px;cursor:pointer}
+.seg button[aria-pressed="true"],.tabs button[aria-selected="true"]{background:var(--wash);color:var(--ink);font-weight:600}
+.seg button:hover,.tabs button:hover,.chip:hover{background:var(--wash)}
+button:focus-visible,select:focus-visible,[tabindex]:focus-visible,input:focus-visible{outline:2px solid var(--s1);outline-offset:2px}
+.lab-inline{color:var(--ink2);font-size:12.5px;margin-right:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;display:inline-flex;align-items:center;gap:7px;padding:5px 10px;border-radius:999px;background:var(--surface);box-shadow:0 0 0 1px var(--hair);color:var(--ink);border:0;cursor:pointer}
+.chip[aria-pressed="false"]{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--axis)}
+.chip[aria-pressed="false"] svg{opacity:.35}
+.chip small{color:var(--ink2);font-size:11.5px}
+.chip[aria-pressed="false"] small{color:var(--muted)}
+.sep{width:1px;height:20px;background:var(--hair)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--hair);overflow-x:auto}
+.tabs button{border-radius:6px 6px 0 0;white-space:nowrap}
+.panel{background:var(--surface);border-radius:12px;box-shadow:0 0 0 1px var(--hair);padding:16px;display:flex;flex-direction:column;gap:12px;position:relative}
+.panel[hidden]{display:none!important}
+.panel .how{color:var(--ink2);margin:0;max-width:78ch}
+.scroll{overflow-x:auto}
+.scroll>svg{display:block;min-width:760px;width:100%;height:auto}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.two .scroll>svg{min-width:0}
+@media (max-width:820px){.two{grid-template-columns:1fr}.two .scroll>svg{min-width:520px}}
+svg text{font-family:inherit;fill:var(--ink2);font-size:12.5px}
+svg .lbl{fill:var(--ink)}
+svg .band{fill:transparent;cursor:crosshair}
+svg .band:hover,svg .band:focus{fill:var(--wash);outline:none}
+.ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+select{font:inherit;color:var(--ink);background:var(--surface);border:0;border-radius:8px;box-shadow:0 0 0 1px var(--hair);padding:6px 10px}
+label.chk{display:inline-flex;align-items:center;gap:6px;color:var(--ink2);cursor:pointer}
+#tip{position:fixed;z-index:10;pointer-events:none;background:var(--surface);color:var(--ink);border-radius:8px;box-shadow:0 0 0 1px var(--hair),0 6px 20px rgba(0,0,0,.18);padding:10px 12px;min-width:210px;max-width:320px;font-size:12.5px}
+#tip[hidden]{display:none}
+#tip .t{font-weight:650;margin-bottom:6px}
+#tip .r{display:grid;grid-template-columns:16px 1fr;gap:1px 8px;margin-top:6px}
+#tip .r .v{font-weight:650;font-size:13.5px}
+#tip .r .n{color:var(--ink2)}
+#tip .r .s{grid-column:2;color:var(--ink2);font-size:11.5px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--grid)}
+th{color:var(--ink2);font-weight:600;font-size:12px;position:sticky;top:0;background:var(--surface)}
+th:first-child,td:first-child,th.l,td.l{text-align:left}
+tr.b2 td{background:var(--wash)}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+details{color:var(--ink2)}
+details summary{cursor:pointer;color:var(--ink);font-weight:600}
+details ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px;max-width:90ch}
+details li b{color:var(--ink);font-weight:600}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Overnight GEMM runs, layer by layer</h1>
+    <p class="sub">Sixteen runs of the generated xDSL BLIS kernels, <b>8 on jbpi and 8 on jbpi2</b>, alternating every 30 min, first started 23:00 on 19 Sep 2026 and last started 06:30 on 20 Sep. Each run took about 7 min. Uninstrumented build, reference protocol (<b>tmin 10 s</b>, no warm-up), pinned to core 0. Every figure is <b>GOPs for the whole GEMM call, packing included</b>, the same region the reference design times.</p>
+  </header>
+
+  <section class="tiles" id="tiles" aria-label="Summary"></section>
+
+  <section class="bar" aria-label="Filters">
+    <div><span class="lab-inline" id="metric-lab">Number shown</span>
+      <span class="seg" role="group" aria-labelledby="metric-lab">
+        <button id="m-mean" aria-pressed="true" title="2·M·N·K ÷ mean wall time per call. The reference design's own formula.">By mean time</button>
+        <button id="m-med" aria-pressed="false" title="Median of the per-rep GOPs. Ignores a few slow reps.">By median rep</button>
+      </span></div>
+    <span class="sep" aria-hidden="true"></span>
+    <div class="chips" id="chips" role="group" aria-label="Series"></div>
+  </section>
+
+  <nav class="tabs" role="tablist" aria-label="Views" id="tabs">
+    <button role="tab" id="t-layers" aria-selected="true" data-tab="layers">Layer by layer</button>
+    <button role="tab" id="t-delta" aria-selected="false" data-tab="delta">Versus reference</button>
+    <button role="tab" id="t-jitter" aria-selected="false" data-tab="jitter">Jitter</button>
+    <button role="tab" id="t-table" aria-selected="false" data-tab="table">Table</button>
+  </nav>
+
+  <section class="panel" id="p-layers" role="tabpanel" aria-labelledby="t-layers">
+    <h2>Performance per layer, both boards against every reference</h2>
+    <p class="how">Dots are the mean of each board's 8 runs. The thick line through a dot spans the lowest to the highest run. The pale band behind it is the middle 90% of single reps inside a run (p5 to p95), averaged over runs. Hover a layer for the numbers. The vertical axis does not start at zero.</p>
+    <div class="ctl"><label class="chk"><input type="checkbox" id="showband" checked> Show within-run spread (p5 to p95)</label></div>
+    <div class="scroll"><svg id="svg-layers" role="img" aria-label="GOPs per layer for jbpi, jbpi2 and the reference series"></svg></div>
+  </section>
+
+  <section class="panel" id="p-delta" role="tabpanel" aria-labelledby="t-delta" hidden>
+    <h2>How far each board is from a reference, per layer</h2>
+    <p class="how">Bars are our mean minus the reference, as a percent of the reference. Above zero is faster than the reference. The whisker spans the lowest to the highest single run.</p>
+    <div class="ctl">
+      <label class="lab-inline" for="refsel">Compare against</label>
+      <select id="refsel"></select>
+      <span class="seg" role="group" aria-label="Scale"><button id="z-zoom" aria-pressed="true">Zoom to ±10%</button><button id="z-full" aria-pressed="false">Show full range</button></span>
+    </div>
+    <div class="scroll"><svg id="svg-delta" role="img" aria-label="Percent difference from the chosen reference per layer"></svg></div>
+    <p class="how" id="delta-note"></p>
+  </section>
+
+  <section class="panel" id="p-jitter" role="tabpanel" aria-labelledby="t-jitter" hidden>
+    <h2>Jitter, two kinds</h2>
+    <p class="how"><b>Inside a run</b> is how much single reps differ from each other (standard deviation ÷ mean, in percent). <b>Between runs</b> is how far the eight run means are apart ((highest − lowest) ÷ mean). S3 has only 2 reps per run and S4, S5 have 1, so they have no inside-a-run figure at all, only the between-runs one.</p>
+    <div class="two">
+      <div><h2 style="margin-bottom:6px">Inside a run, CV %</h2><div class="scroll"><svg id="svg-cv" role="img" aria-label="Within-run coefficient of variation per layer"></svg></div></div>
+      <div><h2 style="margin-bottom:6px">Between runs, spread %</h2><div class="scroll"><svg id="svg-rr" role="img" aria-label="Run-to-run spread per layer"></svg></div></div>
+    </div>
+    <h2 style="margin-top:8px">Every run, in time order</h2>
+    <div class="ctl"><span class="lab-inline" id="layer-lab">Layer</span><span class="seg" id="layersel" role="group" aria-labelledby="layer-lab"></span></div>
+    <div class="scroll"><svg id="svg-time" role="img" aria-label="Per-run GOPs over the night for the chosen layer"></svg></div>
+  </section>
+
+  <section class="panel" id="p-table" role="tabpanel" aria-labelledby="t-table" hidden>
+    <h2>All numbers</h2>
+    <p class="how">One row per layer and board. GOPs use the number chosen above. Reference columns are the four series in the legend; blank means that source has no value for the layer.</p>
+    <div class="scroll" id="tablebox"></div>
+  </section>
+
+  <details open>
+    <summary>Where the reference numbers come from</summary>
+    <ul>
+      <li><b>Past publication ref design.</b> The table you gave, approximate GFLOPS per layer. I have not seen the run behind it, so board, build and timing region are unknown to me.</li>
+      <li><b>Fresh reference run.</b> The reference design built and run on jbpi2 on 18 Sep (32x6, macc kernel, tmin 3 s, packing included). Only B1 and B5 were run, so only those two layers have a value.</li>
+      <li><b>Archived xDSL sweep.</b> <code>ext/*_comparison.txt</code>. These are best-of-sweep numbers from our own older xDSL driver, not from the reference design, even though they carry the same 32x7 and 16x15 labels.</li>
+      <li><b>OpenBLAS (archived).</b> The OpenBLAS column of the same <code>ext</code> files. I did not check where those were measured.</li>
+      <li>The four sources disagree with each other (for B1: 8.0, 7.02, 7.38), so the chart never merges them.</li>
+      <li>Not included: the five jbpi2 runs from 18 Sep. They used the older warm-up protocol, and mixing protocols would blur the comparison.</li>
+    </ul>
+  </details>
+</div>
+<div id="tip" role="tooltip" hidden></div>
+
+<script>
+const RUNS = /*__DATA__*/[];
+const LAYERS = [
+  {id:"S1",m:1000,n:1000,k:1000,cfg:"32x7"},{id:"S2",m:2000,n:2000,k:2000,cfg:"32x7"},
+  {id:"S3",m:3000,n:3000,k:3000,cfg:"32x7"},{id:"S4",m:4000,n:4000,k:4000,cfg:"32x7"},
+  {id:"S5",m:5000,n:5000,k:5000,cfg:"32x7"},
+  {id:"B1",m:1024,n:384,k:1024,cfg:"32x6"},{id:"B2",m:384,n:384,k:64,cfg:"16x15"},
+  {id:"B3",m:64,n:384,k:384,cfg:"16x15"},{id:"B4",m:4096,n:384,k:1024,cfg:"32x7"},
+  {id:"B5",m:1024,n:384,k:4096,cfg:"32x6"}
+];
+const SERIES = {
+  jbpi :{label:"jbpi",  sub:"ours, 8 runs", color:"--s1", shape:"dot",  ours:true},
+  jbpi2:{label:"jbpi2", sub:"ours, 8 runs", color:"--s2", shape:"dot",  ours:true},
+  pub  :{label:"Past publication ref design", sub:"your table", color:"--s3", shape:"line",
+         vals:{S1:8.5,S2:8.7,S3:8.9,S4:9.0,S5:9.0,B1:8.0,B2:12.5,B3:8.8,B4:8.5,B5:7.5}},
+  fresh:{label:"Fresh reference run", sub:"jbpi2, B1 and B5 only", color:"--s4", shape:"tri",
+         vals:{B1:7.02,B5:7.06}},
+  arch :{label:"Archived xDSL sweep", sub:"best-of-sweep", color:"--s5", shape:"diamond",
+         vals:{S1:8.32,S2:8.53,S3:8.51,S4:8.31,S5:8.36,B1:7.38,B2:12.2,B3:8.53,B4:7.46,B5:6.80}},
+  blas :{label:"OpenBLAS (archived)", sub:"ext/*_comparison.txt", color:"--s6", shape:"ring",
+         vals:{S1:6.1,S2:6.8,S3:6.8,S4:6.9,S5:7.0,B1:6.0,B2:5.1,B3:7.3,B4:5.9,B5:5.9}}
+};
+const BOARDS = ["jbpi","jbpi2"];
+const REFS = ["pub","fresh","arch","blas"];
+const state = {metric:"mean", vis:{jbpi:true,jbpi2:true,pub:true,fresh:true,arch:true,blas:false}, tab:"layers",
+               ref:"pub", zoom:true, layer:"B3", band:true};
+
+const NS = "http://www.w3.org/2000/svg";
+function S(tag, attrs, parent, text){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function H(tag, attrs, parent, text){
+  const e = document.createElement(tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const fmt = (x, d=2) => Number(x).toFixed(d);
+const sgn = (x, d=1) => (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toFixed(d);
+const col = v => "var(" + v + ")";
+const mean = a => a.reduce((s,x)=>s+x,0)/a.length;
+
+/* ---------- data ---------- */
+function val(r){ return state.metric === "mean" ? r.gops_mean_time : r.median; }
+function valHead(r){ return r.gops_mean_time; }
+function agg(caseId, board, getter){
+  const g = getter || val;
+  const rs = RUNS.filter(r => r.case === caseId && r.board === board);
+  if (!rs.length) return null;
+  const v = rs.map(g);
+  const m = mean(v), lo = Math.min(...v), hi = Math.max(...v);
+  const reps = mean(rs.map(r => r.reps));
+  return {n:rs.length, mean:m, min:lo, max:hi, p5:mean(rs.map(r=>r.p5)), p95:mean(rs.map(r=>r.p95)),
+          cv:mean(rs.map(r=>r.cv)), reps, spread:(hi-lo)/m*100, runs:rs, multi: reps >= 3};
+}
+function refVal(key, id){ const v = SERIES[key].vals[id]; return v == null ? null : v; }
+function niceStep(range){ const raw = range/6, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw/p;
+  return (f<=1?1:f<=2?2:f<=5?5:10)*p; }
+
+/* ---------- tooltip ---------- */
+const tip = document.getElementById("tip");
+function keyIcon(key, size){
+  const sz = size || 14, s = SERIES[key], c = col(s.color);
+  const svg = S("svg", {width:sz, height:sz, viewBox:"0 0 14 14", "aria-hidden":"true"});
+  drawMark(svg, s.shape, 7, 7, 4.5, c, "var(--surface)", 14);
+  return svg;
+}
+function drawMark(p, shape, x, y, r, c, ring, lineW){
+  if (shape === "dot"){ S("circle", {cx:x, cy:y, r:r+2, fill:ring}, p); S("circle", {cx:x, cy:y, r:r, fill:c}, p); }
+  else if (shape === "line"){ S("rect", {x:x-(lineW||14)/2, y:y-1.5, width:lineW||14, height:3, rx:1.5, fill:c}, p); }
+  else if (shape === "tri"){ S("path", {d:`M${x},${y-r-1}L${x+r+1},${y+r}L${x-r-1},${y+r}Z`, fill:c, stroke:ring, "stroke-width":2, "paint-order":"stroke"}, p); }
+  else if (shape === "diamond"){ S("path", {d:`M${x},${y-r-1}L${x+r+1},${y}L${x},${y+r+1}L${x-r-1},${y}Z`, fill:c, stroke:ring, "stroke-width":2, "paint-order":"stroke"}, p); }
+  else if (shape === "ring"){ S("circle", {cx:x, cy:y, r:r, fill:ring, stroke:c, "stroke-width":2.5}, p); }
+}
+function showTip(cx, cy, title, rows){
+  tip.replaceChildren();
+  H("div", {class:"t"}, tip, title);
+  for (const r of rows){
+    const g = H("div", {class:"r"}, tip);
+    const k = H("span", {}, g); if (r.key) k.appendChild(keyIcon(r.key, 14));
+    const line = H("span", {}, g);
+    H("span", {class:"v"}, line, r.value);
+    H("span", {class:"n"}, line, "  " + r.name);
+    if (r.sub) H("div", {class:"s"}, g, r.sub);
+  }
+  tip.hidden = false;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = cx + 14, y = cy + 14;
+  if (x + w > window.innerWidth - 8) x = cx - w - 14;
+  if (x < 8) x = 8;
+  if (y + h > window.innerHeight - 8) y = window.innerHeight - h - 8;
+  if (y < 8) y = 8;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+function hideTip(){ tip.hidden = true; }
+function bindBand(rect, build){
+  const show = e => { const b = rect.getBoundingClientRect();
+    const px = e.clientX != null && e.type !== "focus" ? e.clientX : b.left + b.width/2;
+    const py = e.clientY != null && e.type !== "focus" ? e.clientY : b.top + 40;
+    const t = build(); showTip(px, py, t.title, t.rows); };
+  rect.addEventListener("pointermove", show); rect.addEventListener("pointerenter", show);
+  rect.addEventListener("focus", show); rect.addEventListener("pointerleave", hideTip); rect.addEventListener("blur", hideTip);
+}
+
+/* ---------- axes helpers ---------- */
+function yTicks(lo, hi){
+  const step = niceStep(hi - lo), out = [];
+  for (let v = Math.ceil(lo/step)*step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
+  return out;
+}
+function layout(W, padL, padR){
+  const gap = 22, gw = (W - padL - padR - gap)/10;
+  return { gw, x: i => padL + i*gw + (i >= 5 ? gap : 0) + gw/2, xl: i => padL + i*gw + (i >= 5 ? gap : 0) };
+}
+function xLabels(svg, L, y){
+  LAYERS.forEach((l, i) => {
+    S("text", {x:L.x(i), y:y, "text-anchor":"middle", class:"lbl", "font-weight":600}, svg, l.id);
+    S("text", {x:L.x(i), y:y+14, "text-anchor":"middle"}, svg, l.cfg);
+  });
+  S("text", {x:L.xl(0), y:y+32, "text-anchor":"start"}, svg, "Square, m=n=k from 1000 to 5000");
+  S("text", {x:L.xl(5), y:y+32, "text-anchor":"start"}, svg, "BERT Large (m×n×k in the tooltip)");
+}
+
+/* ---------- view 1: layer by layer ---------- */
+function drawLayers(){
+  const svg = document.getElementById("svg-layers"); svg.replaceChildren();
+  const W = 1000, Ht = 470, padL = 46, padR = 14, padT = 14, padB = 64;
+  svg.setAttribute("viewBox", `0 0 ${W} ${Ht}`);
+  const L = layout(W, padL, padR);
+  let lo = Infinity, hi = -Infinity;
+  const take = v => { if (v != null && isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } };
+  for (const l of LAYERS){
+    for (const b of BOARDS) if (state.vis[b]){ const a = agg(l.id, b); if (a){ take(a.min); take(a.max);
+      if (state.band && a.multi){ take(a.p5); take(a.p95); } } }
+    for (const r of REFS) if (state.vis[r]) take(refVal(r, l.id));
+  }
+  if (!isFinite(lo)){ lo = 0; hi = 10; }
+  lo = Math.floor(lo - 0.3); hi = Math.ceil(hi + 0.3);
+  const y = v => padT + (hi - v)/(hi - lo)*(Ht - padT - padB);
+  for (const t of yTicks(lo, hi)){
+    S("line", {x1:padL, x2:W-padR, y1:y(t), y2:y(t), stroke:"var(--grid)", "stroke-width":1}, svg);
+    S("text", {x:padL-8, y:y(t)+4, "text-anchor":"end"}, svg, String(t));
+  }
+  S("text", {x:padL, y:10, "text-anchor":"start"}, svg, "GOPs, whole GEMM call");
+  S("line", {x1:padL, x2:W-padR, y1:Ht-padB, y2:Ht-padB, stroke:"var(--axis)"}, svg);
+  xLabels(svg, L, Ht - padB + 18);
+  const off = 15;
+  LAYERS.forEach((l, i) => {
+    const cx = L.x(i);
+    // published: full-width bar, behind
+    if (state.vis.pub){ const v = refVal("pub", l.id); if (v != null)
+      S("rect", {x:cx-L.gw/2+5, y:y(v)-1.5, width:L.gw-10, height:3, rx:1.5, fill:col(SERIES.pub.color)}, svg); }
+    if (state.vis.arch){ const v = refVal("arch", l.id); if (v != null) drawMark(svg, "diamond", cx-L.gw/2+12, y(v), 5, col(SERIES.arch.color), "var(--surface)"); }
+    if (state.vis.fresh){ const v = refVal("fresh", l.id); if (v != null) drawMark(svg, "tri", cx+L.gw/2-12, y(v), 5, col(SERIES.fresh.color), "var(--surface)"); }
+    if (state.vis.blas){ const v = refVal("blas", l.id); if (v != null) drawMark(svg, "ring", cx+L.gw/2-12, y(v), 4.5, col(SERIES.blas.color), "var(--surface)"); }
+    BOARDS.forEach((b, bi) => {
+      if (!state.vis[b]) return;
+      const a = agg(l.id, b); if (!a) return;
+      const x = cx + (bi ? off : -off), c = col(SERIES[b].color);
+      if (state.band && a.multi) S("rect", {x:x-5, y:y(a.p95), width:10, height:Math.max(2, y(a.p5)-y(a.p95)), rx:4, fill:c, opacity:.22}, svg);
+      S("line", {x1:x, x2:x, y1:y(a.max), y2:y(a.min), stroke:c, "stroke-width":2.5, "stroke-linecap":"round"}, svg);
+      drawMark(svg, "dot", x, y(a.mean), 4.5, c, "var(--surface)");
+    });
+    const band = S("rect", {class:"band", x:L.xl(i), y:padT, width:L.gw, height:Ht-padT-padB, tabindex:0,
+                  "aria-label":`${l.id}, ${l.m} by ${l.n} by ${l.k}, config ${l.cfg}`}, svg);
+    bindBand(band, () => layerTip(l));
+  });
+}
+function layerTip(l){
+  const rows = [];
+  for (const b of BOARDS) if (state.vis[b]){
+    const a = agg(l.id, b); if (!a) continue;
+    const parts = [`runs ${fmt(a.min)} to ${fmt(a.max)}`];
+    parts.push(a.multi ? `inside-run CV ${fmt(a.cv,1)}%, p5 ${fmt(a.p5)} to p95 ${fmt(a.p95)}` : `${Math.round(a.reps)} rep${a.reps<1.5?"":"s"} per run, no inside-run spread`);
+    rows.push({key:b, value:fmt(a.mean)+" GOPs", name:SERIES[b].label+" (mean of "+a.n+" runs)", sub:parts.join(" · ")});
+  }
+  for (const r of REFS) if (state.vis[r]){
+    const v = refVal(r, l.id); if (v == null) continue;
+    const ours = BOARDS.filter(b=>state.vis[b]).map(b=>agg(l.id,b)).filter(Boolean);
+    let sub; if (ours.length){ const d = (mean(ours.map(a=>a.mean)) - v)/v*100; sub = `ours are ${sgn(d)}% versus this`; }
+    rows.push({key:r, value:fmt(v)+" GOPs", name:SERIES[r].label, sub});
+  }
+  return {title:`${l.id} · ${l.m}×${l.n}×${l.k} · ${l.cfg}`, rows};
+}
+
+/* ---------- view 2: versus reference ---------- */
+function barPath(x, w, y0, y1, r){
+  const h = Math.abs(y1 - y0); if (h < 0.5) return `M${x},${y0}h${w}`;
+  r = Math.min(r, h, w/2);
+  if (y1 < y0) return `M${x},${y0}V${y1+r}Q${x},${y1} ${x+r},${y1}H${x+w-r}Q${x+w},${y1} ${x+w},${y1+r}V${y0}Z`;
+  return `M${x},${y0}V${y1-r}Q${x},${y1} ${x+r},${y1}H${x+w-r}Q${x+w},${y1} ${x+w},${y1-r}V${y0}Z`;
+}
+function drawDelta(){
+  const svg = document.getElementById("svg-delta"); svg.replaceChildren();
+  const W = 1000, Ht = 440, padL = 46, padR = 14, padT = 26, padB = 64;
+  svg.setAttribute("viewBox", `0 0 ${W} ${Ht}`);
+  const L = layout(W, padL, padR), ref = state.ref;
+  const data = LAYERS.map(l => {
+    const rv = refVal(ref, l.id), out = {l, rv, b:{}};
+    if (rv != null) for (const b of BOARDS){ const a = agg(l.id, b); if (a) out.b[b] = {d:(a.mean-rv)/rv*100, lo:(a.min-rv)/rv*100, hi:(a.max-rv)/rv*100, a}; }
+    return out; });
+  let mx = 0; for (const d of data) for (const b of BOARDS) if (state.vis[b] && d.b[b]) mx = Math.max(mx, Math.abs(d.b[b].d), Math.abs(d.b[b].lo), Math.abs(d.b[b].hi));
+  const lim = state.zoom ? 10 : Math.max(5, Math.ceil(mx/5)*5), dom = lim*1.25;
+  const y = v => padT + (dom - v)/(2*dom)*(Ht - padT - padB);
+  const clip = v => Math.max(-lim, Math.min(lim, v));
+  for (const t of yTicks(-lim, lim)){
+    S("line", {x1:padL, x2:W-padR, y1:y(t), y2:y(t), stroke: t === 0 ? "var(--axis)" : "var(--grid)"}, svg);
+    S("text", {x:padL-8, y:y(t)+4, "text-anchor":"end"}, svg, (t>0?"+":t<0?"−":"") + Math.abs(t) + "%");
+  }
+  S("text", {x:padL, y:12, "text-anchor":"start"}, svg, "Ours minus reference, % of reference");
+  xLabels(svg, L, Ht - padB + 18);
+  const bw = 18, gapb = 2;
+  data.forEach((d, i) => {
+    const cx = L.x(i);
+    if (d.rv == null){ S("text", {x:cx, y:y(0)-8, "text-anchor":"middle", opacity:.8}, svg, "no value"); }
+    BOARDS.forEach((b, bi) => {
+      if (!state.vis[b] || !d.b[b]) return;
+      const v = d.b[b], x = bi ? cx + gapb/2 : cx - bw - gapb/2, c = col(SERIES[b].color);
+      const tipv = clip(v.d);
+      S("path", {d:barPath(x, bw, y(0), y(tipv), 4), fill:c}, svg);
+      const wx = x + bw/2, wl = clip(v.lo), wh = clip(v.hi);
+      S("line", {x1:wx, x2:wx, y1:y(wl), y2:y(wh), stroke:"var(--ink)", "stroke-width":1.5, opacity:.75}, svg);
+      const clipped = Math.abs(v.d) > lim;
+      if (clipped){ const dir = v.d > 0 ? 1 : -1, yy = y(tipv);
+        S("path", {d:`M${x-2},${yy+dir*5}l${bw+4},-6`, stroke:"var(--surface)", "stroke-width":3, fill:"none"}, svg); }
+      if (clipped || Math.abs(v.d) >= 5){
+        const dir = v.d > 0 ? -1 : 1;
+        S("text", {x:wx, y:y(tipv) + (dir < 0 ? -6 : 14), "text-anchor":"middle", class:"lbl", "font-weight":600}, svg, sgn(v.d, 0) + "%");
+      }
+    });
+    const band = S("rect", {class:"band", x:L.xl(i), y:padT, width:L.gw, height:Ht-padT-padB, tabindex:0,
+                  "aria-label":`${d.l.id} versus ${SERIES[ref].label}`}, svg);
+    bindBand(band, () => {
+      const rows = [];
+      for (const b of BOARDS) if (state.vis[b] && d.b[b]){ const v = d.b[b];
+        rows.push({key:b, value:sgn(v.d)+"%", name:SERIES[b].label, sub:`${fmt(v.a.mean)} GOPs, runs ${sgn(v.lo)}% to ${sgn(v.hi)}%`}); }
+      if (d.rv != null) rows.push({key:ref, value:fmt(d.rv)+" GOPs", name:SERIES[ref].label});
+      else rows.push({value:"No value", name:SERIES[ref].label + " has none for " + d.l.id});
+      return {title:`${d.l.id} · ${d.l.m}×${d.l.n}×${d.l.k} · ${d.l.cfg}`, rows};
+    });
+  });
+  const cnt = data.filter(d => d.rv != null).length;
+  const note = document.getElementById("delta-note");
+  note.textContent = cnt < 10 ? `${SERIES[ref].label} has values for ${cnt} of the 10 layers.` : "";
+  if (state.zoom) note.textContent += (note.textContent ? " " : "") + "Bars past ±10% are cut at the edge; the label shows the true value.";
+}
+
+/* ---------- view 3: jitter ---------- */
+function rowsChart(svgId, kind){
+  const svg = document.getElementById(svgId); svg.replaceChildren();
+  const W = 470, rowH = 28, padL = 66, padR = 20, padT = 14, padB = 34, Ht = padT + rowH*10 + padB;
+  svg.setAttribute("viewBox", `0 0 ${W} ${Ht}`);
+  const A = {}; let hi = 0;
+  for (const l of LAYERS) for (const b of BOARDS){ const a = agg(l.id, b, valHead);
+    const v = kind === "cv" ? (a.multi ? a.cv : null) : a.spread; A[l.id+b] = v; if (v != null && state.vis[b]) hi = Math.max(hi, v); }
+  let x, ticks;
+  if (kind === "cv"){
+    const lo = 0.1; hi = Math.max(hi, 1); const top = Math.pow(10, Math.ceil(Math.log10(hi*1.05)));
+    x = v => padL + (Math.log10(Math.max(v, lo)) - Math.log10(lo))/(Math.log10(top) - Math.log10(lo))*(W-padL-padR);
+    ticks = []; for (let t = lo; t <= top*1.001; t *= 10) ticks.push(t);
+  } else {
+    const top = Math.max(2, Math.ceil(hi*1.1)); x = v => padL + v/top*(W-padL-padR); ticks = yTicks(0, top);
+  }
+  const y = i => padT + i*rowH + rowH/2;
+  for (const t of ticks){
+    S("line", {x1:x(t), x2:x(t), y1:padT, y2:Ht-padB, stroke:"var(--grid)"}, svg);
+    S("text", {x:x(t), y:Ht-padB+16, "text-anchor":"middle"}, svg, (t < 1 ? String(t) : String(Math.round(t))) + "%");
+  }
+  if (kind === "cv") S("text", {x:W-padR, y:Ht-4, "text-anchor":"end"}, svg, "log scale");
+  LAYERS.forEach((l, i) => {
+    S("text", {x:padL-10, y:y(i)+4, "text-anchor":"end", class:"lbl", "font-weight":600}, svg, l.id);
+    let any = false;
+    BOARDS.forEach((b, bi) => {
+      if (!state.vis[b]) return;
+      const v = A[l.id+b];
+      if (v == null) return;
+      any = true; drawMark(svg, "dot", x(v), y(i) + (bi ? 5 : -5), 4.5, col(SERIES[b].color), "var(--surface)");
+    });
+    if (kind === "cv" && A[l.id+"jbpi"] == null) S("text", {x:padL+6, y:y(i)+4, opacity:.9}, svg, "1–2 reps per run, not measurable");
+    const band = S("rect", {class:"band", x:0, y:padT+i*rowH, width:W, height:rowH, tabindex:0, "aria-label":l.id}, svg);
+    bindBand(band, () => {
+      const rows = [];
+      for (const b of BOARDS) if (state.vis[b]){ const a = agg(l.id, b, valHead); const v = A[l.id+b];
+        rows.push({key:b, value: v == null ? "n/a" : fmt(v, v < 10 ? 2 : 1) + "%", name:SERIES[b].label,
+          sub: kind === "cv" ? (a.multi ? `${Math.round(a.reps)} reps per run, p5 ${fmt(a.p5)} to p95 ${fmt(a.p95)} GOPs` : `${Math.round(a.reps)} rep${a.reps<1.5?"":"s"} per run`)
+                             : `run means ${fmt(a.min)} to ${fmt(a.max)} GOPs`}); }
+      return {title:`${l.id} · ${l.cfg}`, rows};
+    });
+  });
+}
+function minutes(id){ const m = id.match(/2026-09-(\d\d)_(\d\d)(\d\d)/); return (+m[1]-19)*1440 + (+m[2])*60 + (+m[3]) - 1380; }
+function clock(id){ const m = id.match(/_(\d\d)(\d\d)/); return m[1]+":"+m[2]; }
+function drawTime(){
+  const svg = document.getElementById("svg-time"); svg.replaceChildren();
+  const W = 1000, Ht = 360, padL = 46, padR = 96, padT = 16, padB = 34;
+  svg.setAttribute("viewBox", `0 0 ${W} ${Ht}`);
+  const id = state.layer, rs = RUNS.filter(r => r.case === id);
+  let lo = Infinity, hi = -Infinity; const take = v => { if (v != null && isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } };
+  for (const r of rs) if (state.vis[r.board]){ take(val(r)); if (r.reps >= 3){ take(r.p5); take(r.p95); } }
+  for (const k of REFS) if (state.vis[k]) take(refVal(k, id));
+  if (!isFinite(lo)){ lo = 0; hi = 10; }
+  const padV = Math.max(0.3, (hi-lo)*0.06); lo = Math.floor((lo - padV)*10)/10; hi = Math.ceil((hi + padV)*10)/10;
+  const y = v => padT + (hi - v)/(hi - lo)*(Ht - padT - padB);
+  const x = m => padL + (m + 20)/500*(W - padL - padR);
+  for (const t of yTicks(lo, hi)){
+    S("line", {x1:padL, x2:W-padR, y1:y(t), y2:y(t), stroke:"var(--grid)"}, svg);
+    S("text", {x:padL-8, y:y(t)+4, "text-anchor":"end"}, svg, String(+t.toFixed(2)));
+  }
+  S("line", {x1:padL, x2:W-padR, y1:Ht-padB, y2:Ht-padB, stroke:"var(--axis)"}, svg);
+  for (let m = 0; m <= 420; m += 60){
+    const hh = (23 + m/60) % 24;
+    S("text", {x:x(m), y:Ht-padB+18, "text-anchor":"middle"}, svg, String(hh).padStart(2,"0")+":00");
+  }
+  // reference lines (thin, solid)
+  const ends = [];
+  for (const k of REFS) if (state.vis[k]){ const v = refVal(k, id); if (v == null) continue;
+    S("line", {x1:padL, x2:W-padR, y1:y(v), y2:y(v), stroke:col(SERIES[k].color), "stroke-width":k==="pub"?3:1.5, opacity:k==="pub"?1:.9}, svg);
+    ends.push({k, v}); }
+  ends.sort((a,b)=>a.v-b.v); let lastY = null;
+  for (const e of ends.reverse()){ let yy = y(e.v) + 4; if (lastY != null && yy - lastY < 13) yy = lastY + 13; lastY = yy;
+    S("text", {x:W-padR+8, y:yy, class:"lbl"}, svg, fmt(e.v) + " " + (e.k==="pub"?"published":e.k==="fresh"?"fresh ref":e.k==="arch"?"archived":"OpenBLAS")); }
+  for (const b of BOARDS){
+    if (!state.vis[b]) continue;
+    const pts = rs.filter(r => r.board === b).sort((p, q) => minutes(p.run) - minutes(q.run)), c = col(SERIES[b].color);
+    S("polyline", {points:pts.map(r => x(minutes(r.run)) + "," + y(val(r))).join(" "), fill:"none", stroke:c, "stroke-width":2, "stroke-linejoin":"round", "stroke-linecap":"round"}, svg);
+    for (const r of pts){
+      const px = x(minutes(r.run));
+      if (r.reps >= 3) S("line", {x1:px, x2:px, y1:y(r.p95), y2:y(r.p5), stroke:c, "stroke-width":1.5, opacity:.45}, svg);
+      drawMark(svg, "dot", px, y(val(r)), 4.5, c, "var(--surface)");
+    }
+  }
+  const slots = [...new Set(rs.filter(r => state.vis[r.board]).map(r => r.run))].sort();
+  slots.forEach(run => {
+    const px = x(minutes(run)), bw = (W-padL-padR)/500*24;
+    const band = S("rect", {class:"band", x:px-bw/2, y:padT, width:bw, height:Ht-padT-padB, tabindex:0, "aria-label":"run finished at "+clock(run)}, svg);
+    bindBand(band, () => {
+      const r = rs.find(q => q.run === run), rowsOut = [];
+      const d = state.metric === "mean" ? "by mean time" : "by median rep";
+      rowsOut.push({key:r.board, value:fmt(val(r))+" GOPs", name:SERIES[r.board].label+", "+d,
+        sub: r.reps >= 3 ? `${r.reps} reps, p5 ${fmt(r.p5)} to p95 ${fmt(r.p95)}, CV ${fmt(r.cv,1)}%` : `${r.reps} rep${r.reps===1?"":"s"}`});
+      return {title:`${id} · run finished ${clock(run)}`, rows:rowsOut};
+    });
+  });
+}
+function drawJitter(){ rowsChart("svg-cv", "cv"); rowsChart("svg-rr", "rr"); drawTime(); }
+
+/* ---------- view 4: table ---------- */
+function drawTable(){
+  const box = document.getElementById("tablebox"); box.replaceChildren();
+  const t = H("table", {}, box), hd = H("thead", {}, t), hr = H("tr", {}, hd);
+  const heads = ["Layer","m×n×k","Config","Board","GOPs (mean of runs)","Lowest run","Highest run","Between-run spread %","Inside-run CV %","Reps per run",
+                 "Published","vs published %","Fresh ref","Archived sweep","OpenBLAS"];
+  heads.forEach((h, i) => H("th", i < 4 ? {class:"l"} : {}, hr, h));
+  const tb = H("tbody", {}, t);
+  LAYERS.forEach((l, li) => BOARDS.forEach(b => {
+    if (!state.vis[b]) return;
+    const a = agg(l.id, b); if (!a) return;
+    const tr = H("tr", li % 2 ? {class:"b2"} : {}, tb);
+    const pv = refVal("pub", l.id), d = pv == null ? null : (a.mean - pv)/pv*100;
+    const cells = [l.id, `${l.m}×${l.n}×${l.k}`, l.cfg, b, fmt(a.mean), fmt(a.min), fmt(a.max), fmt(a.spread,1), a.multi ? fmt(a.cv,1) : "n/a", String(Math.round(a.reps)),
+                   pv == null ? "" : fmt(pv,2), d == null ? "" : sgn(d), ...["fresh","arch","blas"].map(k => refVal(k, l.id) == null ? "" : fmt(refVal(k, l.id)))];
+    cells.forEach((c, i) => { const td = H("td", i < 4 ? {class:"l"} : {}, tr, c);
+      if (i === 11 && c) td.className = d > 0 ? "pos" : d < 0 ? "neg" : ""; });
+  }));
+}
+
+/* ---------- tiles ---------- */
+function drawTiles(){
+  const box = document.getElementById("tiles"); box.replaceChildren();
+  const combined = l => mean(BOARDS.map(b => agg(l.id, b, valHead).mean));
+  const rows = LAYERS.map(l => ({l, m:combined(l), d:(combined(l) - refVal("pub", l.id))/refVal("pub", l.id)*100}));
+  const within = rows.filter(r => Math.abs(r.d) <= 3);
+  const out = rows.filter(r => Math.abs(r.d) > 3).sort((a,b) => Math.abs(b.d) - Math.abs(a.d));
+  const worst = out[0], wa = agg(worst.l.id, "jbpi", valHead);
+  let bmax = 0, bl = null; for (const l of LAYERS){ const a = agg(l.id,"jbpi",valHead).mean, b = agg(l.id,"jbpi2",valHead).mean;
+    const dd = Math.abs(a-b)/((a+b)/2)*100; if (dd > bmax){ bmax = dd; bl = l.id; } }
+  const T = (lab, v, n) => { const t = H("div", {class:"tile"}, box); H("span", {class:"lab"}, t, lab); H("span", {class:"val"}, t, v); H("span", {class:"note"}, t, n); };
+  T("Runs finished", "16 of 16", "8 on each board, no failures, no stale-handle errors.");
+  T("Layers within ±3% of published", `${within.length} of 10`, "Both boards averaged. Outside: " + out.map(r => `${r.l.id} ${sgn(r.d,0)}%`).join(", ") + ".");
+  T(`${worst.l.id} against published`, sgn(worst.d,0)+"%", `Inside a run its reps vary by ${fmt(wa.cv,0)}% (CV)` + (wa.cv >= Math.max(...LAYERS.map(l => agg(l.id,"jbpi",valHead).cv)) ? ", the most of any layer." : "."));
+  T("jbpi against jbpi2", "≤ " + fmt(bmax,1) + "%", `Largest gap between the boards' means, on ${bl}.`);
+}
+
+/* ---------- controls ---------- */
+function drawChips(){
+  const box = document.getElementById("chips"); box.replaceChildren();
+  for (const k of Object.keys(SERIES)){
+    const s = SERIES[k], b = H("button", {class:"chip", "aria-pressed":String(state.vis[k]), title:"Show or hide "+s.label}, box);
+    b.appendChild(keyIcon(k, 16)); H("span", {}, b, s.label); H("small", {}, b, s.sub);
+    b.addEventListener("click", () => { state.vis[k] = !state.vis[k]; drawChips(); drawAll(); });
+  }
+}
+function drawLayerSel(){
+  const box = document.getElementById("layersel"); box.replaceChildren();
+  for (const l of LAYERS){ const b = H("button", {"aria-pressed":String(state.layer === l.id)}, box, l.id);
+    b.addEventListener("click", () => { state.layer = l.id; drawLayerSel(); drawTime(); }); }
+}
+function drawAll(){
+  drawLayers(); drawDelta(); drawJitter(); drawTable();
+}
+function setPressed(a, b, first){ document.getElementById(a).setAttribute("aria-pressed", String(first)); document.getElementById(b).setAttribute("aria-pressed", String(!first)); }
+document.getElementById("m-mean").addEventListener("click", () => { state.metric = "mean"; setPressed("m-mean","m-med",true); drawAll(); });
+document.getElementById("m-med").addEventListener("click", () => { state.metric = "median"; setPressed("m-mean","m-med",false); drawAll(); });
+document.getElementById("z-zoom").addEventListener("click", () => { state.zoom = true; setPressed("z-zoom","z-full",true); drawDelta(); });
+document.getElementById("z-full").addEventListener("click", () => { state.zoom = false; setPressed("z-zoom","z-full",false); drawDelta(); });
+document.getElementById("showband").addEventListener("change", e => { state.band = e.target.checked; drawLayers(); });
+const sel = document.getElementById("refsel");
+for (const k of REFS){ const o = H("option", {value:k}, sel, SERIES[k].label + (k==="fresh" ? " (B1, B5)" : "")); }
+sel.addEventListener("change", () => { state.ref = sel.value; state.zoom = sel.value !== "blas"; setPressed("z-zoom","z-full",state.zoom); drawDelta(); });
+document.getElementById("tabs").addEventListener("click", e => {
+  const b = e.target.closest("button[data-tab]"); if (!b) return;
+  state.tab = b.dataset.tab; hideTip();
+  for (const t of document.querySelectorAll("#tabs button")) t.setAttribute("aria-selected", String(t === b));
+  for (const p of document.querySelectorAll(".panel")) p.hidden = p.id !== "p-" + state.tab;
+});
+drawTiles(); drawChips(); drawLayerSel(); drawAll();
+</script>
