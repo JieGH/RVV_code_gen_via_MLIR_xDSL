@@ -88,7 +88,7 @@ details li b{color:var(--ink);font-weight:600}
 <div class="wrap">
   <header>
     <h1>Overnight GEMM runs, layer by layer</h1>
-    <p class="sub">Sixteen runs of the generated xDSL BLIS kernels, <b>8 on jbpi and 8 on jbpi2</b>, alternating every 30 min, first started 23:00 on 19 Sep 2026 and last started 06:30 on 20 Sep. Each run took about 7 min. Uninstrumented build, reference protocol (<b>tmin 10 s</b>, no warm-up), pinned to core 0. Every figure is <b>GOPs for the whole GEMM call, packing included</b>, the same region the reference design times. The <b>Layer by layer</b> view also shows the same sweep repeated with the scalar packer instead of the vector one (violet square), made in the daytime on both boards.</p>
+    <p class="sub">Sixteen runs of the generated xDSL BLIS kernels, <b>8 on jbpi and 8 on jbpi2</b>, alternating every 30 min, first started 23:00 on 19 Sep 2026 and last started 06:30 on 20 Sep. Each run took about 7 min. Uninstrumented build, reference protocol (<b>tmin 10 s</b>, no warm-up), pinned to core 0. Every figure is <b>GOPs for the whole GEMM call, packing included</b>, the same region the reference design times. The <b>Layer by layer</b> view also shows the same sweep repeated with the scalar packer instead of the vector one (violet square), made in the afternoon and evening of 20 Sep on both boards.</p>
   </header>
 
   <section class="tiles" id="tiles" aria-label="Summary"></section>
@@ -115,6 +115,12 @@ details li b{color:var(--ink);font-weight:600}
     <p class="how">Dots are the mean of each board's 8 overnight runs (vector pack). The thick line through a dot spans the lowest to the highest run. The pale band behind it is the middle 90% of single reps inside a run (p5 to p95), averaged over runs. The violet square is the same sweep with the scalar packer, both boards together: its mean, the lowest to the highest run, and the pale band. Hover a layer for the numbers, per board and against the overnight vector pack. The vertical axis does not start at zero.</p>
     <div class="ctl"><label class="chk"><input type="checkbox" id="showband" checked> Show within-run spread (p5 to p95)</label></div>
     <div class="scroll"><svg id="svg-layers" role="img" aria-label="GOPs per layer for jbpi, jbpi2 and the reference series"></svg></div>
+    <div id="packbox" hidden>
+      <h2>Vector pack against scalar pack, layer by layer</h2>
+      <p class="how">The same table the sweep prints. <b>Vector pack</b> is the 16 overnight runs (both boards); <b>scalar pack</b> is the afternoon and evening sweep (both boards). Mean GOPs by mean time, packing included; the range is the lowest to the highest run. The verdict is "within noise" when the change is smaller than the larger of the two spreads between runs ((highest − lowest) ÷ mean).</p>
+      <div class="scroll" id="packtable"></div>
+      <p class="how" id="packnote"></p>
+    </div>
   </section>
 
   <section class="panel" id="p-delta" role="tabpanel" aria-labelledby="t-delta" hidden>
@@ -174,7 +180,7 @@ const LAYERS = [
 const SERIES = {
   jbpi :{label:"jbpi",  sub:"ours, 8 runs", color:"--s1", shape:"dot",  ours:true},
   jbpi2:{label:"jbpi2", sub:"ours, 8 runs", color:"--s2", shape:"dot",  ours:true},
-  scalar:{label:"Scalar pack", sub:"daytime sweep, both boards", color:"--s7", shape:"square", only:"layers"},
+  scalar:{label:"Scalar pack", sub:"afternoon and evening sweep, both boards", color:"--s7", shape:"square", only:"layers"},
   pub  :{label:"Past publication ref design", sub:"your table", color:"--s3", shape:"line",
          vals:{S1:8.5,S2:8.7,S3:8.9,S4:9.0,S5:9.0,B1:8.0,B2:12.5,B3:8.8,B4:8.5,B5:7.5}},
   fresh:{label:"Fresh reference run", sub:"jbpi2, B1 and B5 only", color:"--s4", shape:"tri",
@@ -606,6 +612,38 @@ function scalarAgg(id){
           spread:(hi-lo)/m*100, boards, vec:both.length ? mean(both) : null, nvec:both.length};
 }
 
+/* ---------- the vector-against-scalar table under the layer chart ---------- */
+function drawPackTable(){
+  const box = document.getElementById("packbox"), tb = document.getElementById("packtable");
+  box.hidden = !SWEEP.length; if (!SWEEP.length) return;
+  tb.replaceChildren();
+  const spreadPct = xs => (Math.max(...xs) - Math.min(...xs))/mean(xs)*100;
+  const t = H("table", {}, tb), hr = H("tr", {}, H("thead", {}, t));
+  ["Layer","m×n×k","Config","Vector pack mean","Vector range","Runs","Scalar pack mean","Scalar range","Runs","Change","Spread vec / scl","Verdict","Published","Scalar vs published"]
+    .forEach((h, i) => H("th", i < 3 ? {class:"l"} : i === 11 ? {class:"l"} : {}, hr, h));
+  const body = H("tbody", {}, t);
+  LAYERS.forEach((l, li) => {
+    const v = BOARDS.flatMap(b => (agg(l.id, b) || {runs:[]}).runs.map(r => r.gops_mean_time));
+    const sc = SWEEP.filter(r => r.case === l.id).map(r => r.gops_mean_time);
+    if (!v.length || !sc.length) return;
+    const d = (mean(sc) - mean(v))/mean(v)*100, noise = Math.max(spreadPct(v), spreadPct(sc));
+    const verdict = Math.abs(d) <= noise ? "within noise" : (d > 0 ? "scalar pack faster" : "scalar pack slower");
+    const pv = refVal("pub", l.id), dp = pv == null ? null : (mean(sc) - pv)/pv*100;
+    const tr = H("tr", li % 2 ? {class:"b2"} : {}, body);
+    [l.id, `${l.m}×${l.n}×${l.k}`, l.cfg, fmt(mean(v)), `${fmt(Math.min(...v))}–${fmt(Math.max(...v))}`, String(v.length),
+     fmt(mean(sc)), `${fmt(Math.min(...sc))}–${fmt(Math.max(...sc))}`, String(sc.length), sgn(d) + "%",
+     `${fmt(spreadPct(v),1)}% / ${fmt(spreadPct(sc),1)}%`, verdict, pv == null ? "" : fmt(pv,1), dp == null ? "" : sgn(dp) + "%"].forEach((c, i) => {
+      const td = H("td", i < 3 || i === 11 ? {class:"l"} : {}, tr, c);
+      if (i === 9 || i === 13){ const x = i === 9 ? d : dp; if (x != null) td.className = x > 0 ? "pos" : x < 0 ? "neg" : ""; }
+      if (i === 11 && verdict !== "within noise") td.style.fontWeight = "650";
+      if (l.id === "B3" && i === 0) td.style.fontWeight = "650";
+    });
+  });
+  const stamps = [...new Set(SWEEP.map(r => r.run))].sort(), hm = r => r.slice(11, 13) + ":" + r.slice(13, 15);
+  document.getElementById("packnote").textContent =
+    `Scalar-pack runs: ${new Set(SWEEP.map(r => r.run)).size} of ${SWEEP_META.planned || "?"}, started from ${hm(stamps[0])} to ${hm(stamps[stamps.length - 1])} on ${stamps[0].slice(0, 10)}; vector-pack runs: the overnight sweep of 19–20 Sep. The two sets differ in time of day and board temperature, so a change of a few percent can come from that. B3 is the only layer where the change is clearly beyond the spread.`;
+}
+
 /* ---------- controls ---------- */
 function drawChips(){
   const box = document.getElementById("chips"); box.replaceChildren();
@@ -622,7 +660,7 @@ function drawLayerSel(){
     b.addEventListener("click", () => { state.layer = l.id; drawLayerSel(); drawTime(); }); }
 }
 function drawAll(){
-  drawLayers(); drawDelta(); drawJitter(); drawTable();
+  drawLayers(); drawDelta(); drawJitter(); drawTable(); drawPackTable();
 }
 function setPressed(a, b, first){ document.getElementById(a).setAttribute("aria-pressed", String(first)); document.getElementById(b).setAttribute("aria-pressed", String(!first)); }
 document.getElementById("m-mean").addEventListener("click", () => { state.metric = "mean"; setPressed("m-mean","m-med",true); drawAll(); });

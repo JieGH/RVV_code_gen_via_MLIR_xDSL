@@ -164,8 +164,8 @@ def main() -> int:
     w("\nBoth sets: uninstrumented build, reference protocol, `tmin` 10 s, `--no-nc-overrides`, core 0, the full `config.json`. "
       "e2e GOPs = 2*M*N*K / mean time per whole GEMM call, packing included.\n")
     w("**What is not the same between the two sets:** the vector runs were made overnight (23:00-06:30) and the scalar runs "
-      "in the daytime, so the time of day, the room, and the board's temperature differ. A gap of a few percent can come from that. "
-      "A partial sweep may also have run on one board only (see the boards column).\n")
+      "at the times in the table above (afternoon and evening), so the time of day and the board's temperature differ. "
+      "A gap of a few percent can come from that. A partial sweep may also have run on one board only (see the boards column).\n")
 
     w("## Per layer\n")
     w("| Layer | Shape | Cfg | vector mean | vector range | vector runs | scalar mean | scalar range | scalar runs "

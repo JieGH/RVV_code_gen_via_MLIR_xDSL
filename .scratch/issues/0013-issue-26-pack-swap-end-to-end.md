@@ -1,7 +1,7 @@
 # Issue #26: scalar pack live instead of RVV pack, measured end to end (B3, S1)
 
 **Role / Label:** `done` — measured on `jbpi`, tooling and tests written. Two shapes only; question 3 (a block-size threshold) is not answered.
-**Status:** ✅ Updated after the second session (§6): B3 is the only shape where the scalar pack wins (+44.7% and +66.5% in the two sessions); on B2 and B4 the vector pack is slightly faster (−3.7%, −2.5% for scalar). First-session result: B3: the scalar-pack GEMM is **44.7% faster end to end** (4.48 → 6.48 GOPs by mean time), much more than the isolated pack times can account for. S1: no difference (8.51 vs 8.51, ±0.3%). The B3 reps are bimodal (see §3), so the mean is the only stable figure, and *why* it moves is not known; see §5.
+**Status:** ✅ Updated after the 16-run sweep (§7): B3 is the only layer of the ten where the scalar pack is clearly faster (+48.8% over 16 runs; every scalar run above every overnight vector run); the other nine are within 4.5%, all slightly negative for the scalar pack. Earlier, after the second session (§6): B3 is the only shape where the scalar pack wins (+44.7% and +66.5% in the two sessions); on B2 and B4 the vector pack is slightly faster (−3.7%, −2.5% for scalar). First-session result: B3: the scalar-pack GEMM is **44.7% faster end to end** (4.48 → 6.48 GOPs by mean time), much more than the isolated pack times can account for. S1: no difference (8.51 vs 8.51, ±0.3%). The B3 reps are bimodal (see §3), so the mean is the only stable figure, and *why* it moves is not known; see §5.
 **Target:** `jbpi` (BananaPi M2 Pro, VLEN=256), reached via `fej`, two sessions on 2026-09-20 (12:06–12:21 on B3 and S1; 12:41–13:04 on B2, B3 and B4), core 0, governor `performance`.
 **Primary Sources:**
 - [[0005-swap-pack-impl-bottleneck-isolation]] — the local plan this issue came from.
@@ -90,30 +90,29 @@ e2e GOPs by mean time, uninstrumented, reference protocol, `--no-nc-overrides`. 
 
 Not done: the instrumented pair (`--instr`, `--instr --scalar-pack`) on B3 alone, which splits pack from compute and gives the counters; B3 alone against B3-after-B2 in the same session with both packers (would confirm the order effect); the shipped `nc=128` case.
 
-## 7. The scalar-pack sweep, first 6 of 16 runs (16:30, partial)
+## 7. The scalar-pack sweep, 16 of 16 runs
 
-`run_scalar_pack_sweep.sh`, started 13:25 on 2026-09-20: the whole `config.json` (ten layers), scalar packer only, `jbpi` and `jbpi2` taking turns every 30 min, same flags as the overnight sweep of 19-20 Sep (`--no-nc-overrides --cpu 0 --tmin 10`, uninstrumented, reference protocol). This section reads the 6 runs finished by 16:30 (3 per board, started 13:32 to 16:02); run 7 was in progress and is not in it. The sweep is due to end about 21:05. Report: `logs/sweep_scalar_2026-09-20_132532/report_1630.md`; the same numbers are the violet square in the *Layer by layer* chart of the report page.
+`run_scalar_pack_sweep.sh`, 2026-09-20, runs started 13:32 to 21:02: the whole `config.json` (ten layers), scalar packer only, `jbpi` and `jbpi2` taking turns every 30 min (8 runs each), the same flags as the overnight sweep of 19-20 Sep (`--no-nc-overrides --cpu 0 --tmin 10`, uninstrumented, reference protocol). 16 of 16 runs finished, none failed. Reports: `logs/sweep_scalar_2026-09-20_132532/report_1630.md` (first 6 runs) and `report_2200.md` (all 16). The same numbers are in the *Layer by layer* view of the report page (violet square) and in the table under its chart.
 
-Compared with the 16 overnight vector-pack runs (23:06 to 06:36, 8 per board). e2e GOPs by mean time, packing included.
+Compared with the 16 overnight vector-pack runs (23:06 to 06:36, 8 per board). e2e GOPs by mean time, packing included; the range is the lowest to the highest run.
 
-| Layer | vector (16 runs) | scalar (6 runs) | scalar vs vector | scalar vs published |
-|---|---|---|---|---|
-| S1 `1000³` | 8.49 | 8.47 | −0.2% | −0.3% |
-| S2 `2000³` | 8.75 | 8.62 | −1.4% | −0.9% |
-| S3 `3000³` | 9.05 | 8.92 | −1.4% | +0.3% |
-| S4 `4000³` | 8.83 | 8.78 | −0.6% | −2.5% |
-| S5 `5000³` | 9.16 | 9.08 | −0.9% | +0.9% |
-| B1 `1024x384x1024` | 8.04 | 7.91 | −1.7% | −1.1% |
-| B2 `384x384x64` | 12.72 | 12.24 | −3.8% | −2.1% |
-| **B3 `64x384x384`** | **5.30** | **8.22** | **+55.1%** | **−6.6%** |
-| B4 `4096x384x1024` | 7.80 | 7.60 | −2.6% | −10.6% |
-| B5 `1024x384x4096` | 7.82 | 7.77 | −0.7% | +3.6% |
+| Layer | vector (16 runs) | scalar (16 runs) | scalar vs vector | spread vec / scl | scalar vs published |
+|---|---|---|---|---|---|
+| S1 `1000³` | 8.49 (8.43-8.55) | 8.45 (8.38-8.52) | −0.4% | 1.4% / 1.7% | −0.5% |
+| S2 `2000³` | 8.75 (8.50-8.86) | 8.62 (8.39-8.77) | −1.4% | 4.1% / 4.4% | −0.9% |
+| S3 `3000³` | 9.05 (8.92-9.11) | 8.94 (8.74-9.09) | −1.2% | 2.1% / 4.0% | +0.4% |
+| S4 `4000³` | 8.83 (8.68-8.96) | 8.77 (8.55-8.92) | −0.8% | 3.2% / 4.1% | −2.6% |
+| S5 `5000³` | 9.16 (9.05-9.26) | 9.09 (8.92-9.20) | −0.8% | 2.2% / 3.1% | +1.0% |
+| B1 `1024x384x1024` | 8.04 (7.86-8.15) | 7.91 (7.85-8.01) | −1.7% | 3.5% / 2.0% | −1.1% |
+| B2 `384x384x64` | 12.72 (12.38-12.94) | 12.15 (10.93-12.30) | −4.5% | 4.4% / 11.3% | −2.8% |
+| **B3 `64x384x384`** | **5.30 (5.00-5.59)** | **7.88 (6.58-8.36)** | **+48.8%** | 11.2% / 22.6% | **−10.4%** |
+| B4 `4096x384x1024` | 7.80 (7.66-7.90) | 7.58 (7.26-7.72) | −2.9% | 3.1% / 6.1% | −10.8% |
+| B5 `1024x384x4096` | 7.82 (7.60-7.97) | 7.78 (7.69-7.88) | −0.6% | 4.7% / 2.4% | +3.7% |
 
-- **B3 is the only layer the packer changes by more than the noise.** +55.1% on the mean of 6 runs (range 8.09-8.36), the same on both boards (jbpi 8.19, jbpi2 8.25). This is the third setup where the direction repeats (session 1: +44.7%, session 2: +66.5%). With the scalar pack B3 is 6.6% under the published 8.8; with the vector pack it was 40% under.
-- **The other nine layers are all slightly negative for the scalar pack (−0.2% to −3.8%), and none is positive.** Each is inside the spread between the overnight runs, so no single one is a finding. The consistent sign fits a small advantage for the vector pack of a few percent (B2 −3.8% matches session 2's −3.7%), but it also fits the daytime-against-overnight difference below. The two cannot be told apart from this data.
-- **B4's gap to the published table (−10.6%) is not a packing effect**: the scalar pack does not close it.
-- **Boards:** 3 runs each; the boards agree to within 1.5% on every layer and packer.
-- **B3 stays two-speed** (fast about 9 GOPs, slow about 4-6): with the scalar pack the 5th percentile is 5.8-6.0 and the 95th 9.1-9.2 in all six runs; the vector overnight runs had a 5th percentile of 4.1-4.3.
-
-**Not the same between the two sets:** the vector runs are overnight, the scalar runs daytime, so the board temperature and time of day differ. To separate a packer effect from that, run the vector pack in the daytime too (the same sweep without `--scalar-pack`). Partial: 6 of 16 runs; the final report is `gather_sweep_report.sh` run again after ~21:05.
-
+- **B3 is the only layer the packer changes by more than the noise.** Every one of the 16 scalar runs (lowest 6.58) is faster than every one of the 16 overnight vector runs (highest 5.59). Both boards agree (`jbpi` 7.95, `jbpi2` 7.82). The direction now repeats in four setups (session 1 +44.7%, session 2 +66.5%, the first 6 sweep runs +55.1%, all 16 runs +48.8%). Against the published 8.8, B3 with the scalar pack is 10.4% under (with the vector pack it was 40% under).
+- **The B3 figure fell from +55.1% (6 runs, 16:30) to +48.8% (16 runs)** because the later runs were less steady: three B3 runs at 7.4-7.5 (16:32, 18:02, 20:32) and the last one at 6.58 (21:02, the lowest, with the median rep at 7.21 instead of about 8.8, so more reps at the slow speed). It is not a steady decline (18:32 gave 8.36). One B2 run also dipped (16:32, 10.93; the other 15 are 12.04-12.30). The cause is not known; the load average on the boards was about 2.0 before every run, so it does not show there.
+- **The other nine layers are all slightly negative for the scalar pack (−0.4% to −4.5%), none positive,** and each is inside the spread between runs by the rule used here, so no single one is a finding. B2's −4.5% is the largest and has the same sign and size as session 2 (−3.7%, where it was beyond noise); it reads "within noise" here only because the B2 scalar spread includes the one dip (without that run B2 scalar is about 12.23, −3.9%). The consistent sign fits a small advantage for the vector pack of a few percent, or a small difference between the hours the two sets were made in; these cannot be told apart.
+- **B4's gap to the published table (−10.8%) is not a packing effect**: the scalar pack does not close it (the vector pack is −8.2%).
+- **Boards:** 8 runs each; they agree to within 2% on every layer and packer.
+- **Not the same between the two sets:** the vector runs are overnight (23:06-06:36), the scalar runs from 13:32 to 21:02, so the time of day and the boards' temperature differ. To separate a packer effect from that, run the vector pack over the same hours (the same sweep without `--scalar-pack`).
+- **Question 3 (a block-size threshold):** ten layers, one clear case (B3, the smallest M at 64, with the largest packed B for its arithmetic; §6). That is not enough to place a threshold; shapes around B3 (M between 64 and 384, K and N varied) would be needed.
