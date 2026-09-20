@@ -4,7 +4,7 @@
   color-scheme:light;
   --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
   --grid:#e1e0d9; --axis:#c3c2b7; --hair:rgba(11,11,11,.10); --wash:rgba(11,11,11,.05);
-  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#8a4fd6;
   --good:#006300; --bad:#d03b3b;
 }
 @media (prefers-color-scheme:dark){
@@ -12,7 +12,7 @@
     color-scheme:dark;
     --page:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
     --grid:#2c2c2a; --axis:#383835; --hair:rgba(255,255,255,.10); --wash:rgba(255,255,255,.06);
-    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#a06be8;
     --good:#0ca30c; --bad:#ec835a;
   }
 }
@@ -20,7 +20,7 @@
   color-scheme:dark;
   --page:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
   --grid:#2c2c2a; --axis:#383835; --hair:rgba(255,255,255,.10); --wash:rgba(255,255,255,.06);
-  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#a06be8;
   --good:#0ca30c; --bad:#ec835a;
 }
 *{box-sizing:border-box}
@@ -88,7 +88,7 @@ details li b{color:var(--ink);font-weight:600}
 <div class="wrap">
   <header>
     <h1>Overnight GEMM runs, layer by layer</h1>
-    <p class="sub">Sixteen runs of the generated xDSL BLIS kernels, <b>8 on jbpi and 8 on jbpi2</b>, alternating every 30 min, first started 23:00 on 19 Sep 2026 and last started 06:30 on 20 Sep. Each run took about 7 min. Uninstrumented build, reference protocol (<b>tmin 10 s</b>, no warm-up), pinned to core 0. Every figure is <b>GOPs for the whole GEMM call, packing included</b>, the same region the reference design times.</p>
+    <p class="sub">Sixteen runs of the generated xDSL BLIS kernels, <b>8 on jbpi and 8 on jbpi2</b>, alternating every 30 min, first started 23:00 on 19 Sep 2026 and last started 06:30 on 20 Sep. Each run took about 7 min. Uninstrumented build, reference protocol (<b>tmin 10 s</b>, no warm-up), pinned to core 0. Every figure is <b>GOPs for the whole GEMM call, packing included</b>, the same region the reference design times. The <b>Layer by layer</b> view also shows the same sweep repeated with the scalar packer instead of the vector one (violet square), made in the daytime on both boards.</p>
   </header>
 
   <section class="tiles" id="tiles" aria-label="Summary"></section>
@@ -112,7 +112,7 @@ details li b{color:var(--ink);font-weight:600}
 
   <section class="panel" id="p-layers" role="tabpanel" aria-labelledby="t-layers">
     <h2>Performance per layer, both boards against every reference</h2>
-    <p class="how">Dots are the mean of each board's 8 runs. The thick line through a dot spans the lowest to the highest run. The pale band behind it is the middle 90% of single reps inside a run (p5 to p95), averaged over runs. Hover a layer for the numbers. The vertical axis does not start at zero.</p>
+    <p class="how">Dots are the mean of each board's 8 overnight runs (vector pack). The thick line through a dot spans the lowest to the highest run. The pale band behind it is the middle 90% of single reps inside a run (p5 to p95), averaged over runs. The violet square is the same sweep with the scalar packer, both boards together: its mean, the lowest to the highest run, and the pale band. Hover a layer for the numbers, per board and against the overnight vector pack. The vertical axis does not start at zero.</p>
     <div class="ctl"><label class="chk"><input type="checkbox" id="showband" checked> Show within-run spread (p5 to p95)</label></div>
     <div class="scroll"><svg id="svg-layers" role="img" aria-label="GOPs per layer for jbpi, jbpi2 and the reference series"></svg></div>
   </section>
@@ -174,6 +174,7 @@ const LAYERS = [
 const SERIES = {
   jbpi :{label:"jbpi",  sub:"ours, 8 runs", color:"--s1", shape:"dot",  ours:true},
   jbpi2:{label:"jbpi2", sub:"ours, 8 runs", color:"--s2", shape:"dot",  ours:true},
+  scalar:{label:"Scalar pack", sub:"daytime sweep, both boards", color:"--s7", shape:"square", only:"layers"},
   pub  :{label:"Past publication ref design", sub:"your table", color:"--s3", shape:"line",
          vals:{S1:8.5,S2:8.7,S3:8.9,S4:9.0,S5:9.0,B1:8.0,B2:12.5,B3:8.8,B4:8.5,B5:7.5}},
   fresh:{label:"Fresh reference run", sub:"jbpi2, B1 and B5 only", color:"--s4", shape:"tri",
@@ -185,7 +186,7 @@ const SERIES = {
 };
 const BOARDS = ["jbpi","jbpi2"];
 const REFS = ["pub","fresh","arch","blas"];
-const state = {metric:"mean", vis:{jbpi:true,jbpi2:true,pub:true,fresh:true,arch:true,blas:false}, tab:"layers",
+const state = {metric:"mean", vis:{jbpi:true,jbpi2:true,scalar:true,pub:true,fresh:true,arch:true,blas:false}, tab:"layers",
                ref:"pub", zoom:true, layer:"B3", band:true};
 
 const NS = "http://www.w3.org/2000/svg";
@@ -238,6 +239,7 @@ function drawMark(p, shape, x, y, r, c, ring, lineW){
   else if (shape === "line"){ S("rect", {x:x-(lineW||14)/2, y:y-1.5, width:lineW||14, height:3, rx:1.5, fill:c}, p); }
   else if (shape === "tri"){ S("path", {d:`M${x},${y-r-1}L${x+r+1},${y+r}L${x-r-1},${y+r}Z`, fill:c, stroke:ring, "stroke-width":2, "paint-order":"stroke"}, p); }
   else if (shape === "diamond"){ S("path", {d:`M${x},${y-r-1}L${x+r+1},${y}L${x},${y+r+1}L${x-r-1},${y}Z`, fill:c, stroke:ring, "stroke-width":2, "paint-order":"stroke"}, p); }
+  else if (shape === "square"){ S("rect", {x:x-r, y:y-r, width:2*r, height:2*r, rx:1.5, fill:c, stroke:ring, "stroke-width":2, "paint-order":"stroke"}, p); }
   else if (shape === "ring"){ S("circle", {cx:x, cy:y, r:r, fill:ring, stroke:c, "stroke-width":2.5}, p); }
 }
 function showTip(cx, cy, title, rows){
@@ -300,6 +302,7 @@ function drawLayers(){
   for (const l of LAYERS){
     for (const b of BOARDS) if (state.vis[b]){ const a = agg(l.id, b); if (a){ take(a.min); take(a.max);
       if (state.band && a.multi){ take(a.p5); take(a.p95); } } }
+    if (state.vis.scalar){ const g = scalarAgg(l.id); if (g){ take(g.min); take(g.max); if (state.band && g.multi){ take(g.p5); take(g.p95); } } }
     for (const r of REFS) if (state.vis[r]) take(refVal(r, l.id));
   }
   if (!isFinite(lo)){ lo = 0; hi = 10; }
@@ -321,6 +324,15 @@ function drawLayers(){
     if (state.vis.arch){ const v = refVal("arch", l.id); if (v != null) drawMark(svg, "diamond", cx-L.gw/2+12, y(v), 5, col(SERIES.arch.color), "var(--surface)"); }
     if (state.vis.fresh){ const v = refVal("fresh", l.id); if (v != null) drawMark(svg, "tri", cx+L.gw/2-12, y(v), 5, col(SERIES.fresh.color), "var(--surface)"); }
     if (state.vis.blas){ const v = refVal("blas", l.id); if (v != null) drawMark(svg, "ring", cx+L.gw/2-12, y(v), 4.5, col(SERIES.blas.color), "var(--surface)"); }
+    if (state.vis.scalar){
+      const g = scalarAgg(l.id);
+      if (g){
+        const c = col(SERIES.scalar.color);
+        if (state.band && g.multi) S("rect", {x:cx-5, y:y(g.p95), width:10, height:Math.max(2, y(g.p5)-y(g.p95)), rx:4, fill:c, opacity:.22}, svg);
+        S("line", {x1:cx, x2:cx, y1:y(g.max), y2:y(g.min), stroke:c, "stroke-width":2.5, "stroke-linecap":"round"}, svg);
+        drawMark(svg, "square", cx, y(g.mean), 4.5, c, "var(--surface)");
+      }
+    }
     BOARDS.forEach((b, bi) => {
       if (!state.vis[b]) return;
       const a = agg(l.id, b); if (!a) return;
@@ -341,6 +353,20 @@ function layerTip(l){
     const parts = [`runs ${fmt(a.min)} to ${fmt(a.max)}`];
     parts.push(a.multi ? `inside-run CV ${fmt(a.cv,1)}%, p5 ${fmt(a.p5)} to p95 ${fmt(a.p95)}` : `${Math.round(a.reps)} rep${a.reps<1.5?"":"s"} per run, no inside-run spread`);
     rows.push({key:b, value:fmt(a.mean)+" GOPs", name:SERIES[b].label+" (mean of "+a.n+" runs)", sub:parts.join(" · ")});
+  }
+  if (state.vis.scalar){
+    const g = scalarAgg(l.id);
+    if (g){
+      const d = g.vec != null ? (g.mean - g.vec)/g.vec*100 : null;
+      const parts = [`runs ${fmt(g.min)} to ${fmt(g.max)}`];
+      if (g.multi) parts.push(`p5 ${fmt(g.p5)} to p95 ${fmt(g.p95)}`);
+      const pb = BOARDS.filter(b => g.boards[b]).map(b => `${b} ${fmt(g.boards[b].mean)} (${g.boards[b].n})`);
+      if (pb.length) parts.push("per board " + pb.join(", "));
+      if (d != null) parts.push(`${sgn(d)}% against the overnight vector pack (${fmt(g.vec)} GOPs, ${g.nvec} runs)`);
+      rows.push({key:"scalar", value:fmt(g.mean)+" GOPs", name:"Scalar pack (mean of "+g.n+" runs)", sub:parts.join(" · ")});
+      if (l.id === "B3") rows.push({value:fmt(B3_ALONE.scalar)+" GOPs", name:"Scalar pack, B3 alone in its process",
+        sub:`vector pack in that setup: ${fmt(B3_ALONE.vector)} GOPs. B3's speed depends on the setup, the direction does not.`});
+    }
   }
   for (const r of REFS) if (state.vis[r]){
     const v = refVal(r, l.id); if (v == null) continue;
@@ -529,6 +555,15 @@ function drawTable(){
                    pv == null ? "" : fmt(pv,2), d == null ? "" : sgn(d), ...["fresh","arch","blas"].map(k => refVal(k, l.id) == null ? "" : fmt(refVal(k, l.id)))];
     cells.forEach((c, i) => { const td = H("td", i < 4 ? {class:"l"} : {}, tr, c);
       if (i === 11 && c) td.className = d > 0 ? "pos" : d < 0 ? "neg" : ""; });
+    if (b === "jbpi2" && state.vis.scalar){
+      const g = scalarAgg(l.id);
+      if (g){
+        const tr2 = H("tr", li % 2 ? {class:"b2"} : {}, tb), d2 = pv == null ? null : (g.mean - pv)/pv*100;
+        const c2 = [l.id, `${l.m}×${l.n}×${l.k}`, l.cfg, "scalar pack", fmt(g.mean), fmt(g.min), fmt(g.max), fmt(g.spread,1), "n/a", String(Math.round(g.reps)),
+                    pv == null ? "" : fmt(pv,2), d2 == null ? "" : sgn(d2), ...["fresh","arch","blas"].map(k => refVal(k, l.id) == null ? "" : fmt(refVal(k, l.id)))];
+        c2.forEach((c, i) => { const td = H("td", i < 4 ? {class:"l"} : {}, tr2, c); if (i === 11 && c) td.className = d2 > 0 ? "pos" : d2 < 0 ? "neg" : ""; });
+      }
+    }
   }));
 }
 
@@ -547,6 +582,28 @@ function drawTiles(){
   T("Layers within ±3% of published", `${within.length} of 10`, "Both boards averaged. Outside: " + out.map(r => `${r.l.id} ${sgn(r.d,0)}%`).join(", ") + ".");
   T(`${worst.l.id} against published`, sgn(worst.d,0)+"%", `Inside a run its reps vary by ${fmt(wa.cv,0)}% (CV)` + (wa.cv >= Math.max(...LAYERS.map(l => agg(l.id,"jbpi",valHead).cv)) ? ", the most of any layer." : "."));
   T("jbpi against jbpi2", "≤ " + fmt(bmax,1) + "%", `Largest gap between the boards' means, on ${bl}.`);
+  if (SWEEP.length){
+    const rn = new Set(SWEEP.map(r => r.run)).size, sc = LAYERS.map(l => scalarAgg(l.id)).filter(Boolean);
+    const big = sc.map((g, i) => ({id:LAYERS[i].id, d:g.vec != null ? (g.mean - g.vec)/g.vec*100 : 0})).sort((a, b) => Math.abs(b.d) - Math.abs(a.d))[0];
+    T("Scalar-pack sweep", `${rn} of ${SWEEP_META.planned || "?"} runs`, (SWEEP_META.done < SWEEP_META.planned ? "Still running. " : "") + `Largest change against the vector pack: ${big.id} ${sgn(big.d, 0)}%.`);
+  }
+}
+
+/* ---------- scalar-pack sweep (issue 26): the same layers, the scalar packer ---------- */
+const SWEEP = /*__SWEEP__*/[];
+const SWEEP_META = /*__SWEEP_META__*/{planned:0, done:0, note:""};
+// B3 alone in its process, tmin 10 s (runs 2026-09-20_120657/121022/121347/121713): vector 4.48, scalar 6.48.
+const B3_ALONE = {vector:4.48, scalar:6.48};
+function scalarAgg(id){
+  const g = state.metric === "mean" ? r => r.gops_mean_time : r => r.median;
+  const rs = SWEEP.filter(r => r.case === id);
+  if (!rs.length) return null;
+  const v = rs.map(g), m = mean(v), lo = Math.min(...v), hi = Math.max(...v), reps = mean(rs.map(r => r.reps));
+  const boards = {};
+  for (const b of BOARDS){ const xs = rs.filter(r => r.board === b).map(g); if (xs.length) boards[b] = {mean:mean(xs), n:xs.length}; }
+  const both = BOARDS.map(b => agg(id, b)).filter(Boolean).flatMap(a => a.runs.map(g));
+  return {n:rs.length, mean:m, min:lo, max:hi, p5:mean(rs.map(r => r.p5)), p95:mean(rs.map(r => r.p95)), reps, multi:reps >= 3,
+          spread:(hi-lo)/m*100, boards, vec:both.length ? mean(both) : null, nvec:both.length};
 }
 
 /* ---------- controls ---------- */
@@ -555,6 +612,7 @@ function drawChips(){
   for (const k of Object.keys(SERIES)){
     const s = SERIES[k], b = H("button", {class:"chip", "aria-pressed":String(state.vis[k]), title:"Show or hide "+s.label}, box);
     b.appendChild(keyIcon(k, 16)); H("span", {}, b, s.label); H("small", {}, b, s.sub);
+    if (s.only){ b.dataset.only = s.only; b.hidden = state.tab !== s.only; }
     b.addEventListener("click", () => { state.vis[k] = !state.vis[k]; drawChips(); drawAll(); });
   }
 }
@@ -578,6 +636,7 @@ sel.addEventListener("change", () => { state.ref = sel.value; state.zoom = sel.v
 document.getElementById("tabs").addEventListener("click", e => {
   const b = e.target.closest("button[data-tab]"); if (!b) return;
   state.tab = b.dataset.tab; hideTip();
+  for (const c of document.querySelectorAll("#chips [data-only]")) c.hidden = c.dataset.only !== state.tab;
   for (const t of document.querySelectorAll("#tabs button")) t.setAttribute("aria-selected", String(t === b));
   for (const p of document.querySelectorAll(".panel")) p.hidden = p.id !== "p-" + state.tab;
 });
