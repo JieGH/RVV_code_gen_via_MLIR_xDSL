@@ -90,3 +90,30 @@ e2e GOPs by mean time, uninstrumented, reference protocol, `--no-nc-overrides`. 
 
 Not done: the instrumented pair (`--instr`, `--instr --scalar-pack`) on B3 alone, which splits pack from compute and gives the counters; B3 alone against B3-after-B2 in the same session with both packers (would confirm the order effect); the shipped `nc=128` case.
 
+## 7. The scalar-pack sweep, first 6 of 16 runs (16:30, partial)
+
+`run_scalar_pack_sweep.sh`, started 13:25 on 2026-09-20: the whole `config.json` (ten layers), scalar packer only, `jbpi` and `jbpi2` taking turns every 30 min, same flags as the overnight sweep of 19-20 Sep (`--no-nc-overrides --cpu 0 --tmin 10`, uninstrumented, reference protocol). This section reads the 6 runs finished by 16:30 (3 per board, started 13:32 to 16:02); run 7 was in progress and is not in it. The sweep is due to end about 21:05. Report: `logs/sweep_scalar_2026-09-20_132532/report_1630.md`; the same numbers are the violet square in the *Layer by layer* chart of the report page.
+
+Compared with the 16 overnight vector-pack runs (23:06 to 06:36, 8 per board). e2e GOPs by mean time, packing included.
+
+| Layer | vector (16 runs) | scalar (6 runs) | scalar vs vector | scalar vs published |
+|---|---|---|---|---|
+| S1 `1000³` | 8.49 | 8.47 | −0.2% | −0.3% |
+| S2 `2000³` | 8.75 | 8.62 | −1.4% | −0.9% |
+| S3 `3000³` | 9.05 | 8.92 | −1.4% | +0.3% |
+| S4 `4000³` | 8.83 | 8.78 | −0.6% | −2.5% |
+| S5 `5000³` | 9.16 | 9.08 | −0.9% | +0.9% |
+| B1 `1024x384x1024` | 8.04 | 7.91 | −1.7% | −1.1% |
+| B2 `384x384x64` | 12.72 | 12.24 | −3.8% | −2.1% |
+| **B3 `64x384x384`** | **5.30** | **8.22** | **+55.1%** | **−6.6%** |
+| B4 `4096x384x1024` | 7.80 | 7.60 | −2.6% | −10.6% |
+| B5 `1024x384x4096` | 7.82 | 7.77 | −0.7% | +3.6% |
+
+- **B3 is the only layer the packer changes by more than the noise.** +55.1% on the mean of 6 runs (range 8.09-8.36), the same on both boards (jbpi 8.19, jbpi2 8.25). This is the third setup where the direction repeats (session 1: +44.7%, session 2: +66.5%). With the scalar pack B3 is 6.6% under the published 8.8; with the vector pack it was 40% under.
+- **The other nine layers are all slightly negative for the scalar pack (−0.2% to −3.8%), and none is positive.** Each is inside the spread between the overnight runs, so no single one is a finding. The consistent sign fits a small advantage for the vector pack of a few percent (B2 −3.8% matches session 2's −3.7%), but it also fits the daytime-against-overnight difference below. The two cannot be told apart from this data.
+- **B4's gap to the published table (−10.6%) is not a packing effect**: the scalar pack does not close it.
+- **Boards:** 3 runs each; the boards agree to within 1.5% on every layer and packer.
+- **B3 stays two-speed** (fast about 9 GOPs, slow about 4-6): with the scalar pack the 5th percentile is 5.8-6.0 and the 95th 9.1-9.2 in all six runs; the vector overnight runs had a 5th percentile of 4.1-4.3.
+
+**Not the same between the two sets:** the vector runs are overnight, the scalar runs daytime, so the board temperature and time of day differ. To separate a packer effect from that, run the vector pack in the daytime too (the same sweep without `--scalar-pack`). Partial: 6 of 16 runs; the final report is `gather_sweep_report.sh` run again after ~21:05.
+
