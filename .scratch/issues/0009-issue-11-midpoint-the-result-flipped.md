@@ -1,7 +1,7 @@
 # Issue #11 midpoint: the result flipped sign, and what that does to the remaining sub-issues
 
 **Role / Label:** `assessment` — no code changed; this reads the run of 2026-09-19 18:54 against #11's own predictions
-**Status:** 🟡 7 of 14 sub-issues closed. This note argues the remaining 7 should mostly **not** be implemented, and says what to do instead.
+**Status:** 🟡 Addendum 2026-09-20 (§8): 16 pinned runs on two boards. 7 of 14 sub-issues closed. This note argues the remaining 7 should mostly **not** be implemented, and says what to do instead.
 **Target:** `jbpi` (BananaPi M2 Pro, VLEN=256) via `fej`. Uninstrumented build (`INSTRUMENTED=0`), reference protocol, `--no-nc-overrides`.
 **Primary Sources:**
 - GitHub #11 and its children #12–#25; #26 (pack swap) remains separate.
@@ -160,3 +160,40 @@ Everything in Tier 3 becomes a paragraph in that write-up.
   on B1 in one session would settle it and is cheap.
 - Does the reference's own number move under pinning? If it gains more than we do, the +14%
   shrinks. Unknown until step 1 is done, and the honest position until then.
+
+## 8. Addendum 2026-09-20: 16 runs, two boards, pinned, against both references
+
+**What ran.** 16 runs, 8 on `jbpi` and 8 on `jbpi2`, taking turns every 30 min from 23:00 on 19 Sep to 06:30 on 20 Sep. Uninstrumented, reference protocol `tmin=10 s`, `--no-nc-overrides --cpu 0`. Each took about 7 min. Logs: `logs/run_2026-09-19_230648/` through `logs/run_2026-09-20_063652/`. The schedule and why the runs no longer collide: [[0012-cron-two-boards-share-one-directory]]. Interactive view of all of it: https://claude.ai/artifact/ANoEN8zBCAehAzrQN5rXbE (private; its source is not in the repo).
+
+All numbers are 2·m·n·k ÷ mean wall time of the whole GEMM call, packing included (`RVV_Time_ms`). Both boards' means are of 8 runs each.
+
+| layer | config | reps per run | jbpi | jbpi2 | both | past publication | vs it | fresh reference run | vs it |
+|---|---|---|---|---|---|---|---|---|---|
+| S1 | 32x7 | 43 | 8.51 | 8.47 | 8.49 | 8.5 | −0.1% | | |
+| S2 | 32x7 | 6 | 8.77 | 8.72 | 8.75 | 8.7 | +0.5% | | |
+| S3 | 32x7 | 2 | 9.07 | 9.03 | 9.05 | 8.9 | +1.7% | | |
+| S4 | 32x7 | 1 | 8.84 | 8.83 | 8.83 | 9.0 | −1.8% | | |
+| S5 | 32x7 | 1 | 9.18 | 9.15 | 9.16 | 9.0 | +1.8% | | |
+| B1 | 32x6 | 100 | 8.09 | 8.00 | 8.04 | 8.0 | +0.6% | 7.02 | **+14.5%** |
+| B2 | 16x15 | 6740 | 12.72 | 12.72 | 12.72 | 12.5 | +1.8% | | |
+| B3 | 16x15 | 2808 | 5.34 | 5.26 | 5.30 | 8.8 | **−39.8%** | | |
+| B4 | 32x7 | 25 | 7.83 | 7.78 | 7.80 | 8.5 | −8.2% | | |
+| B5 | 32x6 | 25 | 7.86 | 7.78 | 7.82 | 7.5 | +4.3% | 7.06 | **+10.8%** |
+
+"Past publication" is the user's table (see [[project_reference_baseline_perf_user_stated]]); "fresh reference run" is `logs/refbase_2026-09-18_164740/`, the only measurement of the reference design itself (B1 and B5 only).
+
+**What it shows.**
+1. **The two references disagree with each other by 14% on B1** (8.0 published, 7.02 measured). So "we are 14% ahead" and "we are at parity" are both true, depending on which reference is meant. §1's +14.5% on B1 reproduces (8.04 again). On B5 it is +10.8%, lower than §1's +13.3% (8.00 then, 7.82 now).
+2. **Against the published table, 7 of 10 layers are within ±3%.** The three outside are B3 (−39.8%), B4 (−8.2%) and B5 (+4.3%).
+3. **The two boards agree.** The largest gap between their means is 1.2% (B1). No board effect worth chasing.
+4. **B3 is far below both the published table and the archived sweep (8.53, −37.9%), and is the noisiest layer.** Its reps vary by 34% (CV) inside a run. In the one run I looked at, the median rep was 4.4 against a mean-time figure of 5.3, with single reps up to 9.9. The cause was not investigated here (issue #1). B2 is next at CV 3.6%; every other layer is at or under 1%.
+5. **Pinned B1 varies 1.6% between runs on jbpi (8.02–8.15) and 2.4% on jbpi2 (7.86–8.05).** #21 asked for this measurement. There is no unpinned run at the same protocol to compare it against, so "tighter than before" is still unmeasured.
+
+## 9. What §8 does not establish
+
+- **No back-to-back reference.** The fresh reference run is from 18 Sep, unpinned, `tmin 3 s`, on jbpi2. Ours are pinned to core 0 and `tmin 10 s`. This is the "does the reference's number move under pinning?" question in §7 and it is still open, so the +10.8% and +14.5% stand on a cross-day pair.
+- **The published table's origin is unknown to me** (board, build, timing region, pinning). Parity with it is only as strong as that table.
+- **S3, S4 and S5 have 1 or 2 reps per run** at `tmin 10 s`, so they have no inside-run spread. Only their between-run range is meaningful.
+- **B3's gap is unexplained.** It is the one layer where our result looks clearly worse than every reference.
+- **Not in this addendum:** the five jbpi2 runs of 18 Sep (older warm-up protocol) and the OpenBLAS column of `ext/*_comparison.txt` (where those were measured is unchecked).
+
