@@ -1,0 +1,6 @@
+=== fp32_AXPY_FP32_Pack_vlen256_MR16NR15 ===
+▶ B3 (64x384x384)        | best variant 16x15 [16 rows x 15 columns of C per tile] | 4.49 GOPs by mean time [whole GEMM call, packing included] | 4.36 GOPs median rep | 2381 reps | ✅ C[40,96]: 104.56 == 104.56 [sample entry vs the naive scalar GEMM] (cache blocking mc:64 nc:384 kc:128)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR32NR7 ===
+▶ S1 (1000x1000x1000)    | best variant 32x7 [32 rows x 7 columns of C per tile] | 8.52 GOPs by mean time [whole GEMM call, packing included] | 8.54 GOPs median rep | 43 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:768 nc:1000 kc:128)
+

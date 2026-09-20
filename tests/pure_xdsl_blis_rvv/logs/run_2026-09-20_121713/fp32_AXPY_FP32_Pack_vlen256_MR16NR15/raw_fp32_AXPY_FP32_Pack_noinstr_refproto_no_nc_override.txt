@@ -1,0 +1,2 @@
+Layer,M,N,K,Variant,Status,KerGOPs_Harmonic,KerGOPs_Min,KerGOPs_P5,KerGOPs_P95,KerGOPs_Max,KerGOPs_IQR,KerGOPs_Mean,KerGOPs_Std,KerGOPs_Median,RVV_Pack_GBs,Scl_Pack_GBs,RVV_Time_ms,Ref_Time_ms,Vector_Pack_Time_ms,Scalar_Pack_Time_ms,Compute_Time_ms,N_Reps
+B3,64,384,384,MR16_NR15,PASS,4.49235,3.48799,4.18657,6.2313,9.83069,0.151605,4.57622,0.782005,4.36168,nan,nan,4.20145,78.3185,nan,nan,nan,2381

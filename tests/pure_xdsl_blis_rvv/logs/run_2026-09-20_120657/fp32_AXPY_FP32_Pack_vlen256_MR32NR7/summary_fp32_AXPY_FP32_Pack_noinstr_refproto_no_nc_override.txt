@@ -1,0 +1,1 @@
+▶ S1 (1000x1000x1000)    | best variant 32x7 [32 rows x 7 columns of C per tile] | 8.50 GOPs by mean time [whole GEMM call, packing included] | 8.51 GOPs median rep | 43 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:768 nc:1000 kc:128)
