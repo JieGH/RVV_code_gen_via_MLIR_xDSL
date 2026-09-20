@@ -1,0 +1,2 @@
+▶ B2 (384x384x64)        | best variant 16x15 [16 rows x 15 columns of C per tile] | 12.26 GOPs by mean time [whole GEMM call, packing included] | 12.30 GOPs median rep | 1950 reps | ✅ C[268,329]: 15.86 == 15.86 [sample entry vs the naive scalar GEMM] (cache blocking mc:384 nc:384 kc:64)
+▶ B3 (64x384x384)        | best variant 16x15 [16 rows x 15 columns of C per tile] | 8.71 GOPs by mean time [whole GEMM call, packing included] | 9.04 GOPs median rep | 1384 reps | ✅ C[47,187]: 100.13 == 100.13 [sample entry vs the naive scalar GEMM] (cache blocking mc:64 nc:384 kc:128)
