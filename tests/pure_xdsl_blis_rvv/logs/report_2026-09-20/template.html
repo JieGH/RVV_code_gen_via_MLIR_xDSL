@@ -88,7 +88,7 @@ details li b{color:var(--ink);font-weight:600}
 <div class="wrap">
   <header>
     <h1>Overnight GEMM runs, layer by layer</h1>
-    <p class="sub">Sixteen runs of the generated xDSL BLIS kernels, <b>8 on jbpi and 8 on jbpi2</b>, alternating every 30 min, first started 23:00 on 19 Sep 2026 and last started 06:30 on 20 Sep. Each run took about 7 min. Uninstrumented build, reference protocol (<b>tmin 10 s</b>, no warm-up), pinned to core 0. Every figure is <b>GOPs for the whole GEMM call, packing included</b>, the same region the reference design times. The <b>Layer by layer</b> view also shows the same sweep repeated with the scalar packer instead of the vector one (violet square), made in the afternoon and evening of 20 Sep on both boards, and the <b>reference design alone</b> (its own packers and kernels, nothing of ours) run the same way, 16 runs overnight from 22:58 on 20 Sep (cyan cross).</p>
+    <p class="sub">Sixteen runs of the generated xDSL BLIS kernels, <b>8 on jbpi and 8 on jbpi2</b>, alternating every 30 min, first started 23:00 on 19 Sep 2026 and last started 06:30 on 20 Sep. Each run took about 7 min. Uninstrumented build, reference protocol (<b>tmin 10 s</b>, no warm-up), pinned to core 0. Every figure is <b>GOPs for the whole GEMM call, packing included</b>, the same region the reference design times. Both boards are averaged into one series, <b>Latest work</b>. The <b>Layer by layer</b> view also shows the same work modified to pack with the scalar packer instead of the vector one, <b>Modified latest work with scalar packing</b> (violet square), made in the afternoon and evening of 20 Sep on both boards, and the <b>reference design alone</b> (its own packers and kernels, nothing of ours) run the same way, 16 runs overnight from 22:58 on 20 Sep (cyan cross).</p>
   </header>
 
   <section class="tiles" id="tiles" aria-label="Summary"></section>
@@ -111,27 +111,27 @@ details li b{color:var(--ink);font-weight:600}
   </nav>
 
   <section class="panel" id="p-layers" role="tabpanel" aria-labelledby="t-layers">
-    <h2>Performance per layer, both boards against every reference</h2>
-    <p class="how">Dots are the mean of each board's 8 overnight runs (vector pack). The thick line through a dot spans the lowest to the highest run. The pale band behind it is the middle 90% of single reps inside a run (p5 to p95), averaged over runs. The violet square is the same sweep with the scalar packer, both boards together: its mean, the lowest to the highest run, and the pale band. The cyan cross is the reference design alone (16 runs, both boards): its exact kernel where it has one (B1, B5), otherwise the nearer of its two even-NR neighbours (32x6 for 32x7, 16x14 for 16x15), because it ships no odd-NR kernel. Hover a layer for the numbers, per board and against the overnight vector pack. The vertical axis does not start at zero.</p>
+    <h2>Performance per layer, latest work against every reference</h2>
+    <p class="how">The blue dot is <b>Latest work</b>: the average of all 16 overnight runs, jbpi and jbpi2 together (vector pack). The thick line through it spans the lowest to the highest run.  The pale band behind it is the middle 90% of single reps inside a run (p5 to p95), averaged over runs. The violet square is <b>Modified latest work with scalar packing</b>, the same sweep with the scalar packer, both boards together: its mean, the lowest to the highest run, and the pale band. The cyan cross is the reference design alone (16 runs, both boards): its exact kernel where it has one (B1, B5), otherwise the nearer of its two even-NR neighbours (32x6 for 32x7, 16x14 for 16x15), because it ships no odd-NR kernel. Hover a layer for the numbers, the two boards separately, and the change against latest work. The vertical axis does not start at zero.</p>
     <div class="ctl"><label class="chk"><input type="checkbox" id="showband" checked> Show within-run spread (p5 to p95)</label></div>
-    <div class="scroll"><svg id="svg-layers" role="img" aria-label="GOPs per layer for jbpi, jbpi2 and the reference series"></svg></div>
+    <div class="scroll"><svg id="svg-layers" role="img" aria-label="GOPs per layer for latest work, the modified latest work with scalar packing and the reference series"></svg></div>
     <div id="packbox" hidden>
-      <h2>Vector pack against scalar pack, layer by layer</h2>
-      <p class="how">The same table the sweep prints. <b>Vector pack</b> is the 16 overnight runs (both boards); <b>scalar pack</b> is the afternoon and evening sweep (both boards). Mean GOPs by mean time, packing included; the range is the lowest to the highest run. The verdict is "within noise" when the change is smaller than the larger of the two spreads between runs ((highest − lowest) ÷ mean).</p>
+      <h2>Latest work against modified latest work with scalar packing, layer by layer</h2>
+      <p class="how">The same table the sweep prints. <b>Latest work</b> is the 16 overnight runs (both boards averaged); <b>modified latest work with scalar packing</b> is the afternoon and evening sweep (both boards). Mean GOPs by mean time, packing included; the range is the lowest to the highest run. The verdict is "within noise" when the change is smaller than the larger of the two spreads between runs ((highest − lowest) ÷ mean).</p>
       <div class="scroll" id="packtable"></div>
       <p class="how" id="packnote"></p>
     </div>
     <div id="refbox" hidden>
       <h2>Reference design alone against our two packers, layer by layer</h2>
-      <p class="how">The reference design run by itself (16 overnight runs, both boards), then our vector pack (the 16 overnight runs) and scalar pack (the afternoon sweep). GOPs by mean time, packing included, on all three. "Change" is ours minus the reference as a percent of the reference; it is called "within noise" when it is smaller than the larger of the two spreads between runs. Each layer has the reference's nearer kernel first and, for the layers it has no exact kernel for, the other neighbour below it in grey.</p>
+      <p class="how">The reference design run by itself (16 overnight runs, both boards), then our latest work (the 16 overnight runs, both boards averaged) and the modified latest work with scalar packing (the afternoon sweep). GOPs by mean time, packing included, on all three. "Change" is ours minus the reference as a percent of the reference; it is called "within noise" when it is smaller than the larger of the two spreads between runs. Each layer has the reference's nearer kernel first and, for the layers it has no exact kernel for, the other neighbour below it in grey.</p>
       <div class="scroll" id="reftable"></div>
       <p class="how" id="refnote"></p>
     </div>
   </section>
 
   <section class="panel" id="p-delta" role="tabpanel" aria-labelledby="t-delta" hidden>
-    <h2>How far each board is from a reference, per layer</h2>
-    <p class="how">Bars are our mean minus the reference, as a percent of the reference. Above zero is faster than the reference. The whisker spans the lowest to the highest single run.</p>
+    <h2>How far latest work is from a reference, per layer</h2>
+    <p class="how">Bars are our latest work (the average of both boards) minus the reference, as a percent of the reference. Above zero is faster than the reference. The whisker spans the lowest to the highest single run.</p>
     <div class="ctl">
       <label class="lab-inline" for="refsel">Compare against</label>
       <select id="refsel"></select>
@@ -143,7 +143,7 @@ details li b{color:var(--ink);font-weight:600}
 
   <section class="panel" id="p-jitter" role="tabpanel" aria-labelledby="t-jitter" hidden>
     <h2>Jitter, two kinds</h2>
-    <p class="how"><b>Inside a run</b> is how much single reps differ from each other (standard deviation ÷ mean, in percent). <b>Between runs</b> is how far the eight run means are apart ((highest − lowest) ÷ mean). S3 has only 2 reps per run and S4, S5 have 1, so they have no inside-a-run figure at all, only the between-runs one.</p>
+    <p class="how"><b>Inside a run</b> is how much single reps differ from each other (standard deviation ÷ mean, in percent). <b>Between runs</b> is how far the sixteen run means are apart ((highest − lowest) ÷ mean). S3 has only 2 reps per run and S4, S5 have 1, so they have no inside-a-run figure at all, only the between-runs one.</p>
     <div class="two">
       <div><h2 style="margin-bottom:6px">Inside a run, CV %</h2><div class="scroll"><svg id="svg-cv" role="img" aria-label="Within-run coefficient of variation per layer"></svg></div></div>
       <div><h2 style="margin-bottom:6px">Between runs, spread %</h2><div class="scroll"><svg id="svg-rr" role="img" aria-label="Run-to-run spread per layer"></svg></div></div>
@@ -185,9 +185,8 @@ const LAYERS = [
   {id:"B5",m:1024,n:384,k:4096,cfg:"32x6"}
 ];
 const SERIES = {
-  jbpi :{label:"jbpi",  sub:"ours, 8 runs", color:"--s1", shape:"dot",  ours:true},
-  jbpi2:{label:"jbpi2", sub:"ours, 8 runs", color:"--s2", shape:"dot",  ours:true},
-  scalar:{label:"Scalar pack", sub:"afternoon and evening sweep, both boards", color:"--s7", shape:"square", only:"layers"},
+  all  :{label:"Latest work", sub:"ours, average of all 16 runs (jbpi and jbpi2)", color:"--s1", shape:"dot", ours:true},
+  scalar:{label:"Modified latest work with scalar packing", sub:"afternoon and evening sweep, both boards", color:"--s7", shape:"square", only:"layers"},
   refsweep:{label:"Reference sweep", sub:"reference design alone, LDX macc", color:"--s8", shape:"cross", vals:{}},
   pub  :{label:"Past publication ref design", sub:"your table", color:"--s3", shape:"line",
          vals:{S1:8.5,S2:8.7,S3:8.9,S4:9.0,S5:9.0,B1:8.0,B2:12.5,B3:8.8,B4:8.5,B5:7.5}},
@@ -198,9 +197,12 @@ const SERIES = {
   blas :{label:"OpenBLAS (archived)", sub:"ext/*_comparison.txt", color:"--s6", shape:"ring",
          vals:{S1:6.1,S2:6.8,S3:6.8,S4:6.9,S5:7.0,B1:6.0,B2:5.1,B3:7.3,B4:5.9,B5:5.9}}
 };
-const BOARDS = ["jbpi","jbpi2"];
+// One series for our own runs: the average of every run on both boards. Each run still carries its board (r.board) for the
+// tooltips and the board-gap tile; HW lists the real boards.
+const BOARDS = ["all"];
+const HW = ["jbpi","jbpi2"];
 const REFS = ["pub","refsweep","fresh","arch","blas"];
-const state = {metric:"mean", vis:{jbpi:true,jbpi2:true,scalar:true,refsweep:true,pub:true,fresh:true,arch:true,blas:false}, tab:"layers",
+const state = {metric:"mean", vis:{all:true,scalar:true,refsweep:true,pub:true,fresh:true,arch:true,blas:false}, tab:"layers",
                ref:"pub", zoom:true, layer:"B3", band:true};
 
 const NS = "http://www.w3.org/2000/svg";
@@ -228,7 +230,7 @@ function val(r){ return state.metric === "mean" ? r.gops_mean_time : r.median; }
 function valHead(r){ return r.gops_mean_time; }
 function agg(caseId, board, getter){
   const g = getter || val;
-  const rs = RUNS.filter(r => r.case === caseId && r.board === board);
+  const rs = RUNS.filter(r => r.case === caseId && (board === "all" || r.board === board));
   if (!rs.length) return null;
   const v = rs.map(g);
   const m = mean(v), lo = Math.min(...v), hi = Math.max(...v);
@@ -362,7 +364,7 @@ function drawLayers(){
     BOARDS.forEach((b, bi) => {
       if (!state.vis[b]) return;
       const a = agg(l.id, b); if (!a) return;
-      const x = cx + (bi ? off : -off), c = col(SERIES[b].color);
+      const x = cx - off, c = col(SERIES[b].color);
       if (state.band && a.multi) S("rect", {x:x-5, y:y(a.p95), width:10, height:Math.max(2, y(a.p5)-y(a.p95)), rx:4, fill:c, opacity:.22}, svg);
       S("line", {x1:x, x2:x, y1:y(a.max), y2:y(a.min), stroke:c, "stroke-width":2.5, "stroke-linecap":"round"}, svg);
       drawMark(svg, "dot", x, y(a.mean), 4.5, c, "var(--surface)");
@@ -378,7 +380,9 @@ function layerTip(l){
     const a = agg(l.id, b); if (!a) continue;
     const parts = [`runs ${fmt(a.min)} to ${fmt(a.max)}`];
     parts.push(a.multi ? `inside-run CV ${fmt(a.cv,1)}%, p5 ${fmt(a.p5)} to p95 ${fmt(a.p95)}` : `${Math.round(a.reps)} rep${a.reps<1.5?"":"s"} per run, no inside-run spread`);
-    rows.push({key:b, value:fmt(a.mean)+" GOPs", name:SERIES[b].label+" (mean of "+a.n+" runs)", sub:parts.join(" · ")});
+    const perHw = HW.map(h => { const q = agg(l.id, h); return q ? `${h} ${fmt(q.mean)} (${q.n})` : null; }).filter(Boolean);
+    if (perHw.length) parts.push("per board " + perHw.join(", "));
+    rows.push({key:b, value:fmt(a.mean)+" GOPs", name:SERIES[b].label+" (average of "+a.n+" runs)", sub:parts.join(" · ")});
   }
   if (state.vis.scalar){
     const g = scalarAgg(l.id);
@@ -386,12 +390,12 @@ function layerTip(l){
       const d = g.vec != null ? (g.mean - g.vec)/g.vec*100 : null;
       const parts = [`runs ${fmt(g.min)} to ${fmt(g.max)}`];
       if (g.multi) parts.push(`p5 ${fmt(g.p5)} to p95 ${fmt(g.p95)}`);
-      const pb = BOARDS.filter(b => g.boards[b]).map(b => `${b} ${fmt(g.boards[b].mean)} (${g.boards[b].n})`);
+      const pb = HW.filter(b => g.boards[b]).map(b => `${b} ${fmt(g.boards[b].mean)} (${g.boards[b].n})`);
       if (pb.length) parts.push("per board " + pb.join(", "));
-      if (d != null) parts.push(`${sgn(d)}% against the overnight vector pack (${fmt(g.vec)} GOPs, ${g.nvec} runs)`);
-      rows.push({key:"scalar", value:fmt(g.mean)+" GOPs", name:"Scalar pack (mean of "+g.n+" runs)", sub:parts.join(" · ")});
-      if (l.id === "B3") rows.push({value:fmt(B3_ALONE.scalar)+" GOPs", name:"Scalar pack, B3 alone in its process",
-        sub:`vector pack in that setup: ${fmt(B3_ALONE.vector)} GOPs. B3's speed depends on the setup, the direction does not.`});
+      if (d != null) parts.push(`${sgn(d)}% against latest work (${fmt(g.vec)} GOPs, ${g.nvec} runs)`);
+      rows.push({key:"scalar", value:fmt(g.mean)+" GOPs", name:SERIES.scalar.label+" (mean of "+g.n+" runs)", sub:parts.join(" · ")});
+      if (l.id === "B3") rows.push({value:fmt(B3_ALONE.scalar)+" GOPs", name:"Modified latest work with scalar packing, B3 alone in its process",
+        sub:`latest work in that setup: ${fmt(B3_ALONE.vector)} GOPs. B3's speed depends on the setup, the direction does not.`});
     }
   }
   for (const r of REFS) if (state.vis[r]){
@@ -444,7 +448,7 @@ function drawDelta(){
     if (d.rv == null){ S("text", {x:cx, y:y(0)-8, "text-anchor":"middle", opacity:.8}, svg, "no value"); }
     BOARDS.forEach((b, bi) => {
       if (!state.vis[b] || !d.b[b]) return;
-      const v = d.b[b], x = bi ? cx + gapb/2 : cx - bw - gapb/2, c = col(SERIES[b].color);
+      const v = d.b[b], x = cx - bw/2, c = col(SERIES[b].color);
       const tipv = clip(v.d);
       S("path", {d:barPath(x, bw, y(0), y(tipv), 4), fill:c}, svg);
       const wx = x + bw/2, wl = clip(v.lo), wh = clip(v.hi);
@@ -503,9 +507,9 @@ function rowsChart(svgId, kind){
       if (!state.vis[b]) return;
       const v = A[l.id+b];
       if (v == null) return;
-      any = true; drawMark(svg, "dot", x(v), y(i) + (bi ? 5 : -5), 4.5, col(SERIES[b].color), "var(--surface)");
+      any = true; drawMark(svg, "dot", x(v), y(i), 4.5, col(SERIES[b].color), "var(--surface)");
     });
-    if (kind === "cv" && A[l.id+"jbpi"] == null) S("text", {x:padL+6, y:y(i)+4, opacity:.9}, svg, "1–2 reps per run, not measurable");
+    if (kind === "cv" && A[l.id+"all"] == null) S("text", {x:padL+6, y:y(i)+4, opacity:.9}, svg, "1–2 reps per run, not measurable");
     const band = S("rect", {class:"band", x:0, y:padT+i*rowH, width:W, height:rowH, tabindex:0, "aria-label":l.id}, svg);
     bindBand(band, () => {
       const rows = [];
@@ -525,7 +529,7 @@ function drawTime(){
   svg.setAttribute("viewBox", `0 0 ${W} ${Ht}`);
   const id = state.layer, rs = RUNS.filter(r => r.case === id);
   let lo = Infinity, hi = -Infinity; const take = v => { if (v != null && isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } };
-  for (const r of rs) if (state.vis[r.board]){ take(val(r)); if (r.reps >= 3){ take(r.p5); take(r.p95); } }
+  for (const r of rs) if (state.vis.all){ take(val(r)); if (r.reps >= 3){ take(r.p5); take(r.p95); } }
   for (const k of REFS) if (state.vis[k]) take(refVal(k, id));
   if (!isFinite(lo)){ lo = 0; hi = 10; }
   const padV = Math.max(0.3, (hi-lo)*0.06); lo = Math.floor((lo - padV)*10)/10; hi = Math.ceil((hi + padV)*10)/10;
@@ -550,7 +554,7 @@ function drawTime(){
     S("text", {x:W-padR+8, y:yy, class:"lbl"}, svg, fmt(e.v) + " " + (e.k==="pub"?"published":e.k==="refsweep"?"ref sweep":e.k==="fresh"?"fresh ref":e.k==="arch"?"archived":"OpenBLAS")); }
   for (const b of BOARDS){
     if (!state.vis[b]) continue;
-    const pts = rs.filter(r => r.board === b).sort((p, q) => minutes(p.run) - minutes(q.run)), c = col(SERIES[b].color);
+    const pts = rs.filter(r => b === "all" || r.board === b).sort((p, q) => minutes(p.run) - minutes(q.run)), c = col(SERIES[b].color);
     S("polyline", {points:pts.map(r => x(minutes(r.run)) + "," + y(val(r))).join(" "), fill:"none", stroke:c, "stroke-width":2, "stroke-linejoin":"round", "stroke-linecap":"round"}, svg);
     for (const r of pts){
       const px = x(minutes(r.run));
@@ -558,15 +562,15 @@ function drawTime(){
       drawMark(svg, "dot", px, y(val(r)), 4.5, c, "var(--surface)");
     }
   }
-  const slots = [...new Set(rs.filter(r => state.vis[r.board]).map(r => r.run))].sort();
+  const slots = [...new Set(rs.filter(r => state.vis.all).map(r => r.run))].sort();
   slots.forEach(run => {
     const px = x(minutes(run)), bw = (W-padL-padR)/500*24;
     const band = S("rect", {class:"band", x:px-bw/2, y:padT, width:bw, height:Ht-padT-padB, tabindex:0, "aria-label":"run finished at "+clock(run)}, svg);
     bindBand(band, () => {
       const r = rs.find(q => q.run === run), rowsOut = [];
       const d = state.metric === "mean" ? "by mean time" : "by median rep";
-      rowsOut.push({key:r.board, value:fmt(val(r))+" GOPs", name:SERIES[r.board].label+", "+d,
-        sub: r.reps >= 3 ? `${r.reps} reps, p5 ${fmt(r.p5)} to p95 ${fmt(r.p95)}, CV ${fmt(r.cv,1)}%` : `${r.reps} rep${r.reps===1?"":"s"}`});
+      rowsOut.push({key:"all", value:fmt(val(r))+" GOPs", name:SERIES.all.label+", "+d,
+        sub: r.board + " · " + (r.reps >= 3 ? `${r.reps} reps, p5 ${fmt(r.p5)} to p95 ${fmt(r.p95)}, CV ${fmt(r.cv,1)}%` : `${r.reps} rep${r.reps===1?"":"s"}`)});
       return {title:`${id} · run finished ${clock(run)}`, rows:rowsOut};
     });
   });
@@ -577,7 +581,7 @@ function drawJitter(){ rowsChart("svg-cv", "cv"); rowsChart("svg-rr", "rr"); dra
 function drawTable(){
   const box = document.getElementById("tablebox"); box.replaceChildren();
   const t = H("table", {}, box), hd = H("thead", {}, t), hr = H("tr", {}, hd);
-  const heads = ["Layer","m×n×k","Config","Board","GOPs (mean of runs)","Lowest run","Highest run","Between-run spread %","Inside-run CV %","Reps per run",
+  const heads = ["Layer","m×n×k","Config","Series","GOPs (mean of runs)","Lowest run","Highest run","Between-run spread %","Inside-run CV %","Reps per run",
                  "Published","vs published %","Fresh ref","Archived sweep","OpenBLAS","Reference sweep"];
   heads.forEach((h, i) => H("th", i < 4 ? {class:"l"} : {}, hr, h));
   const tb = H("tbody", {}, t);
@@ -586,15 +590,15 @@ function drawTable(){
     const a = agg(l.id, b); if (!a) return;
     const tr = H("tr", li % 2 ? {class:"b2"} : {}, tb);
     const pv = refVal("pub", l.id), d = pv == null ? null : (a.mean - pv)/pv*100;
-    const cells = [l.id, `${l.m}×${l.n}×${l.k}`, l.cfg, b, fmt(a.mean), fmt(a.min), fmt(a.max), fmt(a.spread,1), a.multi ? fmt(a.cv,1) : "n/a", String(Math.round(a.reps)),
+    const cells = [l.id, `${l.m}×${l.n}×${l.k}`, l.cfg, "latest work", fmt(a.mean), fmt(a.min), fmt(a.max), fmt(a.spread,1), a.multi ? fmt(a.cv,1) : "n/a", String(Math.round(a.reps)),
                    pv == null ? "" : fmt(pv,2), d == null ? "" : sgn(d), ...["fresh","arch","blas","refsweep"].map(k => refVal(k, l.id) == null ? "" : fmt(refVal(k, l.id)))];
     cells.forEach((c, i) => { const td = H("td", i < 4 ? {class:"l"} : {}, tr, c);
       if (i === 11 && c) td.className = d > 0 ? "pos" : d < 0 ? "neg" : ""; });
-    if (b === "jbpi2" && state.vis.scalar){
+    if (state.vis.scalar){
       const g = scalarAgg(l.id);
       if (g){
         const tr2 = H("tr", li % 2 ? {class:"b2"} : {}, tb), d2 = pv == null ? null : (g.mean - pv)/pv*100;
-        const c2 = [l.id, `${l.m}×${l.n}×${l.k}`, l.cfg, "scalar pack", fmt(g.mean), fmt(g.min), fmt(g.max), fmt(g.spread,1), "n/a", String(Math.round(g.reps)),
+        const c2 = [l.id, `${l.m}×${l.n}×${l.k}`, l.cfg, "modified, scalar packing", fmt(g.mean), fmt(g.min), fmt(g.max), fmt(g.spread,1), "n/a", String(Math.round(g.reps)),
                     pv == null ? "" : fmt(pv,2), d2 == null ? "" : sgn(d2), ...["fresh","arch","blas","refsweep"].map(k => refVal(k, l.id) == null ? "" : fmt(refVal(k, l.id)))];
         c2.forEach((c, i) => { const td = H("td", i < 4 ? {class:"l"} : {}, tr2, c); if (i === 11 && c) td.className = d2 > 0 ? "pos" : d2 < 0 ? "neg" : ""; });
       }
@@ -622,12 +626,12 @@ function drawTiles(){
     for (const l of LAYERS){ const g = refAgg(l.id), v = vecRuns(l.id); if (!g || !v.length) continue; tot++;
       const c = callCell(v, g.runs); if (c.text.includes("within")) within++; else if (c.d > 0) faster++; else slower++; }
     T("Reference design alone", `${new Set(REFSWEEP.map(r => r.run)).size} of ${REFSWEEP_META.planned || "?"} runs`,
-      `Our vector pack against its nearer kernel: within noise on ${within} of ${tot} layers, faster on ${faster}, slower on ${slower}.`);
+      `Latest work against its nearer kernel: within noise on ${within} of ${tot} layers, faster on ${faster}, slower on ${slower}.`);
   }
   if (SWEEP.length){
     const rn = new Set(SWEEP.map(r => r.run)).size, sc = LAYERS.map(l => scalarAgg(l.id)).filter(Boolean);
     const big = sc.map((g, i) => ({id:LAYERS[i].id, d:g.vec != null ? (g.mean - g.vec)/g.vec*100 : 0})).sort((a, b) => Math.abs(b.d) - Math.abs(a.d))[0];
-    T("Scalar-pack sweep", `${rn} of ${SWEEP_META.planned || "?"} runs`, (SWEEP_META.done < SWEEP_META.planned ? "Still running. " : "") + `Largest change against the vector pack: ${big.id} ${sgn(big.d, 0)}%.`);
+    T("Scalar-pack sweep", `${rn} of ${SWEEP_META.planned || "?"} runs`, (SWEEP_META.done < SWEEP_META.planned ? "Still running. " : "") + `Largest change against latest work: ${big.id} ${sgn(big.d, 0)}%.`);
   }
 }
 
@@ -642,7 +646,7 @@ function scalarAgg(id){
   if (!rs.length) return null;
   const v = rs.map(g), m = mean(v), lo = Math.min(...v), hi = Math.max(...v), reps = mean(rs.map(r => r.reps));
   const boards = {};
-  for (const b of BOARDS){ const xs = rs.filter(r => r.board === b).map(g); if (xs.length) boards[b] = {mean:mean(xs), n:xs.length}; }
+  for (const b of HW){ const xs = rs.filter(r => r.board === b).map(g); if (xs.length) boards[b] = {mean:mean(xs), n:xs.length}; }
   const both = BOARDS.map(b => agg(id, b)).filter(Boolean).flatMap(a => a.runs.map(g));
   return {n:rs.length, mean:m, min:lo, max:hi, p5:mean(rs.map(r => r.p5)), p95:mean(rs.map(r => r.p95)), reps, multi:reps >= 3,
           spread:(hi-lo)/m*100, boards, vec:both.length ? mean(both) : null, nvec:both.length};
@@ -660,7 +664,7 @@ function refAgg(id, far){
   const rs = REFSWEEP.filter(r => r.case === id && (far ? !r.near : r.near));
   if (!rs.length) return null;
   const v = rs.map(r => r.gops), m = mean(v), lo = Math.min(...v), hi = Math.max(...v), boards = {};
-  for (const b of BOARDS){ const xs = rs.filter(r => r.board === b).map(r => r.gops); if (xs.length) boards[b] = {mean:mean(xs), n:xs.length}; }
+  for (const b of HW){ const xs = rs.filter(r => r.board === b).map(r => r.gops); if (xs.length) boards[b] = {mean:mean(xs), n:xs.length}; }
   return {n:v.length, mean:m, min:lo, max:hi, spread:(hi-lo)/m*100, built:rs[0].built, kind:rs[0].kind, boards, runs:v};
 }
 for (const l of LAYERS){ const g = refAgg(l.id); if (g) SERIES.refsweep.vals[l.id] = g.mean; }
@@ -676,7 +680,7 @@ function drawRefTable(){
   box.hidden = !REFSWEEP.length; if (!REFSWEEP.length) return;
   tb.replaceChildren();
   const t = H("table", {}, tb), hr = H("tr", {}, H("thead", {}, t));
-  ["Layer","m×n×k","Pinned","Reference kernel","Reference mean","Range","Runs","Spread","Vector pack","Scalar pack","Vector vs reference","Scalar vs reference","Published","Reference vs published"]
+  ["Layer","m×n×k","Pinned","Reference kernel","Reference mean","Range","Runs","Spread","Latest work","Modified (scalar pack)","Latest work vs reference","Modified vs reference","Published","Reference vs published"]
     .forEach((h, i) => H("th", i < 4 || i === 10 || i === 11 ? {class:"l"} : {}, hr, h));
   const body = H("tbody", {}, t);
   LAYERS.forEach((l, li) => [false, true].forEach(far => {
@@ -706,7 +710,7 @@ function drawPackTable(){
   tb.replaceChildren();
   const spreadPct = xs => (Math.max(...xs) - Math.min(...xs))/mean(xs)*100;
   const t = H("table", {}, tb), hr = H("tr", {}, H("thead", {}, t));
-  ["Layer","m×n×k","Config","Vector pack mean","Vector range","Runs","Scalar pack mean","Scalar range","Runs","Change","Spread vec / scl","Verdict","Published","Scalar vs published"]
+  ["Layer","m×n×k","Config","Latest work mean","Latest work range","Runs","Modified (scalar pack) mean","Modified range","Runs","Change","Spread latest / modified","Verdict","Published","Modified vs published"]
     .forEach((h, i) => H("th", i < 3 ? {class:"l"} : i === 11 ? {class:"l"} : {}, hr, h));
   const body = H("tbody", {}, t);
   LAYERS.forEach((l, li) => {
@@ -714,7 +718,7 @@ function drawPackTable(){
     const sc = SWEEP.filter(r => r.case === l.id).map(r => r.gops_mean_time);
     if (!v.length || !sc.length) return;
     const d = (mean(sc) - mean(v))/mean(v)*100, noise = Math.max(spreadPct(v), spreadPct(sc));
-    const verdict = Math.abs(d) <= noise ? "within noise" : (d > 0 ? "scalar pack faster" : "scalar pack slower");
+    const verdict = Math.abs(d) <= noise ? "within noise" : (d > 0 ? "modified (scalar pack) faster" : "modified (scalar pack) slower");
     const pv = refVal("pub", l.id), dp = pv == null ? null : (mean(sc) - pv)/pv*100;
     const tr = H("tr", li % 2 ? {class:"b2"} : {}, body);
     [l.id, `${l.m}×${l.n}×${l.k}`, l.cfg, fmt(mean(v)), `${fmt(Math.min(...v))}–${fmt(Math.max(...v))}`, String(v.length),
