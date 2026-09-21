@@ -10,13 +10,20 @@ the runs.txt of the newest logs/sweep_scalar_* folder (or the one given with --s
 the page can show the scalar packer next to the vector packer, layer by layer. A sweep that
 is still running gives a partial set; run this again when more runs have finished.
 
-Run from anywhere: python3 build_report.py [--sweep DIR]
+The reference-design sweep (run_ref_sweep.sh, issue 29) is embedded as well: every result dir listed in
+the runs.txt of the newest logs/sweep_ref_* folder (or the one given with --ref-sweep). The reference
+alone, its own packers and kernels, so the page can show it next to our two packers.
+
+Run from anywhere: python3 build_report.py [--sweep DIR] [--ref-sweep DIR]
 """
-import argparse, glob, json, os, re
+import argparse, glob, json, os, re, sys
+from pathlib import Path
 import pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LOGS = os.path.dirname(HERE)
+sys.path.insert(0, os.path.join(os.path.dirname(LOGS), "ref_baseline"))
+from compare_ref_sweep import load_ref_runs  # noqa: E402  (reads a refbase_* dir the way the comparison does)
 # The overnight sweep, by run stamp. Later runs (the daytime ones, the vector-pack experiments) are
 # not part of it, and would otherwise match the same glob.
 OVERNIGHT = ("2026-09-19_230000", "2026-09-20_070000")
@@ -45,6 +52,7 @@ for pattern in RUN_GLOBS:
 # ---- the scalar-pack sweep
 ap = argparse.ArgumentParser()
 ap.add_argument("--sweep", help="sweep_scalar_* folder (default: the newest)")
+ap.add_argument("--ref-sweep", help="sweep_ref_* folder (default: the newest)")
 args = ap.parse_args()
 sweeps = sorted(glob.glob(os.path.join(LOGS, "sweep_scalar_*")))
 sweep_dir = args.sweep or (sweeps[-1] if sweeps else None)
@@ -67,11 +75,41 @@ sweep_rows = [{k: (round(v, 4) if isinstance(v, float) else v) for k, v in r.ite
 
 rows = [{k: (round(v, 4) if isinstance(v, float) else v) for k, v in r.items()} for r in rows]
 
+# ---- the reference-design sweep. Per layer the reference has one row per kernel it built: the exact
+# one where it ships it (B1, B5), otherwise the two even-NR neighbours. `near` marks the one the chart
+# draws: the exact kernel, else the lower-NR neighbour (the higher one needs more than 32 vector
+# registers and spills, so it is not the close one).
+ref_sweeps = sorted(glob.glob(os.path.join(LOGS, "sweep_ref_*")))
+ref_dir = args.ref_sweep or (ref_sweeps[-1] if ref_sweeps else None)
+ref_rows, ref_meta = [], {"planned": 0, "done": 0}
+if ref_dir and os.path.isfile(os.path.join(ref_dir, "runs.txt")):
+    plan = os.path.join(ref_dir, "plan.txt")
+    m = re.search(r"(\d+) runs", open(plan).read()) if os.path.isfile(plan) else None
+    ref_meta["planned"] = int(m.group(1)) if m else 0
+    per_run = []
+    for line in open(os.path.join(ref_dir, "runs.txt")).read().splitlines():
+        board, name = line.split("\t")
+        per_run.append((board, name, load_ref_runs([Path(LOGS) / name])))
+        ref_meta["done"] += 1
+    def near_built(layer):
+        cands = {row.built: row.kind for _, _, rr in per_run for (lay, _), row in rr.items() if lay == layer}
+        exact = [b for b, k in cands.items() if k == "exact"]
+        return exact[0] if exact else min(cands, key=lambda b: int(b.split("x")[1]))
+    near = {lay: near_built(lay) for lay in {lay for _, _, rr in per_run for (lay, _) in rr}}
+    for board, name, rr in per_run:
+        for (lay, built), row in rr.items():
+            for g in row.gflops:
+                ref_rows.append({"run": name[len("refbase_"):], "board": board, "case": lay, "built": built,
+                                 "kind": row.kind, "near": built == near[lay], "gops": round(g, 4)})
+
 body = (open(os.path.join(HERE, "template.html")).read()
         .replace("/*__DATA__*/[]", json.dumps(rows, separators=(",", ":")))
         .replace("/*__SWEEP__*/[]", json.dumps(sweep_rows, separators=(",", ":")))
-        .replace('/*__SWEEP_META__*/{planned:0, done:0, note:""}', json.dumps(sweep_meta, separators=(",", ":"))))
+        .replace('/*__SWEEP_META__*/{planned:0, done:0, note:""}', json.dumps(sweep_meta, separators=(",", ":")))
+        .replace("/*__REFSWEEP__*/[]", json.dumps(ref_rows, separators=(",", ":")))
+        .replace("/*__REFSWEEP_META__*/{planned:0, done:0}", json.dumps(ref_meta, separators=(",", ":"))))
 page = '<!doctype html>\n<html lang="en">\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n' + body
 open(os.path.join(HERE, "index.html"), "w").write(page)
 print(f"{len(rows)} rows from {len({r['run'] for r in rows})} overnight runs, "
-      f"{len(sweep_rows)} rows from {sweep_meta['done']} of {sweep_meta['planned']} scalar-pack sweep runs -> index.html")
+      f"{len(sweep_rows)} rows from {sweep_meta['done']} of {sweep_meta['planned']} scalar-pack sweep runs, "
+      f"{len(ref_rows)} rows from {ref_meta['done']} of {ref_meta['planned']} reference sweep runs -> index.html")
