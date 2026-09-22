@@ -316,3 +316,10 @@ reference, correctly isolated. The comparison worth having is `prev_xdsl` vs the
 numbers (§8: B1 8.04–8.05, B2 12.59–12.72, B3 5.19–5.62, B4 7.67–7.80, B5 7.82–7.83 GOPs) at matched tile
 sizes — B1/B2 already land close to `prev_xdsl`; B3 is the one still off, consistent with the `kc=k` bug above
 if it's still present.
+
+**Double-checked (2026-09-22): user initially pushed back, "it's the reference design, not prev_xdsl."**
+Verified directly against the live upstream repos on GitHub — `adcastel/RVV_ukernels_benchmark` (vendored in
+`ext/`) and the related `adcastel/RVV_ukernels_Exo` (broader kernel set, more `MR` values). Neither has ever
+shipped a `16×15` or `32×7` kernel, at any `VLEN`, in any `OPT` variant — both are even-`NR`-only in the
+author's own published kernel history. With that shown, the user confirmed: it is `prev_xdsl`. Closed with
+confirmation, not just inference from the Notion quote.
