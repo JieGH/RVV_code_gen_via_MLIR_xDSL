@@ -393,3 +393,13 @@ meeting yet, since they cannot yet self-explain *why* the reference runs slower 
 by ~9–12%, not what in either implementation causes that specific margin). This is a presentation-readiness
 call, not a data-validity one: nothing here says the numbers are wrong, only that the "why" isn't understood
 well enough yet to defend in front of an audience. Revisit before presenting if that explanation gets found.
+
+## 12. See also: interactive website report (2026-09-22)
+
+`tests/pure_xdsl_blis_rvv/logs/report_2026-09-20/` holds a standalone interactive HTML report
+(`index.html`, built by `build_report.py` from `template.html`) — not generated or touched as part of this
+issue, but covering the same project and adjacent time window, so it's worth cross-checking against the
+numbers here rather than treating this issue's findings in isolation. Dated 2026-09-20 — after the `prev_xdsl`
+source found in §11 (2026-07-29), just before this issue's own board runs (§7/§8, 2026-09-22); not verified
+here whether it uses `prev_xdsl`, the reference, or some other baseline as its comparison point — check before
+citing a number from it alongside anything in this issue.
