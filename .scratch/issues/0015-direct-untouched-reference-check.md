@@ -2,9 +2,10 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/30
 
-**Role / Label:** `ready-for-agent` — original scope done (§7), reopened for a follow-on investigation (§9)
-**Status:** 🟡 Reopened (2026-09-22). Original B1/B5-direct-check scope is done (§7); now investigating a
-publication-vs-fresh performance discrepancy (§9), in progress. Not a repeat of #29 ([[0014-issue-29-reference-alone-sweep]]) — that measured through
+**Role / Label:** `ready-for-agent` — done. Original scope (§7) and the follow-on investigation (§9) both
+resolved (§10)
+**Status:** ✅ Done (2026-09-22). B1/B5-direct-check (§7) done; the publication-vs-fresh "discrepancy" (§9)
+turned out not to be a reference-design question at all — resolved in §10. Not a repeat of #29 ([[0014-issue-29-reference-alone-sweep]]) — that measured through
 `run_ref_baseline.sh`, a pipeline the user no longer trusts (2026-09-22, after being shown the #29 numbers).
 This issue is a from-scratch, minimally-scripted, hand-auditable check: run `ext/RVV_ukernels_benchmark`'s
 own commands, as close to byte-identical as it will compile, and put the raw driver output next to ours —
@@ -278,3 +279,40 @@ possible at all.
 
 Nothing here is committed as a numeric result yet — this section is a record of the investigation in
 progress, not a finding.
+
+## 10. Resolved: the "publication" table is `prev_xdsl`, not the reference (2026-09-22)
+
+Searched the user's Notion workspace (~12 pages, Feb–Sept 2026) for where the §9 table (B1 ~8.0, B2 ~12.5,
+B3 ~8.8, B4 ~8.5, B5 ~7.5) actually came from. Found it, quoted directly from Notion page "debug perfromance
+differnces" (2026-07-29, https://app.notion.com/p/3a968a923c2a8043b3c4fdf2c741fe55):
+
+> "xdsl **privious ref design** is 8.8" ... "Comparison: Current xDSL AXPY vs **Previous xDSL Design
+> (prev_xdsl)**"
+
+**The table is `prev_xdsl` — a previous generation of this project's own xDSL codegen, kept as an internal
+baseline. It was never the third-party reference (`ext/RVV_ukernels_benchmark`), at any point.** The user's
+own notes use "ref design" ambiguously: sometimes the third-party C/Exo reference, sometimes `prev_xdsl`. §9's
+entire framing — "publication-vs-fresh discrepancy" against the reference — was built on that ambiguity. There
+was never a real discrepancy between the reference and a publication, because the publication table was never
+about the reference.
+
+**The discrepancy that *is* real (prev_xdsl vs current design) is also resolved, not just relabeled.** The
+same Notion page ran the controlled experiment issue #30 kept re-deriving from scratch: forcing the *current*
+xDSL design to the same tile size as `prev_xdsl` (16×15) recovered near-identical numbers — B3 8.72 vs
+`prev_xdsl`'s 8.8, B2 12.59–12.64 vs `prev_xdsl`'s 12.5. So the apparent gap is mostly tile-size mismatch —
+the exact failure mode hit again today when B2/B3/B4 got forced through a 32×6 reference build (§9 point 2).
+The residual instability beyond that was traced, in the same Notion page, to a real bug:
+`get_optim_mc_nc_kc()` in the xDSL driver hardcodes `*kc = k`, bypassing K-dimension cache blocking and
+destroying stability specifically on B3-shaped problems (small M, large K). **Not yet checked whether that bug
+is still present in the current driver** — worth a follow-up, separate from this issue.
+
+**Corrected memory**: `project_reference_baseline_perf_user_stated.md` rewritten to reflect this; it had
+already been rewritten once this session (first correction: "not the reference, it's our own design" — itself
+incomplete, since it's specifically a *previous generation* of our own design, not the current one).
+
+**What this means for §9's open investigation**: it's closed. §7's B1/B5 reference numbers (7.15–7.18,
+7.05–7.16 GFLOPS) were never meant to be compared against the §9 table at all — they're the third-party
+reference, correctly isolated. The comparison worth having is `prev_xdsl` vs the *current* design's own
+numbers (§8: B1 8.04–8.05, B2 12.59–12.72, B3 5.19–5.62, B4 7.67–7.80, B5 7.82–7.83 GOPs) at matched tile
+sizes — B1/B2 already land close to `prev_xdsl`; B3 is the one still off, consistent with the `kc=k` bug above
+if it's still present.
