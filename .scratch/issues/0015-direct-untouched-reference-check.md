@@ -110,17 +110,30 @@ Everything else — the Makefile, `run_gemm.sh`, the kernel `.c`/`.h` files actu
    whatever `compile_macro_bench.sh` prints) side by side, unprocessed. No mean, no spread, no verdict —
    that was the point of the complaint.
 
-## 4. Open questions to confirm before running
+## 4. Open questions — user response (2026-09-22)
 
-- Is B1 (1024×384×1024, 32×6, exact) the dimension meant by "the same as what we had," or did the user mean
-  something else — e.g. every layer, or a specific odd-NR shape? A single exact-match shape is what makes
-  "without change" possible without also generating a new kernel; any odd-NR shape reopens §2's second
-  question.
-- Is reusing `blis_shim/blis.h` acceptable as "without change," given the reasoning in §2, or does the user
-  want real BLIS installed on the boards instead (untested here, adds a dependency, and changes which
-  `RUN_MODE` runs)?
-- One rep each (`tmin 10`, no repeats) means no error bar on either side — is a single number on each side
-  the intent, given the explicit "four times in total"?
+> "I just want you to run the external repository as it is designed to be, but with the dimension of the
+> matrix. I want you to do this using their work but the only things that are different are: the matrix
+> input, the set microkernel dimension, the jump server setup that I'm using in this design. Just use as
+> much as you can from the reference external repository to run them without doing major or smart
+> modification."
+
+This resolves question 1: exactly three things are allowed to differ from a pristine `ext/RVV_ukernels_benchmark`
+run — the matrix shape fed in, the MR×NR picked, and the jump-host transport (this repo's boards aren't reachable
+any other way). Everything else — Makefile, `run_gemm.sh`, `test_gemm.c`, `gemm_blis.c`, the kernel source
+actually exercised, how the driver prints its result — stays exactly as the reference ships it. That is what §3
+already proposed, and it's also *why* §3 picked B1 (1024×384×1024, 32×6): it's a shape and MR×NR pair the
+reference already has a real, undamaged, checked-in kernel for. Picking a shape the reference doesn't ship
+(e.g. 32×7, 16×15) would force writing a new kernel file to make it build — that's a fourth kind of difference,
+and exactly the "smart modification" the user is ruling out. So B1/32×6 stands as the shape, not open anymore.
+
+Remaining, narrower than before:
+- The BLIS header stand-in (§2) isn't one of the three named differences, but it's not a fourth one either —
+  it's the one thing required just to get the vendored source to compile at all (it supplies a header the code
+  `#include`s, never touches computed logic, and doesn't touch matrix input, MR×NR, or the jump-host setup).
+  Treating it as in-scope by default; flag if the user wants real BLIS installed instead.
+- One rep each, no averaging — still assumed, since "return the performance" / "four times in total" reads as
+  four raw numbers, not a sweep with error bars. Will surface the driver's own printed line as-is per run.
 
 ## 5. Not yet done
 
