@@ -1,0 +1,23 @@
+Reference sweep: 16 runs (8 per board on jbpi,jbpi2), one every 30 min
+  Design    : the reference alone (its packers, its LDX kernels, variant 2); nothing of ours
+  Settings  : --jump --riscv-user jlei --riscv-port 22 --opt LDX --variants 2 --bracket --cpu 0 --tmin 10 --no-compare
+  First run : mar 22 sep 10:40
+  Last start: mar 22 sep 18:10
+  Compare to: vector-pack runs with a stamp from 2026-09-19_230000 to 2026-09-20_070000, and the scalar-pack sweep (the newest)
+  Schedule  :
+     1  jbpi     mar 22 sep 10:40
+     2  jbpi2    mar 22 sep 11:10
+     3  jbpi     mar 22 sep 11:40
+     4  jbpi2    mar 22 sep 12:10
+     5  jbpi     mar 22 sep 12:40
+     6  jbpi2    mar 22 sep 13:10
+     7  jbpi     mar 22 sep 13:40
+     8  jbpi2    mar 22 sep 14:10
+     9  jbpi     mar 22 sep 14:40
+    10  jbpi2    mar 22 sep 15:10
+    11  jbpi     mar 22 sep 15:40
+    12  jbpi2    mar 22 sep 16:10
+    13  jbpi     mar 22 sep 16:40
+    14  jbpi2    mar 22 sep 17:10
+    15  jbpi     mar 22 sep 17:40
+    16  jbpi2    mar 22 sep 18:10
