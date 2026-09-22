@@ -189,3 +189,26 @@ script, so this reflects the reference's own default behavior, not something thi
 Full transcripts: `tests/pure_xdsl_blis_rvv/logs/issue30_direct_check_2026-09-22_180052.txt` (reference, both
 boards) and `tests/pure_xdsl_blis_rvv/logs/run_2026-09-22_181113/` (ours, jbpi) /
 `run_2026-09-22_181822/` (ours, jbpi2).
+
+## 8. Full BERT B1–B5, our design only (2026-09-22)
+
+User asked to add B2/B3/B4 for "the other design" — ours doesn't have the reference's kernel-availability
+constraint (§6), so all five BERT-large shapes are valid runs on our side, just not comparable against the
+reference (B2/B3/B4 have no reference-side number, per §6). No new board time: `compile_macro_bench.sh
+--config config.json` already swept every row in `config.json` (B1–B5 across three MR×NR pinnings) in the
+same two runs used for §7 — this just surfaces the B2/B3/B4 rows that were in those logs and not reported
+before.
+
+| Shape | M×N×K | MR×NR | jbpi (GOPs) | jbpi2 (GOPs) |
+|---|---|---|---|---|
+| B1 | 1024×384×1024 | 32×6  | 8.04  | 8.05  |
+| B2 | 384×384×64    | 16×15 | 12.59 | 12.72 |
+| B3 | 64×384×384    | 16×15 | 5.19  | 5.62  |
+| B4 | 4096×384×1024 | 32×7  | 7.67  | 7.80  |
+| B5 | 1024×384×4096 | 32×6  | 7.83  | 7.82  |
+
+"By mean time" GOPs, whole GEMM call including packing, same protocol as §7 (reference protocol, tmin=10s,
+`--no-nc-overrides --cpu 0`). Correctness not checked (`skip_ref_run` in `config.json`, same as B1/B5). Same
+source logs as §7: `tests/pure_xdsl_blis_rvv/logs/run_2026-09-22_181113/fp32_AXPY_FP32_Pack_vlen256_{MR16NR15,MR32NR7}/`
+(jbpi) and `run_2026-09-22_181822/fp32_AXPY_FP32_Pack_vlen256_{MR16NR15,MR32NR7}/` (jbpi2) — already committed
+in `53f16a9`, nothing new to add there.
