@@ -326,6 +326,33 @@ confirmation, not just inference from the Notion quote.
 
 ## 11. Final synthesis: what to conclude (2026-09-22)
 
+**Reference material for this section — the `prev_xdsl` performance table and its source, documented here
+directly so it doesn't have to be re-found:**
+
+| case | config | `prev_xdsl` GFLOPS |
+|---|---|---|
+| S1 | 32x7 | ~8.5 |
+| S2 | 32x7 | ~8.7 |
+| S3 | 32x7 | ~8.9 |
+| S4 | 32x7 | ~9.0 |
+| S5 | 32x7 | ~9.0 |
+| B1 | 32x6 | ~8.0 |
+| B2 | 16x15 | ~12.5 |
+| B3 | 16x15 | ~8.8 |
+| B4 | 32x7 | ~8.5 |
+| B5 | 32x6 | ~7.5 |
+
+**Source, exact location:** Notion page **"debug perfromance differnces"**, dated **2026-07-29**, at
+**https://app.notion.com/p/3a968a923c2a8043b3c4fdf2c741fe55**. This is where `prev_xdsl` is named directly
+("Comparison: Current xDSL AXPY vs Previous xDSL Design (prev_xdsl)") and where "xdsl privious ref design is
+8.8" appears — the direct evidence behind §10's conclusion. The same B1–B5 rows (not S1–S5) are also quoted,
+citing this same prior value, in two more recent pages: **"verify fixed kernel dimentions and impact of
+packing"** (2026-09-18, https://app.notion.com/p/3dd68a923c2a80debcf4e7ffbf856c86) and **"debug istability
+with CC"** (2026-09-21, https://app.notion.com/p/3dd68a923c2a80c6b938dced75ab53f6), both under a column
+labeled `FP32 GEMM+xDSL`.
+
+---
+
 The user's own read of all the numbers gathered in this issue: `prev_xdsl` (the publication table, §10) tracks
 closely with the current design's own numbers (§8), and both sit apart from the untouched-reference numbers
 (§7). Initial instinct was to disregard the reference sweep entirely as unreliable. Checked that against the
