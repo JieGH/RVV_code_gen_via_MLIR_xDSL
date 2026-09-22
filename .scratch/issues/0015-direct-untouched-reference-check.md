@@ -323,3 +323,39 @@ Verified directly against the live upstream repos on GitHub — `adcastel/RVV_uk
 shipped a `16×15` or `32×7` kernel, at any `VLEN`, in any `OPT` variant — both are even-`NR`-only in the
 author's own published kernel history. With that shown, the user confirmed: it is `prev_xdsl`. Closed with
 confirmation, not just inference from the Notion quote.
+
+## 11. Final synthesis: what to conclude (2026-09-22)
+
+The user's own read of all the numbers gathered in this issue: `prev_xdsl` (the publication table, §10) tracks
+closely with the current design's own numbers (§8), and both sit apart from the untouched-reference numbers
+(§7). Initial instinct was to disregard the reference sweep entirely as unreliable. Checked that against the
+actual sizes of the gaps before accepting it — the two are not the same kind of gap.
+
+**The only valid, tile-matched comparison against the reference is B1 and B5** — the sole two shapes the
+reference can build at all (§6):
+
+| Layer | `prev_xdsl` | Current design (§8) | Reference, untouched (§7) | Design vs. reference |
+|---|---|---|---|---|
+| B1 | ~8.0 | 8.04–8.05 | 7.15–7.18 | **+12%** |
+| B5 | ~7.5 | 7.82–7.83 | 7.05–7.16 | **+9–10%** |
+
+That is not a large gap. It is a modest, plausible difference between two independent microkernel
+implementations, consistent in direction and magnitude across both shapes, and it agrees with `prev_xdsl`
+sitting above the reference too — three independent-ish signals (prev_xdsl, current design, both boards)
+all landing the same side of a ~10% line. That is what a real, believable result looks like, not a broken
+measurement.
+
+The numbers that *did* look drastically different — B2/B3/B4 forced through the reference's only buildable
+tile (32×6) instead of their real 16×15/32×7 pins, 30–40% off — were never a valid comparison in the first
+place (§6/§9): the reference has no kernel at those dimensions, full stop. That gap being large says nothing
+about whether the B1/B5 gap is trustworthy; it was already known to be an invalid comparison before it ran.
+
+**Conclusion, and the user's decision on how to treat it (2026-09-22):**
+- The reference sweep (§7) stands as valid, real evidence — not disregarded. It is the only apples-to-apples
+  head-to-head this issue has, and it shows the current design outperforming the untouched reference by
+  roughly 9–12% on B1/B5.
+- B2/B3/B4 have no reference counterpart to compare against at all — a scope limit (the reference's own
+  kernel set doesn't cover those dimensions), not a measurement to disregard because it's inconvenient.
+- The right thing to report, for either the paper or internal tracking: "design vs. reference" only for
+  B1/B5 (+9–12%), and "design vs. `prev_xdsl`" (this project's own prior generation) for the full B1–B5 set,
+  clearly labeled as two different comparisons, not blended into one table.
