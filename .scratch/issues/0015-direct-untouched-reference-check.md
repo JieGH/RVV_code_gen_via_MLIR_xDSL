@@ -386,3 +386,10 @@ about whether the B1/B5 gap is trustworthy; it was already known to be an invali
 - The right thing to report, for either the paper or internal tracking: "design vs. reference" only for
   B1/B5 (+9–12%), and "design vs. `prev_xdsl`" (this project's own prior generation) for the full B1–B5 set,
   clearly labeled as two different comparisons, not blended into one table.
+
+**Meeting-readiness note (2026-09-22), separate from validity:** the reference numbers (§7) stay documented
+here as valid — kept, not deleted or hidden — but the user does not want them presented in an upcoming
+meeting yet, since they cannot yet self-explain *why* the reference runs slower (only that it plausibly does,
+by ~9–12%, not what in either implementation causes that specific margin). This is a presentation-readiness
+call, not a data-validity one: nothing here says the numbers are wrong, only that the "why" isn't understood
+well enough yet to defend in front of an audience. Revisit before presenting if that explanation gets found.
