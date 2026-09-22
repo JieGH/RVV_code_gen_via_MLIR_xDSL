@@ -89,26 +89,28 @@ Everything else — the Makefile, `run_gemm.sh`, the kernel `.c`/`.h` files actu
    `rsync_board()` pair, no lock file, no plan.txt, no result-dir naming scheme.
 3. **Staging, per board, per design:**
    - *Reference*: `rsync -a --exclude build/ --exclude out_models/ --exclude output/
-     ext/RVV_ukernels_benchmark/gemm_blis_family/` plus `kernels/RVV_256_LDX/fp32/32x6/` (only the one MR×NR
-     needed — the full kernel tree is thousands of files and irrelevant here) into a plainly-named remote
-     dir (e.g. `ref_direct_check/`), plus the one shim header. Hand-write a one-line dataset file in the
-     format `run_gemm.sh` already reads (`#layer m n k Flops`, confirmed against
-     `ext/.../cnn_models/square.dat`) instead of running `gen_ref_datasets.py`.
-   - *Ours*: `compile_macro_bench.sh` at the same shape, `--no-nc-overrides --cpu 0 --tmin 10`, unmodified —
-     this is already the head-to-head command, no new wrapper needed on our side.
+     ext/RVV_ukernels_benchmark/gemm_blis_family/` plus `kernels/RVV_256_LDX/fp32/32x6/` (the one MR×NR
+     needed for both B1 and B5 — same kernel dir, see §6 — the full kernel tree is thousands of files and
+     irrelevant here) into a plainly-named remote dir (e.g. `ref_direct_check/`), plus the one shim header.
+     Hand-write a two-row dataset file (B1, B5) in the format `run_gemm.sh` already reads
+     (`#layer m n k Flops`, confirmed against `ext/.../cnn_models/square.dat`) instead of running
+     `gen_ref_datasets.py`.
+   - *Ours*: `compile_macro_bench.sh` at the same two shapes, `--no-nc-overrides --cpu 0 --tmin 10`,
+     unmodified — this is already the head-to-head command, no new wrapper needed on our side.
 4. **Build + run, on each board, each design** — the literal commands, not a generated script wrapping
    them:
    ```
-   # reference
+   # reference — one build serves both B1 and B5, same MR/NR
    make clean && make MR=32 NR=6 OPT=LDX GATHER=2 SWAP=0 \
        SIMD_MODE=RVV_EXO RUN_MODE=FAMILY_EXO INCLUDE='-I../blis_shim' LIBS='-lm'
-   taskset -c 0 ./run_gemm.sh <one-row dataset> result.csv
+   taskset -c 0 ./run_gemm.sh <two-row B1/B5 dataset> result.csv
    ```
-   and `compile_macro_bench.sh`'s own build+run for ours, same `--cpu 0`.
-5. **Four runs total:** {reference, ours} × {jbpi, jbpi2}, one rep each (no sweep, no repeats) — report each
-   design's own printed driver line (the reference's `DRIVER FOR THE EVALUATION OF GEMM` table row; ours,
-   whatever `compile_macro_bench.sh` prints) side by side, unprocessed. No mean, no spread, no verdict —
-   that was the point of the complaint.
+   and `compile_macro_bench.sh`'s own build+run for ours, same `--cpu 0`, same two shapes.
+5. **Eight runs total:** {reference, ours} × {jbpi, jbpi2} × {B1, B5}, one rep each (no sweep, no repeats) —
+   report each design's own printed driver line (the reference's `DRIVER FOR THE EVALUATION OF GEMM` table
+   row; ours, whatever `compile_macro_bench.sh` prints) side by side, unprocessed, per shape. No mean, no
+   spread, no verdict — that was the point of the complaint. B2/B3/B4 are out of scope per §6, not silently
+   skipped.
 
 ## 4. Open questions — user response (2026-09-22)
 
@@ -135,7 +137,33 @@ Remaining, narrower than before:
 - One rep each, no averaging — still assumed, since "return the performance" / "four times in total" reads as
   four raw numbers, not a sweep with error bars. Will surface the driver's own printed line as-is per run.
 
-## 5. Not yet done
+## 6. Scope widened to the full BERT-large series, then narrowed back (2026-09-22)
+
+User asked for the whole BERT-large series to be checked, not just B1 — "all of the BERT model needed to be
+tested," confirmed as "B1 2 3 4 5." BERT-large's five encoder/FFN shapes, as pinned in this project (see
+`tests/pure_xdsl_blis_rvv/datasets/issue2_bert_16x15.dat`, `issue2_bert_32x6.dat`,
+`issue2_square_bert_32x7.dat`, `bert_large.dat`):
+
+| Shape | M×N×K | MR×NR | In the reference's kernel tree? |
+|---|---|---|---|
+| B1 | 1024×384×1024 | 32×6 | yes — undamaged, already the plan |
+| B5 | 1024×384×4096 | 32×6 | yes — same kernel dir as B1, only the matrix input differs |
+| B2 | 384×384×64 | 16×15 | **no** |
+| B3 | 64×384×384 | 16×15 | **no** |
+| B4 | 4096×384×1024 | 32×7 | **no** |
+
+Checked every kernel variant the reference ships (`kernels/RVV_256_{LDX,OPT,ALL,BASE}/fp32/`): all four only
+carry even NR (…6, 8… / …14, 16…). 16×15 and 32×7 are dimensions this project generated for itself; they
+don't exist anywhere in the reference's vendored source. Building B2/B3/B4 "as the reference is designed"
+would need writing new kernel files — the "major/smart modification" ruled out earlier this same issue.
+
+**Decision: run B1 and B5 only.** They're the only two BERT shapes with real, undamaged reference kernels, and
+the B1/B5 pair happens to be the cleanest possible demonstration of the three-axis rule (§4): same MR×NR, same
+kernel source, only the matrix input (M/N/K) differs. B2/B3/B4 are recorded here as untestable without
+modification, not silently dropped — reopen if real BLIS (`FAMILY_BLIS`) gets installed on the boards later,
+since that path isn't limited to pre-generated kernel files.
+
+## 7. Not yet done
 
 No script, no board connection, no run for this issue has started. This file exists to record the task and
 the two accommodations it cannot avoid (§2) before anything touches a board, per the user's "create an issue
