@@ -2,8 +2,8 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/30
 
-**Role / Label:** `ready-for-agent` — pending, not started
-**Status:** 🟡 Pending. Not a repeat of #29 ([[0014-issue-29-reference-alone-sweep]]) — that measured through
+**Role / Label:** `ready-for-agent` — done, see §7
+**Status:** ✅ Done (2026-09-22). Not a repeat of #29 ([[0014-issue-29-reference-alone-sweep]]) — that measured through
 `run_ref_baseline.sh`, a pipeline the user no longer trusts (2026-09-22, after being shown the #29 numbers).
 This issue is a from-scratch, minimally-scripted, hand-auditable check: run `ext/RVV_ukernels_benchmark`'s
 own commands, as close to byte-identical as it will compile, and put the raw driver output next to ours —
@@ -163,8 +163,29 @@ kernel source, only the matrix input (M/N/K) differs. B2/B3/B4 are recorded here
 modification, not silently dropped — reopen if real BLIS (`FAMILY_BLIS`) gets installed on the boards later,
 since that path isn't limited to pre-generated kernel files.
 
-## 7. Not yet done
+## 7. Done (2026-09-22)
 
-No script, no board connection, no run for this issue has started. This file exists to record the task and
-the two accommodations it cannot avoid (§2) before anything touches a board, per the user's "create an issue
-first."
+Ran. `tests/pure_xdsl_blis_rvv/ref_baseline/run_direct_check.sh` (new, ~100 lines, no dataset generator, no
+comparison script) does exactly §3/§6: stages a copy of `ext/RVV_ukernels_benchmark/gemm_blis_family` plus
+only the `kernels/RVV_256_LDX/fp32/32x6/` kernel dir plus the BLIS shim header onto each board over the `fej`
+jump host (a plain `~/.ssh/config` alias with its own key — no `REMOTE_PASS`/`sshpass` needed, since `fej`'s
+home is the same NFS mount the boards see), builds with the reference's own `Makefile` unmodified
+(`MR=32 NR=6 OPT=LDX GATHER=2 SWAP=0 SIMD_MODE=RVV_EXO RUN_MODE=FAMILY_EXO`), and runs the reference's own
+`run_gemm.sh` against a hand-written two-row dataset (B1, B5) in its own `#layer m n k Flops` format. For
+"ours," the existing `compile_macro_bench.sh --config config.json --no-nc-overrides --cpu 0 --tmin 10` ran
+unmodified — no new wrapper, per §3.
+
+Raw driver output, both sides, unprocessed:
+
+| Board | Reference B1 (GFLOPS) | Reference B5 (GFLOPS) | Ours B1 (GOPs) | Ours B5 (GOPs) |
+|---|---|---|---|---|
+| jbpi  | 7.15 | 7.05 | 8.04 | 7.83 |
+| jbpi2 | 7.18 | 7.16 | 8.05 | 7.82 |
+
+No mean, no spread, no verdict across the two designs — that was the point. The reference's own `PASS` column
+read `-` (not checked) on every row: `run_gemm.sh`'s own default is `TEST=F`, unmodified from the shipped
+script, so this reflects the reference's own default behavior, not something this check turned off.
+
+Full transcripts: `tests/pure_xdsl_blis_rvv/logs/issue30_direct_check_2026-09-22_180052.txt` (reference, both
+boards) and `tests/pure_xdsl_blis_rvv/logs/run_2026-09-22_181113/` (ours, jbpi) /
+`run_2026-09-22_181822/` (ours, jbpi2).
