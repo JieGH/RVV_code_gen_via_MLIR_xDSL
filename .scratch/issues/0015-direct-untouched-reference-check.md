@@ -1,4 +1,6 @@
-# Issue #30 (proposed): run the untouched reference directly, no staging pipeline, one shape, both boards, both designs
+# Issue #30: run the untouched reference directly, no staging pipeline, one shape, both boards, both designs
+
+GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/30
 
 **Role / Label:** `ready-for-agent` — pending, not started
 **Status:** 🟡 Pending. Not a repeat of #29 ([[0014-issue-29-reference-alone-sweep]]) — that measured through
