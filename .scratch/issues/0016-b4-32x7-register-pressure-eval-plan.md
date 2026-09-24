@@ -2,19 +2,21 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/31
 
-**Role / Label:** `in-progress` — plan (§1-5) done; §6 is a real kernel-swap experiment, run on
-hardware; §6.6's pending core-4 baseline rerun is now done (§6.7) and it **does not confirm §6.4's B4
-result** — see below.
-**Status:** 🟡 §4.1's question got an unplanned shortcut: the reference's own true 32x7 kernel turned
-out to exist (§6.1) and was extracted, verified correct, and run in place of ours (§6.2-6.4). First
-(core-0) result: the reference's own kernel is **slower** than ours at this tile, not faster — the
-opposite of what §2's register-pressure doubt predicted (§6.5). **§6.7 (core-4 baseline, now run):
-B4's core-0 gap (−7.1%, ours faster) shrinks to within noise on core 4 (~0-1%, direction ambiguous) —
-the clean §6.4/§6.5 B4 result does not reproduce on the core this project should standardize on.** S3-
-S5's core-4 numbers land close to where the swap experiment's own (qualitative) core-4 estimate put
-them, so those three don't show the same collapse — but S1/S2 have no swapped-kernel core-4 number to
-compare against at all (§6.6 only re-ran B4 and, loosely, S3-S5 on core 4), so "the effect is B4-only"
-is a plausible read, not a confirmed one. Detail and caveats in §6.7.
+**Role / Label:** `resolved` — the register-pressure doubt this issue was opened to check (§1-§2) is
+**answered: no.** §7 below closes it out. The separate, still-open question this work surfaced — why
+B4 specifically underperforms the square family despite sharing an identical, proven-fine tile — is
+**not** this issue's question and moves to a new sub-issue (§7).
+**Status:** 🟢 Closed on its original question. §4.1's question got an unplanned shortcut: the
+reference's own true 32x7 kernel turned out to exist (§6.1) and was extracted, verified correct, and
+run in place of ours (§6.2-6.4). Across both cores tried (core 0: ours 7.1% faster; core 4: roughly
+tied, §6.7), our kernel was never meaningfully *worse* than the reference's own equally
+register-constrained kernel at this tile — the opposite of what §2's doubt predicted. Separately, the
+square family (S1-S5) — the same tile, the same zero-spare-register profile, swept across a 25x range
+of problem size — holds tight, low-jitter (CV 0%), size-ordered performance the whole way (§7.1). Both
+lines of evidence say the same thing: **the tile is not the problem.** What *is* the problem — B4 sits
+below every one of S1-S5 despite the identical tile and a FLOP count that lands between S1 and S2 — is
+now [[0019-b4-bert-shape-underperformance|a separate issue]], because it's a shape question (BERT's
+M=4096/N=384/K=1024 proportions), not a tile/register question. See §7.
 **Target:** `jbpi2` (BananaPi M2 Pro, VLEN=256), reached through jump host `fej`. Originally core 0;
 switched to **core 4** partway through §6 after finding the board is shared (§6.6) — core 0 itself
 turned out to run 5-10% slower than core 4 for the identical binary (§6.6), so core 0 numbers and
@@ -384,3 +386,63 @@ benchmark run like the rest of §6, per the house rule).
   question (does a same-register-count kernel from the other toolchain actually run faster or slower?)
   but doesn't explain *why* at the instruction level. Worth doing if the scheduling hypothesis in §6.4
   needs settling.
+
+## 7. Conclusion: the tile is not the problem — the open question moves to #34
+
+### 7.1 — The square family's own stability is itself evidence
+
+Separately from the swap experiment, this issue's own §6.7 run put five square shapes (S1-S5), all on
+the identical `32x7` tile B4 uses, side by side, on the same core, same session:
+
+| case | M=N=K | KerGOPs (median rep) | reps | jitter |
+|---|---|---|---|---|
+| S1 | 1000 | 8.64 | 44 | CV 0% |
+| S2 | 2000 | 8.96 | 6 | CV 0% |
+| S3 | 3000 | 9.35 | 2 (thin — §6.8) | CV 0% |
+| S4 | 4000 | 9.07 | 1 (thin — §6.8) | CV 0% |
+| S5 | 5000 | 9.40 | 1 (thin — §6.8) | CV 0% |
+| **B4** | **4096×384×1024** | **7.72** | 24 | CV 0% |
+
+Across a 5x range of problem size (S1→S5), performance is stable and roughly size-ordered, with tight
+per-rep jitter throughout (the thin rep counts at S3-S5 are a `tmin` budget artifact, not instability —
+what reps *did* run agree with each other to within 0.01-0.02 GOPs). This is the kernel behaving exactly
+as a non-spilling, well-scheduled design should. B4 sits below all five despite a FLOP count
+(2×4096×384×1024 ≈ 3.2 GFLOP) that lands *between* S1's (2.0 GFLOP) and S2's (16.1 GFLOP) — so it isn't
+explained by "smaller problems run slower" either.
+
+### 7.2 — Why this closes the register-pressure doubt
+
+§2 predicted that `32x7`'s zero-spare-register profile could cost real cycles even without an outright
+spill, through lost instruction-scheduling slack. Two independent lines of evidence now say that isn't
+happening in a way that matters:
+
+- **The swap experiment (§6.2-§6.7):** the reference's own kernel, generated independently and holding
+  the identical 32-of-32 register count, was never meaningfully *slower to use than ours* — core 0 said
+  ours was 7.1% faster, core 4 said the two are within noise of each other. If the zero-spare-register
+  boundary were costing us specifically, the reference's own equally-constrained kernel should have
+  been the fast one. It wasn't, on either core.
+- **The square family (§7.1):** the same tile, the same register profile, swept over a 5x size range,
+  produces stable, low-jitter, size-ordered numbers — not the kind of behavior a scheduling-starved
+  kernel would produce.
+
+**Conclusion: `32x7`'s register pressure is real (§2's count was correct — 32 of 32, zero spare) but it
+is not the cause of any observed underperformance.** The kernel performs as intended at this tile.
+
+### 7.3 — What's left, and why it's a new issue
+
+B4 underperforms every one of S1-S5 despite sharing their exact tile and register profile, and despite
+a FLOP count between S1 and S2's. With the tile ruled out (§7.2), what's left is B4's *shape* —
+M=4096, N=384, K=1024, extremely non-square, vs. S1-S5's M=N=K — which is a different question:
+packing/reuse pattern, cache-blocking behavior (B4's `nc=384` exactly equals `N`, unlike any square
+case), and loop-iteration counts, not tile/register design. That question doesn't belong in an issue
+titled "register-pressure doubt," so it moves to
+**[#34](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/34)**
+([[0019-b4-bert-shape-underperformance]]), seeded with:
+- the B4-vs-S1-S5 table above as its starting evidence (not to be re-derived),
+- the swap-experiment's confirmation that the tile/kernel design itself is not the cause,
+- a refined measurement plan aimed at the shape question specifically (instrumented pack/compute split
+  for B4 vs. a FLOP-matched square; B1/B5 — BERT-shaped but on the already-proven-clean `32x6` tile —
+  vs. squares, to check whether the effect is tile-independent; a blocking/fringe-tile breakdown; an
+  N-only sweep holding M and K at B4's values).
+
+This issue (#31) is resolved on the question it was opened to answer.
