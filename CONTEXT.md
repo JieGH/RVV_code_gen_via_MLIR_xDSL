@@ -38,6 +38,16 @@ Packing routine implemented with scalar loads and stores, executing without vect
 **RVV Packing**:
 Packing routine accelerated with RISC-V Vector unit-stride or strided load/store instructions (`vlse32`/`vse32`).
 
+### Register Allocation
+
+**Register Pressure**:
+The static count of live vector registers a Microkernel design requires at the compute nest's peak (declared A/B/C registers), compared against the hardware's 32-register budget. A shape is over budget when this count exceeds 32 — a property of the tile shape on paper, true before any compiler runs.
+_Avoid_: overflow (ambiguous with Spilling)
+
+**Spilling**:
+Vector registers evicted to the stack by the backend compiler's allocator, observed in emitted assembly as `vs1r.v`/`vl1re32.v` instructions. Distinct from Register Pressure: a shape can be over budget on paper without spilling in practice, or vice versa — whether one predicts the other is an open question, not an assumption.
+_Avoid_: overflow (ambiguous with Register Pressure)
+
 ### Framework & Build Pipeline
 
 **Project Generator**:

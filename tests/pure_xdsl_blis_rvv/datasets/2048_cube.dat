@@ -1,0 +1,4 @@
+# Issue #33 plan (.scratch/issues/0018-16x16-24x10-overflow-vs-reference-eval-plan.md): fixed
+# 2048x2048x2048 fp32 GEMM, the one input size section 4 benchmarks 16x16 and 24x10 against.
+# layer      M     N     K
+2048_cube    2048  2048  2048
