@@ -1,0 +1,1 @@
+▶ 2048_cube (2048x2048x2048) | best variant 24x10 [24 rows x 10 columns of C per tile] | 6.25 GOPs by mean time [whole GEMM call, packing included] | 6.25 GOPs median rep | 4 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:578 nc:1247 kc:170)

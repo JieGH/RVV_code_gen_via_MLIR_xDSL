@@ -1,0 +1,6 @@
+e2e GOPs by mean time per GEMM call, packing included; vector runs: 2, scalar runs: 2
+
+| Case | Shape | Variant | vector GOPs | scalar GOPs | scalar vs vector | spread vec/scl | verdict |
+|---|---|---|---|---|---|---|---|
+| 2048_cube | 2048x2048x2048 | MR16_NR16 | 3.88 / 3.88 (mean 3.88) | 3.89 / 3.87 (mean 3.88) | -0.0% | 0.2% / 0.3% | within noise |
+| 2048_cube | 2048x2048x2048 | MR24_NR10 | 6.25 / 6.25 (mean 6.25) | 6.24 / 6.24 (mean 6.24) | -0.1% | 0.0% / 0.1% | scalar pack slower |

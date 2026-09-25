@@ -2,11 +2,22 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/33
 
-**Role / Label:** `plan` — in progress. §4.1 (register-count audit), §4.2 (new config/dataset), §4.3
-(source diff), and §4.4 (asm/spill audit) are done; §4.5-4.7 (board work) have not been run.
-**Status:** 🔶 §4.1-4.4 done (2026-09-25, no board time). §4.4's headline: both designs spill at both
-shapes, by an identical instruction count on every shape/beta checked — Register Pressure predicts
-Spilling here, and the two designs are symmetric on it. §4.5-4.7 not started.
+**Role / Label:** `plan` — all of §4 is now done (2026-09-25). §4.1 (register-count audit), §4.2 (new
+config/dataset), §4.3 (source diff), §4.4 (asm/spill audit), §4.5 (kernel-swap control, board), §4.6
+(packing comparison, board) and §4.7 (head-to-head board runs, both designs, both shapes) are all
+complete.
+**Status:** 🟢 Done (2026-09-25). Bottom line, against the user's original suspicion that xDSL's own
+codegen over-utilizes registers relative to the reference at 16x16/24x10: **no** — every measurement
+in §4.4-§4.7 points the same way. §4.4: both designs spill identically (same count, same fraction of
+instructions) at both shapes. §4.5: with the compute kernel isolated (reference's own `macc` kernel
+spliced into our harness, bit-exact verified 16/16 cases), our kernel is a wash at 16x16 and mildly
+faster at 24x10 than the reference's own equally register-constrained kernel. §4.6: vector vs. scalar
+packing makes no measurable difference at this problem size on either side. §4.7 head-to-head vs. the
+register-matched reference `macc` number: **+7.4% (ours faster) at 16x16, −1.6% (reference faster) at
+24x10** — small and shape-dependent, not a one-sided register-pressure pattern. The reference's own
+`bcast` variant (guessed as a possible "fastest-of-six" footnote in §4.1) turned out instead to be
+**~4.4x slower** than its own `macc` at both shapes — genuinely register-bound in practice, the
+opposite of the user's original suspicion about which side has the register problem.
 **Target:** `jbpi`/`jbpi2` (BananaPi M2 Pro, VLEN=256), reached through jump host `fej`. Core is
 **not** fixed in advance: [[0016-b4-32x7-register-pressure-eval-plan]] §6.6 already found the board
 is shared with other users' jobs and that core 0 itself runs 5-10% slower than core 4 from
@@ -331,6 +342,50 @@ something specific to one side's code generation — exactly the ambiguity [[001
 unresolved in the *other* direction (their generated code out-performing the reference's at equal
 register count).
 
+**Done (2026-09-25, board: `jbpi`, core 4, checked idle both times — `mpstat -P ALL` showed 0% usr/sys
+on core 4 before each session; core 0/1/3/7 carried other users' jobs at various points, never touched).**
+
+Splice, exactly [[0016]] §6.2's technique: extracted `ref_gemm_RVV_16x16_b{0,1}_col_fp32`
+(`ext/RVV_ukernels_benchmark/kernels/RVV_256_LDX/fp32/16x16/loadAB/macc/kernels_RVV_16x16_fp32.c:18355-18641`)
+and `ref_gemm_RVV_24x10_b{0,1}_col_fp32` (`.../24x10/loadAB/macc/kernels_RVV_24x10_fp32.c:22099-22373`)
+verbatim, renamed to dodge symbol clashes, dropped into a new `gemm_ref_macc.cpp` alongside each
+shape's `pj_gen/` project. Rather than editing `gemm_dispatch_xdsl.cpp` (untouched, exactly as [[0016]]
+§6.2 did), the original generated body in `gemm_b{0,1}_xdsl.cpp` was renamed
+`orig_gemm_microkernel_v_fp32_<shape>_b{0,1}`, and a new function under the *original* name
+(`gemm_microkernel_v_fp32_<shape>_b{0,1}`, the one the dispatcher already calls) was added that
+forwards straight to the reference kernel with the same 1:1 argument mapping [[0016]] §6.2 verified
+works (`v1`=kc, `v2`=`&alpha`, `v3`=Ac, `v4`=max_mr(lda), `v5`=Bc, `v6`=max_nr(ldb), `v7`=`&beta`,
+`v8`=C, `v9`=ldc). This patch lives only in the working tree (gitignored `pj_gen/`, wiped by the next
+`generate_pure_blis_project.py` run) — not committed, same as [[0016]].
+
+Bit-exact verification, §6.3's method: a standalone test binary on the board (not part of the normal
+Makefile) linked our original kernel, the swapped-in reference kernel, and a `main()` generating
+synthetic packed `Ac`/`Bc` buffers across `kc` ∈ {1, 3, 8, 17} × `beta` ∈ {0, 1} (8 cases per shape),
+diffing the output C tile. **All 16 cases (8 per shape, both shapes): max abs diff = 0.000000e+00,
+bit-exact.** Confirmed the exact patched files used here are byte-identical to the ones the correctness
+binary linked (`diff` came back empty on `gemm_b{0,1}_xdsl.cpp` and `gemm_ref_macc.cpp` for both
+shapes) — the speed numbers below are trustworthy on that basis.
+
+Benchmark, same harness both ways (`INSTRUMENTED=0`, reference protocol, `--no-nc-overrides --tmin 10`,
+`taskset -c 4`), our normal kernel vs. the spliced-in reference `macc` kernel:
+
+| shape | ours (baseline) | reference `macc`, spliced into our harness | Δ mean | Δ median |
+|---|---|---|---|---|
+| 16x16 | 3.92 / 3.92 GOPs (mean/median, 3 reps) | 3.91 / 3.91 GOPs (3 reps) | −0.3% (ours faster) | −0.3% (ours faster) |
+| 24x10 | 6.35 / 6.35 GOPs (mean/median, 4 reps) | 6.26 / 6.29 GOPs (4 reps) | −1.4% (ours faster) | −0.9% (ours faster) |
+
+**Reads as a wash at 16x16 and a small win for our own kernel at 24x10** — the opposite of what the
+register-pressure doubt in §2 predicted (that our kernel should be the one losing to a "cleaner"
+equally-constrained kernel), and consistent with [[0016]] §6.4's 32x7 result (our kernel was never
+meaningfully worse than the reference's own equally-constrained kernel there either, though that result
+later turned out core-dependent, [[0016]] §6.7 — here only one core was used per the Target section's
+own "record which core" rule, so this result is internally consistent but is a single-core reading like
+[[0016]] §6.4's core-0 pair, not a multi-core-confirmed one). Combined with §4.4's finding that both
+designs spill identically at these shapes, this settles the swap-control's specific question: **the
+compute kernel itself is not where our design loses ground to the reference, if it loses any at all** —
+whatever the §4.7 head-to-head shows must come from packing, driver overhead, or something outside the
+compute kernel, not from register-pressure-driven codegen quality.
+
 ### 4.6 Packing comparison — three-way, not four
 
 The reference has no vectorized packing inside `RVV_256_LDX` itself, only its generic scalar
@@ -339,6 +394,35 @@ our vector pack vs. our scalar pack (already built in, toggled by `--scalar-pack
 reference's one scalar pack — three variants, run through `run_pack_swap.sh --config
 config_dim_sweep_16x16_24x10.json` for our two variants, and the reference's own harness
 (`gemm_blis_family`, `run_ref_baseline.sh`) for its scalar pack, at the matching 2048³ input.
+
+**Done (2026-09-25, board `jbpi`, core 4).** Ran `run_pack_swap.sh --config
+config_dim_sweep_16x16_24x10.json --cpu 4 --tmin 10` unmodified — its own bracket (vector, scalar,
+scalar, vector, four full builds) already covers "our vector pack vs. our scalar pack" at this exact
+input:
+
+| shape | vector GOPs (2 runs) | scalar GOPs (2 runs) | scalar vs vector | verdict |
+|---|---|---|---|---|
+| 16x16 | 3.88 / 3.88 (mean 3.88) | 3.89 / 3.87 (mean 3.88) | −0.0% | within noise |
+| 24x10 | 6.25 / 6.25 (mean 6.25) | 6.24 / 6.24 (mean 6.24) | −0.1% | scalar pack slower (but by noise-level margin) |
+
+**No measurable difference between our vector and scalar packers at this problem size, either shape.**
+This differs sharply from this project's smaller-shape sweeps (B2/B3-class, where packing is a much
+bigger fraction of total time) — at 2048³ the packed blocks (`mc×kc`/`kc×nc`, e.g. 768×128 or
+578×170) are reused across a K-loop deep enough that compute dominates total time regardless of which
+packer produced the block; packing cost shrinks to noise. This also directly explains why the §4.5
+swap-control (which reused our own vector packer around both the original and the swapped-in reference
+kernel) isolated compute-kernel differences cleanly — packing choice was never going to move that
+number at this size.
+
+The reference's own scalar pack is not run separately: it is *inherent* to its harness
+(`gemm_blis_B3A2C0()`, the timed function in every `run_gemm.sh` call — `src/test_gemm.c:399-400`
+confirms pack time is included in the timed region, unconditionally, since `RVV_256_LDX` has no other
+packing path). So the reference's `macc`/`bcast` GOPs numbers in §4.7 below already are "reference
+compute kernel + reference's own scalar pack," end to end — exactly the third leg of this three-way
+comparison, without a separate run. Read against this section's own finding (packing cost is noise at
+2048³ regardless of packer), any gap between our GOPs and the reference's macc GOPs in §4.7 is not a
+packing-strategy artifact; it is dominated by the compute kernel and/or driver-level overhead outside
+packing, which is what §4.5's swap control already showed is *not* where our kernel loses ground.
 
 ### 4.7 Board runs
 
@@ -354,6 +438,108 @@ config_dim_sweep_16x16_24x10.json` for our two variants, and the reference's own
   method), reported as its own line, never blended into the `INSTRUMENTED=0` headline number.
 - Report both by-mean-time and by-median-rep GOPs for every headline number
   ([[feedback_report_both_gops_metrics]]).
+
+**Done (2026-09-25, board `jbpi`, core 4 throughout — checked idle via `mpstat -P ALL` immediately
+before each session; other users' jobs occupied core 1, 3 or 7 at different points during this work,
+never core 4, and core 0 was avoided per house rule regardless of its load at the time).**
+
+Our side (`compile_macro_bench.sh --config config_dim_sweep_16x16_24x10.json --no-nc-overrides
+--tmin 10 --cpu 4`, `INSTRUMENTED=0`):
+
+| shape | GOPs by mean time | GOPs by median rep | reps | cache blocking |
+|---|---|---|---|---|
+| 16x16 | 3.92 | 3.92 | 3 | mc=768, nc=1024, kc=128 |
+| 24x10 | 6.35 | 6.35 | 4 | mc=578, nc=1247, kc=170 |
+
+Reference side: `run_ref_baseline.sh` turned out not to support a single fixed size directly (it
+derives its dataset from the tracked `cases.tsv`, which this plan does not touch — see the
+alternative below), so the `batch/*.sh` fallback in this section's own plan text was used. Staged a
+temporary copy of `gemm_blis_family` + `blis_shim` + the two shapes' kernel trees (never touching
+`../ext` itself), added a new `batch/2048_cube.sh` there (`MMIN=MMAX=NMIN=NMAX=KMIN=KMAX=2048`, `MC/NC/
+KC` left at 0 since `get_optim_mc_nc_kc()` computes them from the analytical model regardless of the
+batch file's own MC/NC/KC variables — confirmed by reading `src/test_gemm.c`), built with `OPT=LDX
+SIMD_MODE=RVV_EXO RUN_MODE=FAMILY_EXO`, `SWAP=0` (`loadAB`), and `GATHER=2` (macc, primary) then
+`GATHER=0` (bcast, secondary/footnote per §4.1), `taskset -c 4`, `TIMIN=10.0` (same `run_gemm.sh`
+variable `run_ref_baseline.sh` sets via `--tmin`). The reference's own driver (`src/test_gemm.c:339-
+361`) only ever reports one GOPs number per run — the mean of `time/nreps` over the reps that fit in
+`tmin` — it keeps no per-rep log, so **no median-rep number exists on the reference side**; this is a
+capability gap in the reference's own harness, not something this plan skipped.
+
+| shape | variant | GOPs (mean time only — reference reports no median) | cache blocking |
+|---|---|---|---|
+| 16x16 | `macc` (primary) | 3.65 | mc=768, nc=1024, kc=128 |
+| 16x16 | `bcast` (secondary/footnote) | 0.90 | mc=768, nc=1024, kc=128 |
+| 24x10 | `macc` (primary) | 6.45 | mc=578, nc=1247, kc=170 |
+| 24x10 | `bcast` (secondary/footnote) | 1.45 | mc=578, nc=1247, kc=170 |
+
+The cache blocking matches our own side's exactly at both shapes (768/1024/128 and 578/1247/170) —
+expected, since `tests/pure_xdsl_blis_rvv/cache_config.py` is a direct port of the same
+`get_optim_mc_nc_kc()` model, but good confirmation the two sides are computing the same blocking, not
+an artifact of one side's heuristic being different.
+
+**Head-to-head, ours vs. the primary (macc, register-matched) reference number:**
+
+| shape | ours (mean) | reference macc (mean) | Δ |
+|---|---|---|---|
+| 16x16 | 3.92 | 3.65 | **+7.4%** (ours faster) |
+| 24x10 | 6.35 | 6.45 | **−1.6%** (reference faster) |
+
+**Secondary/footnote, ours vs. bcast (not register-matched, per §4.1's original plan to report this as
+a "best-case-for-reference" number — it turned out to be the opposite):**
+
+| shape | ours (mean) | reference bcast (mean) | Δ |
+|---|---|---|---|
+| 16x16 | 3.92 | 0.90 | ours **4.4x faster** |
+| 24x10 | 6.35 | 1.45 | ours **4.4x faster** |
+
+**The single most surprising number in this whole plan.** §4.1's plan text speculated `bcast` (highest
+register count of the three variants, but no gather/scatter or scalar-broadcast overhead) might be a
+"best-case-for-reference" footnote, faster in practice despite being worse on paper. The opposite
+happened, by a wide margin: `bcast` is roughly **4x slower** than `macc` on both shapes (3.65→0.90 at
+16x16, 6.45→1.45 at 24x10), not faster. This lines up with the register story, not against it: `bcast`
+needs 16 (16x16) or 10 (24x10) B-broadcast vector registers live simultaneously (§4.1), 50/44 live
+registers total against a 32-register budget — far worse than `macc`'s 34/33 — and `vfmacc.vf`'s
+scalar-broadcast form (what `macc` uses) needs no persistent B vector register at all. `bcast` is not
+"the reference's best variant that happens to look worse on paper" — it is genuinely, severely
+register-bound in practice, exactly what its live-register count predicts. This also means the
+secondary/footnote number this plan set out to report as a caution against over-reading the primary
+number instead becomes evidence *for* the register-pressure story, just on the reference's side rather
+than ours.
+
+Board build notes worth recording for future runs at these shapes: native (on-board, not cross-)
+compiles of the reference's per-shape kernel file (`kernels_RVV_<shape>_fp32.c`, ~300 lines for the
+16x16/24x10 macc/bcast extract but part of a much larger ~18-45k-line multi-fringe-shape file) took
+roughly 30-90s each at `-O3`, `bcast` noticeably longer than `macc` (more live registers, presumably
+costlier register allocation) — using `nohup ...; disown` on the remote side and polling the log file
+was necessary throughout (a client-side `timeout` around the double-hop ssh killed one in-progress
+remote build outright, the exact pitfall [[0016]] §6.6 already documented).
+
+**Putting §4.5-§4.7 together, against the user's original suspicion (does xDSL's own codegen
+over-utilize registers relative to the reference at 16x16/24x10?):** every piece of evidence gathered
+in this plan points the same way, and it is "no."
+- §4.4: both designs spill identically (same count, same fraction of instructions, same in-loop vs.
+  prologue split) at both shapes — register pressure is a shared property of the tile, not something
+  our lowering does worse.
+- §4.5: with the compute kernel controlled for (our own harness, our own packer, only the microkernel
+  swapped), our kernel is a wash (16x16) or mildly faster (24x10, −0.9 to −1.4%) than the reference's
+  own equally register-constrained `macc` kernel.
+- §4.6: packing strategy (vector vs. scalar, ours vs. the reference's only option) makes no measurable
+  difference at this problem size, so it cannot be hiding a packing-side penalty behind the head-to-head
+  numbers below.
+- §4.7 head-to-head: against the fair, register-matched reference number, we are 7.4% faster at 16x16
+  and 1.6% slower at 24x10 — a small, shape-dependent split, not a one-sided pattern, and nowhere near
+  the scale a real register-overutilization problem would produce (compare to `bcast`'s 4.4x, from a
+  kernel that *is* badly register-bound in practice).
+
+**The 24x10 −1.6% head-to-head gap is real but unexplained by anything measured here** — it does not
+appear in the §4.5 swap control (same compute kernel, our harness: ours was *faster* there), so it is
+not the compute kernel; §4.6 rules out packing strategy. The remaining candidates are driver-level
+overhead differences between the two harnesses (our C++ driver vs. the reference's C `test_gemm.c`) or
+something in how each side's outer M/N/K loop nest is structured around the microkernel — neither
+measured by this plan, and small enough (1.6%) that it may not be worth a dedicated follow-up. Recorded
+here rather than chased further, since it is far outside the scale of "register overutilization" the
+plan was opened to check, and chasing driver-level constant-factor differences is a different question
+from the one this issue asked.
 
 ## 5. What this plan cannot show
 

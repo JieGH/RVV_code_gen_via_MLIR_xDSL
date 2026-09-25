@@ -1,0 +1,6 @@
+=== fp32_AXPY_FP32_Pack_vlen256_MR16NR16 ===
+▶ 2048_cube (2048x2048x2048) | best variant 16x16 [16 rows x 16 columns of C per tile] | 3.87 GOPs by mean time [whole GEMM call, packing included] | 3.87 GOPs median rep | 3 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:768 nc:1024 kc:128)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR24NR10 ===
+▶ 2048_cube (2048x2048x2048) | best variant 24x10 [24 rows x 10 columns of C per tile] | 6.24 GOPs by mean time [whole GEMM call, packing included] | 6.25 GOPs median rep | 4 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:578 nc:1247 kc:170)
+
