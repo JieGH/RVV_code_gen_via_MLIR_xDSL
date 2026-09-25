@@ -2,9 +2,11 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/33
 
-**Role / Label:** `plan` — in progress. §4.2 (new config/dataset) and §4.1 (register-count audit)
-are done; §4.3 onward have not been run.
-**Status:** 🔶 §4.1 and §4.2 done (2026-09-25, no board time). §4.3-4.7 not started.
+**Role / Label:** `plan` — in progress. §4.1 (register-count audit), §4.2 (new config/dataset), §4.3
+(source diff), and §4.4 (asm/spill audit) are done; §4.5-4.7 (board work) have not been run.
+**Status:** 🔶 §4.1-4.4 done (2026-09-25, no board time). §4.4's headline: both designs spill at both
+shapes, by an identical instruction count on every shape/beta checked — Register Pressure predicts
+Spilling here, and the two designs are symmetric on it. §4.5-4.7 not started.
 **Target:** `jbpi`/`jbpi2` (BananaPi M2 Pro, VLEN=256), reached through jump host `fej`. Core is
 **not** fixed in advance: [[0016-b4-32x7-register-pressure-eval-plan]] §6.6 already found the board
 is shared with other users' jobs and that core 0 itself runs 5-10% slower than core 4 from
@@ -205,6 +207,42 @@ register declarations and their live-range shape, loop structure (k-loop body), 
 (`gemm_b1_xdsl.cpp:201-224` there), since that pattern, not register count, was the more likely
 explanation for 32x7's gap.
 
+**Done (2026-09-25).** Generated both shapes locally (no board needed) via
+`cd tests/pure_xdsl_blis_rvv && python3 generate_pure_blis_project.py --config
+config_dim_sweep_16x16_24x10.json` — confirmed by reading `generate_pure_blis_project.py`'s CLI and
+`config.py`'s output-dir naming (`fp32_<method>_vlen<vlen>_MR<mr>NR<nr>`, matching every existing
+`pj_gen/` directory). Output landed at
+`pj_gen/fp32_AXPY_FP32_Pack_vlen256_MR16NR16/gemm_b{0,1}_xdsl.cpp` and
+`pj_gen/fp32_AXPY_FP32_Pack_vlen256_MR24NR10/gemm_b{0,1}_xdsl.cpp`. Diffed each against the §4.1-picked
+`macc` variant: `ext/RVV_ukernels_benchmark/kernels/RVV_256_LDX/fp32/16x16/loadAB/macc/kernels_RVV_16x16_fp32.c:18503`
+(`gemm_RVV_16x16_b1_col_fp32`, `:18355` for `b0`) and
+`.../24x10/loadAB/macc/kernels_RVV_24x10_fp32.c:22241` (`gemm_RVV_24x10_b1_col_fp32`, `:22099` for `b0`).
+
+**Register declarations match §4.1's count exactly at the source level**, on both sides: our
+`gemm_b1_xdsl.cpp` for 16x16 declares 2 A-load temporaries (`v158`/`v161`, one per `MR/8` chunk) and 32
+loop-carried `vfloat32m1_t` C accumulators (`v122`..`v153`) — 34 total, matching the reference's
+`A_reg_0`/`A_reg_1` + 32 `C_reg_*_*` exactly. At 24x10: 3 A temporaries (`v158`/`v161`/`v164`) + 30 C
+accumulators (`v124`..`v153`) = 33, again matching the reference 1:1.
+
+**k-loop structure is the same shape and ordering on both sides**: one k-loop, column `j` outer
+(0..NR-1) with `MR/8`-chunk `m` inner, one `vfmacc` per `(j, m)` pair per iteration, C stored
+column-major. Neither side reorders the nest relative to the other.
+
+**The redundant loop-carried copy pattern [[0016]] found at 32x7 recurs verbatim at both shapes, and
+is the one real structural difference.** Our generated code declares a persistent "shadow" register
+per C accumulator before the loop (`gemm_b1_xdsl.cpp:120-183` for 16x16, `:122-181` for 24x10, e.g.
+`vfloat32m1_t v122; v122 = v29;`), then inside every k-iteration copies shadow-into-temp before each
+`vfmacc` (`vfloat32m1_t v178 = v122;` at `:208` for 16x16, `:203` for 24x10) and copies the result back
+out after all 32/30 `vfmacc`s finish (`v122 = v180;` at `:304`, `v124 = v177;` at `:293`). That's 32
+extra copy-in + 32 extra copy-out plain assignment statements per k-iteration at 16x16 (30+30 at
+24x10) that the reference's source does not have at all — the reference's `C_reg_i_j` accumulators are
+assigned directly by the `vfmacc` call each iteration, no shadow variable, no copy. This is the same
+MLIR→C++ lowering artifact [[0016]] §6.4 documented at 32x7, now confirmed present at two more
+(and further over-budget) shapes.
+
+**Surprising finding held for §4.4, not this section**: whether this noisier source costs anything once
+compiled is not answerable from source alone — see §4.4, where it turns out not to.
+
 ### 4.4 Static asm/spill audit, both designs, both shapes (no board time)
 
 Reuse [[0016]] §4.1's method exactly: compile each side's compute kernel to assembly
@@ -213,6 +251,63 @@ Reuse [[0016]] §4.1's method exactly: compile each side's compute kernel to ass
 shape), this plan should **count** spill/reload instructions and estimate what fraction of the
 compute-nest instruction count they represent, per design per shape — since §2 already predicts both
 designs spill here, "does it spill" isn't the open question, "how much, and how costly" is.
+
+**Done (2026-09-25).** Used the same cross compiler this project's other asm-spill work already uses
+(`/opt/riscv/bin/riscv64-unknown-linux-gnu-gcc`, confirmed via `ref_baseline/run_ref_baseline.sh:38`
+and issues [[0004]]/[[0006]]), same flags as [[0016]]: `-O3 -march=rv64gcv -mabi=lp64d -S`. Isolated
+each side's compute kernel to a standalone compilable unit the same way [[0016]] §6.2 did: extracted
+the reference's `macc` `b0`/`b1` functions verbatim from the two files above (renamed
+`ref_gemm_RVV_<shape>_b{0,1}_col_fp32` to dodge symbol clashes), and compiled our own generated
+`gemm_b{0,1}_xdsl.cpp` directly (it already `#include`s everything it needs via `gemm_headers.h`) —
+8 compiles total (2 shapes x 2 betas x 2 designs), all clean, no warnings.
+
+Grepped each compiled function body for `vs1r.v`/`vs2r.v`/`vs4r.v`/`vs8r.v` (spill-store) and
+`vl1re32.v`/`vl2re32.v`/`vl4re32.v`/`vl8re32.v` (reload):
+
+| shape | beta | side | spill-store | reload | total spill/reload | fn instr count |
+|---|---|---|---|---|---|---|
+| 16x16 | b1 | ours | 6 | 5 | 11 | 313 |
+| 16x16 | b1 | reference (macc) | 6 | 5 | 11 | 325 |
+| 16x16 | b0 | ours | — | — | 12 | 244 |
+| 16x16 | b0 | reference (macc) | — | — | 12 | 256 |
+| 24x10 | b1 | ours | 2 | 2 | 4 | 252 |
+| 24x10 | b1 | reference (macc) | 2 | 2 | 4 | 253 |
+| 24x10 | b0 | ours | — | — | 4 | 194 |
+| 24x10 | b0 | reference (macc) | — | — | 4 | 198 |
+
+**Both designs spill in practice at both shapes — Register Pressure does predict Spilling here.**
+This settles the open question [[CONTEXT#Spilling]] flagged in §2: at 16x16/24x10 (both badly over the
+32-register budget, unlike 32x7's exact-32 boundary case), the static over-budget count and the actual
+emitted `vs1r.v`/`vl1re32.v` instructions agree.
+
+**The spill counts are identical between our design and the reference's, on every shape/beta
+combination checked** (11 vs 11, 12 vs 12, 4 vs 4, 4 vs 4) — not close, exactly equal. Located the
+spill/reload instructions against each function's loop label (`.L3`/`.L10` .. `.L2`/`.L9`): for 16x16
+`b1`, 6 of ours' 11 and 6 of the reference's 11 sit inside the k-loop body itself (the other 5 are
+prologue/epilogue tile load/store spills, not loop-carried); for 24x10 `b1`, all 4 sit split 2-in-loop/
+2-out-of-loop on both sides. As a fraction of the k-loop body's own instruction count: 16x16 is 6/77 =
+7.8% (ours) vs 6/78 = 7.7% (reference); 24x10 is 2/54 = 3.7% on both sides. As a fraction of the whole
+function: 16x16 is 11/313 = 3.5% (ours) vs 11/325 = 3.4% (reference); 24x10 is 4/252 = 1.6% (ours) vs
+4/253 = 1.6% (reference). Every one of these fractions agrees to within rounding between the two
+designs.
+
+**The most surprising finding in this whole plan**: despite §4.3's redundant loop-carried copy pattern
+(64 extra assignment statements per k-iteration at 16x16, 60 at 24x10, that the reference's source
+doesn't have), our compiled function ends up with *fewer* total instructions than the reference's, not
+more — 313 vs 325 at 16x16 `b1` (a 12-instruction, ~4% gap in our favor), 252 vs 253 at 24x10 `b1`
+(near-identical). GCC's `-O3` optimizer evidently eliminates the shadow-copy pattern entirely as dead
+code motion/copy propagation before register allocation ever sees it — it costs nothing in emitted
+code, and doesn't add so much as one extra spill. This extends [[0016]] §6.4's finding (our 32x7 code,
+identical register count, was never slower than the reference's own kernel) one level deeper: even with
+a visibly noisier IR-lowering pattern in the source, and even at shapes far more over-budget than 32x7
+ever was, our compiled compute kernel matches the reference's own Exo-generated kernel spill-for-spill,
+instruction-for-instruction, at both 16x16 and 24x10.
+
+**What this does and doesn't answer**: this confirms Spilling is real and roughly symmetric between
+designs at these two shapes — if there is a performance gap between our design and the reference at
+16x16/24x10 (not measured here, that's §4.5/§4.7's board work), it is very unlikely to be explained by
+one side spilling more than the other in the compute kernel, since neither does. Packing-side cost
+(§4.6, out of scope here) and anything downstream of this static compute-kernel view remain open.
 
 ### 4.5 Kernel-swap control (repeat of [[0016]] §6's method)
 
