@@ -1,0 +1,8 @@
+[
+    // Issue #34: B4's shape against the Square family (.scratch/issues/0019-*.md).
+    // Two tiles, each its own pj_gen/ dir. Neither row carries an nc override; run with
+    // --no-nc-overrides anyway, as every #31-#33 number was. 5 iterations: only the
+    // warm-up protocol (--instr) reads it, and B4_N4096 is 34 GFLOP a rep.
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["issue34_b4_shape_32x7.dat"], true, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["issue34_bert_square_32x6.dat"], true, 5]
+]
