@@ -1,6 +1,6 @@
 # Issue #2 test matrix - BERT shapes pinned to MR16_NR15.
-# Same shapes as B2_M5/B3_M7 (issue #1); B3 needs the {"B3": ...} nc override
-# in config.json to inherit the issue #1 packing-instability mitigation.
+# Same shapes as B2_M5/B3_M7 (issue #1). B3 runs at the heuristic's nc=384: its
+# issue #1 nc=128 override was dropped in issue #35 (it did not steady the vector packer).
 # layer  M     N    K
 B2       384   384  64
 B3       64    384  384

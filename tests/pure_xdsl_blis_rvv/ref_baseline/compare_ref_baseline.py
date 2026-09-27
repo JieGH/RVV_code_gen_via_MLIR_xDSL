@@ -295,7 +295,7 @@ def main() -> int:
         print("  nc overrides are OFF (a --no-nc-overrides run): every case ran at the heuristic's nc,")
         print("  like the reference. This is the head-to-head configuration.")
     else:
-        print("  nc overrides are ON (config.json, e.g. B3 at nc=128): the reference has none, so a")
+        print("  nc overrides are ON (any in config.json; none ship since issue #35): the reference has none, so a")
         print("  case with one is not the same configuration as the reference's. Compare a")
         print("  --no-nc-overrides run (its *_no_nc_override.txt log) for the head-to-head number.")
     print()

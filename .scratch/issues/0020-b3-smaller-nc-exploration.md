@@ -6,7 +6,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/35
 Expanded 2026-09-27 from "keep or drop the override?" into a study of `nc`, after the discussion in §2.
 **Performance results per test:** Appendix A of the audit report, rows 6 and 22 (B3 sweep; B3 with B shrunk under L2).
 **Brief:** [issues-35-36-39-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-35-36-39-brief.pdf) ([LaTeX source](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-35-36-39-brief.tex)) — results of #35, #36 and #39, 2026-09-27.
-**Status:** ✅ Study run 2026-09-27 (§6). Recommendation in §7; the shipped-setting decision is the user's.
+**Status:** ✅ Study run 2026-09-27 (§6). **Decided 2026-09-27: override dropped** (§7 recommendation 1 taken by the user; `config.json` no longer pins B3, the 5 tests and the docs updated).
 **Primary Sources:**
 - [[0001-b3-m7-packing-instability]] (#1) §0, §7 — where `nc`=128 came from.
 - [[0019-b4-bert-shape-underperformance]] (#34) §7.2 — B3 with B shrunk under the L2.

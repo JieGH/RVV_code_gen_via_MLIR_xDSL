@@ -143,12 +143,11 @@ the way the reference does. `--tmin <s>` sets the time budget (default 3.0).
   on the board. `compile_macro_bench.sh --dry-run` prints the script's and stops
   without touching the board.
 - **`--no-nc-overrides`** (issue #16) ignores the per-shape `nc` overrides in
-  `config.json`. The shipped configuration pins B3 to `nc=128`; the reference design has
-  no such override and runs B3 at the heuristic's `nc=384`. That triples B3's `jc`
-  iterations (3x the Ac/Bc packs) and adds ~4 percentage points of fringe work, so a B3
-  number from the shipped configuration is *not* a like-for-like comparison. For the
-  head-to-head number run with the flag; keep the run without it as the
-  shipped-configuration number and quote the two separately. An override now names a
+  `config.json`. None ship since issue #35; until then B3 was pinned to `nc=128`, while the
+  reference design has no such override and runs B3 at the heuristic's `nc=384`. The override tripled B3's `jc`
+  iterations (3x the Ac/Bc packs) and added ~4 percentage points of fringe work, so a B3
+  number from a run with an override is *not* a like-for-like comparison. If an override
+  is put back, run with the flag for the head-to-head number and quote the two separately. An override now names a
   label exactly (`B3` does not match `B30`). `RVV_FORCE_NC` is a separate ad hoc override
   and still wins over everything.
 - Log names carry the protocol: `raw_*_noinstr_refproto.txt` (reference protocol) vs

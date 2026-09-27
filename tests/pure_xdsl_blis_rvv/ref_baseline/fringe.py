@@ -44,7 +44,7 @@ def nc_override_for(
 ) -> int | None:
     """The nc our binary is forced to for `case`, or None when it keeps the heuristic's.
 
-    config.json rows carry `{"label": nc}` overrides (issue #1 pins B3 to 128); the driver
+    config.json rows can carry `{"label": nc}` overrides (none ship since issue #35); the driver
     applies the one whose label is exactly `case` (issue #16), and only within the row
     whose pinned MR/NR built that binary."""
     if configs is None:

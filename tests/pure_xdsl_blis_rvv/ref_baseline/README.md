@@ -152,14 +152,13 @@ families.
 
    | case | B1 | B2 | B3 | B4 | B5 | S1 | S2 | S3 | S4 | S5 |
    |---|---|---|---|---|---|---|---|---|---|---|
-   | extra MACs | 0.00% | 1.56% | 5.47% | 0.26% | 0.00% | 2.50% | 1.25% | 0.60% | 0.45% | 1.00% |
+   | extra MACs | 0.00% | 1.56% | 1.56% | 0.26% | 0.00% | 2.50% | 1.25% | 0.60% | 0.45% | 1.00% |
 
-   B3 is the high one because `config.json` pins its `nc` to 128 (issue #1): three
-   128-wide blocks each pad to 135, so 405 columns of work for 384. At the
-   heuristic's own `nc=384` it would be 1.56%, which is what B2 gets, and what the
-   reference's blocking gives B3. A run made with `--no-nc-overrides` (issue #16) is
-   that configuration: give `compare_ref_baseline.py` its `*_no_nc_override.txt` log
-   with `--raw-name` and the `fringe` column drops B3 to 1.6%. `RVV_FORCE_NC` / `--force-nc` change these figures and are
+   B3 runs at the heuristic's `nc=384`, like the reference, since issue #35 dropped
+   its `nc=128` override (issue #1). With that override it was 5.47%: three 128-wide
+   blocks each pad to 135, so 405 columns of work for 384. Any `nc` override put back
+   in `config.json` shows up in the `fringe` column of a run made without
+   `--no-nc-overrides` (issue #16). `RVV_FORCE_NC` / `--force-nc` change these figures and are
    not modelled.
 
    That counts multiply-adds only. The `memset` and the copy in and out of `tmp_C`
