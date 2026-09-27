@@ -153,7 +153,7 @@ def test_the_comparison_table_shows_our_fringe_overhead_and_says_what_it_is(
 
     assert "fringe" in out
     b3_line = next(line for line in out.splitlines() if line.strip().startswith("B3"))
-    assert "+1.6%" in b3_line  # B3 ships at the heuristic's nc=384 since issue #35
+    assert "+5.5%" in b3_line
     assert "right-sized" in out
 
 
@@ -161,7 +161,7 @@ def test_a_no_nc_override_log_makes_the_fringe_column_match_a_run_without_overri
     tmp_path: Path, capsys, monkeypatch
 ):
     """Issue #16: a --no-nc-overrides run puts B3 at the heuristic's nc=384, so its fringe
-    figure is +1.6% (the +5.5% of an nc=128 override is not applied)."""
+    figure is +1.6%, not the shipped nc=128 configuration's +5.5%."""
     import compare_ref_baseline
 
     ref_dir = tmp_path / "refbase_2026-09-19_000000"
@@ -191,17 +191,10 @@ def test_a_no_nc_override_log_makes_the_fringe_column_match_a_run_without_overri
     assert "nc overrides are OFF" in out  # the table says which configuration it is showing
 
 
-def test_a_log_made_with_an_nc_override_keeps_it_in_the_fringe_column(
+def test_a_shipped_configuration_log_keeps_the_override_in_the_fringe_column(
     tmp_path: Path, capsys, monkeypatch
 ):
-    """A run without --no-nc-overrides takes config.json's overrides into the fringe
-    column. config.json has none since issue #35, so one is put in for B3 here."""
     import compare_ref_baseline
-    import fringe
-
-    monkeypatch.setattr(
-        fringe, "nc_override_for", lambda case, mr, nr, configs=None: 128 if case == "B3" else None
-    )
 
     ref_dir = tmp_path / "refbase_2026-09-19_000000"
     ref_dir.mkdir()

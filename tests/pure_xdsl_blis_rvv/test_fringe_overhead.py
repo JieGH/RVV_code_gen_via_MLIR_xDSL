@@ -18,7 +18,6 @@ sys.path.insert(0, str(HERE / "ref_baseline"))
 
 from cache_config import get_optim_mc_nc_kc  # noqa: E402
 from config import BLISProjectConfig  # noqa: E402
-import fringe  # noqa: E402
 from fringe import (  # noqa: E402
     fringe_extra_macs,
     fringe_for_case,
@@ -94,13 +93,14 @@ def _row(mr_nr, overrides):
     )
 
 
-def test_config_json_ships_b3_at_the_heuristics_nc():
-    # Issue #35 dropped B3's nc=128 override (issue #1): B3 now runs at the heuristic's
-    # nc=384, like the reference, and pads once, to 26 tiles of 15: +1.56%.
-    assert nc_override_for("B3", 16, 15) is None
-    assert load_case_shapes()["B3"] == pytest.approx(390 / 384 - 1)
-    # nc=128 would pad each of 3 blocks to 135: 405 columns of work for 384, +5.47%.
-    assert fringe_for_case(64, 384, 384, 16, 15, nc_override=128) == pytest.approx(405 / 384 - 1)
+def test_config_json_forces_nc_on_b3_so_our_binary_pads_more_than_the_heuristic_says():
+    # config.json pins B3 (16x15) to nc=128 (issue #1). Each 128-wide block pads to 135,
+    # so 3 blocks give 405 columns of work for 384: +5.47%, where the heuristic's own
+    # nc=384 would say +1.56%. This is the figure issue #15 quotes for B3.
+    assert nc_override_for("B3", 16, 15) == 128
+    assert load_case_shapes()["B3"] == pytest.approx(405 / 384 - 1)
+    # Without the override the heuristic's nc=384 pads once, to 26 tiles of 15.
+    assert fringe_for_case(64, 384, 384, 16, 15) == pytest.approx(390 / 384 - 1)
 
 
 def test_an_nc_override_is_clamped_to_n_like_the_driver_does():
@@ -125,10 +125,8 @@ def test_an_override_names_one_label_exactly_and_only_for_the_same_pinning():
     assert nc_override_for("B3", 32, 7, rows) is None
 
 
-def test_our_fringe_can_ignore_the_overrides_like_the_driver_flag_does(monkeypatch):
-    # With a B3 override of nc=128 in the config, --no-nc-overrides runs B3 at the
-    # heuristic's nc=384: one padded block, not three.
-    monkeypatch.setattr(fringe, "nc_override_for", lambda case, mr, nr, configs=None: 128)
+def test_our_fringe_can_ignore_the_overrides_like_the_driver_flag_does():
+    # --no-nc-overrides runs B3 at the heuristic's nc=384: one padded block, not three.
     assert our_fringe("B3", 64, 384, 384, 16, 15) == pytest.approx(405 / 384 - 1)
     assert our_fringe("B3", 64, 384, 384, 16, 15, use_overrides=False) == pytest.approx(
         390 / 384 - 1

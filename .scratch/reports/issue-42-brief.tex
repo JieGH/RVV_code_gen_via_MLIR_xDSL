@@ -53,8 +53,8 @@ nine board launches show. All runs on \texttt{jbpi} (BananaPi, SpacemiT X60, VLE
   both packers, for B3 with K=256, and for Reuse24's few slow reps.
   \item \textbf{It is not the shared L2 of cores 4--7, nor a neighbour.} On core 2 (the other cluster, its own L2) B3
   has two speeds just the same, with the same counter pattern; during a timed run no other core is busy.
-  \item \textbf{Still open:} what makes the prefetcher back off, and whether software prefetch or the X60's
-  cache-block ops can stand in for it (next steps in \S5).
+  \item \textbf{Still open:} what makes the prefetcher back off, and what can stand in for it (next steps in
+  \S5; the X60 has no prefetch hints, so the fixes specified are \iss{43} and \iss{44}).
 \end{enumerate}
 
 \section{What was built (\iss{42})}
@@ -150,9 +150,11 @@ The shared L2 of cores 4--7, a neighbour process & core 2 shows the same; busy s
 
 \textbf{Named so far:} the L1D hardware prefetcher backs off to about half its work. \textbf{Next} (\iss{41}):
 (1) the same counts in 100-rep windows around the switch, to see what changes just before it; (2) \texttt{ldb}
-padding off 384 (\iss{41} step 4, \iss{38}); (3) software prefetch (\texttt{prefetch.r}, Zicbop) in the packer and
-microkernel, and the X60's \texttt{zicbo*} cache-block ops, as stand-ins for the hardware prefetcher; (4) repeat on
-\texttt{jbpi2}.
+padding off 384 (\iss{41} step 4, \iss{38}); (3) stand-ins for the hardware prefetcher: the X60 has \emph{no} prefetch hints (no Zicbop, so
+\texttt{prefetch.r} would do nothing), but it has \texttt{cbo.zero}, which runs in user mode on 64-byte lines. Two
+fixes are now specified, on hold: \iss{43}, \texttt{cbo.zero} on the pack buffers so their writes stop reading
+lines from the L2, and \iss{44}, packing B one column at a time (one stream instead of 15); (4) repeat on
+\texttt{jbpi2}. Meanwhile B3's \texttt{nc}=128 override is back as the baseline.
 
 \section{Review}
 Two-axis review of the change (sub-agents, on standards and on the spec), then fixed before commit:

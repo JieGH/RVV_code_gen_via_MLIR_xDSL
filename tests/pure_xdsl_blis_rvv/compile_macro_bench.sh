@@ -30,7 +30,7 @@ set -e
 # the older one; asking it for --ref-protocol is refused.
 #
 # --no-nc-overrides (issue #16) ignores the per-shape nc overrides in config.json, which the
-# reference design has no counterpart for (none ship since issue #35; B3 used to be nc=128).
+# reference design has no counterpart for (B3 ships at nc=128, the reference runs nc=384).
 # Use it for a head-to-head number; a run without it is the shipped configuration. The two
 # never share a log: this one's are named *_no_nc_override.txt.
 #

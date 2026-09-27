@@ -53,9 +53,10 @@
     // full m/n/k table). Each pinned (mr, nr) gets its own row/dataset so they land in
     // distinct pj_gen/ dirs (see config.compute_out_dir) instead of colliding on the same
     // datatype/method/vlen output directory.
-    // B3 runs at the heuristic's nc=384: issue #35 dropped its issue #1 {"B3": 128} override,
-    // which gave +17% but left B3 two-speed with the vector packer (see issue #35 section 7).
-    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue2_bert_16x15.dat"], true, 1000],
+    // B3 pinned to nc=128: the baseline again since 2026-09-27 (#41/#42 follow-up; it had been
+    // dropped for #35). +17% over nc=384 with the vector packer, though B3 stays two-speed;
+    // the fixes for the slow state are #43 and #44.
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue2_bert_16x15.dat"], true, 1000, {"B3": 128}],
     ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["issue2_bert_32x6.dat"], true, 1000],
     // Square goes up to 5000^3; skip_ref_run + a reduced iteration count keep this group's
     // on-board runtime to minutes instead of hours (see issue2_square_bert_32x7.dat header).

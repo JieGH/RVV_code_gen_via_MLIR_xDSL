@@ -130,6 +130,14 @@ The L1D hardware prefetcher, at the same work, prefetches about half as much in 
 lines it no longer brings in become demand misses in the L1D and the L2. It is not the L2 filling up (same
 access count; B3_K256 slows more though its B fits), not the other cluster's neighbour, not the clock (#36).
 Open: **what makes the prefetcher back off** (it switches within 0.1 s for the vector packer and stays
-switched, #36), and whether software prefetch (`zicbop`, `prefetch.r`) or the `zicbo*` block ops can stand
-in for it. Next: plan step 4 (`ldb` padding off 384, #38) and the same counts per 100-rep window around the
+switched, #36), and what can stand in for it. (Correction, 2026-09-27: the X60 has **no** prefetch hint
+instructions: `zicbop` is not in its ISA string and the device tree has no `riscv,cbop-block-size`, so
+`prefetch.r` would be a no-op. It does have `zicbom` and `zicboz`; `cbo.zero` runs in user mode, 64-byte lines.)
+
+**Decided 2026-09-27 (user):** B3's `nc`=128 override is back in `config.json` as the baseline (#35's file has
+the history). Two fixes are specified, implementation on hold:
+- #43 ([[0027-cbo-zero-pack-buffers-spec]]): clear each Ac/Bc line with `cbo.zero` before packing into it, so
+  the packer's writes stop reading lines from the L2.
+- #44 ([[0028-pack-b-fewer-streams-spec]]): pack B one column at a time, so the prefetcher follows one stream
+  instead of the 15 of today's panel-wide walk. Next: plan step 4 (`ldb` padding off 384, #38) and the same counts per 100-rep window around the
 switch, then `jbpi2`.

@@ -32,7 +32,7 @@ source .venv/bin/activate && REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322"
   --no-nc-overrides --cpu 4 --tmin 10
 ```
 
-This runs our side alone, pinned to core 4 (the default; `--cpu 4` only makes it visible in the command). The default command for a benchmark run is the head-to-head one below, which runs this same side and the reference together. `--no-nc-overrides` ignores any per-shape `nc` override in `config.json`; none ship since issue #35 (B3 used to be pinned to `nc=128`), so today it changes the log name only.
+This runs our side alone, pinned to core 4 (the default; `--cpu 4` only makes it visible in the command). The default command for a benchmark run is the head-to-head one below, which runs this same side and the reference together. `--no-nc-overrides` makes B3 run at the reference's `nc=384`; drop it for the shipped-configuration (`nc=128`) number.
 
 Adjust `REMOTE_HOST`/`REMOTE_PORT`/`--riscv-user`/`--riscv-ip`/`--riscv-port` per the operator's actual jump-host and board; the values above are this project's current defaults, not fixed constants.
 
@@ -46,7 +46,7 @@ The reference command above needs no protocol flag: the uninstrumented build tim
 | `--tmin <s>` | time budget for the reference protocol. Refused where the reference protocol is not running |
 | `--no-ref-protocol` | the older **warm-up protocol** instead: 5 warm-up calls, a scalar-pack pass, then the fixed `iterations` from `config.json`. Logs `raw_*_noinstr.txt` |
 | `--scalar-pack` | every timed call packs with the scalar packer instead of the RVV one (issue #26). Logs get a `_scalarpack` suffix (before `_no_nc_override`), so it never mixes with a vector-live run. See `docs/metrics.md`, "Vector pack against scalar pack, end to end" |
-| `--no-nc-overrides` | ignore the per-shape `nc` overrides in `config.json` (none ship since issue #35; B3 used to be `nc=128`, the reference runs `nc=384`). The head-to-head configuration; a run without it is the shipped one. Logs get a `_no_nc_override` suffix, so the two never mix (issue #16) |
+| `--no-nc-overrides` | ignore the per-shape `nc` overrides in `config.json` (B3 ships at `nc=128`; the reference runs `nc=384`). The head-to-head configuration; a run without it is the shipped one. Logs get a `_no_nc_override` suffix, so the two never mix (issue #16) |
 | `--cpu <n>` | pin the timed run to core `n` with `taskset -c n` (issue #21). Default: core 4, the same default `run_ref_baseline.sh` uses, so both sides time on one core. Not core 0: the board sends every device interrupt there |
 | `--allow-core-0` | let `--cpu 0` through (refused otherwise, issue #39); only to reproduce an old core-0 run. Every script takes it, and the wrappers pass it on |
 | `--no-pin` | run unpinned, to reproduce the pre-#21 numbers. Refused together with `--cpu` |
