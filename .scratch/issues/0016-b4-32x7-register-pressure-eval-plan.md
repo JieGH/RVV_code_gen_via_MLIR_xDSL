@@ -2,6 +2,7 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/31
 
+**Closed 2026-09-27 after audit** (§8). **Audit report:** [issues-31-34-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-34-brief.pdf) ([LaTeX source](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-34-brief.tex)) — brief and audit of #31-#34, 2026-09-27.
 **Role / Label:** `resolved` — the register-pressure doubt this issue was opened to check (§1-§2) is
 **answered: no.** §7 below closes it out. The separate, still-open question this work surfaced — why
 B4 specifically underperforms the square family despite sharing an identical, proven-fine tile — is
@@ -260,6 +261,10 @@ Per-rep noise is tight on both sides (std-dev/median 0-1% where more than a coup
 S2-S5 (deeper K), consistent with the difference living in the k-loop body itself rather than a
 fixed per-call cost. Raw data: `tests/pure_xdsl_blis_rvv/logs/.../raw_fp32_AXPY_FP32_Pack_noinstr_refproto_no_nc_override.txt` (not committed — this is a scratch benchmark run, not a tracked log).
 
+> **Audit note (2026-09-27, §8):** the "gap grows with deeper K" reading does not hold. Every case here
+> uses `kc`=128 (see the cache-blocking line in `logs/run_2026-09-24_143441`), so the kernel's k-loop has
+> the same length for S1-S5. The core-0 gap it explains also did not repeat on core 4 (§6.7).
+
 This is the opposite of what §2 predicted. Both kernels hold the identical 32-of-32 live registers
 (§6.1); if the register boundary alone explained our B4 gap to the published/reference numbers, the
 reference's *own* equally-constrained kernel should be at least as fast as ours, not 5-7% slower.
@@ -446,3 +451,22 @@ titled "register-pressure doubt," so it moves to
   N-only sweep holding M and K at B4's values).
 
 This issue (#31) is resolved on the question it was opened to answer.
+
+---
+
+## 8. Audit (2026-09-27)
+
+Audited against the logs by a later model version; full brief in the audit report linked at the top.
+
+- **Holds.** The 32-of-32 register count (the reference's own 32x7 kernel has the same). The §6.7 core-4
+  baseline table matches `logs/run_2026-09-24_143441` exactly.
+- **Weakly argued, but the conclusion stands.** §7's "the tile is not the problem" rests on two
+  indirect arguments. The swap compares two kernels with the *same* register pressure, so it cannot
+  show what that pressure costs. The square family has no lower-pressure tile to compare against. The
+  direct test (§4.3: B4 at 32x6 and 32x8) was never run here. It was run later: #32 (32x8 falls 44%,
+  32x6 within ±3% of 32x7) and #34 §5.5 (the gap follows N=384 at 32x6 too). Both support §7.
+- **Does not hold.** §6.4's "gap grows with deeper K" argument (see the note there).
+- **Records.** The core-0 swap runs (§6.4) and the swapped core-4 runs (§6.6) left no logs. S3-S5's
+  "CV 0%" comes from 1-2 reps and says nothing about spread.
+- **Follow-ups filed:** 32x6 vs 32x7 inside one launch → #37; benchmark house rules (no core 0, keep
+  every quoted log) → #39.

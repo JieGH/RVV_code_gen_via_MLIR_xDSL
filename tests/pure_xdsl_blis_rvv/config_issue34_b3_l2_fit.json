@@ -1,0 +1,5 @@
+[
+    // B3 at its shipped 16x15 tile, B shrunk step by step under the 512 KiB L2
+    // (datasets/issue34_b3_l2_fit.dat). Run once as is and once with --scalar-pack.
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue34_b3_l2_fit.dat"], true, 1000]
+]

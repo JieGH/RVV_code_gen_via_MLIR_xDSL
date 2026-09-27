@@ -2,6 +2,7 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/33
 
+**Closed 2026-09-27 after audit** (§6). **Audit report:** [issues-31-34-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-34-brief.pdf) ([LaTeX source](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-34-brief.tex)) — brief and audit of #31-#34, 2026-09-27.
 **Role / Label:** `plan` — all of §4 is now done (2026-09-25). §4.1 (register-count audit), §4.2 (new
 config/dataset), §4.3 (source diff), §4.4 (asm/spill audit), §4.5 (kernel-swap control, board), §4.6
 (packing comparison, board) and §4.7 (head-to-head board runs, both designs, both shapes) are all
@@ -555,3 +556,30 @@ from the one this issue asked.
   this project ([[0014]] §6).
 - This plan does not decide whether 16x16/24x10 should ever ship as real tile choices — per §3, that
   redesign question is explicitly deferred.
+
+---
+
+## 6. Audit (2026-09-27)
+
+Audited against the logs by a later model version; full brief in the audit report linked at the top.
+
+- **Holds, reproduced.** §4.4's spill table: recompiled both sides for this audit
+  (`riscv64-unknown-linux-gnu-gcc -O3 -march=rv64gcv -mabi=lp64d -S`; ours from freshly regenerated
+  `pj_gen/`, the reference's `macc` functions extracted verbatim). Spill stores + reloads and line
+  counts match exactly: 16x16 b1 6+5 (313 vs 325), b0 6+6 (244 vs 256); 24x10 b1 2+2 (252 vs 253), b0
+  2+2 (194 vs 198). Also checked: `GATHER=2` builds `macc` and `GATHER=0` builds `bcast` (reference
+  `Makefile`); the §4.7 and §4.6 numbers match `logs/run_2026-09-25_{155326,161644,...,162905}`.
+- **Small percentages are read as results.** Across the five launches of the same binaries that hour,
+  ours ranged 3.87-3.92 (16x16) and 6.24-6.35 (24x10), up to 1.7%. §4.5's −0.3% / −1.4% and §4.7's
+  −1.6% (24x10) are inside that. Using the four pack-swap launches instead of the single baseline
+  launch, ours vs the reference `macc` is +6.3% (16x16) and −3.1% (24x10). Only the 16x16 gap clearly
+  exceeds noise. "−0.3% (ours faster)" in §4.5 is also written with a confusing sign.
+- **Records.** The §4.5 swap-control run and the four reference-side runs (§4.7) left no logs in the
+  repo, so those numbers cannot be re-checked. "Instruction-for-instruction" (§4.4) overstates it:
+  counts are close, not equal.
+- **Missing context.** Both tiles run far below the shipped tile: 3.9 and 6.3 GOPs against ~9 for 32x7
+  on S2 (2000³). Over-budget tiles cost 30-57% on both designs; that is the practical result.
+- **Main conclusion stands:** xDSL does not over-use registers compared with the reference at these
+  tiles.
+- **Follow-up filed:** benchmark house rules (several launches for small gaps, keep every quoted log)
+  → #39.

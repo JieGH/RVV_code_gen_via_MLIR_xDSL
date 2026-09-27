@@ -1,0 +1,36 @@
+=== fp32_AXPY_FP32_Pack_vlen256_MR16NR10 ===
+▶ B2 (384x384x64)        | best variant 16x10 [16 rows x 10 columns of C per tile] | 10.78 GOPs by mean time [whole GEMM call, packing included] | 10.81 GOPs median rep | 5710 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:384 nc:384 kc:64)
+▶ B3 (64x384x384)        | best variant 16x10 [16 rows x 10 columns of C per tile] | 6.77 GOPs by mean time [whole GEMM call, packing included] | 7.50 GOPs median rep | 3585 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:64 nc:384 kc:128)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR16NR11 ===
+▶ B2 (384x384x64)        | best variant 16x11 [16 rows x 11 columns of C per tile] | 10.96 GOPs by mean time [whole GEMM call, packing included] | 11.00 GOPs median rep | 5808 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:384 nc:384 kc:64)
+▶ B3 (64x384x384)        | best variant 16x11 [16 rows x 11 columns of C per tile] | 6.42 GOPs by mean time [whole GEMM call, packing included] | 6.70 GOPs median rep | 3400 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:64 nc:384 kc:128)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR16NR12 ===
+▶ B2 (384x384x64)        | best variant 16x12 [16 rows x 12 columns of C per tile] | 11.77 GOPs by mean time [whole GEMM call, packing included] | 11.83 GOPs median rep | 6237 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:384 nc:384 kc:64)
+▶ B3 (64x384x384)        | best variant 16x12 [16 rows x 12 columns of C per tile] | 5.32 GOPs by mean time [whole GEMM call, packing included] | 4.33 GOPs median rep | 2821 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:64 nc:384 kc:128)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR16NR13 ===
+▶ B2 (384x384x64)        | best variant 16x13 [16 rows x 13 columns of C per tile] | 11.76 GOPs by mean time [whole GEMM call, packing included] | 11.80 GOPs median rep | 6234 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:384 nc:384 kc:64)
+▶ B3 (64x384x384)        | best variant 16x13 [16 rows x 13 columns of C per tile] | 7.53 GOPs by mean time [whole GEMM call, packing included] | 8.26 GOPs median rep | 3988 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:64 nc:384 kc:128)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR16NR14 ===
+▶ B2 (384x384x64)        | best variant 16x14 [16 rows x 14 columns of C per tile] | 11.96 GOPs by mean time [whole GEMM call, packing included] | 11.99 GOPs median rep | 6335 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:384 nc:384 kc:64)
+▶ B3 (64x384x384)        | best variant 16x14 [16 rows x 14 columns of C per tile] | 7.55 GOPs by mean time [whole GEMM call, packing included] | 8.21 GOPs median rep | 3998 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:64 nc:384 kc:128)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR16NR15 ===
+▶ B2 (384x384x64)        | best variant 16x15 [16 rows x 15 columns of C per tile] | 12.21 GOPs by mean time [whole GEMM call, packing included] | 12.26 GOPs median rep | 6468 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:384 nc:384 kc:64)
+▶ B3 (64x384x384)        | best variant 16x15 [16 rows x 15 columns of C per tile] | 8.29 GOPs by mean time [whole GEMM call, packing included] | 8.89 GOPs median rep | 4394 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:64 nc:384 kc:128)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR16NR16 ===
+▶ B2 (384x384x64)        | best variant 16x16 [16 rows x 16 columns of C per tile] | 7.71 GOPs by mean time [whole GEMM call, packing included] | 7.73 GOPs median rep | 4086 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:384 nc:384 kc:64)
+▶ B3 (64x384x384)        | best variant 16x16 [16 rows x 16 columns of C per tile] | 4.83 GOPs by mean time [whole GEMM call, packing included] | 5.00 GOPs median rep | 2562 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:64 nc:384 kc:128)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR16NR8 ===
+▶ B2 (384x384x64)        | best variant 16x8 [16 rows x 8 columns of C per tile] | 9.84 GOPs by mean time [whole GEMM call, packing included] | 9.86 GOPs median rep | 5213 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:384 nc:384 kc:64)
+▶ B3 (64x384x384)        | best variant 16x8 [16 rows x 8 columns of C per tile] | 5.11 GOPs by mean time [whole GEMM call, packing included] | 5.43 GOPs median rep | 2707 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:64 nc:384 kc:256)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR16NR9 ===
+▶ B2 (384x384x64)        | best variant 16x9 [16 rows x 9 columns of C per tile] | 10.59 GOPs by mean time [whole GEMM call, packing included] | 10.63 GOPs median rep | 5611 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:384 nc:384 kc:64)
+▶ B3 (64x384x384)        | best variant 16x9 [16 rows x 9 columns of C per tile] | 7.44 GOPs by mean time [whole GEMM call, packing included] | 7.46 GOPs median rep | 3940 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:64 nc:384 kc:128)
+

@@ -1,0 +1,25 @@
+[
+    // Issue #32 plan (.scratch/issues/0017-b3-b4-nr-sweep-eval-plan.md): B3's kernel-dimension (NR)
+    // sweep. MR=16 fixed, NR stepped 16 down to 8 (9 shapes), all against B3's own shape
+    // (issue2_bert_16x15.dat: M=64, N=384, K=384). B3 ships today at MR16_NR15 (config.json), which
+    // is included here (not skipped) so the whole curve comes from one consistent run rather than
+    // splicing in the nine-day-old numbers from issue #3.
+    //
+    // Per plan section 2, NR=15 (shipped) and NR=16 sit at/over the 32-register live-range boundary
+    // ((MR/8)x(1+NR) <= 32); NR<=14 has slack. This sweep is what tells the two apart.
+    //
+    // Drops the shipped {"B3": 128} nc override: run_pack_swap.sh's default
+    // --no-nc-overrides applies here (nc=384, the house default for numbers not quoted against the
+    // reference), so this sweep's variance is not directly comparable to config.json's shipped B3 row.
+    //
+    // Use with: run_pack_swap.sh --config config_dim_sweep_b3.json ...
+    ["fp32", "AXPY_FP32_Pack", [16, 16], 256, "jbpi2", ["issue2_bert_16x15.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue2_bert_16x15.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 14], 256, "jbpi2", ["issue2_bert_16x15.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 13], 256, "jbpi2", ["issue2_bert_16x15.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 12], 256, "jbpi2", ["issue2_bert_16x15.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 11], 256, "jbpi2", ["issue2_bert_16x15.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 10], 256, "jbpi2", ["issue2_bert_16x15.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 9], 256, "jbpi2", ["issue2_bert_16x15.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 8], 256, "jbpi2", ["issue2_bert_16x15.dat"], true, 1000]
+]

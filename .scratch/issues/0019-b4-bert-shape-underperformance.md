@@ -2,7 +2,8 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/34
 
-**Role / Label:** `needs-triage` — spun out of
+**Closed 2026-09-27.** **Audit report:** [issues-31-34-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-34-brief.pdf) ([LaTeX source](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-34-brief.tex)) — brief and audit of #31-#34, 2026-09-27.
+**Role / Label:** resolved — spun out of
 [[0016-b4-32x7-register-pressure-eval-plan]] (#31) once that issue's own question (was `32x7`'s
 register pressure the cause?) was answered **no**. This issue starts from that answer rather than
 re-deriving it: the tile is confirmed fine, so this is about B4's *shape*.
@@ -11,7 +12,8 @@ line: **B4 is slow because N=384 is small, not because of the tile or the comput
 capped at N=384, every packed A panel serves only 384 columns, so B4 packs 2.3x more elements per flop
 than a square case. Its compute loop runs within 2% of S1's. Widening N alone (M, K kept) brings B4 back
 to square speed (+9.5 to +11.4%). A second, smaller cost (2-5%) comes from M=4096 being a power of two.
-Results in §5.
+Results in §5. Follow-up §7 (2026-09-27): which layers are unstable (B3, B2), and a first B3 test
+showing B fitting in L2 does not fix B3; with the scalar packer the slow case is N=`nc`=384.
 **Target:** `jbpi2` (BananaPi M2 Pro, VLEN=256), reached through jump host `fej`, core 4 (not core 0 —
 see [[0016-b4-32x7-register-pressure-eval-plan]] §6.6: core 0 absorbs every device interrupt and runs
 5-10% slower for identical binaries). The board is shared with other users; check `ps -eo
@@ -323,3 +325,64 @@ design blocks and packs the same way, so it should pay the same small-N cost.
 - [x] §3.6 disassembly — not needed, compute loop runs at square speed (§5.1)
 - [x] repeat on a second core, same session (run C)
 - [ ] not done: a second board (`jbpi`), or several launches per core to size the §5.6 spread
+
+---
+
+## 7. Follow-up: why some layers are not stable (2026-09-26/27)
+
+Asked after §6: B4 is slow but steady, so which layers are actually *unstable*, and why? This section
+reads the #32 sweep logs, the #33 2048³ logs and this issue's own runs together, then adds one new
+experiment on B3 (§7.2). All numbers `INSTRUMENTED=0`, reference protocol, `--no-nc-overrides --tmin 10`.
+
+### 7.1 What the existing logs already say
+
+1. **Slow is not the same as unstable.** B4, S1-S5 and the 2048³ cases from #33 are tight inside a run
+   (p5-p95 within 1%). B4 is steadily slower, which is the small-N effect in §6, not noise.
+2. **The unstable layers are the small, pack-heavy ones.** B3 (and sometimes B2) do about 19 MFLOP per
+   call, a few milliseconds each. B3 spends 37-40% of its time packing ([[0003-scalar-vs-vector-pack-timing]]).
+3. **B3 switches between two speeds inside one run.** In every #32 vector-pack run, B3 at `16x15` has a
+   median rep near 4.4 GOPs but a best rep near 9.9. That best rep beats the scalar packer's best (~9.3),
+   so the vector packer is not slow in itself: most reps take a slow path, and with the scalar packer
+   fewer reps do. Same two speeds [[0013-issue-26-pack-swap-end-to-end]] §3 found.
+4. **It is not the tile or the registers.** In #32 no tile at or under 32 live registers lost speed; in
+   #33 our kernels spill exactly as often as the reference's.
+5. **The whole level also moves 2-5% from one launch to the next** (§5.6). The rule stays: compare
+   shapes inside one run, never across runs.
+
+### 7.2 New: does B fitting in L2 make B3 stable? (`config_issue34_b3_l2_fit.json`)
+
+Guess tested: B3's B is 384×384 floats = 576 KiB, over the 512 KiB L2 (B2's is 96 KiB and B2 is
+stable). Dataset `datasets/issue34_b3_l2_fit.dat` keeps M=64 and the `16x15` tile, and shrinks B under
+the L2. `jbpi2`, core 4, three launches back to back: vector (`logs/run_2026-09-26_231823`), scalar
+(`..._232047`), vector (`..._232311`). GOPs by median rep; mean in brackets; CV across reps.
+
+| case | M×N×K | B size | vector, launch 1 | vector, launch 2 | scalar |
+|---|---|---|---|---|---|
+| B3 | 64×384×384 | 576 KiB | 4.36 (4.65), CV 27% | 4.38, CV 43% | 6.06, CV 29% |
+| B3_N320 | 64×320×384 | 480 KiB | 4.69 (5.32), CV 35% | 4.68, CV 34% | **8.75, CV 7%** |
+| B3_N256 | 64×256×384 | 384 KiB | 4.56 (4.82), CV 23% | 4.74, CV 24% | **8.48, CV 14%** |
+| B3_K256 | 64×384×256 | 384 KiB | 4.59 (4.63), CV 14% | 4.54, CV 15% | 4.49, CV 19% |
+| B3_N192 | 64×192×384 | 288 KiB | 5.82 (6.58), CV 29% | 5.58, CV 21% | 8.14, CV 14% |
+
+- **The L2 guess is wrong.** With the vector packer every row keeps both speeds (best rep 9.7-10.2,
+  median 4.4-5.8), even at half the L2 size. The two vector launches agree to within 0.24.
+- **With the scalar packer, what matters is N=384, not B's size.** B3_N256 and B3_K256 have the same
+  384 KiB B. N256 runs fast and steady (8.48); K256, which keeps N=384, stays on the slow path (4.49),
+  and so does B3 itself (6.06). Every row with N≤320 is fast. With `--no-nc-overrides`, `nc` = N here,
+  so "N=384" is also "`nc`=384". That fits issue #1's shipped fix for B3, the `{"B3": 128}` `nc`
+  override, which the uncommitted `config.json` change from #32 removed.
+- **Limits.** One scalar launch only, one board, one core. Nothing here says *why* `nc`=384 is the
+  slow case, or why the vector packer stays slow at every N.
+
+### 7.3 Next steps (not run — each now filed as its own issue, implementation on hold)
+
+Filed 2026-09-27: B3 `nc` override decision → #35; B3 vector packer (items 1-2 below) → #36;
+32x6 vs 32x7 → #37; B4 shape-cost levers (§6) → #38; benchmark house rules → #39.
+
+
+- Instrumented pack/compute split for B3 at `16x14`, `16x15`, `16x16` (the step the #32 comment
+  proposed), and the same for B3_N320 vs B3_K256 with the scalar packer.
+- Save per-rep times, to see whether slow reps come in runs or at random.
+- Repeat §7.2's scalar launch, and add a `nc`=128 row, before deciding whether to restore the B3
+  override in `config.json` (5 tests fail without it; the call is the user's).
+- Side note from sysfs, not chased: the L2 is 16-way, `cache_config.py`/`bananapi.h` use `WL2 = 8`.
