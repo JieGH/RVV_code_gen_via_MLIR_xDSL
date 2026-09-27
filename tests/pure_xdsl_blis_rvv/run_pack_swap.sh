@@ -16,7 +16,7 @@ set -o pipefail
 #
 # Cases: B3 (MR16_NR15) first, then S1 (MR32_NR7), from config_pack_swap.json; B2, B3 and B4
 # from config_pack_swap_b2b3b4.json (--config).
-# Defaults are the default run command's: --no-nc-overrides --cpu 0 --tmin 10.
+# Defaults: --no-nc-overrides --cpu 4 --tmin 10 (core 4 since issue #39: never core 0).
 #
 # Usage (jump-host):
 #   REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" \
@@ -38,7 +38,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${HERE}/board_pin.sh"
 LOGS="${HERE}/logs"
 SHARED=()
-CPU_ARGS=(--cpu 0)
+CPU_ARGS=(--cpu 4)
 CPU_FLAG=false
 NO_PIN=false
 CPU=""

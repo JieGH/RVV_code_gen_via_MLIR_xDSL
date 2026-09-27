@@ -790,3 +790,80 @@ def test_the_results_file_of_a_scalar_pack_run_is_its_own(tmp_path: Path):
         _results_file(tmp_path / "c", "--scalar-pack --no-ref-protocol")
         == "_noinstr_scalarpack"
     )
+
+
+# ---------------------------------------------------------------------------
+# --save-reps (issues #35, #36): every timed rep's own time, in the order the reps ran, so
+# slow reps can be seen coming in runs or at random. The raw log keeps only the summary.
+# ---------------------------------------------------------------------------
+REFPROTO_REPS = "reps_fp32_STUB_noinstr_refproto.txt"
+
+
+def test_save_reps_writes_one_row_per_timed_rep_in_the_order_they_ran(uninstrumented: Driver):
+    proc = uninstrumented.run("--tmin", "0.1", "--save-reps", env={"STUB_SLEEP_MS": "10"})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    (row,) = uninstrumented.raw_rows(REFPROTO_RAW)
+    reps = uninstrumented.raw_rows(REFPROTO_REPS)
+    assert len(reps) == int(row["N_Reps"]) >= 3
+    assert [int(r["Rep"]) for r in reps] == list(range(len(reps)))
+    assert {(r["Layer"], r["M"], r["N"], r["K"], r["Variant"]) for r in reps} == {
+        ("T1", "32", "32", "32", "MR4_NR4")
+    }
+    # nc is on every row, so a sweep over nc inside one launch reads straight off the file
+    assert {r["NC"] for r in reps} == {"32"}
+    # the rep times are the ones the mean time is made of
+    seconds = [float(r["Seconds"]) for r in reps]
+    assert all(s >= 0.010 for s in seconds)
+    assert sum(seconds) / len(seconds) * 1e3 == pytest.approx(float(row["RVV_Time_ms"]), rel=0.02)
+
+
+def test_without_save_reps_no_per_rep_log_is_written(uninstrumented: Driver):
+    proc = uninstrumented.run("--tmin", "0.05")
+    assert "per-rep times: not saved" in _overview(proc.stdout)
+    assert not (uninstrumented.cwd / "logs" / REFPROTO_REPS).exists()
+
+
+def test_the_overview_names_the_per_rep_log(uninstrumented: Driver):
+    ov = _overview(uninstrumented.run("--tmin", "0.05", "--save-reps").stdout)
+    line = next(ln for ln in ov.splitlines() if "logs/" + REFPROTO_REPS in ln)
+    assert "[--save-reps]" in line
+
+
+def test_the_per_rep_log_follows_the_run_s_own_log_name(with_nc_override: Driver):
+    with_nc_override.run("--tmin", "0.05", "--save-reps", "--scalar-pack", "--no-nc-overrides")
+    assert (
+        with_nc_override.cwd / "logs" / "reps_fp32_STUB_noinstr_refproto_scalarpack_no_nc_override.txt"
+    ).is_file()
+
+
+def test_the_per_rep_log_carries_each_rows_own_nc(with_nc_override: Driver):
+    # An nc sweep inside one launch: the same shape under two labels, one overridden.
+    with_nc_override.run("--tmin", "0.05", "--save-reps", dataset="twins.dat")
+    reps = with_nc_override.raw_rows(REFPROTO_REPS)
+    assert {r["Layer"]: r["NC"] for r in reps} == {"T1": "16", "T10": "32"}
+
+
+def test_the_instrumented_per_rep_log_splits_each_rep_into_pack_and_compute(instrumented: Driver):
+    proc = instrumented.run("--save-reps")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    reps = instrumented.raw_rows("reps_fp32_STUB.txt")
+    assert len(reps) == CONFIG_ITERATIONS
+    for r in reps:
+        # the stub reports 1 us of each
+        assert float(r["Pack_Seconds"]) == pytest.approx(1e-6)
+        assert float(r["Compute_Seconds"]) == pytest.approx(1e-6)
+        assert float(r["Seconds"]) == pytest.approx(2e-6)
+
+
+def test_the_uninstrumented_per_rep_log_has_no_split(uninstrumented: Driver):
+    uninstrumented.run("--tmin", "0.05", "--save-reps")
+    for r in uninstrumented.raw_rows(REFPROTO_REPS):
+        assert r["Pack_Seconds"] == r["Compute_Seconds"] == "nan"
+        assert r["Pack_Cycles"] == r["Compute_Cycles"] == "nan"
+
+
+def test_script_passes_save_reps_to_the_driver():
+    out = _run_script("--dry-run", "--save-reps").stdout
+    line = next(ln for ln in out.splitlines() if "reps_*_noinstr_refproto.txt" in ln)
+    assert "[--save-reps]" in line
+    assert "per-rep times: not saved" in _run_script("--dry-run").stdout

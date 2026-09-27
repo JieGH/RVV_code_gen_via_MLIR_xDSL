@@ -1,0 +1,8 @@
+[
+    // Issue #35: B3 and the M-small Reuse layers at eleven nc values, inside one launch, plus B2 as the
+    // steady control and B3's issue #34 N/K rows at nc=N and nc=128. Every nc comes from the override
+    // table below (one label per setting), so run it WITHOUT --no-nc-overrides. Tile: MR16_NR15, B3's
+    // shipped one. skip_ref_run=true: R24 is too big for the scalar oracle at this row count.
+    //   compile_macro_bench.sh --config config_issue35_nc_sweep.json --cpu 4 --tmin 10 --save-reps [--scalar-pack]
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi", ["issue35_nc_sweep.dat"], true, 1000, {"B3_nc32": 32, "R8_nc32": 32, "R12_nc32": 32, "R24_nc32": 32, "B3_nc64": 64, "R8_nc64": 64, "R12_nc64": 64, "R24_nc64": 64, "B3_nc96": 96, "R8_nc96": 96, "R12_nc96": 96, "R24_nc96": 96, "B3_nc120": 120, "R8_nc120": 120, "R12_nc120": 120, "R24_nc120": 120, "B3_nc128": 128, "R8_nc128": 128, "R12_nc128": 128, "R24_nc128": 128, "B3_nc192": 192, "R8_nc192": 192, "R12_nc192": 192, "R24_nc192": 192, "B3_nc240": 240, "R8_nc240": 240, "R12_nc240": 240, "R24_nc240": 240, "B3_nc256": 256, "R8_nc256": 256, "R12_nc256": 256, "R24_nc256": 256, "B3_nc320": 320, "R8_nc320": 320, "R12_nc320": 320, "R24_nc320": 320, "B3_nc375": 375, "R8_nc375": 375, "R12_nc375": 375, "R24_nc375": 375, "B3_nc384": 384, "R8_nc384": 384, "R12_nc384": 384, "R24_nc384": 384, "B2_nc128": 128, "B2_nc384": 384, "B3_N192_nc128": 128, "B3_N256_nc128": 128, "B3_N320_nc128": 128, "B3_K256_nc128": 128}]
+]

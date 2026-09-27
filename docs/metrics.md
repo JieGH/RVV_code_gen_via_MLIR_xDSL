@@ -22,6 +22,9 @@ tests/pure_xdsl_blis_rvv/logs/run_<timestamp>/
   comparison.md                    # per-case table built from all_raw_*.txt, see below
 ```
 
+With `--save-reps`, each project directory also holds `reps_<dtype>_<method><suffix>.txt.gz`
+(see "Per-rep log" below). It is gzipped on fetch and not merged into an `all_*` file.
+
 `comparison.md` is generated automatically by `summarize_run.py` at the end of the
 fetch step. To regenerate it by hand against an existing run directory:
 
@@ -231,6 +234,29 @@ packing strategy on our microkernel.)
   S1 (`config_pack_swap.json`); `compare_pack_swap.py` prints e2e GOPs for each side, the
   difference, and the spread between repeats of the same side. A difference smaller than that
   spread is called "within noise".
+
+## Per-rep log (`--save-reps`, issues #35 and #36)
+
+`raw_*.txt` keeps only a summary of each case's reps (mean, median, percentiles). To see
+whether slow reps come in runs or at random, `--save-reps` writes every timed rep, one row
+each, in the order they ran, to `reps_*.txt` beside the raw log (same suffixes, so it never
+mixes across builds, protocols, packers or `nc` settings):
+
+| column | meaning |
+|---|---|
+| `Layer,M,N,K,Variant` | as in the raw log |
+| `MC,NC,KC` | the cache blocking this row actually ran with (after any `nc` override), so an `nc` sweep inside one launch reads straight off the file |
+| `Rep` | 0 for the first timed rep; under the reference protocol rep 0 is the cold one |
+| `Seconds` | the time charged to this rep: the same number the raw log's mean and median are made of. Uninstrumented: this rep's wall clock. Instrumented: its pack + compute timers |
+| `Pack_Seconds`, `Compute_Seconds` | instrumented only (`nan` otherwise): the two halves of `Seconds` |
+| `Pack_Cycles`, `Compute_Cycles` | instrumented only, and only when the perf counters opened (`nan` otherwise) |
+
+The file is written after each case's timed loop, from the times the loop already keeps, so
+saving it adds no work inside the timed interval. It runs to ~10 MB a launch at `--tmin 10`, so the
+fetch step gzips it (~0.8 MB). `reps_report.py <run dir> [...]` reads it (plain or gzipped) and prints,
+per packer and case across the launches given: GOPs by mean time (average, lowest and highest launch)
+and by median rep, CV, best rep, the share of slow reps (the slower of two clearly separate speeds),
+how bunched together the slow reps are, and how long each case stays fast from its start.
 
 ## Hardware perf counters (perf log, issue #8)
 

@@ -36,7 +36,7 @@ Run from the repo root. The script activates `.venv` itself, generates the kerne
 source .venv/bin/activate && REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" \
   ./tests/pure_xdsl_blis_rvv/compile_macro_bench.sh --jump \
   --riscv-user jlei --riscv-ip jbpi --riscv-port 22 \
-  --no-nc-overrides --cpu 0 --tmin 10
+  --no-nc-overrides --cpu 4 --tmin 10
 ```
 
 `REMOTE_HOST` and `REMOTE_PORT` reach the intermediate host; the `--riscv-*` flags reach the board behind it. For a board you can reach directly, drop `--jump` and the `REMOTE_*` variables. Add `--config <name>.json` for a project config other than `config.json`.
@@ -52,7 +52,8 @@ Add `--dry-run` to print the settings and stop without touching the board. Every
 | `--no-ref-protocol` | Warm-up first, then a fixed rep count from `config.json`. Steadier on short shapes, but not the reference's protocol. |
 | `--no-nc-overrides` | Ignores the per-shape `nc` table in `config.json`, so every shape uses the heuristic's `nc`. Needed for a fair head-to-head; the reference has no counterpart for those overrides. Drop it for the shipped-configuration number. |
 | `--scalar-pack` | Every timed call packs with the scalar packer instead of the RVV one (issue #26). Own log names (`_scalarpack`). `run_pack_swap.sh` runs vector-live and scalar-live back to back and compares them; see [docs/metrics.md](docs/metrics.md). |
-| `--cpu N` / `--no-pin` | Pins the timed run to one core. Core 0 also takes every device interrupt, so expect it to be noisier than core 4. |
+| `--cpu N` / `--no-pin` | Pins the timed run to one core (default 4). Never use core 0: it takes every device interrupt and runs 5-10% slower. The house rules for a quotable number (non-zero core, several launches for small gaps, saved logs) are in [docs/agents/execution.md](docs/agents/execution.md). |
+| `--save-reps` | Also saves every timed rep's own time, in the order the reps ran, to `reps_*.txt`. |
 
 Each combination writes to its own log name, so the two can never be mixed up: `raw_*_noinstr_refproto_no_nc_override.txt` for the command above.
 
@@ -63,7 +64,7 @@ A reference baseline from another day is not comparable. To quote a number again
 ```bash
 source .venv/bin/activate && REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" \
   ./tests/pure_xdsl_blis_rvv/run_head_to_head.sh --jump \
-  --riscv-user jlei --riscv-ip jbpi --riscv-port 22 --cpu 0
+  --riscv-user jlei --riscv-ip jbpi --riscv-port 22 --cpu 4
 ```
 
 Our KerGOPs figure excludes packing while the reference's numbers include it. [docs/metrics.md](docs/metrics.md) defines each column; [tests/pure_xdsl_blis_rvv/ref_baseline/README.md](tests/pure_xdsl_blis_rvv/ref_baseline/README.md) covers the fringe-tile difference between the two designs.

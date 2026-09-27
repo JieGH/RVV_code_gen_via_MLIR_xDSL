@@ -34,6 +34,10 @@ set -e
 # Use it for a head-to-head number; a run without it is the shipped configuration. The two
 # never share a log: this one's are named *_no_nc_override.txt.
 #
+# --save-reps (issues #35, #36) also writes logs/reps_*.txt (fetched gzipped, not merged into
+# all_*.txt; read with reps_report.py): one row per timed rep, in the order the reps ran, with the row's mc/nc/kc (and, in the --instr build, each rep's pack
+# and compute time). Written after each shape's timed loop, so it adds nothing to the timing.
+#
 # Issue #21: the timed run is pinned to one core (--cpu N, default BENCH_CPU_DEFAULT in
 # board_pin.sh, shared with run_ref_baseline.sh so both sides time on the same one), and the
 # conditions it ran under (governor, /proc/cpuinfo, compiler, load) are written to
@@ -94,6 +98,7 @@ while [[ "$#" -gt 0 ]]; do
         --tmin)            TMIN="$2";                shift      ;;
         --force-nc)        FORCE_NC="$2";            shift      ;;
         --no-nc-overrides) TEST_ARGS="${TEST_ARGS} --no-nc-overrides" ;;
+        --save-reps)       TEST_ARGS="${TEST_ARGS} --save-reps" ;;
         --cpu)             PIN_CPU="$2"; CPU_FLAG=true; shift   ;;
         --no-pin)          NO_PIN=true                          ;;
         --no-instr)        INSTRUMENTED="0"; BUILD_SOURCE="--no-instr" ;;
@@ -204,6 +209,10 @@ fi
 ov "Config" "${CONFIG}" "$([ "${CONFIG}" = "config.json" ] && echo default || echo "--config")"
 ov "Board" "${RISCV_USER}@${RISCV_REMOTE_IP}:${RISCV_SSH_PORT}, ${TARGET_MODE}, workspace ${RISCV_WORKSPACE}"
 ov "Logs" "${BUILD_LOGS}"
+case "${TEST_ARGS}" in
+    *--save-reps*) ov "" "${BUILD_LOGS/raw_/reps_} (every timed rep, in the order it ran)" "--save-reps" ;;
+    *)             ov "" "per-rep times: not saved" "default" ;;
+esac
 echo "$SEP"
 if [ "${DRY_RUN}" = true ]; then
     echo "  --dry-run: stopping here. Nothing was generated, synced or run."
@@ -357,6 +366,8 @@ for proj_dir in "${RUN_DIR}"/*/; do
     for f in "$proj_dir"*.txt; do
         [ -f "$f" ] || continue
         kind=$(basename "$f")  # e.g. raw_fp32_AXPY_FP32_Pack.txt
+        # --save-reps logs run to ~10 MB a launch: kept per project and gzipped, never merged.
+        if [[ "$kind" == reps_* ]]; then gzip -9 -f "$f"; continue; fi
         merged="${RUN_DIR}/all_${kind}"
         if [[ "$kind" == summary_* ]]; then
             { echo "=== ${proj_name} ==="; cat "$f"; echo ""; } >> "$merged"

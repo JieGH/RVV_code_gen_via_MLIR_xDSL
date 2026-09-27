@@ -380,6 +380,8 @@ struct RunSettings {
     bool no_nc_overrides;
     string dataset;
     string raw_log, summary_log, perf_log;
+    bool save_reps;
+    string reps_log;
 };
 
 static void overview_line(const char* key, const string& value, const string& source = "") {
@@ -453,6 +455,11 @@ static void print_run_overview(const RunSettings& r) {
     overview_line("Logs", r.raw_log);
     overview_line("", r.summary_log);
     overview_line("", r.perf_log);
+    // Issues #35/#36: whether slow reps come in runs or at random needs each rep's own time.
+    if (r.save_reps)
+        overview_line("", r.reps_log + " (every timed rep, in the order it ran)", "--save-reps");
+    else
+        overview_line("", "per-rep times: not saved", "default");
 }
 
 int main(int argc, char** argv) {
@@ -471,6 +478,7 @@ int main(int argc, char** argv) {
     double tmin = 3.0;  // seconds; matches run_ref_baseline.sh
     string tmin_source = "default";
     string dataset_file = "";
+    bool save_reps = false;
 
     for (int i = 1; i < argc; ++i) {
         if (string(argv[i]) == "--scalar-pack") {
@@ -478,6 +486,8 @@ int main(int argc, char** argv) {
             scalar_pack_source = "--scalar-pack";
         } else if (string(argv[i]) == "--no-nc-overrides") {
             no_nc_overrides = true;
+        } else if (string(argv[i]) == "--save-reps") {
+            save_reps = true;
         } else if (string(argv[i]) == "--ref-protocol") {
             ref_protocol = true;
             protocol_source = "--ref-protocol";
@@ -499,7 +509,7 @@ int main(int argc, char** argv) {
     }
 
     if (dataset_file == "") {
-        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack] [--no-ref-protocol | --ref-protocol] [--tmin <seconds>] [--no-nc-overrides]" << endl;
+        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack] [--no-ref-protocol | --ref-protocol] [--tmin <seconds>] [--no-nc-overrides] [--save-reps]" << endl;
         return 1;
     }
     if (tmin_source != "default" && !ref_protocol) {
@@ -528,8 +538,10 @@ int main(int argc, char** argv) {
     string raw_log_name = "logs/raw" + log_stem;
     string summary_log_name = "logs/summary" + log_stem;
     string perf_log_name = "logs/perf" + log_stem;
+    string reps_log_name = "logs/reps" + log_stem;
     print_run_overview({ref_protocol, protocol_source, tmin, tmin_source, force_scalar_pack,
-                        scalar_pack_source, no_nc_overrides, dataset_file, raw_log_name, summary_log_name, perf_log_name});
+                        scalar_pack_source, no_nc_overrides, dataset_file, raw_log_name, summary_log_name, perf_log_name,
+                        save_reps, reps_log_name});
     bool raw_exists = false;
     {
         ifstream check(raw_log_name);
@@ -575,6 +587,23 @@ int main(int argc, char** argv) {
             }
         }
         perf_log << ",Vector_Pack_Cycles_CV_Pct,Compute_Cycles_CV_Pct,Compute_FLOPs_per_Cycle,Arith_Intensity_FLOPs_per_Byte\n";
+    }
+
+    // One row per timed rep. Written after each shape's timed loop, from the times the
+    // loop already keeps, so saving them adds nothing inside the timed interval.
+    ofstream reps_log;
+    if (save_reps) {
+        bool reps_exists = false;
+        {
+            ifstream check(reps_log_name);
+            reps_exists = check.good() && check.peek() != std::ifstream::traits_type::eof();
+        }
+        reps_log.open(reps_log_name, ios_base::app);
+        if (!reps_log.is_open()) {
+            cerr << "Warning: Could not open " << reps_log_name << " for writing." << endl;
+        } else if (!reps_exists) {
+            reps_log << "Layer,M,N,K,Variant,MC,NC,KC,Rep,Seconds,Pack_Seconds,Compute_Seconds,Pack_Cycles,Compute_Cycles\n";
+        }
     }
 
     ifstream dataset_stream(dataset_file);
@@ -862,6 +891,12 @@ int main(int argc, char** argv) {
                 // --ref-protocol, whose rep count is not known in advance.
                 std::vector<double> rep_total;
                 rep_total.reserve(ref_protocol ? (size_t)1 << 20 : (size_t)N_REPS);
+#if RVV_INSTRUMENTED
+                // The two halves of rep_total, kept apart for --save-reps.
+                std::vector<double> rep_pack_s, rep_compute_s;
+                rep_pack_s.reserve(N_REPS);
+                rep_compute_s.reserve(N_REPS);
+#endif
                 perf_gemm_reset(&perf);
 
                 auto start = chrono::high_resolution_clock::now();
@@ -885,6 +920,8 @@ int main(int argc, char** argv) {
                     variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, force_scalar_pack, &perf);
 #if RVV_INSTRUMENTED
                     rep_total.push_back(kt + pt);
+                    rep_pack_s.push_back(pt);
+                    rep_compute_s.push_back(kt);
                     rep_pack_cycles.push_back((double) (perf.pack.v[PERF_EV_CYCLES] - pack_cycles_before));
                     rep_compute_cycles.push_back((double) (perf.compute.v[PERF_EV_CYCLES] - compute_cycles_before));
 #else
@@ -940,6 +977,22 @@ int main(int argc, char** argv) {
                     sq_sum += (rep_gops[r] - mean_gops) * (rep_gops[r] - mean_gops);
                 }
                 ker_gflops_std = std::sqrt(sq_sum / n_reps);
+
+                if (reps_log.is_open()) {
+                    for (int r = 0; r < n_reps; ++r) {
+                        reps_log << label_str << "," << m << "," << n << "," << k << "," << variant.name << ","
+                                 << mc << "," << nc << "," << kc << "," << r << "," << rep_total[r] << ",";
+#if RVV_INSTRUMENTED
+                        reps_log << rep_pack_s[r] << "," << rep_compute_s[r] << ",";
+                        if (perf.valid) reps_log << rep_pack_cycles[r] << "," << rep_compute_cycles[r];
+                        else reps_log << "nan,nan";
+#else
+                        reps_log << "nan,nan,nan,nan";
+#endif
+                        reps_log << "\n";
+                    }
+                    reps_log.flush();
+                }
 
                 rvv_time_val = avg_time * 1000.0;
 
