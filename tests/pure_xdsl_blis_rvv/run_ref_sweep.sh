@@ -12,7 +12,7 @@
 #     arguments), the `macc` variant (vfmacc.vf), loadAB; `--bracket`, because the reference
 #     ships no odd-NR kernel (32x7, 16x15) and those layers are measured at the even
 #     neighbours either side;
-#   - core 0, tmin 10, the same flags as the #26 sweep;
+#   - core 4 (issue #39; --cpu 0 --allow-core-0 to match the 19-20 Sep core-0 runs), tmin 10;
 #   - the boards take turns, one run every --interval minutes (default 30), 8 runs per board
 #     by default, so 16 runs like the sweeps of ours;
 #   - one run at a time, under the same lock as cron_bench_run.sh and run_scalar_pack_sweep.sh,
@@ -38,7 +38,7 @@
 #   --runs N              runs per board (default 8)
 #   --interval MIN        minutes between run starts (default 30; a run that overruns delays
 #                         the next one, nothing overlaps)
-#   --tmin S | --cpu N | --no-pin   as for run_ref_baseline.sh (defaults 10 and core 0)
+#   --tmin S | --cpu N | --no-pin   as for run_ref_baseline.sh (defaults 10 and core 4; core 0 needs --allow-core-0)
 #   --opt OPT|LDX|BASE    the reference kernel set (default LDX)
 #   --variants 0|1|2      the kernel variant, 2 = macc (default), 0 = bcast, 1 = gather
 #   --direct              reach the boards directly instead of through the jump host
@@ -69,7 +69,7 @@ BOARDS="jbpi,jbpi2"
 RUNS=8
 INTERVAL=30
 START_AT=""
-CPU_ARGS=(--cpu 0)
+CPU_ARGS=(--cpu 4)
 CPU_FLAG=false
 NO_PIN=false
 CPU=""
@@ -96,6 +96,7 @@ while [[ "$#" -gt 0 ]]; do
         --tmin)          TMIN="$2"; shift ;;
         --cpu)           CPU_ARGS=(--cpu "$2"); CPU="$2"; CPU_FLAG=true; shift ;;
         --no-pin)        CPU_ARGS=(--no-pin); NO_PIN=true ;;
+        --allow-core-0)  ALLOW_CORE0=true ;;
         --opt)           OPT="$2"; shift ;;
         --variants)      VARIANTS="$2"; shift ;;
         --direct)        MODE_ARG="--direct" ;;
@@ -112,7 +113,8 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-pin_check "${CPU_FLAG}" "${NO_PIN}" "${CPU}" || exit 1
+pin_check "${CPU_FLAG}" "${NO_PIN}" "${CPU}" "${ALLOW_CORE0:-false}" || exit 1
+[ "${ALLOW_CORE0:-false}" = true ] && CPU_ARGS+=(--allow-core-0)
 [[ "${RUNS}" =~ ^[1-9][0-9]*$ ]]     || die "--runs takes a whole number of at least 1 (got '${RUNS}')"
 [[ "${INTERVAL}" =~ ^[0-9]+$ ]]      || die "--interval takes whole minutes (got '${INTERVAL}')"
 [[ -z "${START_AT}" || "${START_AT}" =~ ^([01][0-9]|2[0-3]):[0-5][0-9]$ ]] || die "--start-at takes HH:MM (got '${START_AT}')"

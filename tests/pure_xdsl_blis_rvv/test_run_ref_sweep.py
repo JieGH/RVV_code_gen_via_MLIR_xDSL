@@ -70,7 +70,7 @@ def test_every_run_gets_the_reference_configuration(tmp_path: Path):
     _, logs = run_sweep(tmp_path, "ok,ok,ok,ok")
 
     first = (logs / "args.txt").read_text().splitlines()[0]
-    for flag in ("--jump", "--opt LDX", "--variants 2", "--bracket", "--cpu 0", "--tmin 10", "--no-compare", "--riscv-ip a"):
+    for flag in ("--jump", "--opt LDX", "--variants 2", "--bracket", "--cpu 4", "--tmin 10", "--no-compare", "--riscv-ip a"):
         assert flag in first, f"{flag!r} missing from: {first}"
 
 
@@ -137,3 +137,10 @@ def test_a_run_whose_gflops_is_not_a_number_is_failed(tmp_path: Path):
     assert done.returncode == 1
     assert "no result for 32x6/2" in done.stdout
     assert len((sweep_dir(logs) / "runs.txt").read_text().splitlines()) == 3
+
+
+def test_core_0_reaches_each_run_only_when_allowed_on_purpose(tmp_path: Path):
+    # Issue #39: never core 0, unless --allow-core-0 says it is to reproduce an old run.
+    _, logs = run_sweep(tmp_path, "ok,ok,ok,ok", "--cpu", "0", "--allow-core-0")
+    first = (logs / "args.txt").read_text().splitlines()[0]
+    assert "--cpu 0" in first and "--allow-core-0" in first

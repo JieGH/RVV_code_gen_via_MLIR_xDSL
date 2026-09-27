@@ -14,7 +14,7 @@ import pytest
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-from reps_report import case_stats, launch_table, read_reps  # noqa: E402
+from reps_report import case_stats, launch_table, read_reps, run_conditions  # noqa: E402
 
 HEADER = "Layer,M,N,K,Variant,MC,NC,KC,Rep,Seconds,Pack_Seconds,Compute_Seconds,Pack_Cycles,Compute_Cycles\n"
 OPS = 2 * 64 * 384 * 384  # B3
@@ -145,3 +145,51 @@ def test_a_gzipped_per_rep_log_reads_like_the_plain_one(tmp_path: Path):
     assert read_reps(gz)[("B3_nc128", 128)].seconds == [FAST, SLOW]
     (row,) = launch_table([tmp_path / "run_gz"])
     assert (row.packer, row.layer) == ("scalar", "B3_nc128")
+
+
+# Issue #39, house rules 2 and 4: a case seen in fewer than 3 launches is not a result, and
+# every run folder says which build, protocol and core it was timed on.
+PROVENANCE = """Run on the board, generated 2026-09-27T10:43:38+02:00 by compile_macro_bench.sh
+  board          : jlei@jbpi
+  build          : UNINSTRUMENTED (INSTRUMENTED=0) -- comparable to the reference design
+  protocol       : REFERENCE (tmin=10 s) -- no warm-up, reps until tmin
+  logs           : raw_*_noinstr_refproto.txt
+  cpu pin        : {pin}
+  governor       :  8 performance
+"""
+
+
+def test_run_conditions_come_from_the_run_folders_provenance(tmp_path: Path):
+    d = _run_dir(tmp_path, "run_a", False, _rows("B3_nc128", 128, [FAST] * 4))
+    (d / "provenance.txt").write_text(PROVENANCE.format(pin="4"))
+    cond = run_conditions(d)
+    assert cond.board == "jlei@jbpi" and cond.core == "4"
+    assert cond.build.startswith("UNINSTRUMENTED") and cond.protocol.startswith("REFERENCE")
+    assert run_conditions(tmp_path / "nowhere").core == "unknown"
+
+
+def _cli(*args: Path) -> str:
+    return subprocess.run(
+        [sys.executable, str(HERE / "reps_report.py"), *map(str, args)],
+        capture_output=True, text=True, check=True,
+    ).stdout
+
+
+def test_the_report_names_build_protocol_and_core_of_every_run(tmp_path: Path):
+    d = _run_dir(tmp_path, "run_a", False, _rows("B3_nc128", 128, [FAST] * 4))
+    (d / "provenance.txt").write_text(PROVENANCE.format(pin="4"))
+    out = _cli(d)
+    line = next(ln for ln in out.splitlines() if "run_a" in ln)
+    assert "UNINSTRUMENTED" in line and "REFERENCE" in line and "core 4" in line
+
+
+def test_the_report_flags_a_run_on_core_0(tmp_path: Path):
+    d = _run_dir(tmp_path, "run_a", False, _rows("B3_nc128", 128, [FAST] * 4))
+    (d / "provenance.txt").write_text(PROVENANCE.format(pin="0"))
+    assert "WARNING" in _cli(d) and "core 0" in _cli(d)
+
+
+def test_the_report_warns_when_a_case_has_fewer_than_three_launches(tmp_path: Path):
+    runs = [_run_dir(tmp_path, f"run_{i}", False, _rows("B3_nc128", 128, [FAST] * 4)) for i in "abc"]
+    assert "fewer than 3 launches" in _cli(runs[0], runs[1])
+    assert "fewer than 3 launches" not in _cli(*runs)

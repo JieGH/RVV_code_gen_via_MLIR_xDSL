@@ -41,12 +41,14 @@ RISCV_USER="jlei"
 BOARDS="jbpi jbpi2"
 PIN_CPU="${BENCH_CPU_DEFAULT}"
 CPU_FLAG=false
+ALLOW_CORE0=false
 DRY_RUN=false
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --dry-run) DRY_RUN=true ;;
         --cpu)     PIN_CPU="$2"; CPU_FLAG=true; shift ;;
+        --allow-core-0) ALLOW_CORE0=true ;;
         -h|--help) sed -n '4,32p' "$0"; exit 0 ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
@@ -54,7 +56,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # Issue #21's rationale, reused here: refuse a bad core now, not after staging both boards.
-pin_check "${CPU_FLAG}" false "${PIN_CPU}" || exit 1
+pin_check "${CPU_FLAG}" false "${PIN_CPU}" "${ALLOW_CORE0}" || exit 1
 
 STAMP="$(date +%Y-%m-%d_%H%M%S)"
 LOG="${REPO_ROOT}/tests/pure_xdsl_blis_rvv/logs/issue30_direct_check_${STAMP}.txt"

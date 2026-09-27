@@ -22,6 +22,10 @@ is clumped (slow stretches), over 1 is alternating.
 
 Reads reps_*.txt or reps_*.txt.gz (compile_macro_bench.sh gzips them on fetch).
 
+Issue #39's house rules are checked on the way: every run folder's build, protocol, board
+and core are printed (from its provenance.txt), a run on core 0 is flagged, and so is any case
+seen in fewer than 3 launches (one launch is not a result).
+
 Usage: reps_report.py <run dir or reps_*.txt[.gz]> [...]
 """
 
@@ -34,6 +38,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+MIN_LAUNCHES = 3  # issue #39, house rule 2
 TWO_SPEEDS_BELOW = 0.8  # slow group's mean under this fraction of the fast group's
 
 
@@ -160,6 +165,45 @@ def launch_table(targets: list[Path]) -> list[LaunchRow]:
     return rows
 
 
+@dataclass
+class RunConditions:
+    board: str
+    build: str
+    protocol: str
+    core: str
+
+
+def run_conditions(run_dir: Path) -> RunConditions:
+    """What a run folder was timed under, from the provenance.txt compile_macro_bench.sh
+    writes; "unknown" for anything it does not say."""
+    fields: dict[str, str] = {}
+    prov = run_dir / "provenance.txt"
+    if prov.is_file():
+        for line in prov.read_text().splitlines():
+            key, sep, value = line.partition(" : ")
+            if sep and key.strip() not in fields:
+                fields[key.strip()] = value.strip()
+    def get(key: str) -> str:
+        return fields.get(key) or "unknown"
+
+    return RunConditions(get("board"), get("build"), get("protocol"), get("cpu pin"))
+
+
+def conditions_lines(targets: list[Path]) -> list[str]:
+    """One line per run folder: board, build, protocol and core (issue #39, rule 4), and a
+    WARNING for a run timed on core 0 (rule 1)."""
+    out: list[str] = []
+    for target in targets:
+        run_dir = target if target.is_dir() else next(
+            (p for p in target.parents if (p / "provenance.txt").is_file()), target.parent
+        )
+        c = run_conditions(run_dir)
+        out.append(f"- {run_dir.name}: {c.board}, {c.build.split(' --')[0]}, {c.protocol.split(' --')[0]}, core {c.core}")
+        if c.core == "0":
+            out.append(f"  WARNING: {run_dir.name} was timed on core 0, which takes every device interrupt (issue #39)")
+    return out
+
+
 def format_table(rows: list[LaunchRow]) -> str:
     out = [
         "| packer | layer | nc | launches | GOPs by mean time (avg, lo-hi) | GOPs by median rep | CV % | best rep | slow reps % | clumping | fast start (s) |",
@@ -179,7 +223,16 @@ def main(argv: list[str]) -> int:
     if not argv:
         print("Usage: reps_report.py <run dir or reps_*.txt[.gz]> [...]", file=sys.stderr)
         return 2
-    print(format_table(launch_table([Path(a) for a in argv])))
+    targets = [Path(a) for a in argv]
+    rows = launch_table(targets)
+    print("\n".join(conditions_lines(targets)))
+    print()
+    print(format_table(rows))
+    few = [f"{r.packer} {r.layer}" for r in rows if r.launches < MIN_LAUNCHES]
+    if few:
+        print(f"\nWARNING: {len(few)} case(s) seen in fewer than {MIN_LAUNCHES} launches: not a result under "
+              f"issue #39's house rules (one launch is not a result): {', '.join(few[:8])}"
+              + (" ..." if len(few) > 8 else ""))
     return 0
 
 

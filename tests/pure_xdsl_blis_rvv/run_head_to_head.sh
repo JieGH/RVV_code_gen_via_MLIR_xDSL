@@ -46,6 +46,7 @@ while [[ "$#" -gt 0 ]]; do
         --tmin)                                 SHARED+=("$1" "$2"); shift ;;
         --cpu)                                  SHARED+=("$1" "$2"); CPU="$2"; CPU_FLAG=true; shift ;;
         --no-pin)                               SHARED+=("$1"); NO_PIN=true ;;
+        --allow-core-0)                         SHARED+=("$1"); ALLOW_CORE0=true ;;
         --opt)                                  REF_ONLY+=("$1" "$2"); shift ;;
         --dry-run)                              DRY_RUN=true; SHARED+=("$1") ;;
         -h|--help)                              sed -n '3,29p' "$0"; exit 0 ;;
@@ -55,7 +56,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # Refuse a bad pin now: the reference side would only notice after ours had run for an hour.
-pin_check "${CPU_FLAG}" "${NO_PIN}" "${CPU}" || exit 1
+pin_check "${CPU_FLAG}" "${NO_PIN}" "${CPU}" "${ALLOW_CORE0:-false}" || exit 1
 
 # newest_since <prefix> -- the newest logs/<prefix>_<stamp> dir, if made since START.
 # Stamps are %Y-%m-%d_%H%M%S, so dir names sort in time order.

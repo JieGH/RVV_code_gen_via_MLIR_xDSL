@@ -189,6 +189,64 @@ def test_head_to_head_refuses_an_unknown_flag():
 
 
 # ---------------------------------------------------------------------------
+# Issue #39, house rule 1: never time on core 0 (it takes every device interrupt and runs
+# 5-10% slower). Every script refuses --cpu 0 while parsing its arguments, unless
+# --allow-core-0 says it is on purpose (to reproduce an old core-0 run).
+# ---------------------------------------------------------------------------
+PACK_SWAP_SCRIPT = HERE / "run_pack_swap.sh"
+SCALAR_SWEEP_SCRIPT = HERE / "run_scalar_pack_sweep.sh"
+REF_SWEEP_SCRIPT = HERE / "run_ref_sweep.sh"
+DIRECT_CHECK_SCRIPT = HERE / "ref_baseline" / "run_direct_check.sh"
+EVERY_SCRIPT = [
+    BENCH_SCRIPT, REF_SCRIPT, H2H_SCRIPT, PACK_SWAP_SCRIPT,
+    SCALAR_SWEEP_SCRIPT, REF_SWEEP_SCRIPT, DIRECT_CHECK_SCRIPT,
+]
+
+
+def test_pin_check_refuses_core_0_and_says_how_to_allow_it():
+    proc = _bash("pin_check true false 0")
+    assert proc.returncode != 0
+    assert "core 0" in proc.stdout and "--allow-core-0" in proc.stdout
+    assert _bash("pin_check true false 0 true").returncode == 0
+    assert _bash("pin_check true false 4").returncode == 0
+
+
+@pytest.mark.parametrize("script", EVERY_SCRIPT, ids=lambda p: p.name)
+def test_every_script_refuses_core_0_before_anything_runs(script: Path):
+    proc = _script(script, "--dry-run", "--cpu", "0")
+    assert proc.returncode != 0
+    out = proc.stdout + proc.stderr
+    assert "core 0" in out and "--allow-core-0" in out
+    assert "Run overview" not in out and "Dependency Check" not in out
+
+
+@pytest.mark.parametrize("script", EVERY_SCRIPT, ids=lambda p: p.name)
+def test_every_script_takes_core_0_when_told_it_is_on_purpose(script: Path):
+    proc = _script(script, "--dry-run", "--cpu", "0", "--allow-core-0")
+    assert "core 0 takes every device interrupt" not in proc.stdout + proc.stderr
+    assert "Unknown parameter" not in proc.stdout + proc.stderr
+
+
+@pytest.mark.parametrize("script", [H2H_SCRIPT, PACK_SWAP_SCRIPT], ids=lambda p: p.name)
+def test_a_wrapper_passes_allow_core_0_on_to_the_scripts_it_runs(script: Path):
+    proc = _script(script, "--dry-run", "--cpu", "0", "--allow-core-0")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "taskset -c 0" in proc.stdout or "cpu 0" in proc.stdout
+
+
+@pytest.mark.parametrize("script", [PACK_SWAP_SCRIPT, SCALAR_SWEEP_SCRIPT, REF_SWEEP_SCRIPT], ids=lambda p: p.name)
+def test_no_script_defaults_to_core_0(script: Path):
+    text = script.read_text()
+    assert "CPU_ARGS=(--cpu 0)" not in text
+    assert "CPU_ARGS=(--cpu 4)" in text
+
+
+def test_the_cron_wrapper_does_not_pin_to_core_0():
+    code = [ln for ln in (HERE / "cron_bench_run.sh").read_text().splitlines() if not ln.lstrip().startswith("#")]
+    assert not any("--cpu 0" in ln for ln in code)
+
+
+# ---------------------------------------------------------------------------
 # compare_ref_baseline.conditions()
 # ---------------------------------------------------------------------------
 def _run_dir(root: Path, name: str, pin: str | None) -> Path:

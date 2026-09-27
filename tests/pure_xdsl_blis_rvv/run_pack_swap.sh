@@ -54,6 +54,7 @@ while [[ "$#" -gt 0 ]]; do
         --riscv-user|--riscv-ip|--riscv-port)   SHARED+=("$1" "$2"); shift ;;
         --cpu)                                  CPU_ARGS=("$1" "$2"); CPU="$2"; CPU_FLAG=true; shift ;;
         --no-pin)                               CPU_ARGS=("$1"); NO_PIN=true ;;
+        --allow-core-0)                         SHARED+=("$1"); ALLOW_CORE0=true ;;
         --tmin)                                 TMIN_ARGS=("$1" "$2"); shift ;;
         --config)                               CONFIG="$2"; shift         ;;
         --shipped-nc)                           NC_ARGS=(); COMPARE_ARGS=(--shipped-nc) ;;
@@ -65,7 +66,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # Refuse a bad pin now: the first run would only notice it after a build on the board.
-pin_check "${CPU_FLAG}" "${NO_PIN}" "${CPU}" || exit 1
+pin_check "${CPU_FLAG}" "${NO_PIN}" "${CPU}" "${ALLOW_CORE0:-false}" || exit 1
 
 BENCH=("${HERE}/compile_macro_bench.sh" --config "${CONFIG}" "${SHARED[@]}" "${CPU_ARGS[@]}" "${TMIN_ARGS[@]}" "${NC_ARGS[@]}")
 

@@ -15,15 +15,21 @@ pin_cpu_valid() {
     [[ "$1" =~ ^[0-9]+$ ]]
 }
 
-# pin_check <cpu_flag> <no_pin> <cpu> -- for the scripts' argument parsing: fails, saying why,
-# when --cpu was given a bad core or together with --no-pin (rather than let the later flag
-# win). The scripts pass "true"/"false" for whether each flag was given.
+# pin_check <cpu_flag> <no_pin> <cpu> [<allow_core0>] -- for the scripts' argument parsing:
+# fails, saying why, when --cpu was given a bad core or together with --no-pin (rather than
+# let the later flag win), or was given core 0 without --allow-core-0 (issue #39, house
+# rule 1). The scripts pass "true"/"false" for whether each flag was given.
 pin_check() {
     if [ "$1" = true ] && [ "$2" = true ]; then
         echo "Error: --cpu and --no-pin contradict each other."; return 1
     fi
     if [ "$1" = true ] && ! pin_cpu_valid "$3"; then
         echo "Error: --cpu takes one core number (got '$3')."; return 1
+    fi
+    if [ "$1" = true ] && [ "$3" = 0 ] && [ "${4:-false}" != true ]; then
+        echo "Error: core 0 takes every device interrupt and times 5-10% slow (issue #39: never core 0)."
+        echo "       Use core ${BENCH_CPU_DEFAULT}, or add --allow-core-0 to reproduce an old core-0 run on purpose."
+        return 1
     fi
 }
 

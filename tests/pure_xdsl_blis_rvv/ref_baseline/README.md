@@ -26,7 +26,7 @@ The timed runs are pinned to core 4 (`--cpu N` to change, `--no-pin` to turn off
 board. Results land in `tests/pure_xdsl_blis_rvv/logs/refbase_<stamp>/`.
 
 **Many runs, not one (issue #29).** One run has no error bar. `../run_ref_sweep.sh` repeats
-this script 16 times on the schedule of the #26 sweeps of ours (both boards, every 30 min, core 0,
+this script 16 times on the schedule of the #26 sweeps of ours (both boards, every 30 min, core 4; core 0 before issue #39,
 `--tmin 10`; `--opt LDX --variants 2 --bracket`), then `compare_ref_sweep.py` puts the runs per
 layer beside our vector-pack and scalar-pack sets: mean, range, spread between runs, and
 `vector/ref` and `scalar/ref` with a faster / slower / "within noise" call. `LDX` is the kernel set whose `lda`/`ldb` are runtime

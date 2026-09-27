@@ -34,9 +34,11 @@ set -e
 # Use it for a head-to-head number; a run without it is the shipped configuration. The two
 # never share a log: this one's are named *_no_nc_override.txt.
 #
-# --save-reps (issues #35, #36) also writes logs/reps_*.txt (fetched gzipped, not merged into
-# all_*.txt; read with reps_report.py): one row per timed rep, in the order the reps ran, with the row's mc/nc/kc (and, in the --instr build, each rep's pack
-# and compute time). Written after each shape's timed loop, so it adds nothing to the timing.
+# Per-rep log (issues #35, #36; on by default since issue #39, --no-save-reps turns it off):
+# logs/reps_*.txt, one row per timed rep in the order the reps ran, with the row's mc/nc/kc
+# (and, in the --instr build, each rep's pack and compute time). Written after each shape's
+# timed loop, so it adds nothing to the timing. Fetched gzipped, never merged into all_*.txt;
+# read it with reps_report.py.
 #
 # Issue #21: the timed run is pinned to one core (--cpu N, default BENCH_CPU_DEFAULT in
 # board_pin.sh, shared with run_ref_baseline.sh so both sides time on the same one), and the
@@ -59,6 +61,9 @@ RISCV_WORKSPACE="xdsl_rvv_microkernel"
 CONFIG="config.json"
 TEST_ARGS=""
 FORCE_NC=""
+# Issue #39: every launch keeps its per-rep times (reps_report.py reads them across launches).
+SAVE_REPS=true
+SAVE_REPS_SOURCE="default"
 # Issue #14: 0 (default) compiles the per-tile timers and counters out, so RVV_Time_ms
 # carries no timer tax and is comparable to the reference. 1 keeps them, for debugging
 # our own pack/compute split. The two write to separate logs.
@@ -81,6 +86,7 @@ PIN_CPU="${BENCH_CPU_DEFAULT}"
 PIN_SOURCE="default"
 CPU_FLAG=false
 NO_PIN=false
+ALLOW_CORE0=false
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -98,9 +104,11 @@ while [[ "$#" -gt 0 ]]; do
         --tmin)            TMIN="$2";                shift      ;;
         --force-nc)        FORCE_NC="$2";            shift      ;;
         --no-nc-overrides) TEST_ARGS="${TEST_ARGS} --no-nc-overrides" ;;
-        --save-reps)       TEST_ARGS="${TEST_ARGS} --save-reps" ;;
+        --save-reps)       SAVE_REPS=true; SAVE_REPS_SOURCE="--save-reps"    ;;
+        --no-save-reps)    SAVE_REPS=false; SAVE_REPS_SOURCE="--no-save-reps" ;;
         --cpu)             PIN_CPU="$2"; CPU_FLAG=true; shift   ;;
         --no-pin)          NO_PIN=true                          ;;
+        --allow-core-0)    ALLOW_CORE0=true                     ;;
         --no-instr)        INSTRUMENTED="0"; BUILD_SOURCE="--no-instr" ;;
         --instr)           INSTRUMENTED="1"; BUILD_SOURCE="--instr"    ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
@@ -136,9 +144,10 @@ if [ -n "${FORCE_NC}" ] && [[ "${TEST_ARGS}" == *--no-nc-overrides* ]]; then
     exit 1
 fi
 TEST_ARGS="${TEST_ARGS}${PROTOCOL_FLAG:+ ${PROTOCOL_FLAG}}${TMIN:+ --tmin ${TMIN}}"
+if [ "${SAVE_REPS}" = true ]; then TEST_ARGS="${TEST_ARGS} --save-reps"; fi
 
 # Issue #21: refuse a bad core, and --cpu with --no-pin, rather than let the later flag win.
-pin_check "${CPU_FLAG}" "${NO_PIN}" "${PIN_CPU}" || exit 1
+pin_check "${CPU_FLAG}" "${NO_PIN}" "${PIN_CPU}" "${ALLOW_CORE0}" || exit 1
 if [ "${CPU_FLAG}" = true ]; then
     PIN_SOURCE="--cpu"
 elif [ "${NO_PIN}" = true ]; then
@@ -209,10 +218,11 @@ fi
 ov "Config" "${CONFIG}" "$([ "${CONFIG}" = "config.json" ] && echo default || echo "--config")"
 ov "Board" "${RISCV_USER}@${RISCV_REMOTE_IP}:${RISCV_SSH_PORT}, ${TARGET_MODE}, workspace ${RISCV_WORKSPACE}"
 ov "Logs" "${BUILD_LOGS}"
-case "${TEST_ARGS}" in
-    *--save-reps*) ov "" "${BUILD_LOGS/raw_/reps_} (every timed rep, in the order it ran)" "--save-reps" ;;
-    *)             ov "" "per-rep times: not saved" "default" ;;
-esac
+if [ "${SAVE_REPS}" = true ]; then
+    ov "" "${BUILD_LOGS/raw_/reps_} (every timed rep, in the order it ran)" "${SAVE_REPS_SOURCE}"
+else
+    ov "" "per-rep times: not saved" "${SAVE_REPS_SOURCE}"
+fi
 echo "$SEP"
 if [ "${DRY_RUN}" = true ]; then
     echo "  --dry-run: stopping here. Nothing was generated, synced or run."

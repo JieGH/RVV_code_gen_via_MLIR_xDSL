@@ -35,3 +35,11 @@ Where: `docs/agents/execution.md` and `docs/metrics.md`.
 - Supporting tool for rule 2: `compile_macro_bench.sh --save-reps` writes every timed rep to `reps_*.txt`, and
   `reps_report.py` summarises a set of launches (mean over launches, lowest and highest launch). First used for
   #35/#36, which follow these rules (core 4, all settings inside one launch, 3 launches per packer, logs committed).
+
+## Enforced in code and tests (2026-09-27, at the user's request)
+| rule | how it is enforced | test |
+|---|---|---|
+| 1. never core 0 | every script (`compile_macro_bench.sh`, `run_ref_baseline.sh`, `run_direct_check.sh`, `run_head_to_head.sh`, `run_pack_swap.sh`, both sweep scripts) refuses `--cpu 0` while parsing arguments unless `--allow-core-0` is given (`board_pin.sh:pin_check`); the wrappers pass the flag on; no script, and not `cron_bench_run.sh`, defaults to core 0 any more (both sweeps moved to core 4) | `test_board_pin.py`, `test_run_ref_sweep.py`, `test_house_rules.py` (no documented command asks for core 0) |
+| 2. one launch is not a result | `compile_macro_bench.sh` saves every rep by default (`--no-save-reps` to skip); `reps_report.py` prints a WARNING for any case seen in fewer than 3 launches | `test_ref_protocol.py`, `test_reps_report.py` |
+| 3. quote committed logs only | a test fails when an issue file, report or doc cites a `run_*` / `refbase_*` folder that is not committed | `test_house_rules.py` |
+| 4. name build, protocol, core | `provenance.txt` (already); `reps_report.py` prints board, build, protocol and core for every run it reads and flags core 0 | `test_reps_report.py` |

@@ -862,8 +862,22 @@ def test_the_uninstrumented_per_rep_log_has_no_split(uninstrumented: Driver):
         assert r["Pack_Cycles"] == r["Compute_Cycles"] == "nan"
 
 
-def test_script_passes_save_reps_to_the_driver():
+def test_script_saves_per_rep_times_by_default():
+    # Issue #39: one launch is not a result, so every launch keeps its reps for reps_report.py.
+    out = _run_script("--dry-run").stdout
+    line = next(ln for ln in out.splitlines() if "reps_*_noinstr_refproto.txt" in ln)
+    assert "[default]" in line
+
+
+def test_script_no_save_reps_turns_the_per_rep_log_off():
+    line = next(
+        ln for ln in _run_script("--dry-run", "--no-save-reps").stdout.splitlines()
+        if "per-rep times" in ln
+    )
+    assert "not saved" in line and "[--no-save-reps]" in line
+
+
+def test_script_still_takes_save_reps_explicitly():
     out = _run_script("--dry-run", "--save-reps").stdout
     line = next(ln for ln in out.splitlines() if "reps_*_noinstr_refproto.txt" in ln)
     assert "[--save-reps]" in line
-    assert "per-rep times: not saved" in _run_script("--dry-run").stdout

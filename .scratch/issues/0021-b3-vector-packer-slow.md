@@ -103,7 +103,7 @@ hardware prefetcher that, once entered, makes this access pattern miss much more
 it is entered sooner when requests come faster (vector packer), a smaller packed block (`Bc` within L1) avoids
 it, and more reuse of each packed block (Reuse24, B2) avoids it.
 
-### 5. Next steps (not done)
+### 5. Next steps (not done) — moved to #41 ([[0025-b3-slow-state-root-cause]]), 2026-09-27
 
 1. Per-rep **L2 miss and prefetch counters** (X60 raw PMU events) in fast against slow reps. The perf log
    today has no L2 events and only whole-case averages.

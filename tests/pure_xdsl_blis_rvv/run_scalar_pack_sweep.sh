@@ -8,7 +8,7 @@
 # call packs with the scalar packer, to see how much of each layer's speed is the packer:
 #
 #   - same config (config.json), same flags as the default run command
-#     (--no-nc-overrides --cpu 0 --tmin 10), same protocol (reference, uninstrumented);
+#     (--no-nc-overrides --cpu 4 --tmin 10; the 19-20 Sep runs were core 0), same protocol (reference, uninstrumented);
 #   - the boards take turns, one run every --interval minutes (default 30: about 7 min of
 #     run, then idle), 8 runs per board by default, so 16 runs like the overnight one;
 #   - one run at a time, under the same lock as cron_bench_run.sh, because jbpi, jbpi2 and fej
@@ -34,7 +34,7 @@
 #   --runs N              runs per board (default 8)
 #   --interval MIN        minutes between run starts (default 30; a run that overruns delays
 #                         the next one, nothing overlaps)
-#   --tmin S | --cpu N | --no-pin   as for compile_macro_bench.sh (defaults 10 and core 0)
+#   --tmin S | --cpu N | --no-pin   as for compile_macro_bench.sh (defaults 10 and core 4; core 0 needs --allow-core-0)
 #   --shipped-nc          keep the nc overrides in config.json (default: --no-nc-overrides)
 #   --config FILE         project config (default config.json)
 #   --direct              reach the boards directly instead of through the jump host
@@ -61,7 +61,7 @@ BOARDS="jbpi,jbpi2"
 RUNS=8
 INTERVAL=30
 START_AT=""
-CPU_ARGS=(--cpu 0)
+CPU_ARGS=(--cpu 4)
 CPU_FLAG=false
 NO_PIN=false
 CPU=""
@@ -88,6 +88,7 @@ while [[ "$#" -gt 0 ]]; do
         --tmin)          TMIN="$2"; shift ;;
         --cpu)           CPU_ARGS=(--cpu "$2"); CPU="$2"; CPU_FLAG=true; shift ;;
         --no-pin)        CPU_ARGS=(--no-pin); NO_PIN=true ;;
+        --allow-core-0)  ALLOW_CORE0=true ;;
         --shipped-nc)    NC_ARGS=(); SHIPPED_NC=true ;;
         --config)        CONFIG="$2"; shift ;;
         --direct)        MODE_ARG="--direct" ;;
@@ -103,7 +104,8 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-pin_check "${CPU_FLAG}" "${NO_PIN}" "${CPU}" || exit 1
+pin_check "${CPU_FLAG}" "${NO_PIN}" "${CPU}" "${ALLOW_CORE0:-false}" || exit 1
+[ "${ALLOW_CORE0:-false}" = true ] && CPU_ARGS+=(--allow-core-0)
 [[ "${RUNS}" =~ ^[1-9][0-9]*$ ]]     || die "--runs takes a whole number of at least 1 (got '${RUNS}')"
 [[ "${INTERVAL}" =~ ^[0-9]+$ ]]      || die "--interval takes whole minutes (got '${INTERVAL}')"
 [[ -z "${START_AT}" || "${START_AT}" =~ ^([01][0-9]|2[0-3]):[0-5][0-9]$ ]] || die "--start-at takes HH:MM (got '${START_AT}')"

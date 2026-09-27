@@ -43,6 +43,7 @@ source "${BASH_SOURCE[0]%/*}/../board_pin.sh"
 PIN_CPU="${BENCH_CPU_DEFAULT}"
 CPU_FLAG=false
 NO_PIN=false
+ALLOW_CORE0=false
 COMPARE=true
 
 while [[ "$#" -gt 0 ]]; do
@@ -64,6 +65,7 @@ while [[ "$#" -gt 0 ]]; do
         --cross-cc)        CROSS_CC="$2";            shift        ;;
         --cpu)             PIN_CPU="$2"; CPU_FLAG=true; shift     ;;
         --no-pin)          NO_PIN=true                            ;;
+        --allow-core-0)    ALLOW_CORE0=true                       ;;
         --no-compare)      COMPARE=false                          ;;
         -h|--help)         sed -n '3,24p' "$0"; exit 0            ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
@@ -72,7 +74,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # Issue #21: refuse a bad core, and --cpu with --no-pin, before anything runs.
-pin_check "${CPU_FLAG}" "${NO_PIN}" "${PIN_CPU}" || exit 1
+pin_check "${CPU_FLAG}" "${NO_PIN}" "${PIN_CPU}" "${ALLOW_CORE0}" || exit 1
 if [ "${NO_PIN}" = true ]; then PIN_CPU=""; fi
 PIN_PREFIX="$(pin_prefix "${PIN_CPU}")"
 
