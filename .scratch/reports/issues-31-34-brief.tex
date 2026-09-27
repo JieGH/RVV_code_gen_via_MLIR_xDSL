@@ -227,4 +227,50 @@ B4 vector, \texttt{jbpi} / \texttt{jbpi2} & \cellcolor{red!12}4.43 / 4.38 & 7.84
   quoted number comes from. \emph{\iss{39}.}
 \end{enumerate}
 
+
+\newpage
+\appendix
+\section*{Appendix A. Performance findings, test by test}
+\vspace{-0.6ex}
+{\footnotesize
+Board: \texttt{jbpi2} unless marked \texttt{jbpi}. Build: uninstrumented (U) or instrumented (I, only
+comparable inside its own row). GOPs by mean time; ``/'' separates two boards, cores or launches as named.
+Only numbers inside one row come from one launch or session.\par\vspace{0.4ex}
+\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.0}
+\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}p{3.1cm} >{\raggedright\arraybackslash}p{2.0cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{3.5cm}@{}}
+\toprule
+& \textbf{Test} & \textbf{Setup} & \textbf{Result} & \textbf{What it shows} \\
+\midrule
+\multicolumn{5}{@{}l}{\textbf{\#31 --- 32x7 register pressure (B4 and S1--S5, all at 32x7)}}\\
+1 & Live-register count, ours and reference 32x7 & static & 4 A + 28 C = 32 of 32 on both & at the limit, not over \\
+2 & Kernel swap: reference 32x7 in our harness & core 0, U, 1 launch & ours vs swapped: B4 7.77 vs 7.22; S1 8.34/8.30; S2--S5 8.69--9.12 vs 8.20--8.61 & ours 0.5--7\% faster; no log kept \\
+3 & Swapped kernel on core 4 & core 4, U & B4 7.74, 7.85 (two launches); S3--S5 +9--10\% vs core 0 & core 0 is 5--10\% slower \\
+4 & Our kernel on core 4 & core 4, U, 1 launch & B4 7.72; S1 8.64, S2 8.96, S3 9.35, S4 9.07, S5 9.40 & B4 vs swap: a tie; B4 below all squares \\
+5 & Swapped kernel, instrumented & core 0, I & B4 6.48, compute IPC 0.54; S5 incomplete & no matching run of ours \\
+\midrule
+\multicolumn{5}{@{}l}{\textbf{\#32 --- NR sweep, both packers (vector / scalar), \texttt{jbpi} and \texttt{jbpi2}, core 0, U, night run}}\\
+6 & B3 64$\times$384$\times$384, 16x8--16x16 & 2 launches per packer & 16x15: vec 5.29/5.72, scl 8.24/8.46; 16x16: vec 3.10/3.23, scl 4.86/4.84; other NR vec 3.9--5.6, scl 5.5--8.0 & 16x15 best (scalar); over 32 regs $-$41\%; scalar +21--78\% \\
+7 & B2 384$\times$384$\times$64, 16x8--16x16 & same & 16x15 vec 12.81/12.56, scl 12.12/12.17; 16x16 8.00/7.88; 16x8 10.25/10.34 & 16x15 best; $-$38\% over limit; vector 0--6\% ahead \\
+8 & B4, 32x4--32x8 & same & vec: 32x4 6.92/6.97, 32x5 7.59/7.58, 32x6 8.04/7.99, 32x7 7.84/7.92, 32x8 4.43/4.38; scalar 0--3.5\% lower & $-$44\% over limit; 32x6 ahead 0.5--3.3\% (core 0 only) \\
+9 & Day run vs night run & 24 vs 25 Sept & same order of tiles, values within a few \% & reproducible inside a board \\
+\midrule
+\multicolumn{5}{@{}l}{\textbf{\#33 --- 16x16 and 24x10 at 2048$^3$, \texttt{jbpi} core 4}}\\
+10 & Live registers per reference variant & static & macc 34 / 33 (= ours); bcast 50 / 43; gather 51 / 44 & macc is the fair match \\
+11 & Source diff, ours vs macc & static & same loop order; ours has 64 / 60 extra copies per k-step & noisier source \\
+12 & Spill audit (\texttt{-O3}), reproduced & static & spills 11 and 12 (16x16), 4 and 4 (24x10), both designs; instructions 313 vs 325, 252 vs 253 & identical spilling; copies cost nothing \\
+13 & Kernel swap: reference macc in our harness & U, 1 launch each & 16x16 3.92 vs 3.91; 24x10 6.35 vs 6.26 & a tie (inside 1.7\% noise); no log kept \\
+14 & Vector vs scalar pack & U, 2+2 launches & 16x16 3.88 vs 3.88; 24x10 6.25 vs 6.24 & packer irrelevant at this size \\
+15 & Head-to-head vs reference harness & U; ref: no log kept & ours 3.92 / 6.35; ref macc 3.65 / 6.45; ref bcast 0.90 / 1.45 & ours +7\% / $-$2\%; bcast 4.4$\times$ slower \\
+\midrule
+\multicolumn{5}{@{}l}{\textbf{\#34 --- B4 shape, runs A (core 4), B (core 4, I), C (core 2)}}\\
+16 & Pack / compute split & B, I & pack share: B4 14.7\%, B4\_N1024 7.0\%, S1 8.1\%; compute-only 8.46 / 8.51 / 8.60 GFLOP/s; pack 14.8 vs 10.5 ns/elem & packing, not compute, is B4's loss \\
+17 & N sweep, M=4096, K=1024 & A / C, U & N=384: 8.10 / 7.88; 1024: 9.02 / 8.63; 2048: 9.02 / 8.70; 4096: 8.97 / 8.75; S1 8.73 / 8.57 & +10--11\%, flat after N=1024 \\
+18 & Blocking breakdown (\texttt{shape\_breakdown.py}) & static & A-panel reuse 55 vs 143--147; packed elements per 1000 flops 1.42 vs 0.60--1.0; fringe work 0.26\% vs 0.45--2.5\% & B4 packs 2.3$\times$ more per flop \\
+19 & M off a power of two & A / C, U & M=4064: +4.6 / +3.4\%; 4128: +2.1 / +2.9\%; at 32x6 +3.4 / +2.8\%; S1 at M=2048: $-$1.8 / $-$1.2\% & second cost, 2--5\% \\
+20 & BERT vs square at 32x6 & A / C, U & B1 7.97 / 8.21; B5 7.79 / 7.87; B4 7.62 / 7.98; S1 8.25 / 8.35; S2 8.56 / 8.80 & gap follows N=384, not the tile \\
+21 & Same rows, run A vs run C & cores 4 / 2 & rows move $-$4.3 to +4.7\%; B4 tile winner flips & compare inside one run only \\
+22 & B3 with B shrunk under L2 (\S7) & core 4, U, 3 launches & vector median 4.4--5.8 at every size; scalar N$\le$320: 8.1--8.8, N=384: 4.5--6.1 & L2 not the cause; scalar slow case is \texttt{nc}=384 \\
+\bottomrule
+\end{tabularx}}
+
 \end{document}
