@@ -40,6 +40,12 @@ RESULT_SUFFIX := $(RESULT_SUFFIX)_refproto
 endif
 endif
 
+# Issue #26: a scalar-pack-live run (the flag, or the driver's USE_SCALAR_PACK variable, which
+# the driver reads as set-or-not, whatever its value) is a different configuration too. The suffix goes before the nc one, as in the driver.
+ifneq (,$(or $(findstring --scalar-pack,$(TEST_ARGS)),$(filter-out undefined,$(origin USE_SCALAR_PACK))))
+RESULT_SUFFIX := $(RESULT_SUFFIX)_scalarpack
+endif
+
 # Issue #16: a run without the config.json nc overrides is a different configuration, so
 # it gets its own results file too (the driver does the same for its logs).
 ifneq (,$(findstring --no-nc-overrides,$(TEST_ARGS)))

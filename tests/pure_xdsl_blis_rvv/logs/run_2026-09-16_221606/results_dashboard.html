@@ -1,0 +1,883 @@
+<title>Vector Pack Speedup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light;
+    --page:#f9f9f7;
+    --surface-1:#fcfcfb;
+    --surface-2:#f3f2ee;
+    --text-primary:#0b0b0b;
+    --text-secondary:#52514e;
+    --text-muted:#898781;
+    --grid:#e1e0d9;
+    --baseline:#c3c2b7;
+    --border:rgba(11,11,11,0.10);
+    --success:#006300;
+    --danger:#d03b3b;
+    --series-scalar:#eb6834;
+    --series-vector:#2a78d6;
+    --series-reference:#1baf7a;
+    --series-bert:#2a78d6;
+    --series-square:#eb6834;
+    --font-display:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --font-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --font-mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --page:#0d0d0d;
+      --surface-1:#1a1a19;
+      --surface-2:#232322;
+      --text-primary:#ffffff;
+      --text-secondary:#c3c2b7;
+      --text-muted:#898781;
+      --grid:#2c2c2a;
+      --baseline:#383835;
+      --border:rgba(255,255,255,0.10);
+      --success:#0ca30c;
+      --danger:#e66767;
+      --series-scalar:#d95926;
+      --series-vector:#3987e5;
+      --series-reference:#199e70;
+      --series-bert:#3987e5;
+      --series-square:#d95926;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --page:#0d0d0d;
+    --surface-1:#1a1a19;
+    --surface-2:#232322;
+    --text-primary:#ffffff;
+    --text-secondary:#c3c2b7;
+    --text-muted:#898781;
+    --grid:#2c2c2a;
+    --baseline:#383835;
+    --border:rgba(255,255,255,0.10);
+    --success:#0ca30c;
+    --danger:#e66767;
+    --series-scalar:#d95926;
+    --series-vector:#3987e5;
+    --series-reference:#199e70;
+    --series-bert:#3987e5;
+    --series-square:#d95926;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--page);
+    color:var(--text-primary);
+    font-family:var(--font-body);
+    padding-inline:16px;
+    padding-block:28px;
+    max-width:1100px;
+    margin:0 auto;
+  }
+  h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;}
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+  }
+  header{margin-bottom:28px;}
+  header h1{font-size:clamp(22px,4vw,30px);font-weight:800;margin-top:6px;}
+  header p{color:var(--text-secondary);font-size:14px;line-height:1.5;max-width:70ch;margin:10px 0 0;}
+  .meta-row{
+    display:flex;flex-wrap:wrap;gap:8px 20px;
+    margin-top:14px;font-size:13px;color:var(--text-secondary);
+    font-family:var(--font-mono);
+  }
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;
+    font-family:var(--font-mono);font-size:12px;
+    padding:3px 10px;border-radius:99px;border:1px solid var(--border);
+    color:var(--text-secondary);background:var(--surface-1);
+  }
+  .chip i{width:8px;height:8px;border-radius:2px;display:inline-block;}
+
+  .tiles{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:32px;
+  }
+  @media (max-width:640px){.tiles{grid-template-columns:repeat(2,1fr);}}
+  .tile{
+    background:var(--surface-1);border:1px solid var(--border);border-radius:10px;
+    padding:16px;display:flex;flex-direction:column;gap:6px;
+  }
+  .tile .label{font-size:12px;color:var(--text-secondary);}
+  .tile .value{font-family:var(--font-display);font-weight:800;font-size:24px;letter-spacing:-0.01em;}
+  .tile .sub{font-size:11.5px;color:var(--text-muted);font-family:var(--font-mono);}
+
+  .section-head{margin-bottom:14px;}
+  .section-head .eyebrow{margin-bottom:4px;}
+  .section-head h2{font-size:19px;font-weight:800;}
+  .section-head p{color:var(--text-secondary);font-size:13.5px;margin:6px 0 0;max-width:74ch;line-height:1.55;}
+  section{margin-bottom:40px;}
+
+  .card{
+    background:var(--surface-1);border:1px solid var(--border);border-radius:12px;
+    padding:18px 18px 10px;
+  }
+  .card h3{font-size:14px;font-weight:700;}
+  .card .desc{font-size:12.5px;color:var(--text-secondary);margin:3px 0 12px;}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text-secondary);margin-bottom:10px;}
+  .legend .item{display:inline-flex;align-items:center;gap:6px;}
+  .legend .swatch{width:10px;height:10px;border-radius:2px;display:inline-block;}
+  .legend .line{width:14px;height:2px;display:inline-block;}
+
+  svg.chart{width:100%;height:auto;display:block;overflow:visible;}
+  svg.chart text{font-family:var(--font-mono);}
+  .axis-label{fill:var(--text-muted);font-size:10px;}
+  .grid-line{stroke:var(--grid);stroke-width:1;}
+  .baseline-line{stroke:var(--baseline);stroke-width:1;}
+  .value-label{fill:var(--text-primary);font-size:11px;font-weight:600;}
+  .delta-label{font-size:11px;font-weight:700;font-family:var(--font-mono);}
+  .case-label{fill:var(--text-secondary);font-size:11px;}
+  .case-label-sm{fill:var(--text-secondary);font-size:9px;}
+  .group-label{fill:var(--text-muted);font-size:10px;letter-spacing:0.06em;}
+  .bar{cursor:pointer;transition:opacity .12s ease;}
+  .bar:hover, .bar:focus-visible{opacity:0.82;outline:none;}
+  .divider{stroke:var(--grid);stroke-width:1;stroke-dasharray:2 3;}
+  .whisker{stroke:var(--baseline);stroke-width:2;stroke-linecap:round;}
+  .median-dot{stroke-width:2;}
+
+  .mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+  .mini-grid.cols-5{grid-template-columns:repeat(3,minmax(0,1fr));}
+  @media (max-width:640px){.mini-grid, .mini-grid.cols-5{grid-template-columns:repeat(2,minmax(0,1fr));}}
+  .mini-chart{background:var(--surface-2);border-radius:8px;padding:10px 8px 6px;}
+  .mini-title{font-size:10.5px;color:var(--text-secondary);margin-bottom:2px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.04em;}
+
+  #tooltip{
+    position:fixed;pointer-events:none;z-index:50;
+    background:var(--text-primary);color:var(--page);
+    font-family:var(--font-mono);font-size:12px;line-height:1.5;
+    padding:8px 10px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.22);
+    opacity:0;transform:translateY(4px);transition:opacity .1s ease;
+    max-width:250px;
+  }
+  #tooltip.show{opacity:1;}
+  #tooltip .t-title{font-family:var(--font-display);font-weight:700;font-size:12.5px;margin-bottom:2px;}
+  #tooltip .t-row{display:flex;justify-content:space-between;gap:12px;opacity:.92;}
+  #tooltip .t-row b{font-weight:600;}
+
+  .callout{
+    margin-top:14px;background:var(--surface-2);border-radius:10px;padding:14px 16px;
+    font-size:13px;line-height:1.6;color:var(--text-secondary);
+  }
+  .callout ul{margin:6px 0 0;padding-left:18px;}
+  .callout li{margin-bottom:4px;}
+  .callout b{color:var(--text-primary);}
+  .callout code{font-family:var(--font-mono);background:var(--surface-1);padding:1px 5px;border-radius:4px;font-size:12px;}
+
+  .glossary{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:14px;}
+  .g-item{background:var(--surface-2);border-radius:8px;padding:11px 13px;}
+  .g-term{font-family:var(--font-display);font-weight:700;font-size:12.5px;color:var(--text-primary);}
+  .g-term .g-sub{display:block;font-family:var(--font-mono);font-weight:400;font-size:10px;color:var(--text-muted);margin-top:1px;}
+  .g-def{font-size:12px;color:var(--text-secondary);line-height:1.55;margin-top:6px;}
+  .g-def b{color:var(--text-primary);}
+  .g-def code{font-family:var(--font-mono);background:var(--surface-1);padding:0 4px;border-radius:3px;font-size:11px;}
+
+  .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface-1);}
+  table{border-collapse:collapse;width:100%;min-width:1280px;font-size:12.5px;}
+  thead th{
+    position:sticky;top:0;background:var(--surface-2);
+    text-align:right;padding:10px 12px;font-weight:600;color:var(--text-secondary);
+    border-bottom:1px solid var(--border);white-space:nowrap;font-size:11.5px;
+  }
+  thead th:first-child, thead th:nth-child(2), thead th:nth-child(3){text-align:left;}
+  tbody td{
+    padding:9px 12px;text-align:right;border-bottom:1px solid var(--border);
+    font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap;
+    color:var(--text-primary);
+  }
+  tbody td:first-child{font-family:var(--font-mono);font-weight:600;text-align:left;}
+  tbody td:nth-child(2), tbody td:nth-child(3){text-align:left;color:var(--text-secondary);}
+  tbody tr.group-row td{
+    background:var(--surface-2);color:var(--text-muted);font-family:var(--font-body);
+    font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:left;font-weight:600;
+  }
+  tbody tr:last-child td{border-bottom:none;}
+  .pos{color:var(--success);}
+  .neg{color:var(--danger);}
+
+  footer{margin-top:8px;font-size:12px;color:var(--text-muted);line-height:1.7;}
+  footer code{font-family:var(--font-mono);background:var(--surface-2);padding:1px 5px;border-radius:4px;}
+</style>
+
+<header>
+  <div class="eyebrow">pure_xdsl_blis_rvv &middot; fp32_AXPY_FP32_Pack &middot; vlen256</div>
+  <h1>Vector-pack cuts packing time, GEMM throughput holds roughly flat vs. the prior reference design</h1>
+  <p>Seven RVV GEMM microkernel cases, three MR&times;NR tile configs, run 2026-09-16_221606. Compares scalar-loop packing against RVV vector packing, isolates GEMM compute performance, and checks the result against the prior scalar-pack reference design recorded when issue&nbsp;#2 closed.</p>
+  <div class="meta-row">
+    <span class="chip"><i style="background:var(--series-bert)"></i>B&nbsp;&mdash; BERT-layer shapes</span>
+    <span class="chip"><i style="background:var(--series-square)"></i>S&nbsp;&mdash; square GEMM shapes</span>
+    <span class="chip">Run <b style="color:var(--text-primary)">2026-09-16_221606</b></span>
+  </div>
+</header>
+
+<div class="tiles">
+  <div class="tile">
+    <span class="label">Cases benchmarked</span>
+    <span class="value">7</span>
+    <span class="sub">5 BERT &middot; 2 Square</span>
+  </div>
+  <div class="tile">
+    <span class="label">Avg. pack-time cut</span>
+    <span class="value pos">+13.7%</span>
+    <span class="sub">vector vs scalar pack, mean of 7</span>
+  </div>
+  <div class="tile">
+    <span class="label">Peak compute throughput</span>
+    <span class="value">13.1<span style="font-size:13px;font-weight:600;color:var(--text-muted);"> GOPs</span></span>
+    <span class="sub">B2 &middot; 16&times;15 tile</span>
+  </div>
+  <div class="tile">
+    <span class="label">Avg. &Delta; vs reference design</span>
+    <span class="value" style="color:var(--text-primary)">&minus;0.4%</span>
+    <span class="sub">flat overall &middot; Square trails, BERT holds</span>
+  </div>
+</div>
+
+<section>
+  <div class="section-head">
+    <div class="eyebrow">01 &middot; Packing impact</div>
+    <h2>Scalar pack vs. vector pack, head-to-head</h2>
+    <p>Same three facets &mdash; time, share of total kernel time, and memory bandwidth &mdash; but now scalar and vector sit side by side per case so the win (or loss) reads directly off each pair, instead of across two separate cards.</p>
+    <div class="callout" style="margin-top:12px;">
+      <b>Which buffer is being packed?</b> Both. Every BLIS-style GEMM here packs two operands per tile before the microkernel runs: <b>Pack&nbsp;A</b> copies an M<sub>c</sub>&times;K<sub>c</sub> panel of matrix A into the contiguous scratch buffer <code>Ac</code>, and <b>Pack&nbsp;B</b> copies a K<sub>c</sub>&times;N<sub>c</sub> panel of matrix B into <code>Bc</code>. <code>driver_benchmark.cpp</code> times them as two separate <code>chrono</code> windows per tile (Pack&nbsp;B first, per <code>jc</code> step; Pack&nbsp;A second, per <code>ic</code> step) but adds both into the same <code>pack_time</code>/<code>pack_bytes</code> accumulators &mdash; so every "scalar" / "vector" bar below, and everywhere else in this report, is <b>Pack&nbsp;A + Pack&nbsp;B combined</b>, not one or the other. This run's logs don't carry a per-buffer split; getting one would mean adding separate accumulators in the driver.
+    </div>
+  </div>
+  <div class="card">
+    <h3>Packing: scalar vs. vector, per case</h3>
+    <p class="desc">Same seven cases, same order (BERT B1&ndash;B5, then Square S1&ndash;S2), grouped left/right by the dashed divider.</p>
+    <div class="legend">
+      <span class="item"><span class="swatch" style="background:var(--series-scalar)"></span>Scalar pack (A+B)</span>
+      <span class="item"><span class="swatch" style="background:var(--series-vector)"></span>Vector (RVV) pack (A+B)</span>
+    </div>
+    <div class="mini-grid" id="grid-packing-cmp"></div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head">
+    <div class="eyebrow">02 &middot; GEMM compute performance</div>
+    <h2>Compute-kernel throughput, hardware counters, and run-to-run jitter</h2>
+    <p>Isolating the microkernel compute region (packing excluded): achieved GOPs (&asymp; GFLOP/s for this fp32 kernel), the five hardware counters captured per issue&nbsp;#8, and how much a case's GOPs wobbles across its timed sweep.</p>
+  </div>
+  <div class="card" style="margin-bottom:16px;">
+    <h3>Compute throughput (GOPs)</h3>
+    <p class="desc">Harmonic-mean GOPs over the timed sweep, by case.</p>
+    <svg id="chart-throughput" class="chart" viewBox="0 0 460 280" role="img" aria-label="Compute throughput by case, in GOPs"></svg>
+    <div class="callout">
+      <b>What it is:</b> billions of floating-point operations the compute region alone sustains per second &mdash; packing time is excluded, so this is the microkernel's realized arithmetic rate, not the whole kernel's. The harmonic mean is used (rather than a plain average) because a rate metric is dominated by its slow end: one abnormally slow rep should pull the summary down harder than one abnormally fast rep pulls it up, which is exactly what harmonic mean does.
+      <br><br>
+      <b>What we see:</b> six of the seven cases sit in a tight 7.8&ndash;9.3 GOPs band regardless of shape or family &mdash; B1, B4, B5, S1, S2 are all within &plusmn;10% of ~8 GOPs, so problem size alone isn't the throughput lever here. <b>B2 breaks the pattern at 13.14 GOPs</b>, 41% above the pack &mdash; the counters below explain why.
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px;">
+    <h3>Hardware performance counters &mdash; compute region</h3>
+    <p class="desc">Instructions/cycle, arithmetic throughput, and L1D/backend behavior while the microkernel is running.</p>
+    <div class="mini-grid cols-5" id="grid-counters"></div>
+    <div class="glossary">
+      <div class="g-item">
+        <div class="g-term">IPC<span class="g-sub">instructions retired / cycle</span></div>
+        <div class="g-def">How much useful work the core finishes each clock tick. Ceiling is set by the pipeline's issue width; anything well below it means cycles are going by with nothing retiring &mdash; the core is waiting, not computing.</div>
+      </div>
+      <div class="g-item">
+        <div class="g-term">FLOPs / cycle<span class="g-sub">arithmetic throughput</span></div>
+        <div class="g-def">Floating-point operations completed per cycle &mdash; IPC narrowed to just the vector FMA lanes. It's the number that turns cycles into GOPs; a kernel can have decent IPC from address math and loop overhead while this stays low.</div>
+      </div>
+      <div class="g-item">
+        <div class="g-term">L1D read/write miss %<span class="g-sub">cache locality</span></div>
+        <div class="g-def">Share of load/store accesses that miss the L1 data cache and go further out for data. This is the counter that judges whether packing did its job &mdash; <code>Ac</code>/<code>Bc</code> should be small and contiguous enough to stay resident through the whole microkernel.</div>
+      </div>
+      <div class="g-item">
+        <div class="g-term">Stall (backend) %<span class="g-sub">cycles with nothing to retire</span></div>
+        <div class="g-def">Fraction of cycles where the backend has no instruction ready to issue. High stall with <i>low</i> cache misses (see below) points at a different bottleneck &mdash; instruction latency or dependency chains &mdash; not memory.</div>
+      </div>
+      <div class="g-item">
+        <div class="g-term">Jitter / CV%<span class="g-sub">run-to-run stability</span></div>
+        <div class="g-def">Coefficient of variation of GOPs across the sweep (std&divide;median). Low CV means the median is a trustworthy single number; high CV means the measurement itself is unstable and any one rep could mislead. See the chart below.</div>
+      </div>
+    </div>
+    <div class="callout">
+      <b>What the numbers say together:</b> in six of the seven cases, L1D read-miss stays under 3% and write-miss under 2.3% &mdash; packing is working, the data the microkernel touches is resident. Yet the backend still stalls 44&ndash;54% of cycles, and IPC (0.54&ndash;0.73) and FLOPs/cycle (4.78&ndash;5.75) sit well below what the vector unit could sustain. Low misses plus high stalls rules out memory as the bottleneck for those cases &mdash; the ceiling is more likely instruction-level: FMA latency and dependency chains between accumulator registers not being hidden by enough independent work in flight.
+      <br><br>
+      <b>B2 is the exception on every one of these axes at once</b>: highest IPC (0.97), highest FLOPs/cycle (7.78), lowest L1D read-miss (0.3%), lowest stall (27.2%). Its whole working set (384&times;384&times;64) is small enough to stay pinned in cache for the entire sweep, so the backend rarely has to wait &mdash; which is also exactly why it's the one case that broke out of the throughput band above.
+    </div>
+  </div>
+  <div class="card">
+    <h3>Run-to-run jitter</h3>
+    <p class="desc">Whisker = min&ndash;max across the sweep; band = P5&ndash;P95; dot = median. CV% labeled above each case.</p>
+    <svg id="chart-jitter" class="chart" viewBox="0 0 460 300" role="img" aria-label="KerGOPs jitter by case: min/max whisker, P5-P95 band, median dot"></svg>
+    <div class="callout">
+      <b>What it means:</b> every case ran as a sweep of repeated timings, not one measurement. The whisker shows the full min&ndash;max spread, the band shows the middle 90% (P5&ndash;P95), and CV% (std&divide;median) is the single-number summary &mdash; low CV means the reps agree with each other, high CV means the timing is bimodal or noisy and no single rep should be trusted alone.
+      <br><br>
+      <b>What we see:</b> six cases hold CV&nbsp;&le;2% &mdash; tight, reliable measurements. <b>B3 is the outlier at CV&nbsp;11%</b> (min 7.35 vs. max 12.57 GOPs, nearly 2&times;) &mdash; the same shape flagged in issue&nbsp;#1 as bimodally unstable (originally CV 16&ndash;27% under the old scalar-only design). It's still the noisiest case here, and issue&nbsp;#1/#2's explanation still fits: B3's M=64 with MR=16 means only 4 microkernel calls reuse each packed block, so there's little chance for the packed data to "settle" in cache before the block is discarded &mdash; run-to-run cache state varies more than it does for higher-reuse shapes.
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head">
+    <div class="eyebrow">03 &middot; Overall vs. the reference design</div>
+    <h2>How this run compares to the prior scalar-pack reference</h2>
+    <p>Issue&nbsp;#2 (closed) recorded a prior design's GOPs for these same shapes/tiles &mdash; RVV compute with <b>scalar</b> packing, user-supplied at the time. This run swaps in RVV <b>vector</b> packing; the chart below is this run's compute GOPs against that reference.</p>
+  </div>
+  <div class="card">
+    <h3>This run vs. reference design</h3>
+    <div class="legend">
+      <span class="item"><span class="swatch" style="background:var(--series-vector)"></span>This run (vector pack)</span>
+      <span class="item"><span class="swatch" style="background:var(--series-reference)"></span>Reference design (issue #2, scalar pack)</span>
+    </div>
+    <svg id="chart-reference" class="chart" viewBox="0 0 460 300" role="img" aria-label="This run's GOPs versus the prior reference design's GOPs, by case, with percent delta"></svg>
+    <div class="callout">
+      <b>Reading the comparison:</b>
+      <ul>
+        <li><b>BERT mostly holds or gains</b> &mdash; B1 +1.0%, B2 +5.1%, B3 +5.5%, B5 +4.0% &mdash; consistent with issue&nbsp;#7's finding that vector packing beats scalar packing on every BERT shape.</li>
+        <li><b>B4 now trails</b> the reference by &minus;6.6%, a wider gap than issue&nbsp;#2's own comparison run saw for B4 (+2%) at the time.</li>
+        <li><b>Both Square shapes trail</b> &mdash; S1 &minus;2.1%, S2 &minus;10.0% &mdash; and S2's gap is noticeably larger than issue&nbsp;#2 recorded (&minus;4%) or issue&nbsp;#7 explained. Issue&nbsp;#7 already ruled out packing time as the cause for the Square shapes (vector packing is <i>faster</i> there too, +7&ndash;13%), pointing instead at <code>N_REPS=5</code> sampling noise and uncontrolled external-reference conditions &mdash; this run's wider S2 gap is consistent with that but worth a follow-up if it recurs.</li>
+        <li>Net: <b>&minus;0.4% average</b> &mdash; essentially flat against the reference, with the regression concentrated in B4 and Square rather than spread evenly.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 style="font-size:16px;font-weight:700;margin-bottom:12px;">Full results</h2>
+  <div class="table-wrap">
+    <table id="results-table">
+      <thead>
+        <tr>
+          <th>Case</th><th>Shape (M&times;N&times;K)</th><th>MR&times;NR</th>
+          <th title="Pack A (Ac) + Pack B (Bc), combined">Scalar pack A+B (ms)</th><th title="Pack A (Ac) + Pack B (Bc), combined">Vector pack A+B (ms)</th><th>Compute (ms)</th>
+          <th>Scalar pack %</th><th>Vector pack %</th><th>Pack gain</th>
+          <th>Scalar BW (GB/s)</th><th>Vector BW (GB/s)</th>
+          <th>KerGOPs</th><th>Jitter CV%</th>
+          <th>Compute IPC</th><th>FLOPs/cyc</th>
+          <th>Reference GOPs</th><th>&Delta; vs reference</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody id="results-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  "Pack" throughout this page = Pack&nbsp;A (<code>Ac</code>) + Pack&nbsp;B (<code>Bc</code>) combined; see <code>driver_benchmark.cpp</code>'s two <code>chrono</code> windows around <code>pack_RB_*</code> (A) and <code>pack_CB_*</code> (B), both added into one <code>pack_time</code>/<code>pack_bytes</code> pair. No per-buffer split exists in this run's logs.<br>
+  Source: <code>tests/pure_xdsl_blis_rvv/logs/run_2026-09-16_221606/comparison.md</code> and <code>all_raw_fp32_AXPY_FP32_Pack.txt</code>.
+  Reference-design GOPs from issue&nbsp;#2's closing comment (user-supplied numbers for a prior RVV-compute/scalar-pack design, same shapes and MR&times;NR). All cases in this run used <code>skip_ref_run</code>, so there is no on-board scalar-GEMM correctness check in this data &mdash; it answers "how fast," not "still numerically correct," per issue&nbsp;#2/#7. Hardware perf counters were valid for all 7 cases (issue&nbsp;#8).
+</footer>
+
+<div id="tooltip" role="tooltip"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var CASES = [
+    {case:"B1", family:"BERT", shape:"1024×384×1024", mrnr:"32×6",
+      scalarMs:20.12, vectorMs:18.07, computeMs:99.72, scalarPct:16.8, vectorPct:15.3, gain:10.2,
+      scalarBw:0.287, vectorBw:0.319,
+      kerGOPs:8.08, min:7.98, p5:8.03, p95:8.11, max:8.14, median:8.08, cv:0,
+      ipc:0.57, flopsCyc:4.94, cL1R:1.3, cL1W:0.1, cStall:52.4,
+      ref:8.0, countersValid:true, note:"No ref GEMM (config)"},
+    {case:"B2", family:"BERT", shape:"384×384×64", mrnr:"16×15",
+      scalarMs:0.15, vectorMs:0.09, computeMs:1.45, scalarPct:9.3, vectorPct:5.7, gain:41.2,
+      scalarBw:1.321, vectorBw:2.246,
+      kerGOPs:13.14, min:10.14, p5:12.87, p95:13.18, max:13.19, median:13.14, cv:2,
+      ipc:0.97, flopsCyc:7.78, cL1R:0.3, cL1W:0.4, cStall:27.2,
+      ref:12.5, countersValid:true, note:"No ref GEMM (config)"},
+    {case:"B3", family:"BERT", shape:"64×384×384", mrnr:"16×15",
+      scalarMs:1.54, vectorMs:1.42, computeMs:1.96, scalarPct:44.0, vectorPct:41.9, gain:8.0,
+      scalarBw:0.574, vectorBw:0.625,
+      kerGOPs:9.28, min:7.35, p5:9.08, p95:12.44, max:12.57, median:9.28, cv:11,
+      ipc:0.73, flopsCyc:5.75, cL1R:2.8, cL1W:1.1, cStall:44.1,
+      ref:8.8, countersValid:true, note:"No ref GEMM (config)"},
+    {case:"B4", family:"BERT", shape:"4096×384×1024", mrnr:"32×7",
+      scalarMs:74.79, vectorMs:67.40, computeMs:405.79, scalarPct:15.6, vectorPct:14.2, gain:9.9,
+      scalarBw:0.245, vectorBw:0.272,
+      kerGOPs:7.94, min:7.93, p5:7.93, p95:7.95, max:7.95, median:7.94, cv:0,
+      ipc:0.54, flopsCyc:4.87, cL1R:1.4, cL1W:2.0, cStall:52.8,
+      ref:8.5, countersValid:true, note:"No ref GEMM (config)"},
+    {case:"B5", family:"BERT", shape:"1024×384×4096", mrnr:"32×6",
+      scalarMs:86.73, vectorMs:77.44, computeMs:412.08, scalarPct:17.4, vectorPct:15.8, gain:10.7,
+      scalarBw:0.266, vectorBw:0.298,
+      kerGOPs:7.80, min:7.76, p5:7.78, p95:7.94, max:7.96, median:7.80, cv:1,
+      ipc:0.55, flopsCyc:4.78, cL1R:1.3, cL1W:0.1, cStall:53.6,
+      ref:7.5, countersValid:true, note:"No ref GEMM (config)"},
+    {case:"S1", family:"Square", shape:"1000×1000×1000", mrnr:"32×7",
+      scalarMs:22.62, vectorMs:21.27, computeMs:240.45, scalarPct:8.6, vectorPct:8.1, gain:6.0,
+      scalarBw:0.354, vectorBw:0.376,
+      kerGOPs:8.32, min:8.30, p5:8.30, p95:8.32, max:8.32, median:8.32, cv:0,
+      ipc:0.58, flopsCyc:5.10, cL1R:1.3, cL1W:2.3, cStall:49.5,
+      ref:8.5, countersValid:true, note:"No ref GEMM (config)"},
+    {case:"S2", family:"Square", shape:"2000×2000×2000", mrnr:"32×7",
+      scalarMs:179.83, vectorMs:162.62, computeMs:2044.06, scalarPct:8.1, vectorPct:7.4, gain:9.6,
+      scalarBw:0.267, vectorBw:0.295,
+      kerGOPs:7.83, min:7.82, p5:7.82, p95:7.83, max:7.83, median:7.83, cv:0,
+      ipc:0.54, flopsCyc:4.81, cL1R:1.4, cL1W:1.1, cStall:53.0,
+      ref:8.7, countersValid:true, note:"No ref GEMM (config)"}
+  ];
+
+  CASES.forEach(function(d){ d.refDelta = (d.kerGOPs - d.ref) / d.ref * 100; });
+
+  var tooltip = document.getElementById("tooltip");
+  function showTip(evt, title, rows){
+    tooltip.innerHTML = "";
+    var t = document.createElement("div");
+    t.className = "t-title";
+    t.textContent = title;
+    tooltip.appendChild(t);
+    rows.forEach(function(r){
+      var row = document.createElement("div");
+      row.className = "t-row";
+      var a = document.createElement("span");
+      a.textContent = r[0];
+      var b = document.createElement("b");
+      b.textContent = r[1];
+      row.appendChild(a); row.appendChild(b);
+      tooltip.appendChild(row);
+    });
+    tooltip.classList.add("show");
+    moveTip(evt);
+  }
+  function moveTip(evt){
+    var x = evt.clientX, y = evt.clientY;
+    var pad = 14;
+    var rect = tooltip.getBoundingClientRect();
+    var left = x + pad, top = y + pad;
+    if (left + rect.width > window.innerWidth - 8) left = x - rect.width - pad;
+    if (top + rect.height > window.innerHeight - 8) top = y - rect.height - pad;
+    tooltip.style.left = left + "px";
+    tooltip.style.top = top + "px";
+  }
+  function hideTip(){ tooltip.classList.remove("show"); }
+  function wireTip(node, titleFn, rowsFn){
+    node.addEventListener("pointerenter", function(e){ showTip(e, titleFn(), rowsFn()); });
+    node.addEventListener("pointermove", moveTip);
+    node.addEventListener("pointerleave", hideTip);
+    node.addEventListener("focus", function(e){ showTip(e, titleFn(), rowsFn()); });
+    node.addEventListener("blur", hideTip);
+  }
+
+  var NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs){
+    var n = document.createElementNS(NS, tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+  function roundedTopPath(x, y, w, h, r){
+    r = Math.min(r, Math.max(h,0), w/2);
+    if (h <= 0) return "M" + x + "," + y + " L" + (x+w) + "," + y + " Z";
+    var yTop = y, yBot = y + h;
+    return "M" + x + "," + yBot +
+      " L" + x + "," + (yTop + r) +
+      " Q" + x + "," + yTop + " " + (x + r) + "," + yTop +
+      " L" + (x + w - r) + "," + yTop +
+      " Q" + (x + w) + "," + yTop + " " + (x + w) + "," + (yTop + r) +
+      " L" + (x + w) + "," + yBot + " Z";
+  }
+
+  function familyColor(d){ return d.family === "BERT" ? "var(--series-bert)" : "var(--series-square)"; }
+
+  function computeLayout(barW, gap, groupGap, marginL){
+    var xPositions = [];
+    var x = marginL;
+    for (var i = 0; i < CASES.length; i++){
+      if (i > 0) x += (CASES[i].family !== CASES[i-1].family) ? groupGap : gap;
+      xPositions.push(x);
+      x += barW;
+    }
+    return {positions: xPositions, right: x};
+  }
+
+  function valueToY(v, scale){
+    if (scale.type === "log"){
+      var lo = Math.log10(scale.domainMin), hi = Math.log10(scale.max);
+      var t = (Math.log10(Math.max(v, scale.domainMin)) - lo) / (hi - lo);
+      return scale.baseY - t * scale.plotH;
+    }
+    return scale.baseY - (v / scale.max) * scale.plotH;
+  }
+
+  // ---- Generic single-series bar chart (full size or mini) ----
+  function renderSingleBar(svg, opts){
+    var mini = !!opts.mini;
+    var marginL = mini ? 26 : 34, marginR = mini ? 6 : 10, marginT = mini ? 6 : 14;
+    var plotH = mini ? 92 : 190;
+    var baseY = marginT + plotH;
+    var barW = mini ? 13 : 34, gap = mini ? 6 : 18, groupGap = mini ? 14 : 44;
+
+    var layout = computeLayout(barW, gap, groupGap, marginL);
+    var xPositions = layout.positions;
+    var plotRight = layout.right + marginR;
+
+    var scale = {type: opts.scaleType || "linear", max: opts.max, domainMin: opts.domainMin, baseY: baseY, plotH: plotH};
+
+    opts.ticks.forEach(function(v){
+      var y = valueToY(v, scale);
+      svg.appendChild(el("line", {x1:marginL-6, x2:plotRight-6, y1:y, y2:y, class:"grid-line"}));
+      if (!mini || opts.showTickLabels !== false){
+        var t = el("text", {x:marginL-9, y:y+3, class:"axis-label", "text-anchor":"end", style: mini ? "font-size:8px" : ""});
+        t.textContent = opts.tickFmt(v);
+        svg.appendChild(t);
+      }
+    });
+    svg.appendChild(el("line", {x1:marginL-6, x2:plotRight-6, y1:baseY, y2:baseY, class:"baseline-line"}));
+
+    CASES.forEach(function(d, i){
+      var v = opts.value(d);
+      var yTop = valueToY(v, scale);
+      var h = baseY - yTop;
+      var bx = xPositions[i];
+      var color = opts.color ? opts.color(d) : familyColor(d);
+
+      var path = el("path", {d: roundedTopPath(bx, yTop, barW, h, mini ? 2 : 4), fill: color, class:"bar", tabindex:"0"});
+      wireTip(path, function(){ return d.case + " · " + d.shape; }, function(){ return opts.tipRows(d); });
+      svg.appendChild(path);
+
+      if (!mini){
+        var label = el("text", {x:bx+barW/2, y:yTop-6, class:"value-label", "text-anchor":"middle"});
+        label.textContent = opts.labelFmt(v);
+        svg.appendChild(label);
+      }
+
+      var caseLabel = el("text", {x:bx+barW/2, y:baseY+(mini?10:16), class: mini ? "case-label-sm" : "case-label", "text-anchor":"middle"});
+      caseLabel.textContent = d.case;
+      svg.appendChild(caseLabel);
+    });
+
+    var dividerX = xPositions[4] + barW + gap/2;
+    svg.appendChild(el("line", {x1:dividerX, x2:dividerX, y1:marginT, y2:baseY, class:"divider"}));
+
+    if (!mini){
+      var bertMid = (xPositions[0] + xPositions[4] + barW) / 2;
+      var sqMid = (xPositions[5] + xPositions[6] + barW) / 2;
+      var gl1 = el("text", {x:bertMid, y:baseY+32, class:"group-label", "text-anchor":"middle"});
+      gl1.textContent = "BERT";
+      svg.appendChild(gl1);
+      var gl2 = el("text", {x:sqMid, y:baseY+32, class:"group-label", "text-anchor":"middle"});
+      gl2.textContent = "SQUARE";
+      svg.appendChild(gl2);
+    }
+  }
+
+  function makeMiniSvg(container, title, viewBox){
+    var wrap = document.createElement("div");
+    wrap.className = "mini-chart";
+    var h = document.createElement("div");
+    h.className = "mini-title";
+    h.textContent = title;
+    wrap.appendChild(h);
+    var svg = el("svg", {class:"chart", viewBox: viewBox || "0 0 190 118", role:"img", "aria-label":title});
+    wrap.appendChild(svg);
+    container.appendChild(wrap);
+    return svg;
+  }
+
+  // ---- Generic paired (2-series) mini bar chart, e.g. scalar vs vector ----
+  function renderPairedMiniBar(svg, opts){
+    var marginL = 26, marginR = 6, marginT = 6, plotH = 92;
+    var baseY = marginT + plotH;
+    var barW = 7, pairGap = 2, normalGap = 6, clusterGap = 14;
+    var pairW = barW*2 + pairGap;
+
+    var xPositions = [];
+    var x = marginL;
+    for (var i = 0; i < CASES.length; i++){
+      if (i > 0) x += (CASES[i].family !== CASES[i-1].family) ? clusterGap : normalGap;
+      xPositions.push(x);
+      x += pairW;
+    }
+    var plotRight = x + marginR;
+    var scale = {type: opts.scaleType || "linear", max: opts.max, domainMin: opts.domainMin, baseY: baseY, plotH: plotH};
+
+    opts.ticks.forEach(function(v){
+      var y = valueToY(v, scale);
+      svg.appendChild(el("line", {x1:marginL-5, x2:plotRight-5, y1:y, y2:y, class:"grid-line"}));
+      var t = el("text", {x:marginL-8, y:y+3, class:"axis-label", "text-anchor":"end", style:"font-size:8px"});
+      t.textContent = opts.tickFmt(v);
+      svg.appendChild(t);
+    });
+    svg.appendChild(el("line", {x1:marginL-5, x2:plotRight-5, y1:baseY, y2:baseY, class:"baseline-line"}));
+
+    CASES.forEach(function(d, i){
+      var bx = xPositions[i];
+
+      var vA = opts.valueA(d);
+      var yA = valueToY(vA, scale), hA = baseY - yA;
+      var barA = el("path", {d: roundedTopPath(bx, yA, barW, hA, 2), fill:"var(--series-scalar)", class:"bar", tabindex:"0"});
+      wireTip(barA, function(){ return d.case + " · " + d.shape; }, function(){ return opts.tipRows(d); });
+      svg.appendChild(barA);
+
+      var vB = opts.valueB(d);
+      var bx2 = bx + barW + pairGap;
+      var yB = valueToY(vB, scale), hB = baseY - yB;
+      var barB = el("path", {d: roundedTopPath(bx2, yB, barW, hB, 2), fill:"var(--series-vector)", class:"bar", tabindex:"0"});
+      wireTip(barB, function(){ return d.case + " · " + d.shape; }, function(){ return opts.tipRows(d); });
+      svg.appendChild(barB);
+
+      var caseLabel = el("text", {x:bx+pairW/2, y:baseY+10, class:"case-label-sm", "text-anchor":"middle"});
+      caseLabel.textContent = d.case;
+      svg.appendChild(caseLabel);
+    });
+
+    var dividerX = xPositions[4] + pairW + normalGap/2;
+    svg.appendChild(el("line", {x1:dividerX, x2:dividerX, y1:marginT, y2:baseY, class:"divider"}));
+  }
+
+  // ---- Packing impact: scalar vs vector, head-to-head ----
+  (function(){
+    var container = document.getElementById("grid-packing-cmp");
+    var wideVB = "0 0 210 118";
+
+    renderPairedMiniBar(makeMiniSvg(container, "Time (ms, log)", wideVB), {
+      scaleType:"log", domainMin:0.1, max:200, ticks:[0.1,1,10,100],
+      tickFmt:function(v){ return v>=1 ? String(v) : v.toFixed(1); },
+      valueA:function(d){ return d.scalarMs; }, valueB:function(d){ return d.vectorMs; },
+      tipRows:function(d){ return [
+        ["Scalar", d.scalarMs.toFixed(2)+" ms"],
+        ["Vector", d.vectorMs.toFixed(2)+" ms"],
+        ["Pack gain", "+"+d.gain.toFixed(1)+"%"]
+      ]; }
+    });
+    renderPairedMiniBar(makeMiniSvg(container, "Share of total (%)", wideVB), {
+      max:50, ticks:[0,25,50], tickFmt:function(v){ return v.toFixed(0)+"%"; },
+      valueA:function(d){ return d.scalarPct; }, valueB:function(d){ return d.vectorPct; },
+      tipRows:function(d){ return [
+        ["Scalar", d.scalarPct.toFixed(1)+"% of total"],
+        ["Vector", d.vectorPct.toFixed(1)+"% of total"]
+      ]; }
+    });
+    renderPairedMiniBar(makeMiniSvg(container, "Bandwidth (GB/s)", wideVB), {
+      max:2.5, ticks:[0,1.25,2.5], tickFmt:function(v){ return v.toFixed(2); },
+      valueA:function(d){ return d.scalarBw; }, valueB:function(d){ return d.vectorBw; },
+      tipRows:function(d){ return [
+        ["Scalar", d.scalarBw.toFixed(3)+" GB/s"],
+        ["Vector", d.vectorBw.toFixed(3)+" GB/s"]
+      ]; }
+    });
+  })();
+
+  // ---- Compute throughput (full) ----
+  renderSingleBar(document.getElementById("chart-throughput"), {
+    max:14, ticks:[0,3.5,7,10.5,14], tickFmt:function(v){ return v.toFixed(1); },
+    value:function(d){ return d.kerGOPs; }, labelFmt:function(v){ return v.toFixed(1); },
+    tipRows:function(d){ return [["Throughput", d.kerGOPs.toFixed(2)+" GOPs"], ["Tile", d.mrnr], ["Jitter CV", d.cv+"%"]]; }
+  });
+
+  // ---- Compute counters mini-grid ----
+  (function(){
+    var container = document.getElementById("grid-counters");
+    var color = "var(--series-vector)";
+    renderSingleBar(makeMiniSvg(container, "IPC"), {
+      mini:true, max:1.0, ticks:[0,0.5,1.0], tickFmt:function(v){ return v.toFixed(1); },
+      value:function(d){ return d.ipc; }, color:function(){ return color; },
+      tipRows:function(d){ return [["Compute IPC", d.ipc.toFixed(2)]]; }
+    });
+    renderSingleBar(makeMiniSvg(container, "FLOPs / cycle"), {
+      mini:true, max:8, ticks:[0,4,8], tickFmt:function(v){ return v.toFixed(0); },
+      value:function(d){ return d.flopsCyc; }, color:function(){ return color; },
+      tipRows:function(d){ return [["FLOPs/cycle", d.flopsCyc.toFixed(2)]]; }
+    });
+    renderSingleBar(makeMiniSvg(container, "L1D read miss %"), {
+      mini:true, max:3, ticks:[0,1.5,3], tickFmt:function(v){ return v.toFixed(1); },
+      value:function(d){ return d.cL1R; }, color:function(){ return color; },
+      tipRows:function(d){ return [["L1D read miss", d.cL1R.toFixed(1)+"%"]]; }
+    });
+    renderSingleBar(makeMiniSvg(container, "L1D write miss %"), {
+      mini:true, max:3, ticks:[0,1.5,3], tickFmt:function(v){ return v.toFixed(1); },
+      value:function(d){ return d.cL1W; }, color:function(){ return color; },
+      tipRows:function(d){ return [["L1D write miss", d.cL1W.toFixed(1)+"%"]]; }
+    });
+    renderSingleBar(makeMiniSvg(container, "Stall (backend) %"), {
+      mini:true, max:60, ticks:[0,30,60], tickFmt:function(v){ return v.toFixed(0); },
+      value:function(d){ return d.cStall; }, color:function(){ return color; },
+      tipRows:function(d){ return [["Stall BE", d.cStall.toFixed(1)+"%"]]; }
+    });
+  })();
+
+  // ---- Jitter chart ----
+  (function(){
+    var svg = document.getElementById("chart-jitter");
+    var marginL = 34, marginR = 10, marginT = 26, plotH = 190;
+    var baseY = marginT + plotH;
+    var barW = 34, gap = 18, groupGap = 44;
+    var layout = computeLayout(barW, gap, groupGap, marginL);
+    var xPositions = layout.positions, plotRight = layout.right + marginR;
+    var scale = {type:"linear", max:14, baseY:baseY, plotH:plotH};
+    var ticks = [0,3.5,7,10.5,14];
+
+    ticks.forEach(function(v){
+      var y = valueToY(v, scale);
+      svg.appendChild(el("line", {x1:marginL-6, x2:plotRight-6, y1:y, y2:y, class:"grid-line"}));
+      var t = el("text", {x:marginL-9, y:y+3, class:"axis-label", "text-anchor":"end"});
+      t.textContent = v.toFixed(1);
+      svg.appendChild(t);
+    });
+    svg.appendChild(el("line", {x1:marginL-6, x2:plotRight-6, y1:baseY, y2:baseY, class:"baseline-line"}));
+
+    CASES.forEach(function(d, i){
+      var bx = xPositions[i] + barW/2;
+      var color = familyColor(d);
+      var yMin = valueToY(d.min, scale), yMax = valueToY(d.max, scale);
+      var whisker = el("line", {x1:bx, x2:bx, y1:yMin, y2:yMax, class:"whisker"});
+      svg.appendChild(whisker);
+
+      var yP5 = valueToY(d.p5, scale), yP95 = valueToY(d.p95, scale);
+      var bandH = Math.max(yP5 - yP95, 1.5);
+      var band = el("rect", {x:bx-7, y:yP95, width:14, height:bandH, rx:3, fill:color, class:"bar", tabindex:"0"});
+      wireTip(band, function(){ return d.case + " · " + d.shape; }, function(){ return [
+        ["Median", d.median.toFixed(2)+" GOPs"],
+        ["P5–P95", d.p5.toFixed(2)+" – "+d.p95.toFixed(2)],
+        ["Min–Max", d.min.toFixed(2)+" – "+d.max.toFixed(2)],
+        ["CV", d.cv+"%"]
+      ]; });
+      svg.appendChild(band);
+
+      var yMed = valueToY(d.median, scale);
+      var dot = el("circle", {cx:bx, cy:yMed, r:4.5, fill:"var(--text-primary)", stroke:"var(--surface-1)", class:"median-dot"});
+      svg.appendChild(dot);
+
+      var cvLabel = el("text", {x:bx, y:yMax-8, class:"value-label", "text-anchor":"middle"});
+      cvLabel.textContent = "CV " + d.cv + "%";
+      svg.appendChild(cvLabel);
+
+      var caseLabel = el("text", {x:bx, y:baseY+16, class:"case-label", "text-anchor":"middle"});
+      caseLabel.textContent = d.case;
+      svg.appendChild(caseLabel);
+    });
+
+    var dividerX = xPositions[4] + barW + gap/2;
+    svg.appendChild(el("line", {x1:dividerX, x2:dividerX, y1:marginT, y2:baseY, class:"divider"}));
+    var bertMid = (xPositions[0] + xPositions[4] + barW) / 2;
+    var sqMid = (xPositions[5] + xPositions[6] + barW) / 2;
+    var gl1 = el("text", {x:bertMid, y:baseY+32, class:"group-label", "text-anchor":"middle"});
+    gl1.textContent = "BERT"; svg.appendChild(gl1);
+    var gl2 = el("text", {x:sqMid, y:baseY+32, class:"group-label", "text-anchor":"middle"});
+    gl2.textContent = "SQUARE"; svg.appendChild(gl2);
+  })();
+
+  // ---- Reference comparison grouped bar ----
+  (function(){
+    var svg = document.getElementById("chart-reference");
+    var marginL = 34, marginR = 10, marginT = 26, plotH = 190;
+    var baseY = marginT + plotH;
+    var pairW = 34, barW = 15, pairGap = 4, normalGap = 20, clusterGap = 44;
+
+    var xPositions = [];
+    var x = 34;
+    for (var i = 0; i < CASES.length; i++){
+      if (i > 0) x += (CASES[i].family !== CASES[i-1].family) ? clusterGap : normalGap;
+      xPositions.push(x);
+      x += pairW;
+    }
+    var plotRight = x + marginR;
+    var scale = {type:"linear", max:14, baseY:baseY, plotH:plotH};
+    var ticks = [0,3.5,7,10.5,14];
+
+    ticks.forEach(function(v){
+      var y = valueToY(v, scale);
+      svg.appendChild(el("line", {x1:30, x2:plotRight-6, y1:y, y2:y, class:"grid-line"}));
+      var t = el("text", {x:marginL-9, y:y+3, class:"axis-label", "text-anchor":"end"});
+      t.textContent = v.toFixed(1);
+      svg.appendChild(t);
+    });
+    svg.appendChild(el("line", {x1:30, x2:plotRight-6, y1:baseY, y2:baseY, class:"baseline-line"}));
+
+    CASES.forEach(function(d, i){
+      var bx = xPositions[i];
+      var yCur = valueToY(d.kerGOPs, scale), hCur = baseY - yCur;
+      var pathCur = el("path", {d: roundedTopPath(bx, yCur, barW, hCur, 3), fill:"var(--series-vector)", class:"bar", tabindex:"0"});
+      var tipRows = function(){ return [
+        ["This run", d.kerGOPs.toFixed(2)+" GOPs"],
+        ["Reference", d.ref.toFixed(2)+" GOPs"],
+        ["Δ vs reference", (d.refDelta>=0?"+":"")+d.refDelta.toFixed(1)+"%"]
+      ]; };
+      wireTip(pathCur, function(){ return d.case + " · " + d.shape; }, tipRows);
+      svg.appendChild(pathCur);
+
+      var rx = bx + barW + pairGap;
+      var yRef = valueToY(d.ref, scale), hRef = baseY - yRef;
+      var pathRef = el("path", {d: roundedTopPath(rx, yRef, barW, hRef, 3), fill:"var(--series-reference)", class:"bar", tabindex:"0"});
+      wireTip(pathRef, function(){ return d.case + " · " + d.shape; }, tipRows);
+      svg.appendChild(pathRef);
+
+      var topY = Math.min(yCur, yRef);
+      var deltaLabel = el("text", {x:bx+barW+pairGap/2, y:topY-6, class:"delta-label", "text-anchor":"middle",
+        fill: d.refDelta >= 0 ? "var(--success)" : "var(--danger)"});
+      deltaLabel.textContent = (d.refDelta>=0?"+":"") + d.refDelta.toFixed(1) + "%";
+      svg.appendChild(deltaLabel);
+
+      var caseLabel = el("text", {x:bx+barW+pairGap/2, y:baseY+16, class:"case-label", "text-anchor":"middle"});
+      caseLabel.textContent = d.case;
+      svg.appendChild(caseLabel);
+    });
+
+    var dividerX = xPositions[4] + barW*2 + pairGap + clusterGap/2;
+    svg.appendChild(el("line", {x1:dividerX, x2:dividerX, y1:marginT, y2:baseY, class:"divider"}));
+    var bertMid = (xPositions[0] + xPositions[4] + barW*2) / 2;
+    var sqMid = (xPositions[5] + xPositions[6] + barW*2) / 2;
+    var gl1 = el("text", {x:bertMid, y:baseY+32, class:"group-label", "text-anchor":"middle"});
+    gl1.textContent = "BERT"; svg.appendChild(gl1);
+    var gl2 = el("text", {x:sqMid, y:baseY+32, class:"group-label", "text-anchor":"middle"});
+    gl2.textContent = "SQUARE"; svg.appendChild(gl2);
+  })();
+
+  // ---- Results table ----
+  (function(){
+    var tbody = document.getElementById("results-tbody");
+    var lastFamily = null;
+    CASES.forEach(function(d){
+      if (d.family !== lastFamily){
+        var groupRow = document.createElement("tr");
+        groupRow.className = "group-row";
+        var td = document.createElement("td");
+        td.colSpan = 18;
+        td.textContent = d.family === "BERT" ? "BERT-layer shapes" : "Square GEMM shapes";
+        groupRow.appendChild(td);
+        tbody.appendChild(groupRow);
+        lastFamily = d.family;
+      }
+      var tr = document.createElement("tr");
+      var cells = [
+        [d.case, null],
+        [d.shape, null],
+        [d.mrnr, null],
+        [d.scalarMs.toFixed(2), null],
+        [d.vectorMs.toFixed(2), null],
+        [d.computeMs.toFixed(2), null],
+        [d.scalarPct.toFixed(1)+"%", null],
+        [d.vectorPct.toFixed(1)+"%", null],
+        ["+"+d.gain.toFixed(1)+"%", "pos"],
+        [d.scalarBw.toFixed(3), null],
+        [d.vectorBw.toFixed(3), null],
+        [d.kerGOPs.toFixed(2), null],
+        [d.cv+"%", null],
+        [d.ipc.toFixed(2), null],
+        [d.flopsCyc.toFixed(2), null],
+        [d.ref.toFixed(2), null],
+        [(d.refDelta>=0?"+":"")+d.refDelta.toFixed(1)+"%", d.refDelta>=0?"pos":"neg"]
+      ];
+      cells.forEach(function(c){
+        var td = document.createElement("td");
+        td.textContent = c[0];
+        if (c[1]) td.classList.add(c[1]);
+        tr.appendChild(td);
+      });
+      var noteTd = document.createElement("td");
+      noteTd.textContent = d.note;
+      tr.appendChild(noteTd);
+      tbody.appendChild(tr);
+    });
+  })();
+
+})();
+</script>

@@ -169,12 +169,12 @@ STAMP = re.compile(r"_(\d{4}-\d{2}-\d{2}_\d{6})$")
 PIN_LINE = re.compile(r"^\s*cpu pin\s*:\s*(\S+)", re.MULTILINE)
 
 
-def _stamp(d: Path) -> datetime | None:
+def stamp_of(d: Path) -> datetime | None:
     found = STAMP.search(d.name)
     return datetime.strptime(found.group(1), "%Y-%m-%d_%H%M%S") if found else None
 
 
-def _pin(d: Path) -> str | None:
+def pin_of(d: Path) -> str | None:
     """The core `d` was pinned to ("none" if unpinned), or None if it never said."""
     try:
         found = PIN_LINE.search((d / "provenance.txt").read_text())
@@ -183,7 +183,7 @@ def _pin(d: Path) -> str | None:
     return found.group(1) if found else None
 
 
-def _pin_words(pin: str | None) -> str:
+def pin_words(pin: str | None) -> str:
     return "unknown" if pin is None else "unpinned" if pin == "none" else f"cpu {pin}"
 
 
@@ -195,10 +195,10 @@ def conditions(result_dir: Path, runs: list[Path]) -> list[str]:
     """
     lines: list[str] = []
 
-    ref_time = _stamp(result_dir)
+    ref_time = stamp_of(result_dir)
     gaps = [
         abs((ref_time - t).total_seconds()) / 3600
-        for t in map(_stamp, runs)
+        for t in map(stamp_of, runs)
         if ref_time is not None and t is not None
     ]
     if gaps:
@@ -213,12 +213,12 @@ def conditions(result_dir: Path, runs: list[Path]) -> list[str]:
     else:
         lines.append("Gap      : unknown (no timestamp in a run dir name)")
 
-    ref_pin = _pin(result_dir)
-    our_pins = {_pin(r) for r in runs}
+    ref_pin = pin_of(result_dir)
+    our_pins = {pin_of(r) for r in runs}
     lines.append(
         "Pinning  : ours "
-        + ", ".join(sorted(_pin_words(p) for p in our_pins))
-        + f"; reference {_pin_words(ref_pin)}"
+        + ", ".join(sorted(pin_words(p) for p in our_pins))
+        + f"; reference {pin_words(ref_pin)}"
     )
     if ref_pin is None or None in our_pins:
         unknown = [n for n, unk in (("ours", None in our_pins), ("reference", ref_pin is None)) if unk]

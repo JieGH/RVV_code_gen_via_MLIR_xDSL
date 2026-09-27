@@ -1,0 +1,106 @@
+Issue #30 — reference, direct and unwrapped. B1 (layer 1, 1024x384x1024) + B5 (layer 5,
+1024x384x4096), both MR32 NR6 OPT=LDX GATHER=2(macc) SWAP=0, RUN_MODE=FAMILY_EXO.
+
+Dataset (reference's own #layer m n k Flops format, Flops column unused by the parser):
+#layer	m	n	k	Flops
+1	1024	384	1024	0
+5	1024	384	4096	0
+
+============================================================
+ Board: jbpi  (staged at /nfs/gap/jlei/issue30_ref_direct_check_jbpi)
+============================================================
+
+--- build: make MR=32 NR=6 OPT=LDX GATHER=2 SWAP=0 SIMD_MODE=RVV_EXO RUN_MODE=FAMILY_EXO INCLUDE=-I../blis_shim LIBS=-lm ---
+gcc  -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -c ../kernels/RVV_256_LDX/fp32/32x6///loadAB/macc//exo_matrix_RVV_fp32.c -o build/exo_matrix_RVV_fp32.o
+gcc  -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -c ../kernels/RVV_256_LDX/fp32/32x6///loadAB/macc//kernels_RVV_32x6_fp32.c -o build/kernels_RVV_32x6_fp32.o
+gcc  -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -c -o build/gemm_blis.o ./src/gemm_blis.c -I../blis_shim -lm -I/nfs/gap/jlei/issue30_ref_direct_check_jbpi/gemm_blis_family/../kernels/RVV_256_LDX/fp32/32x6///loadAB/macc/
+gcc  -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -c -o build/inutils.o ./src/inutils.c -I../blis_shim -lm -I/nfs/gap/jlei/issue30_ref_direct_check_jbpi/gemm_blis_family/../kernels/RVV_256_LDX/fp32/32x6///loadAB/macc/
+gcc  -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -c -o build/sutils.o ./src/sutils.c -I../blis_shim -lm -I/nfs/gap/jlei/issue30_ref_direct_check_jbpi/gemm_blis_family/../kernels/RVV_256_LDX/fp32/32x6///loadAB/macc/
+gcc  -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -c -o build/test_gemm.o ./src/test_gemm.c -I../blis_shim -lm -I/nfs/gap/jlei/issue30_ref_direct_check_jbpi/gemm_blis_family/../kernels/RVV_256_LDX/fp32/32x6///loadAB/macc/
+In file included from ./src/test_gemm.c:42:
+./src/../modelLevel/model_level.h:18: warning: "min" redefined
+   18 | #define min(a,b)     ( (a) > (b) ? (b) : (a) )
+      | 
+In file included from ./src/test_gemm.c:39:
+./src/gemm_blis.h:48: note: this is the location of the previous definition
+   48 | #define min(a,b) (((a)<(b))?(a):(b))
+      | 
+gcc  -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -c -o build/model_level.o ./modelLevel/model_level.c -I../blis_shim -lm -I/nfs/gap/jlei/issue30_ref_direct_check_jbpi/gemm_blis_family/../kernels/RVV_256_LDX/fp32/32x6///loadAB/macc/
+gcc -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -o build/test_gemm.x build/exo_matrix_RVV_fp32.o build/kernels_RVV_32x6_fp32.o build/gemm_blis.o build/inutils.o build/sutils.o build/test_gemm.o build/model_level.o -lm
+
+--- run: taskset -c 0 ./run_gemm.sh bert_b1_b5.dat result.csv ---
+ ===========================================================================================
+ |                                  [0mRUN CONFIGURATION [0m                                     
+ ===========================================================================================
+ |  [*] Data Type    :  [0mFloat[0m                                                              
+ |  [*] Mode Selected:  [0mALG+EXO [0m                                                              
+ |  [*] SIMD Selected:  [0mUnknown[0m                                                             
+ |  [*] Dataset      :  [0mbert_b1_b5.dat          [0m                                           
+ |  [*] Output       :  [0mresult.csv            [0m                                           
+ |  [*] MR           :  [0m32   [0m                                                              
+ |  [*] NR           :  [0m6    [0m                                                              
+ |  [*] Tmin         :  [0m3.00 [0m                                                              
+ ------------------------------------------------------------------------------------------
+
+ ===========================================================================================================
+ |                                   [0mDRIVER FOR THE EVALUATION OF GEMM[0m                                     |
+ ===========================================================================================================
+ |  [0mOrder  Trans      M       N      K     MC      NC     KC[0m   |    [0mTime      GFLOPS      Error[0m  |   [0mPASS[0m  |
+ -----------------------------------------------------------------------------------------------------------
+ |   CCC    NN       1024    384   1024    768    384    128   |  1.13e-01   7.15e+00  -1.00e+00 |[0m    -    [0m|
+ |   CCC    NN       1024    384   4096    768    384    128   |  4.57e-01   7.05e+00  -1.00e+00 |[0m    -    [0m|
+ ==========================================================================================
+
+#l;m;n;k;Gflops
+1;1024;384;1024;7.15e+00
+5;1024;384;4096;7.05e+00
+
+============================================================
+ Board: jbpi2  (staged at /nfs/gap/jlei/issue30_ref_direct_check_jbpi2)
+============================================================
+
+--- build: make MR=32 NR=6 OPT=LDX GATHER=2 SWAP=0 SIMD_MODE=RVV_EXO RUN_MODE=FAMILY_EXO INCLUDE=-I../blis_shim LIBS=-lm ---
+gcc  -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -c ../kernels/RVV_256_LDX/fp32/32x6///loadAB/macc//exo_matrix_RVV_fp32.c -o build/exo_matrix_RVV_fp32.o
+gcc  -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -c ../kernels/RVV_256_LDX/fp32/32x6///loadAB/macc//kernels_RVV_32x6_fp32.c -o build/kernels_RVV_32x6_fp32.o
+gcc  -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -c -o build/gemm_blis.o ./src/gemm_blis.c -I../blis_shim -lm -I/nfs/gap/jlei/issue30_ref_direct_check_jbpi2/gemm_blis_family/../kernels/RVV_256_LDX/fp32/32x6///loadAB/macc/
+gcc  -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -c -o build/inutils.o ./src/inutils.c -I../blis_shim -lm -I/nfs/gap/jlei/issue30_ref_direct_check_jbpi2/gemm_blis_family/../kernels/RVV_256_LDX/fp32/32x6///loadAB/macc/
+gcc  -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -c -o build/sutils.o ./src/sutils.c -I../blis_shim -lm -I/nfs/gap/jlei/issue30_ref_direct_check_jbpi2/gemm_blis_family/../kernels/RVV_256_LDX/fp32/32x6///loadAB/macc/
+gcc  -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -c -o build/test_gemm.o ./src/test_gemm.c -I../blis_shim -lm -I/nfs/gap/jlei/issue30_ref_direct_check_jbpi2/gemm_blis_family/../kernels/RVV_256_LDX/fp32/32x6///loadAB/macc/
+In file included from ./src/test_gemm.c:42:
+./src/../modelLevel/model_level.h:18: warning: "min" redefined
+   18 | #define min(a,b)     ( (a) > (b) ? (b) : (a) )
+      | 
+In file included from ./src/test_gemm.c:39:
+./src/gemm_blis.h:48: note: this is the location of the previous definition
+   48 | #define min(a,b) (((a)<(b))?(a):(b))
+      | 
+gcc  -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -c -o build/model_level.o ./modelLevel/model_level.c -I../blis_shim -lm -I/nfs/gap/jlei/issue30_ref_direct_check_jbpi2/gemm_blis_family/../kernels/RVV_256_LDX/fp32/32x6///loadAB/macc/
+gcc -O3 -march=rv64gcvzfh -mabi=lp64d -Wfatal-errors  -DCHECK -DMR=32 -DNR=6 -DKR=1 -DloadAB -Dmacc -DFAMILY_EXO -DRVV_EXO -DFP32 -DLDX -o build/test_gemm.x build/exo_matrix_RVV_fp32.o build/kernels_RVV_32x6_fp32.o build/gemm_blis.o build/inutils.o build/sutils.o build/test_gemm.o build/model_level.o -lm
+
+--- run: taskset -c 0 ./run_gemm.sh bert_b1_b5.dat result.csv ---
+ ===========================================================================================
+ |                                  [0mRUN CONFIGURATION [0m                                     
+ ===========================================================================================
+ |  [*] Data Type    :  [0mFloat[0m                                                              
+ |  [*] Mode Selected:  [0mALG+EXO [0m                                                              
+ |  [*] SIMD Selected:  [0mUnknown[0m                                                             
+ |  [*] Dataset      :  [0mbert_b1_b5.dat          [0m                                           
+ |  [*] Output       :  [0mresult.csv            [0m                                           
+ |  [*] MR           :  [0m32   [0m                                                              
+ |  [*] NR           :  [0m6    [0m                                                              
+ |  [*] Tmin         :  [0m3.00 [0m                                                              
+ ------------------------------------------------------------------------------------------
+
+ ===========================================================================================================
+ |                                   [0mDRIVER FOR THE EVALUATION OF GEMM[0m                                     |
+ ===========================================================================================================
+ |  [0mOrder  Trans      M       N      K     MC      NC     KC[0m   |    [0mTime      GFLOPS      Error[0m  |   [0mPASS[0m  |
+ -----------------------------------------------------------------------------------------------------------
+ |   CCC    NN       1024    384   1024    768    384    128   |  1.12e-01   7.18e+00  -1.00e+00 |[0m    -    [0m|
+ |   CCC    NN       1024    384   4096    768    384    128   |  4.50e-01   7.16e+00  -1.00e+00 |[0m    -    [0m|
+ ==========================================================================================
+
+#l;m;n;k;Gflops
+1;1024;384;1024;7.18e+00
+5;1024;384;4096;7.16e+00
+

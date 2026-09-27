@@ -4,11 +4,8 @@ import shutil
 import subprocess
 import sys
 
-# Add parent directories to Python path so we can import the old modules
+# tests/, for test_codeGeneration's build_gemm and BetaMode.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "../gemm_blis_xdsl"))
-)
 
 from config import BLISProjectConfig
 from pack_builder import build_pack_module

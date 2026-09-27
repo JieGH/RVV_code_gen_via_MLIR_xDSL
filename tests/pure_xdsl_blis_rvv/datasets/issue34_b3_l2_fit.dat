@@ -1,0 +1,11 @@
+# Why B3 (64x384x384) is unstable (issue #34 write-up, "why these layers are not stable").
+# B3's B is K x N = 384 x 384 floats = 576 KiB, over the 512 KiB L2; B2 (384x384x64,
+# stable) has a 96 KiB B. Hypothesis: whether B survives in L2 from one rep to the next
+# varies, and the strided vector pack_CB is far more sensitive to those misses than the
+# scalar one. These rows keep M = 64 (reuse mc/mr = 4, as in B3) and shrink B under L2.
+# layer     M     N     K
+B3          64    384   384
+B3_N320     64    320   384
+B3_N256     64    256   384
+B3_K256     64    384   256
+B3_N192     64    192   384

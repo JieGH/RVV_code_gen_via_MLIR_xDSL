@@ -1,0 +1,2 @@
+▶ B2 (384x384x64)        | best variant 16x9 [16 rows x 9 columns of C per tile] | 10.62 GOPs by mean time [whole GEMM call, packing included] | 10.64 GOPs median rep | 5625 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:384 nc:384 kc:64)
+▶ B3 (64x384x384)        | best variant 16x9 [16 rows x 9 columns of C per tile] | 7.53 GOPs by mean time [whole GEMM call, packing included] | 7.56 GOPs median rep | 3988 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:64 nc:384 kc:128)

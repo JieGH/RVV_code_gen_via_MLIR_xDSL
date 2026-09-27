@@ -1,0 +1,12 @@
+[
+    // Issue #26: the pack-swap experiment on B2, B3 and B4 only. Use with
+    //   run_pack_swap.sh --config config_pack_swap_b2b3b4.json ...
+    // or compile_macro_bench.sh --config config_pack_swap_b2b3b4.json --scalar-pack ...
+    // Projects run in this order: B2 and B3 (MR16_NR15, both from issue2_bert_16x15.dat),
+    // then B4 (MR32_NR7). The pinnings are the ones config.json ships.
+    // B2 and B3 are small enough for the scalar oracle, so their correctness check stays on;
+    // B4's is O(m*n*k) at 1.6 G multiply-adds, so it is skipped (correctness of the scalar
+    // packer over every shipped RR is test_pack_correctness.py's job).
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue2_bert_16x15.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["issue26_b4.dat"], true, 5]
+]

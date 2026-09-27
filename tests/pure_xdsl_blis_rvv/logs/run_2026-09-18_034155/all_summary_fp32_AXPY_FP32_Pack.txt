@@ -1,0 +1,16 @@
+=== fp32_AXPY_FP32_Pack_vlen256_MR16NR15 ===
+▶ B2 (384x384x64)        | 16x15  13.08 KerGOPs [min:11.7, p5:12.9, p95:13.1, max:13.2, iqr:0.2, s:0.2, CV:1%, mx/md:1.01] |  2.5 GB/s Pk |  1.4 GB/s Scl | IPC:0.97 | ⏭️ SKIP (mc:384 nc:384 kc:64)
+▶ B3 (64x384x384)        | 16x15   9.38 KerGOPs [min:8.1, p5:9.1, p95:12.3, max:12.6, iqr:2.0, s:1.1, CV:12%, mx/md:1.34] |  0.7 GB/s Pk |  0.8 GB/s Scl | IPC:0.75 | ⏭️ SKIP (mc:64 nc:128 kc:128)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR32NR6 ===
+▶ B1 (1024x384x1024)     | 32x6    8.08 KerGOPs [min:8.0, p5:8.0, p95:8.1, max:8.2, iqr:0.0, s:0.0, CV:0%, mx/md:1.01] |  0.3 GB/s Pk |  0.3 GB/s Scl | IPC:0.57 | ⏭️ SKIP (mc:768 nc:384 kc:128)
+▶ B5 (1024x384x4096)     | 32x6    8.02 KerGOPs [min:7.9, p5:7.9, p95:8.1, max:8.1, iqr:0.0, s:0.0, CV:1%, mx/md:1.01] |  0.3 GB/s Pk |  0.3 GB/s Scl | IPC:0.56 | ⏭️ SKIP (mc:768 nc:384 kc:128)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR32NR7 ===
+▶ B4 (4096x384x1024)     | 32x7    8.17 KerGOPs [min:8.2, p5:8.2, p95:8.2, max:8.2, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  0.3 GB/s Pk |  0.2 GB/s Scl | IPC:0.56 | ⏭️ SKIP (mc:768 nc:384 kc:128)
+▶ S1 (1000x1000x1000)    | 32x7    8.54 KerGOPs [min:8.5, p5:8.5, p95:8.6, max:8.6, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  0.4 GB/s Pk |  0.3 GB/s Scl | IPC:0.60 | ⏭️ SKIP (mc:768 nc:1000 kc:128)
+▶ S2 (2000x2000x2000)    | 32x7    8.07 KerGOPs [min:8.1, p5:8.1, p95:8.1, max:8.1, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  0.3 GB/s Pk |  0.3 GB/s Scl | IPC:0.56 | ⏭️ SKIP (mc:768 nc:1024 kc:128)
+▶ S3 (3000x3000x3000)    | 32x7    8.39 KerGOPs [min:8.4, p5:8.4, p95:8.4, max:8.4, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  0.3 GB/s Pk |  0.3 GB/s Scl | IPC:0.57 | ⏭️ SKIP (mc:768 nc:1024 kc:128)
+▶ S4 (4000x4000x4000)    | 32x7    8.07 KerGOPs [min:8.0, p5:8.0, p95:8.1, max:8.1, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  0.3 GB/s Pk |  0.2 GB/s Scl | IPC:0.55 | ⏭️ SKIP (mc:768 nc:1024 kc:128)
+▶ S5 (5000x5000x5000)    | 32x7    8.26 KerGOPs [min:8.2, p5:8.2, p95:8.3, max:8.3, iqr:0.0, s:0.0, CV:0%, mx/md:1.00] |  0.3 GB/s Pk |  0.3 GB/s Scl | IPC:0.57 | ⏭️ SKIP (mc:768 nc:1024 kc:128)
+

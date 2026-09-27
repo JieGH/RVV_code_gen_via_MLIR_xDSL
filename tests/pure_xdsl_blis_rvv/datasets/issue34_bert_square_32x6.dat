@@ -1,0 +1,11 @@
+# Issue #34 §3.2: BERT shapes against Square shapes on one tile, MR32_NR6 (the tile B1/B5
+# ship on, spill-free, issue #6). There was no Square number at 32x6 before this file.
+# B4 and B4_M4064 repeat the M = 4096 aliasing check on this tile; B1/B5 have M = 1024
+# (ldc 4 KiB, half the L1 set period: 3 C-tile lines per set, under the 4 ways).
+# layer     M      N     K
+B1          1024   384   1024
+B5          1024   384   4096
+B4          4096   384   1024
+B4_M4064    4064   384   1024
+S1          1000   1000  1000
+S2          2000   2000  2000

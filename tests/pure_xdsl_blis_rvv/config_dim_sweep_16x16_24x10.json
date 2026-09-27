@@ -1,0 +1,17 @@
+[
+    // Issue #33 plan (.scratch/issues/0018-16x16-24x10-overflow-vs-reference-eval-plan.md), section
+    // 4.2: adds the two shapes this plan investigates. Neither exists in the shipped config.json --
+    // 16x16 is a commented-out pre-reference-protocol row there, 24x10 doesn't exist in the current
+    // schema at all (it only ever ran as MR24_NR10 under a since-removed JSON schema, per the
+    // 2026-07-16 raw_results.txt log). Isolated in its own file, following [[0017]] section 4.2's
+    // pattern -- not touching the shipped config.json/pj_gen (project_pjgen_regenerate_before_commit).
+    //
+    // Fixed 2048x2048x2048 fp32 input (datasets/2048_cube.dat) for both shapes, per the plan's
+    // section 1 ask. skip_ref_run=true and a reduced iteration count keep the scalar oracle
+    // (O(m*n*k), ~8.6e9 ops here) and board time bounded -- same reduced-cost knobs the other
+    // large-shape rows in this project use (e.g. B4's issue26_b4.dat row in config.json).
+    //
+    // Use with: run_pack_swap.sh --config config_dim_sweep_16x16_24x10.json --no-nc-overrides ...
+    ["fp32", "AXPY_FP32_Pack", [16, 16], 256, "jbpi2", ["2048_cube.dat"], true, 5],
+    ["fp32", "AXPY_FP32_Pack", [24, 10], 256, "jbpi2", ["2048_cube.dat"], true, 5]
+]

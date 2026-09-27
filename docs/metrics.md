@@ -206,6 +206,32 @@ be noisier" guess. The 32x6 default runs used `iterations=30`, not the
 | `N_Reps` | Reps the RVV timing loop ran: `iterations` under the warm-up protocol, whatever fit in `tmin` under the reference protocol (issue #27) |
 | `Status` | `PASS` (matched the scalar reference), `FAIL` (mismatch beyond tolerance), or `SKIP` (`skip_ref_run: true`, so no reference was computed) |
 
+## Vector pack against scalar pack, end to end (issue #26)
+
+`Vector_Pack_Time_ms` and `Scalar_Pack_Time_ms` (issue #7) time each packer alone. They do
+not say whether the whole GEMM is faster with one or the other, because the packer also
+decides what is in cache when the microkernel starts. `--scalar-pack` answers that: every
+timed call packs with the scalar packer, and the microkernel loop is unchanged. (The
+reference design's own packers are plain scalar C loops, so this is also the reference's
+packing strategy on our microkernel.)
+
+- **Own logs.** A scalar-live run writes `raw_*_noinstr_refproto_scalarpack.txt` (and
+  `summary_`, `perf_`, `results_`), with `_no_nc_override` after it when that flag is set. It
+  never shares a file with a vector-live run.
+- **The number to read** is `RVV_Time_ms` (or the `by mean time` GOPs the console prints)
+  from the uninstrumented build: the outer wall clock of a whole GEMM call, packing
+  included, whichever packer is live. There is no scalar-pack pass to read a compute time
+  from: the reference protocol has none (issue #27).
+- **In an instrumented scalar-live run** (`--instr --scalar-pack`) the column
+  `Vector_Pack_Time_ms` holds the *scalar* packer's time, because it is the live one, and
+  `Compute_Time_ms` is the microkernel time after a scalar pack. Comparing that
+  `Compute_Time_ms` with a vector-live instrumented run shows whether the pack changes what
+  is warm in cache. Instrumented numbers are never quoted against the reference.
+- **`run_pack_swap.sh`** runs vector, scalar, scalar, vector on one pinned core over B3 and
+  S1 (`config_pack_swap.json`); `compare_pack_swap.py` prints e2e GOPs for each side, the
+  difference, and the spread between repeats of the same side. A difference smaller than that
+  spread is called "within noise".
+
 ## Hardware perf counters (perf log, issue #8)
 
 Supplements, never replaces, the timing above — every column here is read from one

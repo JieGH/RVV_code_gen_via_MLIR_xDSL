@@ -1,0 +1,21 @@
+# Issue #34: why B4 (4096x384x1024) runs slower than the Square family on the same 32x7
+# tile. All rows pinned to MR32_NR7. Each group turns one shape property on or off:
+#
+#  - B4_M*: M moved off 4096 by one mr tile (N, K kept). The driver sets lda = ldc = M, so
+#    M = 4096 puts every column of a C tile 16 KiB apart, a multiple of the L1's 8 KiB
+#    set period (shape_breakdown.py). 4064 and 4128 do not.
+#  - B4_N*: N grown from 384 (M, K kept), the plan's §3.4 N-only sweep. nc goes from
+#    N=384 up to the model's 1024, so each packed A panel serves more columns.
+#  - S1_M2000 / S1_M2048: the same aliasing turned ON for a square-like shape (2048 is a
+#    power of two, 2000 is not), with N = K = 1000 as in S1.
+#  - S1: same-session anchor against the #31 numbers.
+# layer     M      N     K
+B4          4096   384   1024
+B4_M4064    4064   384   1024
+B4_M4128    4128   384   1024
+B4_N1024    4096   1024  1024
+B4_N2048    4096   2048  1024
+B4_N4096    4096   4096  1024
+S1          1000   1000  1000
+S1_M2000    2000   1000  1000
+S1_M2048    2048   1000  1000

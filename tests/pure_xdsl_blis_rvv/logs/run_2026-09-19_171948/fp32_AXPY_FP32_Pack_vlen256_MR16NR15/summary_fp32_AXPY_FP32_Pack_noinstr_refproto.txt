@@ -1,0 +1,2 @@
+▶ B2 (384x384x64)        | 16x15  12.72 KerGOPs [min:10.3, p5:12.5, p95:12.8, max:12.8, iqr:0.1, s:0.1, CV:1%, mx/md:1.01] |  nan GB/s Pk |  nan GB/s Scl | IPC:nan | ⏭️ SKIP (mc:384 nc:384 kc:64)
+▶ B3 (64x384x384)        | 16x15   5.26 KerGOPs [min:4.0, p5:4.9, p95:9.0, max:9.2, iqr:3.7, s:1.7, CV:33%, mx/md:1.76] |  nan GB/s Pk |  nan GB/s Scl | IPC:nan | ⏭️ SKIP (mc:64 nc:128 kc:128)

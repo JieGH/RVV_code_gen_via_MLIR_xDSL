@@ -1,0 +1,276 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=1.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+\setlist{nosep,leftmargin=1.3em}
+\titlespacing*{\section}{0pt}{1.1ex}{0.6ex}
+\titlespacing*{\subsection}{0pt}{0.9ex}{0.4ex}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45ex}
+\renewcommand{\arraystretch}{1.08}
+\newcommand{\ok}{\textcolor{green!45!black}{\textbf{holds}}}
+\newcommand{\weak}{\textcolor{orange!80!black}{\textbf{weak}}}
+\newcommand{\bad}{\textcolor{red!70!black}{\textbf{does not hold}}}
+\newcommand{\iss}[1]{\href{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/#1}{\##1}}
+
+\title{\vspace{-1.2cm}\textbf{Does packing or tile size limit performance?}\\[2pt]
+\large Brief and audit of issues \iss{31}, \iss{32}, \iss{33}, \iss{34}}
+\author{RVV\_code\_gen\_via\_MLIR\_xDSL, \texttt{pure-xdsl} branch}
+\date{27 September 2026}
+
+\begin{document}
+\maketitle
+\vspace{-0.8cm}
+
+\paragraph{Scope.} Four issues, run 24--26 September 2026 on the BananaPi M2 Pro boards
+(\texttt{jbpi}, \texttt{jbpi2}; VLEN=256, 32 vector registers). \#31--\#33 were written by earlier
+model versions and are audited here against their raw logs; \#34 is summarised. Unless marked
+otherwise, every number is from the uninstrumented build (\texttt{INSTRUMENTED=0}), reference protocol,
+\texttt{--no-nc-overrides --tmin 10}, in GOPs by mean time. Since issue \#13 our GOPs include packing,
+like the reference's.
+
+\section{Bottom line}
+\begin{enumerate}
+  \item \textbf{Tile size only matters once the tile needs more than 32 vector registers.} Tiles
+  over the limit (16x16: 34, 32x8: 36) lose 38--45\%. At or under 32, speed changes smoothly with the
+  tile and the shipped tiles (16x15, 32x7) are at or near the best. 32x6 and 32x7 are tied for B4:
+  which one wins changes from launch to launch.
+  \item \textbf{Our xDSL code generation is not worse than the reference's Exo kernels.} At the same
+  tile both have the same register count and exactly the same number of spills (reproduced for this
+  audit). Swapping the reference's kernel into our harness changes speed by less than launch noise.
+  \item \textbf{Packing matters, in two separate ways.}
+  (a) \emph{How much is packed per flop}: a small N (384, all BERT layers) means each packed block of A
+  serves few tiles. This costs B4 about 10\% against square shapes (\#34).
+  (b) \emph{Which packer}: only B3 (M=64) is sensitive. There the scalar packer beats the vector packer
+  by 21--78\%, and B3 switches between two speeds inside one run. On B2, B4 and the square shapes the
+  vector packer is equal or up to 6\% ahead; at 2048\textsuperscript{3} the packer makes no difference.
+  \item \textbf{Measurement limits are larger than several of the effects reported.} Core 0 runs
+  5--10\% slower (it takes the device interrupts). The same binary moves 1--5\% between launches.
+  Any difference under about 3\% between two separate launches is not a finding.
+  \item \textbf{Still open:} why the vector packer is slow on B3, and whether to put back B3's
+  \texttt{nc}=128 override, which the uncommitted \texttt{config.json} change from \#32 removed.
+\end{enumerate}
+
+\section{What each issue asked, and the audited answer}
+\begin{tabularx}{\linewidth}{@{}l X X l@{}}
+\toprule
+& \textbf{Question} & \textbf{Answer (after audit)} & \textbf{Verdict} \\
+\midrule
+\#31 & Does 32x7 (32 of 32 registers, none spare) slow B4 down? & No. But \#31's own evidence was
+indirect; the direct test came later in \#32/\#34. & \ok, weakly argued \\
+\#32 & How do B3 (MR=16, NR 8--16) and B4 (MR=32, NR 4--8) change with NR, for both packers? & Cliff
+only above 32 registers; shipped tiles fine; B3 packer effect large. & \ok\ for tiles; ``32x6 is
+faster'' \weak \\
+\#33 & Does xDSL over-use registers at 16x16 / 24x10 compared with the reference? & No: identical
+spills, same speed within noise. & \ok; small \% over-read \\
+\#34 & Why is B4 slower than the square shapes at the same tile? & Small N (more packing per flop,
+$\sim$10\%) and M=4096 being a power of two (2--5\%). & summarised, not audited \\
+\bottomrule
+\end{tabularx}
+
+\section{Evidence by theme}
+
+\subsection{Tile size and register pressure}
+Live vector registers in our kernel are $(MR/8)\times(1+NR)$: one register per 8 rows of A, plus the
+C tile. The \#32 sweep (night run, 25 Sept, core 0, two launches per packer, mean shown) gives:
+
+\begin{center}\small
+\begin{tabular}{@{}l c c c c c c c@{}}
+\toprule
+\textbf{MR=16} (NR) & 16 & \textbf{15} (shipped) & 14 & 13 & 12 & 9 & 8 \\
+live registers & \cellcolor{red!12}34 & 32 & 30 & 28 & 26 & 20 & 18 \\
+\midrule
+B2 vector, \texttt{jbpi} & \cellcolor{red!12}8.00 & \textbf{12.81} & 12.15 & 12.24 & 12.20 & 10.92 & 10.25 \\
+B3 vector, \texttt{jbpi} & \cellcolor{red!12}3.11 & 5.28 & 4.57 & \textbf{5.55} & 4.98 & 4.33 & 3.93 \\
+B3 scalar, \texttt{jbpi} & \cellcolor{red!12}4.86 & \textbf{8.25} & 7.30 & 7.02 & 6.03 & 7.48 & 5.52 \\
+\midrule
+\textbf{MR=32} (NR) & 8 & \textbf{7} (shipped) & 6 & 5 & 4 & & \\
+live registers & \cellcolor{red!12}36 & 32 & 28 & 24 & 20 & & \\
+\midrule
+B4 vector, \texttt{jbpi} / \texttt{jbpi2} & \cellcolor{red!12}4.43 / 4.38 & 7.84 / 7.92 & \textbf{8.05 / 7.99} & 7.59 / 7.59 & 6.92 / 6.98 & & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{itemize}
+  \item Over 32 registers, speed drops 38--45\% on every shape and both packers. At or under 32 there
+  is no sign of a hidden cost from having no spare register: speed rises with NR up to the limit.
+  \item \textbf{32x6 against 32x7 for B4.} In \#32, 32x6 was ahead in all 8 pairs (2 boards $\times$
+  2 runs $\times$ 2 packers), by 0.5--3.3\%. All 8 were on core 0. In \#34, on core 4 32x7 was ahead
+  by 6\%, and on core 2 32x6 was ahead by 1\%. So the two tiles are tied within launch noise; the
+  claim ``32x6 is slightly faster'' is not established.
+  \item 16x16 and 24x10 at 2048\textsuperscript{3} (\#33) run at 3.9 and 6.3 GOPs, against about 9
+  for 32x7 on the 2000\textsuperscript{3} square. Over-budget tiles are a poor choice on both designs.
+\end{itemize}
+
+\subsection{Our code generation against the reference}
+\begin{itemize}
+  \item \textbf{Register counts match.} The reference ships three kernel styles per tile: \texttt{bcast},
+  \texttt{gather}, \texttt{macc} (load order AB/BA does not change the count). Only \texttt{macc} is
+  like ours: 34 registers at 16x16 and 33 at 24x10, the same as ours. The reference's hidden 32x7
+  kernel (found inside its 32x8 file) holds 32, the same as ours.
+  \item \textbf{Spill counts match exactly.} Recompiled for this audit
+  (\texttt{-O3 -march=rv64gcv}): spill stores + reloads are 6+5 (16x16, $\beta$=1), 6+6 ($\beta$=0),
+  2+2 and 2+2 (24x10), for both designs. Instruction counts are within 4\% (ours slightly fewer). The
+  extra copy statements in our generated C++ are removed by the compiler and cost nothing.
+  \item \textbf{Speed with only the kernel swapped} (our harness and packer, reference kernel,
+  bit-exact checked): 16x16 3.92 vs 3.91, 24x10 6.35 vs 6.26. B4 at 32x7 on core 4: 7.72 vs 7.74 and
+  7.85. All inside launch noise. The \#31 core-0 result (ours 7.1\% faster) did not repeat on core 4.
+  \item \textbf{Head-to-head with the reference's own harness} (\texttt{macc}): ours +7.4\% at 16x16,
+  $-$1.6\% at 24x10. The reference's \texttt{bcast} (50 and 43 registers) runs 4.4$\times$ slower than
+  its \texttt{macc}, which shows what real register over-use costs.
+\end{itemize}
+
+\subsection{Packing}
+\begin{itemize}
+  \item \textbf{B4 (\#34): packing per flop.} The cache model sets \texttt{nc}=N=384, so each packed
+  block of A serves 55 tiles against about 145 for square shapes. B4 packs 2.3$\times$ more elements
+  per flop; packing is 14.7\% of its time against 7--8\% for squares (instrumented build). Its compute
+  loop runs within 2\% of S1's. Widening N to 1024 alone takes B4 from 8.10 to 9.02 GOPs (core 4).
+  The gap follows N=384, not the tile: B1, B5 and B4 at 32x6 also trail the squares.
+  \item \textbf{B3: which packer.} Scalar beats vector by 21--78\% in every \#32 run, on both boards.
+  This was already known from \#26 (+48.8\% over 16 runs); \#32 re-found it. B3 has two speeds (about
+  4.4 and 9.9 GOPs); the vector packer's best rep is as fast as the scalar one's, but most of its reps
+  are slow.
+  \item \textbf{New (\#34 \S7): B fitting in L2 does not fix B3.} Shrinking B from 576\,KiB to
+  288\,KiB leaves the vector packer on its slow path at every size. With the scalar packer, B3 is fast
+  and steady (8.1--8.8 GOPs) whenever N $\le$ 320, and slow when N=384, even when B is small
+  (K=256). With no override, N=384 means \texttt{nc}=384, which is what the removed
+  \texttt{nc}=128 override avoided. One scalar launch only.
+  \item \textbf{Elsewhere the packer barely matters:} vector is 0--6\% ahead on B2, 0--3.5\% on B4, and
+  equal at 2048\textsuperscript{3} (3.88 vs 3.88; 6.25 vs 6.24).
+\end{itemize}
+
+\subsection{Measurement}
+\begin{itemize}
+  \item \textbf{Core 0} runs 5--10\% slower for the same binary (\#31). \#31 moved to core 4, but all 32
+  launches of \#32 still used core 0.
+  \item \textbf{Launch-to-launch spread.} Same binary, same core, same hour: 3.87--3.92 and
+  6.24--6.35 across five \#33 launches (up to 1.7\%); B4 at 32x7 ranged 7.75--7.94 across the \#32
+  launches; \#34's two cores differed by up to $\pm$4\%. Inside one launch, large shapes are tight
+  (p5--p95 within 1\%); B3 is not (CV 14--43\%).
+\end{itemize}
+
+\section{Audit findings, per issue}
+
+\subsection*{\#31 --- 32x7 register pressure}
+\begin{itemize}
+  \item \ok: the 32-of-32 register count (the reference's own 32x7 kernel has the same), and the
+  core-4 baseline table (matches \texttt{logs/run\_2026-09-24\_143441} exactly).
+  \item \weak: the conclusion ``the tile is not the problem'' rested on two indirect arguments. The
+  swap compares two kernels with the \emph{same} register pressure, so it says nothing about what that
+  pressure costs. The stable square family has no no-pressure tile to compare against. The direct test
+  the plan proposed (B4 at 32x6 and 32x8) was never run in \#31. \#32 and \#34 later ran it, and it
+  supports the conclusion.
+  \item \bad: ``the gap grows with deeper K, so the difference lives in the k-loop'' (\S6.4). Every case
+  uses \texttt{kc}=128 (from the logs), so the kernel's k-loop has the same length for S1 to S5. The
+  $-$7.1\% core-0 result it explained also did not repeat on core 4.
+  \item Records: the core-0 swap runs and the swapped core-4 runs left no logs; S3--S5 ``CV 0\%'' comes
+  from 1--2 reps and means nothing. The file says resolved, but GitHub \#31 is still open.
+\end{itemize}
+
+\subsection*{\#32 --- NR sweep for B3 and B4}
+\begin{itemize}
+  \item \textbf{The issue file is out of date.} All 32 launches ran on 24--25 September on both boards,
+  but \texttt{0017-*.md} still says ``plan only, nothing run'' and is untracked, as are the two sweep
+  configs. The results exist only as a GitHub comment. Plan steps \S4.1 (register check on the new
+  kernels) and \S4.4 (instrumented split) were not done.
+  \item \ok: the comment's tables match the pack-swap logs (e.g.\ B4 32x7 7.84 / 7.92; B3 16x15 vector
+  5.28 / 5.73). The register rule held: the only two tiles over 32 are the only two that fell.
+  \item \weak: ``32x6 beats 32x7'': see \S3.1; core-0-only and reversed on core 4. ``Scalar beats
+  vector on B3 by 35--90\%'': the logs give +21\% to +78\% by mean, and the effect was already in
+  \#26.
+  \item Not reported: B2 was swept too (its dataset carries B2). B2 agrees with the rule: 16x15 best
+  (12.6--12.8), 16x16 $-$38\%, vector 2--6\% ahead of scalar.
+  \item Protocol: every launch was on core 0, after \#31 had found the core-0 penalty that same day.
+  Comparisons inside one launch still stand; B3, the noisiest case, is the most affected.
+  \item Side effect: the uncommitted \texttt{config.json} change removes B3's \texttt{nc}=128 override.
+  Five tests fail with it, and \#34 \S7 suggests \texttt{nc}=384 is the slow case for B3.
+\end{itemize}
+
+\subsection*{\#33 --- 16x16 and 24x10 against the reference}
+\begin{itemize}
+  \item \ok: the spill table (reproduced exactly on both sides), the register counts per variant, the
+  meaning of the reference build flags (\texttt{GATHER=2} is \texttt{macc}, \texttt{0} is
+  \texttt{bcast}), and the same cache blocking on both sides. Main conclusion stands.
+  \item \weak: small percentages are read as results. The swap deltas ($-$0.3\%, $-$1.4\%) and the
+  24x10 head-to-head ($-$1.6\%) are inside the 1.7\% spread measured in the same hour. Taking the four
+  pack-swap launches instead of the single baseline launch, ours vs reference becomes $-$3.1\% at 24x10
+  and +6.3\% at 16x16. Only the 16x16 gap clearly exceeds noise. ``$-$0.3\% (ours faster)'' is also
+  written with a confusing sign.
+  \item Records: the swap-control run and all four reference-side runs left no logs in the repo, so
+  their numbers cannot be re-checked. ``Instruction-for-instruction'' overstates it: counts are close
+  (313 vs 325), not equal.
+  \item Missing context: both tiles run 30--57\% below the shipped 32x7. That is the practical result.
+\end{itemize}
+
+\section{Recommended next steps (each filed as its own issue; implementation on hold)}
+\begin{enumerate}
+  \item Write \#32's results into \texttt{0017-*.md}, commit it with its two configs, and decide on
+  the B3 \texttt{nc} override before committing \texttt{config.json}. \emph{Records done 27 Sept; decision: \iss{35}.}
+  \item Find why the vector packer is slow on B3: instrumented pack/compute split at 16x14/15/16 and
+  for B3\_N320 vs B3\_K256, per-rep times saved, and an \texttt{nc}=128 row. \emph{\iss{36}.}
+  \item Keep 32x7 for B4 and the squares; 32x6 is not proven better. If revisited, run both tiles
+  inside one launch, several launches, on core 4 or another non-zero core. \emph{\iss{37}.}
+  \item For B4's small-N cost, the levers are a cheaper A pack and padding \texttt{lda}/\texttt{ldc}
+  off powers of two; the reference packs the same way and should pay the same cost. \emph{\iss{38}.}
+  \item House rule for future runs: never core 0; one launch is not a result; keep every log that a
+  quoted number comes from. \emph{\iss{39}.}
+\end{enumerate}
+
+
+\newpage
+\appendix
+\section*{Appendix A. Performance findings, test by test}
+\vspace{-0.6ex}
+{\footnotesize
+Board: \texttt{jbpi2} unless marked \texttt{jbpi}. Build: uninstrumented (U) or instrumented (I, only
+comparable inside its own row). GOPs by mean time; ``/'' separates two boards, cores or launches as named.
+Only numbers inside one row come from one launch or session.\par\vspace{0.4ex}
+\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.0}
+\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}p{3.1cm} >{\raggedright\arraybackslash}p{2.0cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{3.5cm}@{}}
+\toprule
+& \textbf{Test} & \textbf{Setup} & \textbf{Result} & \textbf{What it shows} \\
+\midrule
+\multicolumn{5}{@{}l}{\textbf{\#31 --- 32x7 register pressure (B4 and S1--S5, all at 32x7)}}\\
+1 & Live-register count, ours and reference 32x7 & static & 4 A + 28 C = 32 of 32 on both & at the limit, not over \\
+2 & Kernel swap: reference 32x7 in our harness & core 0, U, 1 launch & ours vs swapped: B4 7.77 vs 7.22; S1 8.34/8.30; S2--S5 8.69--9.12 vs 8.20--8.61 & ours 0.5--7\% faster; no log kept \\
+3 & Swapped kernel on core 4 & core 4, U & B4 7.74, 7.85 (two launches); S3--S5 +9--10\% vs core 0 & core 0 is 5--10\% slower \\
+4 & Our kernel on core 4 & core 4, U, 1 launch & B4 7.72; S1 8.64, S2 8.96, S3 9.35, S4 9.07, S5 9.40 & B4 vs swap: a tie; B4 below all squares \\
+5 & Swapped kernel, instrumented & core 0, I & B4 6.48, compute IPC 0.54; S5 incomplete & no matching run of ours \\
+\midrule
+\multicolumn{5}{@{}l}{\textbf{\#32 --- NR sweep, both packers (vector / scalar), \texttt{jbpi} and \texttt{jbpi2}, core 0, U, night run}}\\
+6 & B3 64$\times$384$\times$384, 16x8--16x16 & 2 launches per packer & 16x15: vec 5.29/5.72, scl 8.24/8.46; 16x16: vec 3.10/3.23, scl 4.86/4.84; other NR vec 3.9--5.6, scl 5.5--8.0 & 16x15 best (scalar); over 32 regs $-$41\%; scalar +21--78\% \\
+7 & B2 384$\times$384$\times$64, 16x8--16x16 & same & 16x15 vec 12.81/12.56, scl 12.12/12.17; 16x16 8.00/7.88; 16x8 10.25/10.34 & 16x15 best; $-$38\% over limit; vector 0--6\% ahead \\
+8 & B4, 32x4--32x8 & same & vec: 32x4 6.92/6.97, 32x5 7.59/7.58, 32x6 8.04/7.99, 32x7 7.84/7.92, 32x8 4.43/4.38; scalar 0--3.5\% lower & $-$44\% over limit; 32x6 ahead 0.5--3.3\% (core 0 only) \\
+9 & Day run vs night run & 24 vs 25 Sept & same order of tiles, values within a few \% & reproducible inside a board \\
+\midrule
+\multicolumn{5}{@{}l}{\textbf{\#33 --- 16x16 and 24x10 at 2048$^3$, \texttt{jbpi} core 4}}\\
+10 & Live registers per reference variant & static & macc 34 / 33 (= ours); bcast 50 / 43; gather 51 / 44 & macc is the fair match \\
+11 & Source diff, ours vs macc & static & same loop order; ours has 64 / 60 extra copies per k-step & noisier source \\
+12 & Spill audit (\texttt{-O3}), reproduced & static & spills 11 and 12 (16x16), 4 and 4 (24x10), both designs; instructions 313 vs 325, 252 vs 253 & identical spilling; copies cost nothing \\
+13 & Kernel swap: reference macc in our harness & U, 1 launch each & 16x16 3.92 vs 3.91; 24x10 6.35 vs 6.26 & a tie (inside 1.7\% noise); no log kept \\
+14 & Vector vs scalar pack & U, 2+2 launches & 16x16 3.88 vs 3.88; 24x10 6.25 vs 6.24 & packer irrelevant at this size \\
+15 & Head-to-head vs reference harness & U; ref: no log kept & ours 3.92 / 6.35; ref macc 3.65 / 6.45; ref bcast 0.90 / 1.45 & ours +7\% / $-$2\%; bcast 4.4$\times$ slower \\
+\midrule
+\multicolumn{5}{@{}l}{\textbf{\#34 --- B4 shape, runs A (core 4), B (core 4, I), C (core 2)}}\\
+16 & Pack / compute split & B, I & pack share: B4 14.7\%, B4\_N1024 7.0\%, S1 8.1\%; compute-only 8.46 / 8.51 / 8.60 GFLOP/s; pack 14.8 vs 10.5 ns/elem & packing, not compute, is B4's loss \\
+17 & N sweep, M=4096, K=1024 & A / C, U & N=384: 8.10 / 7.88; 1024: 9.02 / 8.63; 2048: 9.02 / 8.70; 4096: 8.97 / 8.75; S1 8.73 / 8.57 & +10--11\%, flat after N=1024 \\
+18 & Blocking breakdown (\texttt{shape\_breakdown.py}) & static & A-panel reuse 55 vs 143--147; packed elements per 1000 flops 1.42 vs 0.60--1.0; fringe work 0.26\% vs 0.45--2.5\% & B4 packs 2.3$\times$ more per flop \\
+19 & M off a power of two & A / C, U & M=4064: +4.6 / +3.4\%; 4128: +2.1 / +2.9\%; at 32x6 +3.4 / +2.8\%; S1 at M=2048: $-$1.8 / $-$1.2\% & second cost, 2--5\% \\
+20 & BERT vs square at 32x6 & A / C, U & B1 7.97 / 8.21; B5 7.79 / 7.87; B4 7.62 / 7.98; S1 8.25 / 8.35; S2 8.56 / 8.80 & gap follows N=384, not the tile \\
+21 & Same rows, run A vs run C & cores 4 / 2 & rows move $-$4.3 to +4.7\%; B4 tile winner flips & compare inside one run only \\
+22 & B3 with B shrunk under L2 (\S7) & core 4, U, 3 launches & vector median 4.4--5.8 at every size; scalar N$\le$320: 8.1--8.8, N=384: 4.5--6.1 & L2 not the cause; scalar slow case is \texttt{nc}=384 \\
+\bottomrule
+\end{tabularx}}
+
+\end{document}

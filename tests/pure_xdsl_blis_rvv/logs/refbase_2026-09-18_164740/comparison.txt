@@ -1,0 +1,11 @@
+
+  Ours      : mean of 5 run(s): run_2026-09-18_004053, run_2026-09-18_014128, run_2026-09-18_024151, run_2026-09-18_034155, run_2026-09-18_044110
+  Reference : refbase_2026-09-18_164740
+
+  'ref' is pack-INCLUSIVE. Compare it against 'e2e', not against 'Ker'.
+  'kern' is the reference kernel variant that won this case.
+
+  case shape              pin built    kind    ref   kern |    Ker  Ker/ref |  pack%    e2e  e2e/ref
+  --------------------------------------------------------------------------------------------------
+  B1   1024x384x1024     32x6  32x6   exact   7.02   macc |   8.16   +16.3% |  15.8%   6.87    -2.2%
+  B5   1024x384x4096     32x6  32x6   exact   7.06   macc |   8.01   +13.5% |  16.5%   6.68    -5.4%

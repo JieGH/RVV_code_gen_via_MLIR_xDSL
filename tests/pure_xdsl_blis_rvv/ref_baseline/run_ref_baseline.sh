@@ -125,7 +125,7 @@ echo ""
 # ------------------------------------------------------------
 echo "$SEP"; echo " [1/5] Generating datasets for our case set"; echo "$SEP"
 python3 "${HERE}/gen_ref_datasets.py" \
-    --opt "${OPT_MODE}" --swap "${SWAP}" --gather "${GATHER_FIRST}" ${BRACKET}
+    --opt "${OPT_MODE}" --swap "${SWAP}" --gather "${GATHER_FIRST}" --tmin "${TIMIN}" ${BRACKET}
 
 PLAN="${HERE}/generated/run_plan.tsv"
 if [ ! -s "${PLAN}" ]; then

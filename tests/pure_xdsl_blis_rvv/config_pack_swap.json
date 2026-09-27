@@ -1,0 +1,8 @@
+[
+    // Issue #26: the two shapes of the pack-swap experiment, B3 first, then S1 (projects run
+    // in this order). Used by run_pack_swap.sh; the pinnings are the ones config.json ships.
+    // B3's oracle is cheap, so its correctness check stays on; S1's is not, so it is skipped
+    // (correctness of the scalar packer over every shipped RR is test_pack_correctness.py's job).
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue26_b3.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["issue26_s1.dat"], true, 5]
+]

@@ -1,0 +1,2 @@
+▶ B1 (1024x384x1024)     | 32x6    8.08 KerGOPs [min:8.0, p5:8.0, p95:8.1, max:8.2, iqr:0.0, s:0.0, CV:0%, mx/md:1.01] |  0.3 GB/s Pk |  0.3 GB/s Scl | IPC:0.57 | ⏭️ SKIP (mc:768 nc:384 kc:128)
+▶ B5 (1024x384x4096)     | 32x6    8.02 KerGOPs [min:7.9, p5:7.9, p95:8.1, max:8.1, iqr:0.0, s:0.0, CV:1%, mx/md:1.01] |  0.3 GB/s Pk |  0.3 GB/s Scl | IPC:0.56 | ⏭️ SKIP (mc:768 nc:384 kc:128)

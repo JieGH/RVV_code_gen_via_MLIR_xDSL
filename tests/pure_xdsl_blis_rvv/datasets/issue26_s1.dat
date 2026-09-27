@@ -1,0 +1,3 @@
+# Issue #26 (pack swap): S1 alone, MR32_NR7, where issue #2 first noticed the RVV-vs-scalar pack gap.
+# layer  M     N     K
+S1       1000  1000  1000

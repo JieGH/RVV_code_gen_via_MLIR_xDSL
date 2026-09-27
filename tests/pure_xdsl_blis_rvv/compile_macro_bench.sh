@@ -154,6 +154,9 @@ else
     BUILD_NOTE="timers cost 11-17% of measured time: do NOT quote these against the reference"
     BUILD_LOGS="raw_*.txt"
 fi
+# Issue #26: a scalar-pack run has its own logs (the driver and the Makefile do the same), and
+# the suffix goes before the nc one.
+case "${TEST_ARGS}" in *--scalar-pack*) BUILD_LOGS="${BUILD_LOGS%.txt}_scalarpack.txt" ;; esac
 case "${TEST_ARGS}" in *--no-nc-overrides*) NO_NC_OVERRIDES=true; BUILD_LOGS="${BUILD_LOGS%.txt}_no_nc_override.txt" ;; *) NO_NC_OVERRIDES=false ;; esac
 # Issue #27: every number names its protocol as well as its build.
 if [ "${REF_PROTOCOL}" = "1" ]; then

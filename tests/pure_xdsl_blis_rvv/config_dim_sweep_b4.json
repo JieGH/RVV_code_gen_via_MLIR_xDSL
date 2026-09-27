@@ -1,0 +1,27 @@
+[
+    // Issue #32 plan (.scratch/issues/0017-b3-b4-nr-sweep-eval-plan.md): B4's kernel-dimension (NR)
+    // sweep. MR=32 fixed, NR stepped 8 down to 4 (5 shapes), against B4's own shape
+    // (issue26_b4.dat: M=4096, N=384, K=1024). B4 ships today at MR32_NR7 (config.json), included
+    // here (not skipped) so the whole curve comes from one consistent run.
+    //
+    // Dataset note: the plan text (section 4.2) names issue2_square_bert_32x7.dat "B4's row only",
+    // but that file also carries S1-S5 and compile_macro_bench.sh has no per-row filter -- pointing
+    // at it here would run the whole Square family on every one of the 5x4x2 = 40 sweep passes,
+    // which the plan explicitly says to avoid ("a separate question... would multiply board time for
+    // no gain here"). issue26_b4.dat (already built for exactly this -- issue #26, B4 alone, no
+    // Square rows) is used instead to get what the plan actually asks for.
+    //
+    // Per plan section 2, NR=8 is already known to spill (confirmed [0014], 51-67% of NR=6's speed);
+    // NR=7 (shipped) sits exactly on the 32-register boundary ((MR/8)x(1+NR) <= 32); NR=6 is
+    // confirmed clean/spill-free ([0006]). NR=5 and NR=4 have more slack still.
+    //
+    // skip_ref_run=true, iterations=5: same reduced-cost knobs as config.json's shipped B4 row
+    // (the scalar oracle is O(m*n*k) and B4 is large).
+    //
+    // Use with: run_pack_swap.sh --config config_dim_sweep_b4.json ...
+    ["fp32", "AXPY_FP32_Pack", [32, 8], 256, "jbpi2", ["issue26_b4.dat"], true, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["issue26_b4.dat"], true, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["issue26_b4.dat"], true, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 5], 256, "jbpi2", ["issue26_b4.dat"], true, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 4], 256, "jbpi2", ["issue26_b4.dat"], true, 5]
+]

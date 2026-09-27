@@ -1,0 +1,2 @@
+Layer,M,N,K,Variant,Status,KerGOPs_Harmonic,KerGOPs_Min,KerGOPs_P5,KerGOPs_P95,KerGOPs_Max,KerGOPs_IQR,KerGOPs_Mean,KerGOPs_Std,KerGOPs_Median,RVV_Pack_GBs,Scl_Pack_GBs,RVV_Time_ms,Ref_Time_ms,Vector_Pack_Time_ms,Scalar_Pack_Time_ms,Compute_Time_ms,N_Reps
+2048_cube,2048,2048,2048,MR24_NR10,SKIP,6.24061,6.20295,6.20295,6.25486,6.25486,0.00337789,6.24069,0.0218207,6.25346,nan,nan,2752.91,0,nan,nan,nan,4
