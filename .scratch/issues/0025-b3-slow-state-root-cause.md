@@ -4,7 +4,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/41
 
 **Role / Label:** `needs-triage` — follow-up of #36 (its "Next steps"), and step 2 of the #35 recommendation.
 **Status:** 🟡 Open. 2026-09-27: §3 (generic L2 counters read 0), then plan steps 1-3 done through #42 (§8): the slow state is the L1D prefetcher doing about half its work, not the shared L2. Steps 4-5 open.
-**Brief:** [issues-35-36-39-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-35-36-39-brief.pdf), §2 and §4.
+**Brief:** [issues-35-36-39-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-35-36-39-brief.pdf), §2 and §4; results of §8: [issue-42-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-42-brief.pdf).
 **Target:** `jbpi` (then `jbpi2`), core 4 unless a step says otherwise. House rules of #39 apply.
 **Shape(s):** B3 (64×384×384), B3 with K=256; controls B2 and Reuse24.
 **Primary Sources:**

@@ -3,6 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/42
 
 **Status:** ✅ Implemented 2026-09-27 (see "Done" at the end); results written into #41 §8.
+**Brief:** [issue-42-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-42-brief.pdf) (what was built, the checks, the review, the first results).
 **Parent:** #41 ([[0025-b3-slow-state-root-cause]]). This spec covers #41's plan steps 1-3 (§4). Steps 4
 (`ldb` padding, tied to #38) and 5 (repeat on `jbpi2`) stay in #41.
 **House rules:** #39's four rules, as enforced in code since f87ee43 (see [[0024-benchmark-house-rules]], "Enforced in
