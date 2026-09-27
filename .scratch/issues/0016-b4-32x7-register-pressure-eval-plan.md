@@ -3,6 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/31
 
 **Closed 2026-09-27 after audit** (§8). **Audit report:** [issues-31-34-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-34-brief.pdf) ([LaTeX source](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-34-brief.tex)) — brief and audit of #31-#34, 2026-09-27.
+**Performance results per test:** Appendix A of the audit report, rows 1-5 (this issue's tests).
 **Role / Label:** `resolved` — the register-pressure doubt this issue was opened to check (§1-§2) is
 **answered: no.** §7 below closes it out. The separate, still-open question this work surfaced — why
 B4 specifically underperforms the square family despite sharing an identical, proven-fine tile — is

@@ -3,6 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/39
 
 **Role / Label:** `needs-triage` — from the #31-#34 audit report ([issues-31-34-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-34-brief.pdf)), next step 5.
+**Performance results per test:** Appendix A of the audit report, rows 2, 3, 13 and 21 (core-0 penalty; launch-to-launch spread).
 **Status:** ⏸️ Issue only. **Implementation on hold** (documentation change only, when approved).
 
 ## Problem

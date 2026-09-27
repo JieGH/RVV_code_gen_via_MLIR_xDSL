@@ -3,6 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/33
 
 **Closed 2026-09-27 after audit** (§6). **Audit report:** [issues-31-34-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-34-brief.pdf) ([LaTeX source](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-34-brief.tex)) — brief and audit of #31-#34, 2026-09-27.
+**Performance results per test:** Appendix A of the audit report, rows 10-15 (this issue's tests).
 **Role / Label:** `plan` — all of §4 is now done (2026-09-25). §4.1 (register-count audit), §4.2 (new
 config/dataset), §4.3 (source diff), §4.4 (asm/spill audit), §4.5 (kernel-swap control, board), §4.6
 (packing comparison, board) and §4.7 (head-to-head board runs, both designs, both shapes) are all
