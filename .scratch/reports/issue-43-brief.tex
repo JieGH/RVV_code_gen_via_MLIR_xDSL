@@ -1,0 +1,193 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=1.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+\setlist{nosep,leftmargin=1.3em}
+\titlespacing*{\section}{0pt}{1.1ex}{0.6ex}
+\titlespacing*{\subsection}{0pt}{0.9ex}{0.4ex}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45ex}
+\renewcommand{\arraystretch}{1.08}
+\newcommand{\iss}[1]{\href{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/#1}{\##1}}
+\newcommand{\up}[1]{\textcolor{red!70!black}{#1}}
+\newcommand{\down}[1]{\textcolor{blue!60!black}{#1}}
+\newcommand{\good}[1]{\textcolor{green!45!black}{\textbf{#1}}}
+
+\title{\vspace{-1.2cm}\textbf{Clearing the pack lines with \texttt{cbo.zero}:\\ faster B3 at nc=128, but not for the reason we expected}\\[2pt]
+\large Brief of issue \iss{43} (implemented and measured on \texttt{jbpi} and \texttt{jbpi2}), for \iss{41}}
+\author{RVV\_code\_gen\_via\_MLIR\_xDSL, \texttt{pure-xdsl}\\ code \texttt{fb4b2c0}, logs \texttt{078cc6e} and \texttt{269ee37}}
+\date{27 September 2026}
+
+\begin{document}
+\maketitle
+\vspace{-0.8cm}
+
+\paragraph{Scope.} B3 (64$\times$384$\times$384) has two speeds: in most reps it drops into a slow state where the
+L1D prefetcher does about half its work (\iss{36}, \iss{41}, \iss{42}). \iss{43} tried one fix. On the X60 a store to
+a line that is not in the cache was expected to read the line from the L2 first, even when the packer then overwrites
+all of it. \texttt{cbo.zero} puts a zero line in the cache without that read. This brief covers what was built, how it
+was checked and reviewed, and 24 board launches: 12 on \texttt{jbpi} and 12 on \texttt{jbpi2}, all on core 4, switch
+off/on in the order A-B-B-A-A-B. \textbf{Speed numbers come from the uninstrumented build} (\texttt{INSTRUMENTED=0},
+reference protocol, \texttt{--tmin 10}). \textbf{Counts come from the instrumented build} (\texttt{INSTRUMENTED=1},
+warm-up protocol, 1000 reps, \texttt{--raw-events x60-l2}); they are not speed numbers to quote. Every log cited is
+committed (Appendix~A).
+
+\section{Bottom line}
+\begin{enumerate}
+  \item \textbf{Built:} \texttt{--zero-pack-lines}, off by default. Before each pack it clears every whole 64-byte line
+  of the Ac or Bc block with \texttt{cbo.zero}, inside the pack timer. It covers both packers and is AXPY only.
+  Checked on the board: the instruction runs in user mode and the packed data is unchanged.
+  \item \textbf{Faster B3 at the shipped nc=128, on both boards} (uninstrumented): \good{+23\%} on \texttt{jbpi}
+  (5.52$\to$6.79 GOPs by mean time) and \good{+9\%} on \texttt{jbpi2} (5.49$\to$5.99). Every ``on'' launch beat
+  every ``off'' launch on both boards. B3 at nc=384, B3\_K256 and B2 do not change. R24 is mixed (+5\% on
+  \texttt{jbpi2}, $-$3\% inside the spread on \texttt{jbpi}).
+  \item \textbf{But not by removing reads.} On both boards the pack's L2 loads do \up{not fall} (at nc=128 they
+  \up{rise by $\sim$40\%}), and its L2 stores \up{rise by about one per line cleared}. \texttt{cbo.zero} on the X60
+  seems to write the zero line out to the L2 rather than just claim it in the L1.
+  \item \textbf{The instrumented build goes the other way} on both boards: B3\_nc128 drops from about 8.1 GOPs (no
+  slow reps) to about 5.7 (about 60\% slow reps). The switch seems to move B3\_nc128 between its fast and slow
+  states, and the timers change which way it goes.
+  \item \textbf{Decision so far: not shipped on by default.} Next: the same loop over the lines \emph{without}
+  \texttt{cbo.zero}, to separate ``clearing helps'' from ``a short delay before the pack helps''.
+\end{enumerate}
+
+\section{What was built}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{4.1cm}X@{}}
+\toprule
+Part & What it does \\
+\midrule
+\texttt{templates/pack\_lines.h} & One helper. It finds the whole 64-byte lines inside a byte range (a partly written
+line at either end is left alone) and clears them with \texttt{cbo.zero}. The instruction is written as its encoding
+(\texttt{.insn i 0x0F, 2, x0, rs1, 4}), so the build needs no Zicboz \texttt{-march}. On the host it does nothing. \\
+Generated dispatch & \texttt{if (zero\_pack\_lines)} clears the Bc block and the Ac block just before each pack,
+inside the pack timer and counter window: $\lceil \mathit{cur}/\mathit{panel}\rceil\cdot\mathit{panel}\cdot
+\mathit{kc\_pad}$ elements, which the 64-byte-aligned buffers always hold. The DOT path is unchanged. \\
+Driver, Makefile, script & \texttt{--zero-pack-lines}, passed through like \texttt{--scalar-pack}: its own
+\texttt{\_zeroline} log names, a ``Pack lines'' line in the run overview and in \texttt{provenance.txt}. Refused for
+DOT kernels. The warm-up protocol's scalar-pack pass clears too. \\
+\texttt{reps\_report.py} & A launch with the switch is its own row (\texttt{vector+zeroline}), so on and off never
+pool. \\
+Comparison config & \texttt{config\_issue43\_zero\_lines.json}: B3 at nc=384 and at nc=128, B3\_K256, B2 and R24 in
+one launch, tile 16$\times$15. \\
+\bottomrule
+\end{tabularx}
+
+\paragraph{Checks.} Host: the line finder on ranges starting and ending on and off line edges; the real generated
+dispatch built with a \texttt{memset} stand-in on NaN-filled buffers, where the GEMM stays right and lines are cleared
+only with the switch on; the flag, log names, overview and script. Board (\texttt{jbpi}): the real \texttt{cbo.zero}
+before each RVV packer, for every shipped panel width, gives the scalar packer's layout. Full suite: 283 passed.
+
+\paragraph{Review.} Two-axis review (standards and spec), before commit. \emph{Standards:} no breach; a repeated
+test parser was merged (fixed). \emph{Spec:} no defect. Kept on purpose: the DOT refusal (a DOT log would otherwise
+name clearing that never happened) and a ``Driver args'' overview line (it shows the flag reaches the driver). One
+point for the measurement: with the switch off, each AXPY pack still tests the flag once, so the ``off'' launches
+here are that build.
+
+\section{Speed (uninstrumented, reference protocol, tmin 10 s, core 4)}
+Average of 3 launches per side per board, lowest--highest launch in brackets. GOPs by mean time is the reference's
+formula; GOPs by median rep is shown beside it.
+
+\begin{center}\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llcccccc@{}}
+\toprule
+case & board & off: mean time & on: mean time & off: median & on: median & slow reps off$\to$on & change \\
+\midrule
+\textbf{B3\_nc128} & jbpi & 5.52 (5.37--5.69) & 6.79 (6.14--7.36) & 4.95 & 7.73 & 79\%$\to$42\% & \good{+23\%} \\
+\textbf{B3\_nc128} & jbpi2 & 5.49 (5.41--5.54) & 5.99 (5.76--6.16) & 4.98 & 5.79 & 77\%$\to$60\% & \good{+9\%} \\
+B3 (nc=384) & jbpi & 4.50 (4.41--4.65) & 4.44 (4.34--4.60) & 4.31 & 4.23 & 90\%$\to$86\% & -- \\
+B3 (nc=384) & jbpi2 & 4.45 (4.38--4.51) & 4.85 (4.30--5.75) & 4.30 & 4.77 & 89\%$\to$78\% & -- \\
+B3\_K256 & jbpi & 4.61 (4.52--4.66) & 4.64 (4.58--4.68) & 4.52 & 4.55 & 97\%$\to$97\% & -- \\
+B3\_K256 & jbpi2 & 4.73 (4.60--4.86) & 4.68 (4.60--4.84) & 4.64 & 4.55 & 96\%$\to$95\% & -- \\
+B2 & jbpi & 12.33 (12.26--12.38) & 12.21 (11.91--12.47) & 12.46 & 12.40 & 0$\to$0 & -- \\
+B2 & jbpi2 & 12.36 (12.32--12.40) & 12.35 (12.30--12.38) & 12.48 & 12.40 & 0$\to$0 & -- \\
+R24 & jbpi & 8.37 (7.95--8.58) & 8.15 (8.01--8.37) & 9.01 & 8.58 & 31\%$\to$23\% & -- \\
+R24 & jbpi2 & 7.85 (7.73--7.98) & 8.26 (8.15--8.49) & 7.81 & 8.76 & 46\%$\to$21\% & +5\%? \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+B3\_nc128 by mean time, launch by launch in the order run (on in bold):
+\texttt{jbpi} 5.69, \textbf{7.36}, \textbf{6.14}, 5.49, 5.37, \textbf{6.87};
+\texttt{jbpi2} 5.41, \textbf{5.76}, \textbf{6.16}, 5.52, 5.54, \textbf{6.06}.
+``--'' means the two sides overlap or the change is under the 3\% house-rule line. R24 is marked ``?'' because the
+two boards disagree. B3 at nc=384 on \texttt{jbpi2} has one ``on'' launch with fewer slow reps (5.75); the other two
+match ``off''.
+
+\section{Counts (instrumented, DEBUG): pack window, per rep, fast reps}
+\begin{center}\small
+\begin{tabular}{@{}llcc@{}}
+\toprule
+case & counter & off (\texttt{jbpi} / \texttt{jbpi2}) & on (\texttt{jbpi} / \texttt{jbpi2}) \\
+\midrule
+B3 nc=384 & \texttt{Pack\_l2\_load\_access} & 1.36e4 / 1.36e4 & 1.41e4 / 1.42e4 \\
+B3 nc=384 & \texttt{Pack\_l2\_store\_access} & 2.54e4 / 2.54e4 & \up{3.56e4 / 3.57e4} \\
+B3\_nc128 & \texttt{Pack\_l2\_load\_access} & 2.15e4 / 2.16e4 & \up{3.01e4 / 3.18e4} \\
+B3\_nc128 & \texttt{Pack\_l2\_store\_access} & 3.54e4 / 3.56e4 & \up{4.76e4 / 4.78e4} \\
+B3\_nc128 & \texttt{Pack\_l1d\_miss} & 6.8e3 / 6.6e3 & \up{1.55e4 / 1.73e4} \\
+B2 & \texttt{Pack\_l2\_store\_access} & 7.2e3 / 7.2e3 & \up{9.8e3 / 9.8e3} \\
+R24 & \texttt{Pack\_l2\_store\_access} & 4.13e4 / 4.13e4 & \up{5.95e4 / 5.95e4} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Instrumented speed of B3\_nc128: \texttt{jbpi} off 8.04 (7.94--8.11) GOPs with 0\% slow reps, on \down{5.85
+(5.76--6.02)} with 52\%; \texttt{jbpi2} off 8.13 (8.08--8.17) with 0\%, on \down{5.64 (5.51--5.76)} with 60\%. The
+other cases do not move beyond their spread in this build.
+
+\paragraph{How to read it.} The spec expected the pack's L2 loads to \emph{fall} by about one per line cleared
+(\iss{42}'s probe saw about one L2 load per line in a pure write stream). On both boards they do not fall, and the L2
+stores \emph{rise} by about one per line cleared, in every case. The simplest reading is that the X60 carries out
+\texttt{cbo.zero} as a write of a zero line to the L2. At nc=128, where Bc is packed three times per rep, the packer
+then misses the L1 on those lines and reads them back (L1D misses and L2 loads both up). A rough estimate, not a
+measurement: with the switch off, the pack's L2 loads for B3 at nc=384 are only about 2.8e3 above the lines the
+packer reads from A and B ($\approx$1.08e4), while a read of every line written would add about 1.09e4. So inside the
+GEMM there may have been little ``read before write'' traffic to remove in the first place.
+
+\section{What is known, and what is next}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{5.6cm}X@{}}
+\toprule
+Finding & Evidence \\
+\midrule
+B3\_nc128 faster with the switch, uninstrumented & both boards, 3+3 launches each, no overlap; the size differs by
+board (+23\% / +9\%) \\
+Not from removing L2 reads & pack L2 loads never fall; L2 stores rise by about one per line cleared, same on both
+boards \\
+Direction depends on the build & instrumented: B3\_nc128 slower with the switch on both boards \\
+Nothing else changes clearly & B3 at 384, B3\_K256 and B2 flat on both boards; R24 mixed \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Next:} (1) a control that runs the same loop over the lines \emph{without} \texttt{cbo.zero} (same time
+spent, nothing cleared). If B3\_nc128 speeds up just as much, the gain comes from timing, not clearing. (2) Put the
+result in \iss{41}. (3) \iss{44} (pack B one column at a time) stays specified and on hold. The switch stays off by
+default; B3's nc=128 override remains the baseline.
+
+\appendix
+\section{Logs (all committed, \texttt{tests/pure\_xdsl\_blis\_rvv/logs/})}
+Config \texttt{config\_issue43\_zero\_lines.json}, no \texttt{--no-nc-overrides}, core 4. Order in each phase: off,
+on, on, off, off, on. During every timed run core 4 was 99--100\% busy and every other core 0--1\%.
+\begin{itemize}
+  \item \texttt{jbpi}, counts: \texttt{run\_2026-09-27\_152131}, \texttt{\_152415}, \texttt{\_152700},
+  \texttt{\_152944}, \texttt{\_153227}, \texttt{\_153512}
+  \item \texttt{jbpi}, speed: \texttt{run\_2026-09-27\_153743}, \texttt{\_154015}, \texttt{\_154247},
+  \texttt{\_154519}, \texttt{\_154752}, \texttt{\_155023}
+  \item \texttt{jbpi2}, counts: \texttt{run\_2026-09-27\_161022}, \texttt{\_161307}, \texttt{\_161552},
+  \texttt{\_161837}, \texttt{\_162122}, \texttt{\_162407}
+  \item \texttt{jbpi2}, speed: \texttt{run\_2026-09-27\_162639}, \texttt{\_162910}, \texttt{\_163142},
+  \texttt{\_163413}, \texttt{\_163646}, \texttt{\_163917}
+  \item \texttt{reps\_report.py} output, \texttt{jbpi}: \texttt{issue43\_reps\_report\_instr.md},
+  \texttt{issue43\_reps\_report\_speed.md}
+  \item \texttt{reps\_report.py} output, \texttt{jbpi2}:\\ \texttt{issue43\_reps\_report\_instr\_jbpi2.md},
+  \texttt{issue43\_reps\_report\_speed\_jbpi2.md}
+\end{itemize}
+
+\end{document}
