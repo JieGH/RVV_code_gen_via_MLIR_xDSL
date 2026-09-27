@@ -248,8 +248,9 @@ wrong direction for Reuse24 (fastest at 384). Swapping the L3 for the L2 is not 
    +17% on B3 but leaves it two-speed (CV 24%); the steadiness #1 saw is real only with the scalar packer. No
    form of the cache model produces 128, and head-to-head comparisons need the reference's blocking. This
    supports the 2026-09-27 leaning: **drop the override by default**; quote any `nc` = 128 figure only as a
-   separately labelled hand-tuned number. (The uncommitted `config.json` change already does this; the 5
-   tests that expect `nc` = 128 then need updating in the same commit — not done here, it is the user's call.)
+   separately labelled hand-tuned number. (An uncommitted `config.json` edit in the working tree, made
+   outside this study, already removes the override; with it the 5 tests that expect `nc` = 128 fail. They were
+   left as §5 asks, to be updated in the same commit as that decision.)
 2. **Treat the slow mode as the thing to fix** (#36). It is a memory-side state that sets in shortly after a
    case starts and lasts; a small `nc` only lowers the chance of entering it, and only for the scalar packer.
 3. If a rule-based small `nc` is wanted later, the candidate the data suggests is "keep `Bc` within the L1"
