@@ -2,7 +2,7 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/43
 
-**Status:** 🔧 Code done 2026-09-27 (user said go); **measurement not run yet** (stories 12, 14, 15).
+**Status:** 🔧 Code done 2026-09-27; 📊 first measurement 2026-09-27 (see the #43 comment "first measurement"): B3_nc128 speed 5.52 → 6.79 GOPs (uninstrumented, ref protocol, core 4, 3+3 launches), but the counts go against the spec's reason (pack L2 traffic up, not down) and the instrumented build shows the opposite. Not shipped; needs a repeat and a no-`cbo.zero` control. Not yet written into #41.
 `--zero-pack-lines` on `compile_macro_bench.sh` and the driver; helper `templates/pack_lines.h`; comparison config
 `config_issue43_zero_lines.json`. Tests: `test_zero_pack_lines.py`, `test_ref_protocol.py` (flag, logs, script),
 `test_reps_report.py` (`vector+zeroline` row), and the on-board `test_pack_correctness.py` (passed on `jbpi`: real
