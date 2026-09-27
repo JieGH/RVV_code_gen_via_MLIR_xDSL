@@ -328,3 +328,73 @@ def test_the_comparison_reads_what_the_provenance_script_really_writes(
         (d / "provenance.txt").write_text(_provenance(cpu))
     pinning = next(ln for ln in conditions(ref, [ours]) if ln.startswith("Pinning"))
     assert pinning == f"Pinning  : ours {words}; reference {words}"
+
+
+# ---------------------------------------------------------------------------
+# Issue #42: compile_macro_bench.sh --raw-events, and what the launch records beside it: the
+# raw events asked for, and every core's busy share over the launch (was anything else running
+# in B3's L2 cluster, cores 4-7, or in cores 0-3 for a core-2 run?).
+# ---------------------------------------------------------------------------
+STAT_BEFORE = "cpu0 100 0 100 800 0 0 0 0 0 0\ncpu4 50 0 50 900 0 0 0 0 0 0\n"
+STAT_AFTER = "cpu0 130 0 100 870 0 0 0 0 0 0\ncpu4 150 0 50 900 0 0 0 0 0 0\n"
+
+
+def test_busy_share_is_each_cores_non_idle_time_over_the_launch():
+    # cpu0: 100 of 30 busy (70 idle); cpu4: 100 of 100 busy. iowait counts as idle.
+    proc = _bash(f'busy_share "{STAT_BEFORE}" "{STAT_AFTER}"')
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.strip() == "cpu0 30% cpu4 100%"
+    iowait_after = STAT_AFTER.replace("cpu0 130 0 100 870 0", "cpu0 100 0 100 870 30")
+    assert _bash(f'busy_share "{STAT_BEFORE}" "{iowait_after}"').stdout.startswith("cpu0 0%")
+
+
+def test_busy_share_says_unavailable_when_a_reading_is_missing():
+    assert _bash(f'busy_share "" "{STAT_AFTER}"').stdout.strip() == "unavailable"
+    assert _bash(f'busy_share "ssh: connect to host jbpi: timed out" "{STAT_AFTER}"').stdout.strip() == "unavailable"
+
+
+def test_the_per_core_times_come_from_proc_stat():
+    snippet = _bash("board_cpu_times").stdout
+    proc = subprocess.run(["sh", "-s"], input=snippet, capture_output=True, text=True, timeout=10)
+    lines = proc.stdout.splitlines()
+    assert lines and all(re.match(r"cpu\d+ \d+", ln) for ln in lines)
+
+
+def test_the_launch_conditions_name_the_raw_events_and_each_timed_runs_busy_share(tmp_path: Path):
+    # compile_macro_bench.sh reads /proc/stat on the board just before and just after each
+    # project's `make run` (not its build), into that project's logs, fetched beside its logs.
+    for proj, after in (("proj_a", STAT_AFTER), ("proj_b", STAT_BEFORE)):
+        (tmp_path / proj).mkdir()
+        (tmp_path / proj / "cpu_times_before").write_text(STAT_BEFORE)
+        (tmp_path / proj / "cpu_times_after").write_text(after)
+    (tmp_path / "not_a_project").mkdir()  # no readings: left out
+    text = _bash(f'launch_conditions "x60-l2" "{tmp_path}"').stdout
+    assert _field(text, "raw events") == "x60-l2"
+    assert _field(text, "busy share") == "proj_a: cpu0 30% cpu4 100%; proj_b: cpu0 0% cpu4 0%"
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    text = _bash(f'launch_conditions "" "{empty}"').stdout
+    assert _field(text, "raw events") == "none"
+    assert _field(text, "busy share") == "unavailable"
+
+
+def test_the_overview_names_the_raw_events():
+    out = _script(BENCH_SCRIPT, "--dry-run", "--instr", "--raw-events", "x60-l2").stdout
+    line = next(ln for ln in out.splitlines() if "raw events" in ln)
+    assert "x60-l2" in line and "[--raw-events]" in line
+    assert "raw events: none" in _script(BENCH_SCRIPT, "--dry-run").stdout
+    line = next(ln for ln in _script(BENCH_SCRIPT, "--dry-run").stdout.splitlines() if "busy share" in ln)
+    assert "timed run" in line
+
+
+@pytest.mark.parametrize(
+    "flags, why",
+    [(["--instr", "--no-save-reps"], "--no-save-reps"), ([], "--instr")],
+    ids=["no-save-reps", "uninstrumented"],
+)
+def test_raw_events_are_refused_where_they_cannot_be_counted(flags: list[str], why: str):
+    proc = _script(BENCH_SCRIPT, "--dry-run", *flags, "--raw-events", "x60-l2")
+    assert proc.returncode != 0
+    out = proc.stdout + proc.stderr
+    assert "--raw-events" in out and why in out
+    assert "Run overview" not in out

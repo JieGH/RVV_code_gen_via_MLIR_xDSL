@@ -14,7 +14,7 @@ import pytest
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-from reps_report import case_stats, launch_table, read_reps, run_conditions  # noqa: E402
+from reps_report import CounterRow, case_stats, counter_table, launch_table, read_reps, run_conditions  # noqa: E402
 
 HEADER = "Layer,M,N,K,Variant,MC,NC,KC,Rep,Seconds,Pack_Seconds,Compute_Seconds,Pack_Cycles,Compute_Cycles\n"
 OPS = 2 * 64 * 384 * 384  # B3
@@ -193,3 +193,95 @@ def test_the_report_warns_when_a_case_has_fewer_than_three_launches(tmp_path: Pa
     runs = [_run_dir(tmp_path, f"run_{i}", False, _rows("B3_nc128", 128, [FAST] * 4)) for i in "abc"]
     assert "fewer than 3 launches" in _cli(runs[0], runs[1])
     assert "fewer than 3 launches" not in _cli(*runs)
+
+
+# Issue #42: fast reps beside slow reps, for every counter column the per-rep log carries
+# (the cycles, and the raw events asked for with --raw-events).
+RAW_HEADER = HEADER.rstrip("\n") + ",Pack_l2_load_miss,Compute_l2_load_miss\n"
+
+
+def _counted_rows(layer: str, reps: list[tuple[float, int, int]]) -> str:
+    """reps: (seconds, pack cycles, pack l2 misses); compute l2 misses are 10x the pack ones."""
+    return "".join(
+        f"{layer},64,384,384,MR16_NR15,64,384,128,{r},{s},nan,nan,{pc},nan,{pm},{10 * pm}\n"
+        for r, (s, pc, pm) in enumerate(reps)
+    )
+
+
+def _counted_run(root: Path, name: str, body: str, scalar: bool = False) -> Path:
+    d = root / name
+    suffix = "_scalarpack" if scalar else ""
+    f = d / "fp32_AXPY_FP32_Pack_vlen256_MR16NR15" / f"reps_fp32_AXPY_FP32_Pack{suffix}.txt"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(RAW_HEADER + body)
+    return d
+
+
+def _by_column(rows: list[CounterRow]) -> dict[str, CounterRow]:
+    return {r.column: r for r in rows}
+
+
+def test_counters_are_averaged_over_fast_reps_and_over_slow_reps(tmp_path: Path):
+    # Rep 0 is cold and left out, as it is left out of the fast/slow split.
+    reps = [(SLOW, 9999, 9999)] + [(FAST, 1000, 5)] * 3 + [(SLOW, 2500, 20)] * 2
+    rows = _by_column(counter_table([_counted_run(tmp_path, "run_a", _counted_rows("B3", reps))]))
+    assert set(rows) == {"Pack_Cycles", "Pack_l2_load_miss", "Compute_l2_load_miss"}
+    miss = rows["Pack_l2_load_miss"]
+    assert (miss.layer, miss.nc, miss.launches, miss.n_fast, miss.n_slow) == ("B3", 384, 1, 3, 2)
+    assert (miss.fast_mean, miss.slow_mean) == (5, 20)
+    assert miss.ratio == pytest.approx(4.0)
+    assert rows["Compute_l2_load_miss"].slow_mean == 200
+    assert rows["Pack_Cycles"].ratio == pytest.approx(2.5)
+
+
+def test_fast_and_slow_reps_are_pooled_over_launches(tmp_path: Path):
+    a = _counted_run(tmp_path, "run_a", _counted_rows("B3", [(FAST, 1, 4)] * 3 + [(SLOW, 1, 40)]))
+    b = _counted_run(tmp_path, "run_b", _counted_rows("B3", [(FAST, 1, 8)] * 3 + [(SLOW, 1, 20)] * 3))
+    miss = _by_column(counter_table([a, b]))["Pack_l2_load_miss"]
+    assert miss.launches == 2
+    assert (miss.n_fast, miss.n_slow) == (4, 4)  # rep 0 of each launch left out
+    assert miss.fast_mean == pytest.approx((4 * 2 + 8 * 2) / 4)
+    assert miss.slow_mean == pytest.approx((40 + 20 * 3) / 4)
+
+
+def test_a_one_speed_case_has_no_slow_reps_to_compare(tmp_path: Path):
+    d = _counted_run(tmp_path, "run_a", _counted_rows("B2", [(FAST, 1000, 5)] * 5))
+    miss = _by_column(counter_table([d]))["Pack_l2_load_miss"]
+    assert miss.n_slow == 0 and miss.slow_mean != miss.slow_mean  # nan
+    assert "one speed" in _cli(d)
+
+
+def test_missing_counts_are_left_out_and_an_all_nan_column_is_dropped(tmp_path: Path):
+    body = _counted_rows("B3", [(FAST, 1000, 5)] * 3 + [(SLOW, 2500, 20)] * 2).replace(",20,200", ",nan,nan", 1)
+    rows = _by_column(counter_table([_counted_run(tmp_path, "run_a", body)]))
+    assert rows["Pack_l2_load_miss"].n_slow == 1 and rows["Pack_l2_load_miss"].slow_mean == 20
+    assert "Compute_Cycles" not in rows  # nan in every rep
+    # an uninstrumented log has no counts at all: no counter table
+    plain = _run_dir(tmp_path, "run_p", False, _rows("B3_nc128", 128, [FAST] * 3 + [SLOW] * 2))
+    assert counter_table([plain]) == []
+    assert "slow/fast" not in _cli(plain)
+
+
+def test_the_command_line_prints_the_counter_table_after_the_launch_table(tmp_path: Path):
+    reps = [(FAST, 1000, 5)] * 4 + [(SLOW, 2500, 20)] * 2
+    out = _cli(_counted_run(tmp_path, "run_a", _counted_rows("B3", reps)))
+    assert out.index("| packer | layer | nc | launches | GOPs") < out.index("slow/fast")
+    line = next(ln for ln in out.splitlines() if "Pack_l2_load_miss" in ln)
+    assert "| vector | B3 | 384 | 1 |" in line and "4.00" in line
+    assert "fewer than 3 launches" in out  # the house-rule warning covers these rows too
+
+
+def test_the_conditions_line_names_the_raw_events_and_the_other_cores_busy_share(tmp_path: Path):
+    d = _counted_run(tmp_path, "run_a", _counted_rows("B3", [(FAST, 1, 1)] * 3))
+    (d / "provenance.txt").write_text(
+        PROVENANCE.format(pin="4")
+        + "  raw events     : x60-l2\n  busy share     : cpu0 3% cpu1 0% cpu4 100% cpu5 97%\n"
+    )
+    cond = run_conditions(d)
+    assert cond.raw_events == "x60-l2" and cond.busy_share.startswith("cpu0 3%")
+    line = next(ln for ln in _cli(d).splitlines() if "run_a" in ln)
+    assert "raw events x60-l2" in line and "busy cpu0 3% cpu1 0% cpu4 100% cpu5 97%" in line
+    # a run from before #42 says so rather than leave a blank
+    old = _run_dir(tmp_path, "run_old", False, _rows("B3", 384, [FAST] * 3))
+    (old / "provenance.txt").write_text(PROVENANCE.format(pin="4"))
+    assert run_conditions(old).raw_events == "unknown" and run_conditions(old).busy_share == "unknown"

@@ -40,10 +40,42 @@ enum {
     PERF_EV_BRANCH_MISSES
 };
 
+// Issue #42: room for an optional second group of raw events (the core's own event codes,
+// PERF_TYPE_RAW). The X60 has 16 programmable counters; the usual group takes 8 of them.
+#define PERF_MAX_RAW 8
+
+// Issue #42: the X60's own codes for its L2 and L1D-prefetch events, from the vendor kernel's
+// perf tables (spacemit-com/linux-6.6, tools/perf/pmu-events/arch/riscv/spacemit/x60/cache.json).
+// Its device tree lets raw codes 0x00-0xff through to counters 3-18. Checked on jbpi (kernel
+// 6.6.63 #2.2.7.2, Bianbu; the SBI firmware version is not readable without root there),
+// 2026-09-27, over 64 KiB and 4 MiB streams: all count (test_perf_counters.py checks it). Demand L2 load misses stay near
+// 0 on a streaming read (the prefetcher runs ahead); the AR channel stall cycles are the clear
+// sign of traffic past the L2 (0 on 64 KiB, ~3 per line reading and ~29 writing 4 MiB).
+typedef struct {
+    const char* name;
+    uint64_t code;
+} perf_raw_event;
+
+static const perf_raw_event PERF_X60_L2_PRESET[] = {
+    {"l2_load_access", 0xb8},
+    {"l2_load_miss", 0xb9},
+    {"l2_store_access", 0xbc},
+    {"l2_ar_channel_stall_cycle", 0xbb},
+    {"l2_aw_channel_stall_cycle", 0xbd},
+    {"l1d_miss", 0xab},
+    {"l1d_prefetch_refill", 0xae},
+    {"l1d_prefetch_hit", 0xaf},
+};
+#define PERF_X60_L2_PRESET_NAME "x60-l2"
+#define PERF_X60_L2_PRESET_COUNT ((int) (sizeof(PERF_X60_L2_PRESET) / sizeof(PERF_X60_L2_PRESET[0])))
+
 typedef struct {
     uint64_t v[PERF_NUM_EVENTS];
     uint64_t time_enabled;
     uint64_t time_running;
+    uint64_t raw[PERF_MAX_RAW];
+    uint64_t raw_time_enabled;
+    uint64_t raw_time_running;
 } perf_counts;
 
 // Decodes a PERF_FORMAT_GROUP|TOTAL_TIME_ENABLED|TOTAL_TIME_RUNNING read.
@@ -53,6 +85,17 @@ static inline int perf_decode_group_read(const uint64_t* buf, long nbytes, perf_
     out->time_enabled = buf[1];
     out->time_running = buf[2];
     for (int i = 0; i < PERF_NUM_EVENTS; i++) out->v[i] = buf[3 + i];
+    return 0;
+}
+
+// The same layout for the raw group, whose size is whatever was opened.
+static inline int perf_decode_raw_group_read(const uint64_t* buf, long nbytes, int n_raw, perf_counts* out) {
+    if (n_raw < 1 || n_raw > PERF_MAX_RAW) return -1;
+    if (nbytes != (long) ((3 + n_raw) * sizeof(uint64_t))) return -1;
+    if (buf[0] != (uint64_t) n_raw) return -1;
+    out->raw_time_enabled = buf[1];
+    out->raw_time_running = buf[2];
+    for (int i = 0; i < n_raw; i++) out->raw[i] = buf[3 + i];
     return 0;
 }
 
@@ -97,15 +140,42 @@ static inline int perf_counts_add_delta(perf_counts* region, const perf_counts* 
     return 0;
 }
 
+// The raw group's delta, judged on the raw group's own times.
+static inline int perf_counts_add_raw_delta(perf_counts* region, const perf_counts* before,
+                                            const perf_counts* after, int n_raw) {
+    if (after->raw_time_enabled - before->raw_time_enabled != after->raw_time_running - before->raw_time_running)
+        return -1;
+    for (int i = 0; i < n_raw; i++) region->raw[i] += after->raw[i] - before->raw[i];
+    return 0;
+}
+
 // One always-running counter group for the whole process. `valid` drops to 0 if the
 // group could not be opened or any read in the current measurement was rejected.
+// The raw group (issue #42) is optional and kept apart: `raw_valid` drops to 0 on a failed
+// read, and a window it was shared out for only adds one to `raw_rejected`, so a caller can
+// tell which reps to leave out by watching that count.
 typedef struct {
     int fd;
     int member_fds[PERF_NUM_EVENTS];
     int valid;
     perf_counts pack;
     perf_counts compute;
+    int n_raw;
+    int raw_fd;
+    int raw_member_fds[PERF_MAX_RAW];
+    int raw_valid;
+    uint64_t raw_rejected;
 } perf_gemm_counters;
+
+static inline void perf_gemm_close_raw(perf_gemm_counters* p) {
+    for (int i = 0; i < PERF_MAX_RAW; i++) {
+        if (p->raw_member_fds[i] >= 0) close(p->raw_member_fds[i]);
+        p->raw_member_fds[i] = -1;
+    }
+    p->raw_fd = -1;
+    p->n_raw = 0;
+    p->raw_valid = 0;
+}
 
 static inline void perf_gemm_close(perf_gemm_counters* p) {
     for (int i = 0; i < PERF_NUM_EVENTS; i++) {
@@ -114,12 +184,15 @@ static inline void perf_gemm_close(perf_gemm_counters* p) {
     }
     p->fd = -1;
     p->valid = 0;
+    perf_gemm_close_raw(p);
 }
 
 static inline void perf_gemm_open(perf_gemm_counters* p) {
     memset(p, 0, sizeof(*p));
     for (int i = 0; i < PERF_NUM_EVENTS; i++) p->member_fds[i] = -1;
+    for (int i = 0; i < PERF_MAX_RAW; i++) p->raw_member_fds[i] = -1;
     p->fd = -1;
+    p->raw_fd = -1;
 
 #if RVV_INSTRUMENTED
 #define PERF_CACHE_EV(id, op, res) \
@@ -165,10 +238,50 @@ static inline void perf_gemm_open(perf_gemm_counters* p) {
 #endif  // RVV_INSTRUMENTED
 }
 
+// Issue #42: opens `codes` (PERF_TYPE_RAW) as a second group, running from now on. Returns
+// 0, or -1 with no raw group open (too many codes, the uninstrumented build, or the kernel
+// refused one of them). The usual group is not touched either way.
+static inline int perf_gemm_open_raw(perf_gemm_counters* p, const uint64_t* codes, int n) {
+    perf_gemm_close_raw(p);
+    if (n < 1 || n > PERF_MAX_RAW) return -1;
+#if RVV_INSTRUMENTED
+    for (int i = 0; i < n; i++) {
+        struct perf_event_attr pe;
+        memset(&pe, 0, sizeof(pe));
+        pe.type = PERF_TYPE_RAW;
+        pe.size = sizeof(pe);
+        pe.config = codes[i];
+        pe.disabled = (i == 0);
+        pe.exclude_kernel = 1;
+        pe.exclude_hv = 1;
+        pe.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_TOTAL_TIME_ENABLED | PERF_FORMAT_TOTAL_TIME_RUNNING;
+        int fd = (int) syscall(__NR_perf_event_open, &pe, 0, -1, i == 0 ? -1 : p->raw_member_fds[0], 0);
+        if (fd < 0) {
+            perf_gemm_close_raw(p);
+            return -1;
+        }
+        p->raw_member_fds[i] = fd;
+    }
+    p->raw_fd = p->raw_member_fds[0];
+    p->n_raw = n;
+    if (ioctl(p->raw_fd, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP) != 0 ||
+        ioctl(p->raw_fd, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP) != 0) {
+        perf_gemm_close_raw(p);
+        return -1;
+    }
+    p->raw_valid = 1;
+    return 0;
+#else
+    (void) codes;
+    return -1;
+#endif
+}
+
 static inline void perf_gemm_reset(perf_gemm_counters* p) {
     memset(&p->pack, 0, sizeof(p->pack));
     memset(&p->compute, 0, sizeof(p->compute));
     p->valid = (p->fd >= 0);
+    p->raw_valid = (p->raw_fd >= 0);
 }
 
 static inline void perf_snapshot(perf_gemm_counters* p, perf_counts* out) {
@@ -177,9 +290,16 @@ static inline void perf_snapshot(perf_gemm_counters* p, perf_counts* out) {
     if (perf_decode_group_read(buf, got, out) != 0) p->valid = 0;
 }
 
+static inline void perf_raw_snapshot(perf_gemm_counters* p, perf_counts* out) {
+    uint64_t buf[3 + PERF_MAX_RAW];
+    long got = (long) read(p->raw_fd, buf, sizeof(buf));
+    if (perf_decode_raw_group_read(buf, got, p->n_raw, out) != 0) p->raw_valid = 0;
+}
+
 static inline void perf_region_begin(perf_gemm_counters* p, perf_counts* snap) {
 #if RVV_INSTRUMENTED
     if (p->valid) perf_snapshot(p, snap);
+    if (p->raw_valid) perf_raw_snapshot(p, snap);
 #else
     (void) p;
     (void) snap;
@@ -188,12 +308,17 @@ static inline void perf_region_begin(perf_gemm_counters* p, perf_counts* snap) {
 
 static inline void perf_region_end(perf_gemm_counters* p, const perf_counts* snap, perf_counts* region) {
 #if RVV_INSTRUMENTED
-    if (!p->valid) return;
-    // Zeroed because perf_snapshot leaves it untouched on a rejected read; the
+    // Zeroed because the snapshots leave it untouched on a rejected read; the
     // `p->valid &&` below then skips it, but only the initialiser makes that local.
     perf_counts now = {};
-    perf_snapshot(p, &now);
-    if (p->valid && perf_counts_add_delta(region, snap, &now) != 0) p->valid = 0;
+    if (p->valid) {
+        perf_snapshot(p, &now);
+        if (p->valid && perf_counts_add_delta(region, snap, &now) != 0) p->valid = 0;
+    }
+    if (p->raw_valid) {
+        perf_raw_snapshot(p, &now);
+        if (p->raw_valid && perf_counts_add_raw_delta(region, snap, &now, p->n_raw) != 0) ++p->raw_rejected;
+    }
 #else
     (void) p;
     (void) snap;

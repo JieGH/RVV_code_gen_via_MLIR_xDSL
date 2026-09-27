@@ -22,6 +22,13 @@ is clumped (slow stretches), over 1 is alternating.
 
 Reads reps_*.txt or reps_*.txt.gz (compile_macro_bench.sh gzips them on fetch).
 
+Issue #42: when the per-rep log carries counts (the instrumented build's Pack_Cycles /
+Compute_Cycles, and a Pack_<event> / Compute_<event> pair per --raw-events event), a second
+table puts fast reps beside slow reps: per case and counter, the mean per rep over the fast
+reps and over the slow reps of every launch given, and slow/fast. The split is the one above,
+made per launch, rep 0 left out. A count that is nan is left out; a column that is nan in
+every rep (an uninstrumented log) is dropped.
+
 Issue #39's house rules are checked on the way: every run folder's build, protocol, board
 and core are printed (from its provenance.txt), a run on core 0 is flagged, and so is any case
 seen in fewer than 3 launches (one launch is not a result).
@@ -46,6 +53,12 @@ TWO_SPEEDS_BELOW = 0.8  # slow group's mean under this fraction of the fast grou
 class Case:
     ops: float
     seconds: list[float] = field(default_factory=list[float])
+    # Issue #42: each counter column's per-rep counts, reps in the order they ran.
+    counters: dict[str, list[float]] = field(default_factory=dict[str, list[float]])
+
+
+def _is_counter(column: str) -> bool:
+    return column.startswith(("Pack_", "Compute_")) and not column.endswith("_Seconds")
 
 
 @dataclass
@@ -86,11 +99,24 @@ def read_reps(path: Path) -> dict[tuple[str, int], Case]:
     """Rows of one reps_*.txt, grouped by (Layer, NC) in file order, reps in the order they ran."""
     cases: dict[tuple[str, int], Case] = {}
     with (gzip.open(path, "rt") if path.suffix == ".gz" else path.open()) as fh:
-        for row in csv.DictReader(fh):
+        reader = csv.DictReader(fh)
+        columns = [c for c in reader.fieldnames or [] if _is_counter(c)]
+        for row in reader:
             key = (row["Layer"], int(row["NC"]))
             ops = 2.0 * int(row["M"]) * int(row["N"]) * int(row["K"])
-            cases.setdefault(key, Case(ops)).seconds.append(float(row["Seconds"]))
+            case = cases.setdefault(key, Case(ops))
+            case.seconds.append(float(row["Seconds"]))
+            for c in columns:
+                case.counters.setdefault(c, []).append(float(row[c]))
     return cases
+
+
+def slow_reps(ops: float, seconds: list[float]) -> list[bool]:
+    """Which reps are slow, rep 0 included as never slow (it is left out of the split)."""
+    gops = [ops / (s * 1e9) for s in seconds]
+    warm = gops[1:]
+    cut = _slow_cut(warm)
+    return [False] + [g <= cut for g in warm] if gops else []
 
 
 def case_stats(ops: float, seconds: list[float]) -> CaseStats:
@@ -98,9 +124,8 @@ def case_stats(ops: float, seconds: list[float]) -> CaseStats:
     mean_g = statistics.fmean(gops)
     cv = statistics.pstdev(gops) / mean_g * 100 if len(gops) > 1 else 0.0
 
-    warm = gops[1:] if len(gops) > 1 else gops
-    cut = _slow_cut(warm)
-    slow = [g <= cut for g in warm]
+    mask = slow_reps(ops, seconds)
+    slow = mask[1:] if len(mask) > 1 else mask  # rep 0 left out, unless it is the only rep
     first_slow = next((i + 1 for i, x in enumerate(slow) if x), len(gops)) if len(gops) > 1 else len(gops)
     s, n = sum(slow), len(slow)
     runs = sum(1 for i, x in enumerate(slow) if x and (i == 0 or not slow[i - 1]))
@@ -166,11 +191,78 @@ def launch_table(targets: list[Path]) -> list[LaunchRow]:
 
 
 @dataclass
+class CounterRow:
+    packer: str
+    layer: str
+    nc: int
+    launches: int
+    column: str
+    n_fast: int
+    n_slow: int
+    fast_mean: float
+    slow_mean: float
+
+    @property
+    def ratio(self) -> float:
+        return self.slow_mean / self.fast_mean if self.n_slow and self.fast_mean else float("nan")
+
+
+def counter_table(targets: list[Path]) -> list[CounterRow]:
+    """Issue #42: one row per (packer, layer, nc, counter column), in first-seen order, over the
+    launches given: the mean count per rep over fast reps and over slow reps. Each launch is
+    split on its own; rep 0 of each launch is in neither group."""
+    fast: dict[tuple[str, str, int, str], list[float]] = {}
+    slow: dict[tuple[str, str, int, str], list[float]] = {}
+    launches: dict[tuple[str, str, int], int] = {}
+    for target in targets:
+        for f in _reps_files(target):
+            packer = "scalar" if "_scalarpack" in f.name else "vector"
+            for (layer, nc), case in read_reps(f).items():
+                launches[(packer, layer, nc)] = launches.get((packer, layer, nc), 0) + 1
+                is_slow = slow_reps(case.ops, case.seconds)
+                for column, counts in case.counters.items():
+                    key = (packer, layer, nc, column)
+                    fast.setdefault(key, [])
+                    slow.setdefault(key, [])
+                    for r in range(1, len(counts)):
+                        if counts[r] == counts[r]:  # not nan
+                            (slow if is_slow[r] else fast)[key].append(counts[r])
+    rows: list[CounterRow] = []
+    for key in fast:
+        f_counts, s_counts = fast[key], slow[key]
+        if not f_counts and not s_counts:
+            continue  # nan in every rep: not counted in this log
+        rows.append(CounterRow(
+            key[0], key[1], key[2], launches[key[:3]], key[3], len(f_counts), len(s_counts),
+            statistics.fmean(f_counts) if f_counts else float("nan"),
+            statistics.fmean(s_counts) if s_counts else float("nan"),
+        ))
+    return rows
+
+
+def format_counter_table(rows: list[CounterRow]) -> str:
+    out = [
+        "| packer | layer | nc | launches | counter | fast reps: mean per rep (n) | slow reps: mean per rep (n) | slow/fast |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    for r in rows:
+        slow = f"{r.slow_mean:.4g} ({r.n_slow})" if r.n_slow else "one speed, no slow reps"
+        ratio = f"{r.ratio:.2f}" if r.n_slow else "-"
+        out.append(
+            f"| {r.packer} | {r.layer} | {r.nc} | {r.launches} | {r.column} | "
+            f"{r.fast_mean:.4g} ({r.n_fast}) | {slow} | {ratio} |"
+        )
+    return "\n".join(out)
+
+
+@dataclass
 class RunConditions:
     board: str
     build: str
     protocol: str
     core: str
+    raw_events: str = "unknown"
+    busy_share: str = "unknown"
 
 
 def run_conditions(run_dir: Path) -> RunConditions:
@@ -186,7 +278,8 @@ def run_conditions(run_dir: Path) -> RunConditions:
     def get(key: str) -> str:
         return fields.get(key) or "unknown"
 
-    return RunConditions(get("board"), get("build"), get("protocol"), get("cpu pin"))
+    return RunConditions(get("board"), get("build"), get("protocol"), get("cpu pin"),
+                         get("raw events"), get("busy share"))
 
 
 def conditions_lines(targets: list[Path]) -> list[str]:
@@ -198,7 +291,8 @@ def conditions_lines(targets: list[Path]) -> list[str]:
             (p for p in target.parents if (p / "provenance.txt").is_file()), target.parent
         )
         c = run_conditions(run_dir)
-        out.append(f"- {run_dir.name}: {c.board}, {c.build.split(' --')[0]}, {c.protocol.split(' --')[0]}, core {c.core}")
+        out.append(f"- {run_dir.name}: {c.board}, {c.build.split(' --')[0]}, {c.protocol.split(' --')[0]}, core {c.core}, "
+                   f"raw events {c.raw_events}, busy {c.busy_share}")
         if c.core == "0":
             out.append(f"  WARNING: {run_dir.name} was timed on core 0, which takes every device interrupt (issue #39)")
     return out
@@ -228,6 +322,10 @@ def main(argv: list[str]) -> int:
     print("\n".join(conditions_lines(targets)))
     print()
     print(format_table(rows))
+    counters = counter_table(targets)
+    if counters:
+        print()
+        print(format_counter_table(counters))
     few = [f"{r.packer} {r.layer}" for r in rows if r.launches < MIN_LAUNCHES]
     if few:
         print(f"\nWARNING: {len(few)} case(s) seen in fewer than {MIN_LAUNCHES} launches: not a result under "

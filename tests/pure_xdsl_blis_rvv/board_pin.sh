@@ -60,3 +60,52 @@ echo "  /proc/cpuinfo  :"
 cat /proc/cpuinfo
 EOF
 }
+
+# Issue #42: was anything else running while we timed? B3's slow state may be the L2 that
+# cores 4-7 share, so each project's timed run (`make run`, not its build) is bracketed by two
+# readings of /proc/stat on the board, kept as cpu_times_before / cpu_times_after in its logs.
+#
+# board_cpu_times -- the board command that prints the per-core lines of /proc/stat.
+board_cpu_times() {
+    echo "grep '^cpu[0-9]' /proc/stat"
+}
+
+# busy_share <before> <after> -- two outputs of board_cpu_times; prints "cpu0 3% cpu1 0% ...",
+# each core's non-idle share of its time between the two (idle and iowait count as idle), or
+# "unavailable" when either reading is not a set of per-core lines (e.g. an ssh error).
+busy_share() {
+    printf '%s\n' "$1" "--" "$2" | awk '
+        NF == 0 { next }
+        $1 == "--" { after = 1; next }
+        $1 !~ /^cpu[0-9]+$/ { bad = 1; next }
+        {
+            total = 0; for (i = 2; i <= 9 && i <= NF; i++) total += $i
+            idle = $5 + $6
+            if (after) { t1[$1] = total; i1[$1] = idle; order[n++] = $1 } else { t0[$1] = total; i0[$1] = idle }
+        }
+        END {
+            if (bad || n == 0) { print "unavailable"; exit }
+            line = ""
+            for (k = 0; k < n; k++) {
+                c = order[k]
+                if (!(c in t0)) { print "unavailable"; exit }
+                dt = t1[c] - t0[c]; di = i1[c] - i0[c]
+                share = dt > 0 ? 100 * (dt - di) / dt : 0
+                line = line (k ? " " : "") sprintf("%s %.0f%%", c, share)
+            }
+            print line
+        }'
+}
+
+# launch_conditions <raw events> <run dir> -- the provenance.txt lines for what the launch
+# counted and how busy each core was during each project's timed run ("<project>: cpu0 3% ...",
+# joined by "; "), from the readings fetched into <run dir>/<project>/.
+launch_conditions() {
+    local shares="" d
+    for d in "$2"/*/; do
+        [ -f "${d}cpu_times_before" ] && [ -f "${d}cpu_times_after" ] || continue
+        shares="${shares:+${shares}; }$(basename "$d"): $(busy_share "$(cat "${d}cpu_times_before")" "$(cat "${d}cpu_times_after")")"
+    done
+    printf '  %-14s : %s\n' "raw events" "${1:-none}"
+    printf '  %-14s : %s\n' "busy share" "${shares:-unavailable}"
+}

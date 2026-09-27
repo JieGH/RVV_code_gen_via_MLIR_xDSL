@@ -881,3 +881,86 @@ def test_script_still_takes_save_reps_explicitly():
     out = _run_script("--dry-run", "--save-reps").stdout
     line = next(ln for ln in out.splitlines() if "reps_*_noinstr_refproto.txt" in ln)
     assert "[--save-reps]" in line
+
+
+# ---------------------------------------------------------------------------
+# --raw-events (issue #42): the X60's own event codes, counted per rep next to the cycles, so
+# fast reps can be put beside slow ones. Each event adds a pack and a compute column at the
+# end of the per-rep log. The host refuses every perf event (perf_event_paranoid 4), so here
+# the columns are always nan: what is under test is the flag and the log, not the counts.
+# ---------------------------------------------------------------------------
+REPS_COLUMNS = "Layer,M,N,K,Variant,MC,NC,KC,Rep,Seconds,Pack_Seconds,Compute_Seconds,Pack_Cycles,Compute_Cycles"
+X60_L2 = ["l2_load_access", "l2_load_miss", "l2_store_access", "l2_ar_channel_stall_cycle",
+          "l2_aw_channel_stall_cycle", "l1d_miss", "l1d_prefetch_refill", "l1d_prefetch_hit"]
+
+
+def _reps_header(driver: Driver, name: str = "reps_fp32_STUB.txt") -> str:
+    return (driver.cwd / "logs" / name).read_text().splitlines()[0]
+
+
+def test_without_raw_events_the_per_rep_log_is_as_before(instrumented: Driver):
+    instrumented.run("--save-reps")
+    assert _reps_header(instrumented) == REPS_COLUMNS
+
+
+def test_each_raw_event_adds_a_pack_and_a_compute_column_in_the_order_given(instrumented: Driver):
+    proc = instrumented.run("--save-reps", "--raw-events", "l2_miss=0xb9,l2_acc=184")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert _reps_header(instrumented) == (
+        REPS_COLUMNS + ",Pack_l2_miss,Compute_l2_miss,Pack_l2_acc,Compute_l2_acc"
+    )
+    reps = instrumented.raw_rows("reps_fp32_STUB.txt")
+    assert len(reps) == CONFIG_ITERATIONS
+    # the events could not open here, and a count that is missing is never written as 0
+    assert all(r[c] == "nan" for r in reps for c in ("Pack_l2_miss", "Compute_l2_acc"))
+    # ... and the usual columns are still filled in
+    assert float(reps[0]["Pack_Seconds"]) == pytest.approx(1e-6)
+
+
+def test_the_x60_l2_preset_names_the_checked_events(instrumented: Driver):
+    proc = instrumented.run("--save-reps", "--raw-events", "x60-l2")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    extra = _reps_header(instrumented).split(",")[len(REPS_COLUMNS.split(",")):]
+    assert extra == [f"{region}_{ev}" for ev in X60_L2 for region in ("Pack", "Compute")]
+
+
+def test_the_overview_names_the_raw_events_and_says_they_did_not_open(instrumented: Driver):
+    ov = _overview(instrumented.run("--save-reps", "--raw-events", "l2_miss=0xb9").stdout)
+    line = next(ln for ln in ov.splitlines() if "l2_miss=0xb9" in ln)
+    assert "[--raw-events]" in line
+    assert "could not open" in line and "nan" in line
+
+
+def test_the_overview_says_when_no_raw_events_were_asked_for(instrumented: Driver):
+    ov = _overview(instrumented.run("--save-reps").stdout)
+    assert "raw events: none" in ov
+
+
+@pytest.mark.parametrize(
+    "value, why",
+    [
+        ("l2_miss", "name=code"),
+        ("l2 miss=185", "name"),
+        ("l2_miss=abc", "code"),
+        ("a=1,a=2", "twice"),
+        (",".join(f"e{i}=1" for i in range(9)), "at most 8"),
+        ("", "name=code"),
+    ],
+)
+def test_a_bad_raw_event_list_is_refused_saying_why(instrumented: Driver, value: str, why: str):
+    proc = instrumented.run("--save-reps", "--raw-events", value)
+    assert proc.returncode != 0
+    assert "--raw-events" in proc.stderr and why in proc.stderr
+    assert not (instrumented.cwd / "logs" / "reps_fp32_STUB.txt").exists()
+
+
+def test_raw_events_without_save_reps_are_refused(instrumented: Driver):
+    proc = instrumented.run("--raw-events", "x60-l2")
+    assert proc.returncode != 0
+    assert "--save-reps" in proc.stderr
+
+
+def test_the_uninstrumented_build_refuses_raw_events(uninstrumented: Driver):
+    proc = uninstrumented.run("--tmin", "0.05", "--save-reps", "--raw-events", "x60-l2")
+    assert proc.returncode != 0
+    assert "instrumented build" in proc.stderr

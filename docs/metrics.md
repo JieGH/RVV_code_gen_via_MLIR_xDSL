@@ -249,6 +249,7 @@ mixes across builds, protocols, packers or `nc` settings):
 | `Seconds` | the time charged to this rep: the same number the raw log's mean and median are made of. Uninstrumented: this rep's wall clock. Instrumented: its pack + compute timers |
 | `Pack_Seconds`, `Compute_Seconds` | instrumented only (`nan` otherwise): the two halves of `Seconds` |
 | `Pack_Cycles`, `Compute_Cycles` | instrumented only, and only when the perf counters opened (`nan` otherwise) |
+| `Pack_<event>`, `Compute_<event>` | only with `--raw-events` (issue #42, instrumented only): one pair per raw event, in the order given, after the columns above. `nan` when the raw group could not open, and for a rep any of whose counter windows the raw group was shared out for |
 
 The file is written after each case's timed loop, from the times the loop already keeps, so
 saving it adds no work inside the timed interval. It runs to ~10 MB a launch at `--tmin 10`, so the
@@ -256,6 +257,47 @@ fetch step gzips it (~0.8 MB). `reps_report.py <run dir> [...]` reads it (plain 
 per packer and case across the launches given: GOPs by mean time (average, lowest and highest launch)
 and by median rep, CV, best rep, the share of slow reps (the slower of two clearly separate speeds),
 how bunched together the slow reps are, and how long each case stays fast from its start.
+When the log carries counts (the cycles, and any raw events), a second table puts fast reps
+beside slow reps: per case and counter, the mean per rep over the fast and over the slow reps of
+all the launches given, and slow/fast (issue #42). Each run folder's line also names its raw
+events and every core's busy share over the launch, from `provenance.txt`.
+
+### Raw events (`--raw-events`, issue #42)
+
+The generic L2 and prefetch events open on the X60 but read 0 (issue #41); the core's own event
+codes count. `--raw-events name=code,...` opens them as a second counter group beside the usual
+one (at most 8; the X60 has 16 programmable counters and the usual group takes 8), read at the
+same pack and compute windows, so a raw event the board refuses never takes the usual counters
+with it. `--raw-events x60-l2` is the checked preset (`PERF_X60_L2_PRESET` in
+`templates/perf_counters.h`, codes from the vendor kernel's perf tables), checked on `jbpi` by
+`test_perf_counters.py`:
+
+Source of every code: the vendor kernel's `tools/perf/pmu-events/arch/riscv/spacemit/x60/cache.json`
+(spacemit-com/linux-6.6). Checked on `jbpi`: kernel 6.6.63 `#2.2.7.2` (Bianbu), 2026-09-27; the SBI
+firmware version is not readable without root there (`dmesg` is closed to users). Counts per 64 B
+line, streaming 64 KiB (fits the L2) and 4 MiB (does not), 20 passes:
+
+| event | code | in preset | checked | 64 KiB read | 4 MiB read | 64 KiB write | 4 MiB write |
+|---|---|---|---|---|---|---|---|
+| `l2_load_access` | 0xb8 | yes | counts | 1.03 | 1.01 | 0.86 | 1.01 |
+| `l2_load_miss` | 0xb9 | yes | counts | 0.002 | 0.002 | 0.001 | 0.05 |
+| `l2_store_access` | 0xbc | yes | counts | 1.02 | 0.99 | 0.86 | 1.01 |
+| `l2_ar_channel_stall_cycle` | 0xbb | yes | counts | 0.00 | 2.84 | 0.03 | 28.7 |
+| `l2_aw_channel_stall_cycle` | 0xbd | yes | counts (near 0) | 0 | 0 | 0 | 0.001 |
+| `l1d_miss` | 0xab | yes | counts | 0.06 | 0.02 | 0.84 | 1.00 |
+| `l1d_prefetch_refill` | 0xae | yes | counts | 0.93 | 0.94 | 0 | 0 |
+| `l1d_prefetch_hit` | 0xaf | yes | counts | 1.93 | 1.96 | 0 | 0 |
+| `l2_ar_channel_request` | 0xba | no | counts | 2.06 | 2.01 | 2.22 | 2.27 |
+| `l1d_excl_evict` | 0xac | no | counts | 1.01 | 0.99 | 0.84 | 1.00 |
+| `l1d_access` | 0xaa | no | counts | 3.00 | 3.00 | 1.00 | 1.00 |
+| generic `LL-*`, `cache-references`, `cache-misses`, prefetch, `bus-cycles` | - | no | read 0 (#41) | | | | |
+
+"No" rows were checked by the one-off probe of #42 (not in `test_perf_counters.py`); the preset holds
+8 because the usual group already takes 8 of the 16 programmable counters.
+
+Read it this way: demand L2 load misses stay near 0 on a streaming read, because the prefetcher
+runs ahead of the loads; the AR channel stall cycles (the core waiting on reads past the L2) are
+the clear sign of memory traffic. The build must be `--instr`, and the per-rep log must be on.
 
 ## Hardware perf counters (perf log, issue #8)
 

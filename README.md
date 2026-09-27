@@ -53,7 +53,8 @@ Add `--dry-run` to print the settings and stop without touching the board. Every
 | `--no-nc-overrides` | Ignores the per-shape `nc` table in `config.json`, so every shape uses the heuristic's `nc`. Needed for a fair head-to-head; the reference has no counterpart for those overrides. Drop it for the shipped-configuration number. |
 | `--scalar-pack` | Every timed call packs with the scalar packer instead of the RVV one (issue #26). Own log names (`_scalarpack`). `run_pack_swap.sh` runs vector-live and scalar-live back to back and compares them; see [docs/metrics.md](docs/metrics.md). |
 | `--cpu N` / `--no-pin` | Pins the timed run to one core (default 4). Never use core 0: it takes every device interrupt and runs 5-10% slower. The house rules for a quotable number (non-zero core, several launches for small gaps, saved logs) are in [docs/agents/execution.md](docs/agents/execution.md). |
-| `--save-reps` | Also saves every timed rep's own time, in the order the reps ran, to `reps_*.txt`. |
+| `--save-reps` / `--no-save-reps` | Saves every timed rep's own time, in the order the reps ran, to `reps_*.txt` (on by default since issue #39). |
+| `--raw-events <list>` | With `--instr` only: counts the core's own events per rep into the per-rep log, e.g. `--raw-events x60-l2` for the X60's L2 and prefetch events (issue #42). See [docs/metrics.md](docs/metrics.md), "Raw events". |
 
 Each combination writes to its own log name, so the two can never be mixed up: `raw_*_noinstr_refproto_no_nc_override.txt` for the command above.
 

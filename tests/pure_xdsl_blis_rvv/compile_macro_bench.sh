@@ -40,6 +40,11 @@ set -e
 # timed loop, so it adds nothing to the timing. Fetched gzipped, never merged into all_*.txt;
 # read it with reps_report.py.
 #
+# --raw-events <name=code,...|x60-l2> (issue #42, --instr only, needs the per-rep log): the
+# core's own event codes (the X60's L2 and prefetch events for the preset), counted per rep
+# into a Pack_<name> and a Compute_<name> column of the per-rep log. Every launch also records
+# the raw events, and each core's busy share during each project's timed run, in provenance.txt.
+#
 # Issue #21: the timed run is pinned to one core (--cpu N, default BENCH_CPU_DEFAULT in
 # board_pin.sh, shared with run_ref_baseline.sh so both sides time on the same one), and the
 # conditions it ran under (governor, /proc/cpuinfo, compiler, load) are written to
@@ -64,6 +69,7 @@ FORCE_NC=""
 # Issue #39: every launch keeps its per-rep times (reps_report.py reads them across launches).
 SAVE_REPS=true
 SAVE_REPS_SOURCE="default"
+RAW_EVENTS=""
 # Issue #14: 0 (default) compiles the per-tile timers and counters out, so RVV_Time_ms
 # carries no timer tax and is comparable to the reference. 1 keeps them, for debugging
 # our own pack/compute split. The two write to separate logs.
@@ -106,6 +112,7 @@ while [[ "$#" -gt 0 ]]; do
         --no-nc-overrides) TEST_ARGS="${TEST_ARGS} --no-nc-overrides" ;;
         --save-reps)       SAVE_REPS=true; SAVE_REPS_SOURCE="--save-reps"    ;;
         --no-save-reps)    SAVE_REPS=false; SAVE_REPS_SOURCE="--no-save-reps" ;;
+        --raw-events)      RAW_EVENTS="$2";          shift      ;;
         --cpu)             PIN_CPU="$2"; CPU_FLAG=true; shift   ;;
         --no-pin)          NO_PIN=true                          ;;
         --allow-core-0)    ALLOW_CORE0=true                     ;;
@@ -145,6 +152,16 @@ if [ -n "${FORCE_NC}" ] && [[ "${TEST_ARGS}" == *--no-nc-overrides* ]]; then
 fi
 TEST_ARGS="${TEST_ARGS}${PROTOCOL_FLAG:+ ${PROTOCOL_FLAG}}${TMIN:+ --tmin ${TMIN}}"
 if [ "${SAVE_REPS}" = true ]; then TEST_ARGS="${TEST_ARGS} --save-reps"; fi
+# Issue #42: refuse here what the driver would refuse on the board, before any board time.
+if [ -n "${RAW_EVENTS}" ]; then
+    if [ "${INSTRUMENTED}" != "1" ]; then
+        echo "Error: --raw-events needs --instr: the uninstrumented build compiles the counters out."; exit 1
+    fi
+    if [ "${SAVE_REPS}" != true ]; then
+        echo "Error: --raw-events writes only to the per-rep log: drop --no-save-reps."; exit 1
+    fi
+    TEST_ARGS="${TEST_ARGS} --raw-events ${RAW_EVENTS}"
+fi
 
 # Issue #21: refuse a bad core, and --cpu with --no-pin, rather than let the later flag win.
 pin_check "${CPU_FLAG}" "${NO_PIN}" "${PIN_CPU}" "${ALLOW_CORE0}" || exit 1
@@ -223,9 +240,15 @@ if [ "${SAVE_REPS}" = true ]; then
 else
     ov "" "per-rep times: not saved" "${SAVE_REPS_SOURCE}"
 fi
+if [ -n "${RAW_EVENTS}" ]; then
+    ov "" "raw events: ${RAW_EVENTS} (a Pack_ and a Compute_ column each in the per-rep log)" "--raw-events"
+else
+    ov "" "raw events: none" "default"
+fi
+ov "" "busy share of every core during each timed run (make run), from /proc/stat -> provenance.txt" "default"
 echo "$SEP"
 if [ "${DRY_RUN}" = true ]; then
-    echo "  --dry-run: stopping here. Nothing was generated, synced or run."
+    echo "  --dry-run: stopping here. Nothing was generated, synced or run, and no provenance or busy share recorded."
     exit 0
 fi
 
@@ -338,7 +361,7 @@ fi
 # fails, what lands in provenance.txt is the ssh error, and compare_ref_baseline.py then
 # reports the pinning as unknown rather than assume it.
 PROVENANCE="$(board_provenance "${PIN_CPU}" | ssh_board_no_tty "sh -s" 2>&1)" || true
-ssh_board "cd ${REMOTE_DIR}/pj_gen && while read d; do (cd \"\$d\" && make clean && make all INSTRUMENTED=${INSTRUMENTED} && ${FORCE_NC_ENV}${PIN_PREFIX}make run INSTRUMENTED=${INSTRUMENTED} TEST_ARGS=\"${TEST_ARGS}\"); done < compile_order.txt"
+ssh_board "cd ${REMOTE_DIR}/pj_gen && while read d; do (cd \"\$d\" && make clean && make all INSTRUMENTED=${INSTRUMENTED} && mkdir -p logs && $(board_cpu_times) > logs/cpu_times_before && ${FORCE_NC_ENV}${PIN_PREFIX}make run INSTRUMENTED=${INSTRUMENTED} TEST_ARGS=\"${TEST_ARGS}\"; rc=\$?; $(board_cpu_times) > logs/cpu_times_after; exit \$rc); done < compile_order.txt"
 
 # ============================================================
 # [4/4] Fetch logs
@@ -391,6 +414,8 @@ for proj_dir in "${RUN_DIR}"/*/; do
     echo "  [OK] Fetched logs to ${proj_dir}"
 done
 echo "  [OK] Merged cross-project results into ${RUN_DIR}/all_*.txt"
+# Issue #42: what the launch counted, and how busy each core was during each timed run.
+launch_conditions "${RAW_EVENTS}" "${RUN_DIR}" >> "${RUN_DIR}/provenance.txt"
 
 # Per-case comparison table (pack/compute ms, pack % of total, KerGOPs, Ref GOPs,
 # speedup vs ref, Vector Pack Gain %) built from all_raw_*.txt. See docs/metrics.md.
