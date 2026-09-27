@@ -2,7 +2,12 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/43
 
-**Status:** 📝 Specified 2026-09-27. **Implementation on hold until the user says go.**
+**Status:** 🔧 Code done 2026-09-27 (user said go); **measurement not run yet** (stories 12, 14, 15).
+`--zero-pack-lines` on `compile_macro_bench.sh` and the driver; helper `templates/pack_lines.h`; comparison config
+`config_issue43_zero_lines.json`. Tests: `test_zero_pack_lines.py`, `test_ref_protocol.py` (flag, logs, script),
+`test_reps_report.py` (`vector+zeroline` row), and the on-board `test_pack_correctness.py` (passed on `jbpi`: real
+`cbo.zero` runs in user mode, packed layout unchanged). Note for the measurement: with the switch off, each AXPY
+pack still runs one `if (zero_pack_lines)` test inside the pack timer; the "off" launches are that build.
 **Parent:** #41 (§8: the slow state is the L1D prefetcher doing about half its work). Sibling: #44.
 **Baseline:** `config.json` pins B3 to `nc`=128 again (user's decision, 2026-09-27); this work is measured
 against that baseline and against `nc`=384.

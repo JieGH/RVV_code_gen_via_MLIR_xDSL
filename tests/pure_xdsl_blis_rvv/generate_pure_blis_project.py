@@ -159,10 +159,10 @@ def generate_header(
         f.write("\n")
 
         f.write(
-            f"void gemm_blis_generic(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf);\n\n"
+            f"void gemm_blis_generic(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf);\n\n"
         )
         f.write(
-            f"typedef void (*gemm_blis_fn)(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf);\n\n"
+            f"typedef void (*gemm_blis_fn)(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf);\n\n"
         )
         f.write("struct KernelVariant {\n")
         f.write("    const char* name;\n")
@@ -235,6 +235,15 @@ def render_pad_zero(buf: str, cur: str, panel: str, c_type: str) -> str:
     )
 
 
+def render_zero_lines(buf: str, cur: str, panel: str, c_type: str) -> str:
+    """Clears, when the switch is on, the whole 64-byte lines of the `buf` block the packer is
+    about to write: every panel, the last partial one's pad slots included (issue #43)."""
+    return (
+        f"if (zero_pack_lines) "
+        f"rvv_zero_whole_lines({buf}, (size_t) (({cur} + {panel} - 1) / {panel}) * {panel} * kc_pad * sizeof({c_type}));"
+    )
+
+
 def render_timed_pack_block(
     indent: str, scalar_call: str, vector_call: str, pad_zero: str | None = None
 ) -> str:
@@ -245,7 +254,8 @@ def render_timed_pack_block(
     -DRVV_INSTRUMENTED=0, so the whole measurement compiles away (issue #14).
 
     `pad_zero`, when given, is a statement that runs inside the timer just before the pack,
-    so the work it does is counted as pack time (issue #18).
+    so the work it does is counted as pack time: the DOT pad zeroing (issue #18), or the AXPY
+    line clearing (issue #43).
     """
     body = indent + "    "
     pad_line = f"{body}{pad_zero}\n" if pad_zero else ""
@@ -466,7 +476,7 @@ def build_project(config: BLISProjectConfig, args):
     with open(headers_path, "w") as f:
         f.write("#ifndef GEMM_HEADERS_H\n#define GEMM_HEADERS_H\n\n")
         f.write(
-            "#include <stddef.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <string>\n#include <algorithm>\n#include <riscv_vector.h>\n#include <chrono>\n#include \"perf_counters.h\"\n\n"
+            "#include <stddef.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <string>\n#include <algorithm>\n#include <riscv_vector.h>\n#include <chrono>\n#include \"perf_counters.h\"\n#include \"pack_lines.h\"\n\n"
         )
         f.write(macros)
         f.write(fwd_decls)
@@ -500,7 +510,7 @@ def build_project(config: BLISProjectConfig, args):
 
     dispatch_body += render_scalar_pack_functions(c_type_a, c_type_b)
     dispatch_body += f"""
-void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c_type_a}* A, int32_t lda, {c_type_b}* B, int32_t ldb, {c_type_alpha} beta, {c_type_c}* C, int32_t ldc, {c_type_a}* Ac, {c_type_b}* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf) {{
+void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c_type_a}* A, int32_t lda, {c_type_b}* B, int32_t ldb, {c_type_alpha} beta, {c_type_c}* C, int32_t ldc, {c_type_a}* Ac, {c_type_b}* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf) {{
 """
     if is_pinned:
         # Pinned mode: declare named pack functions directly — no table needed.
@@ -558,8 +568,19 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
     # tile's pad lanes, which the fringe path never copies to C, and the driver allocates
     # Ac/Bc zeroed, so nothing to do. DOT also pads K (`kc_pad`), which feeds every C
     # entry, so its last panel is zeroed -- inside the pack timer, so the cost counts.
-    pad_zero_cb = render_pad_zero("Bc", "cur_nc", "nr", c_type_b) if is_dot else None
-    pad_zero_rb = render_pad_zero("Ac", "cur_mc", "mr", c_type_a) if is_dot else None
+    #
+    # Line clearing (issue #43, `--zero-pack-lines`): AXPY only; the DOT path is left as it is.
+    # It runs inside the pack timer too, so its cost counts as pack time.
+    pad_zero_cb = (
+        render_pad_zero("Bc", "cur_nc", "nr", c_type_b)
+        if is_dot
+        else render_zero_lines("Bc", "cur_nc", "nr", c_type_b)
+    )
+    pad_zero_rb = (
+        render_pad_zero("Ac", "cur_mc", "mr", c_type_a)
+        if is_dot
+        else render_zero_lines("Ac", "cur_mc", "mr", c_type_a)
+    )
     pack_cb_block = render_timed_pack_block(
         " " * 12,
         "pack_CB_scalar(cur_kc, cur_nc, b_ptr, ldb, Bc, nr);",
@@ -721,6 +742,7 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
     templates_dir = os.path.join(os.path.dirname(__file__), "templates")
     shutil.copy(os.path.join(templates_dir, "driver_benchmark.cpp"), out_dir)
     shutil.copy(os.path.join(templates_dir, "perf_counters.h"), out_dir)
+    shutil.copy(os.path.join(templates_dir, "pack_lines.h"), out_dir)
 
     # Process Makefile to optionally restrict datasets
     makefile_path = os.path.join(templates_dir, "Makefile")

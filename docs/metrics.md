@@ -235,6 +235,29 @@ packing strategy on our microkernel.)
   difference, and the spread between repeats of the same side. A difference smaller than that
   spread is called "within noise".
 
+## Clearing the pack lines (`--zero-pack-lines`, issue #43)
+
+On the X60 a store to a line that is not in the cache first reads that line from the L2, even
+when the packer then overwrites all 64 bytes of it (~1.0 `l2_load_access` per line written,
+#42's probe). `--zero-pack-lines` clears each whole 64-byte line of the Ac or Bc block with
+`cbo.zero` just before the pack, so the packer's stores land on lines already in the cache.
+
+- **What is cleared.** Only lines lying wholly inside the block the pack call writes (every
+  panel, the last partial panel's pad slots included); a partly written line at either end is
+  left alone. Ac and Bc are allocated 64-byte aligned, so for a full block that is every line.
+  The helper is `templates/pack_lines.h`; on the host it does nothing.
+- **Where it runs.** Inside the pack timer and the pack counter window, for both packers
+  (`--scalar-pack` too) and for the warm-up protocol's scalar-pack pass. The time it takes is
+  pack time.
+- **AXPY only.** The DOT dispatch zeroes its K pad on purpose and clears no lines; the driver
+  refuses the flag for a DOT kernel.
+- **Own logs.** `_zeroline` after `_scalarpack`, before `_no_nc_override`.
+  `reps_report.py` reports such a launch as its own packer (`vector+zeroline`), so on and off
+  never pool.
+- **Comparison.** `config_issue43_zero_lines.json` (B3 at `nc`=128 and 384, B3_K256, B2,
+  Reuse24), switch off/on A-B-B-A-A-B on core 4: first `--instr --raw-events x60-l2` for the
+  counts, then uninstrumented with `--tmin 10` for the speed.
+
 ## Per-rep log (`--save-reps`, issues #35 and #36)
 
 `raw_*.txt` keeps only a summary of each case's reps (mean, median, percentiles). To see

@@ -40,6 +40,10 @@ set -e
 # timed loop, so it adds nothing to the timing. Fetched gzipped, never merged into all_*.txt;
 # read it with reps_report.py.
 #
+# --zero-pack-lines (issue #43, off by default): before each pack, clear with cbo.zero every
+# whole 64-byte line of the Ac/Bc block the packer is about to write, so its stores no longer
+# read those lines from the L2 first. AXPY kernels only. Its logs are named *_zeroline.txt.
+#
 # --raw-events <name=code,...|x60-l2> (issue #42, --instr only, needs the per-rep log): the
 # core's own event codes (the X60's L2 and prefetch events for the preset), counted per rep
 # into a Pack_<name> and a Compute_<name> column of the per-rep log. Every launch also records
@@ -104,6 +108,7 @@ while [[ "$#" -gt 0 ]]; do
         --riscv-workspace) RISCV_WORKSPACE="$2";     shift      ;;
         --config)          CONFIG="$2";              shift      ;;
         --scalar-pack)     TEST_ARGS="${TEST_ARGS} --scalar-pack" ;;
+        --zero-pack-lines) TEST_ARGS="${TEST_ARGS} --zero-pack-lines" ;;
         --ref-protocol)    PROTOCOL_FLAG="--ref-protocol"       ;;
         --no-ref-protocol) PROTOCOL_FLAG="--no-ref-protocol"    ;;
         --dry-run)         DRY_RUN=true                         ;;
@@ -188,6 +193,13 @@ fi
 # Issue #26: a scalar-pack run has its own logs (the driver and the Makefile do the same), and
 # the suffix goes before the nc one.
 case "${TEST_ARGS}" in *--scalar-pack*) BUILD_LOGS="${BUILD_LOGS%.txt}_scalarpack.txt" ;; esac
+# Issue #43: so does a run that clears the pack lines, between the scalar-pack and nc suffixes.
+case "${TEST_ARGS}" in
+    *--zero-pack-lines*)
+        BUILD_LOGS="${BUILD_LOGS%.txt}_zeroline.txt"
+        ZERO_LINES_BANNER="cleared with cbo.zero before each pack (inside the pack timer)"; ZERO_LINES_SOURCE="--zero-pack-lines" ;;
+    *)  ZERO_LINES_BANNER="not cleared: each line the packer writes is read from the L2 first"; ZERO_LINES_SOURCE="default" ;;
+esac
 case "${TEST_ARGS}" in *--no-nc-overrides*) NO_NC_OVERRIDES=true; BUILD_LOGS="${BUILD_LOGS%.txt}_no_nc_override.txt" ;; *) NO_NC_OVERRIDES=false ;; esac
 # Issue #27: every number names its protocol as well as its build.
 if [ "${REF_PROTOCOL}" = "1" ]; then
@@ -220,6 +232,7 @@ else
     ov "Correctness" "checked BEFORE timing (unless skip_ref_run in ${CONFIG})"
 fi
 ov "Packing" "$(case "${TEST_ARGS}" in *--scalar-pack*) echo "scalar packing forced";; *) echo "RVV vector packing";; esac)" "$(case "${TEST_ARGS}" in *--scalar-pack*) echo "--scalar-pack";; *) echo default;; esac)"
+ov "Pack lines" "${ZERO_LINES_BANNER}" "${ZERO_LINES_SOURCE}"
 ov "Cache blocking" "analytical model" "default"
 if [ "${NO_NC_OVERRIDES}" = true ]; then
     ov "" "nc overrides: OFF (every shape uses the heuristic's nc; the nc table in ${CONFIG} is ignored)" "--no-nc-overrides"
@@ -246,6 +259,7 @@ else
     ov "" "raw events: none" "default"
 fi
 ov "" "busy share of every core during each timed run (make run), from /proc/stat -> provenance.txt" "default"
+ov "Driver args" "${TEST_ARGS# }"
 echo "$SEP"
 if [ "${DRY_RUN}" = true ]; then
     echo "  --dry-run: stopping here. Nothing was generated, synced or run, and no provenance or busy share recorded."
@@ -377,6 +391,7 @@ mkdir -p "${RUN_DIR}"
     echo "  board          : ${RISCV_USER}@${RISCV_REMOTE_IP}"
     echo "  build          : ${BUILD_BANNER}"
     echo "  protocol       : ${PROTOCOL_BANNER}"
+    echo "  pack lines     : ${ZERO_LINES_BANNER}"
     echo "  logs           : ${BUILD_LOGS}"
     echo "${PROVENANCE}"
 } > "${RUN_DIR}/provenance.txt"

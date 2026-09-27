@@ -123,6 +123,17 @@ def test_launch_table_gives_one_row_per_packer_and_case_across_launches(tmp_path
     assert vec.gops_mean_time_lo < vec.gops_mean_time_avg < vec.gops_mean_time_hi == pytest.approx(10.0)
 
 
+def test_a_zero_lines_launch_is_its_own_packer_row(tmp_path: Path):
+    # Issue #43: --zero-pack-lines on and off is the A-B comparison, so the two never pool.
+    def run(name: str, suffix: str) -> Path:
+        d = tmp_path / name
+        _write(d / "p" / f"reps_fp32_AXPY_FP32_Pack_noinstr_refproto{suffix}.txt", _rows("B3", 128, [FAST] * 4))
+        return d
+
+    runs = [run("a", ""), run("b", "_zeroline"), run("c", "_scalarpack_zeroline_no_nc_override")]
+    assert [r.packer for r in launch_table(runs)] == ["vector", "vector+zeroline", "scalar+zeroline"]
+
+
 def test_command_line_prints_a_markdown_table(tmp_path: Path):
     a = _run_dir(tmp_path, "run_a", False, _rows("B3_nc128", 128, [FAST] * 4))
     out = subprocess.run(

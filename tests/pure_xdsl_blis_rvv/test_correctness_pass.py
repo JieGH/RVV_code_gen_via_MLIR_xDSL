@@ -90,8 +90,8 @@ STUB_HEADER = """\
 struct NcOverrideEntry { const char* label; int nc; };
 static const NcOverrideEntry CONFIG_NC_OVERRIDES[] = { {"", 0} };
 static const size_t CONFIG_NC_OVERRIDES_COUNT = 0;
-void stub_gemm(int, int, int, float, float*, int, float*, int, float, float*, int, float*, float*, int, int, int, int, int, double*, double*, uint64_t*, bool, perf_gemm_counters*);
-typedef void (*gemm_blis_fn)(int, int, int, float, float*, int, float*, int, float, float*, int, float*, float*, int, int, int, int, int, double*, double*, uint64_t*, bool, perf_gemm_counters*);
+void stub_gemm(int, int, int, float, float*, int, float*, int, float, float*, int, float*, float*, int, int, int, int, int, double*, double*, uint64_t*, bool, bool, perf_gemm_counters*);
+typedef void (*gemm_blis_fn)(int, int, int, float, float*, int, float*, int, float, float*, int, float*, float*, int, int, int, int, int, double*, double*, uint64_t*, bool, bool, perf_gemm_counters*);
 struct KernelVariant { const char* name; int mr; int nr; gemm_blis_fn func; };
 static const KernelVariant generated_variants[] = { {"MR4_NR4", 4, 4, stub_gemm} };
 static const int num_variants = 1;
@@ -104,7 +104,7 @@ ORACLE_HARNESS = """\
 #include "driver_benchmark.cpp"
 #undef main
 
-void stub_gemm(int, int, int, float, float*, int, float*, int, float, float*, int, float*, float*, int, int, int, int, int, double*, double*, uint64_t*, bool, perf_gemm_counters*) {}
+void stub_gemm(int, int, int, float, float*, int, float*, int, float, float*, int, float*, float*, int, int, int, int, int, double*, double*, uint64_t*, bool, bool, perf_gemm_counters*) {}
 
 // C = alpha*A*B + beta*C, one entry at a time. beta == 0 must not read C at all (the
 // benchmark's C starts as anything), and alpha == 0 must not read A or B.

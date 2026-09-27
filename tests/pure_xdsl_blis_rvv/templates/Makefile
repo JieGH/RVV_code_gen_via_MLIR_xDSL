@@ -46,6 +46,11 @@ ifneq (,$(or $(findstring --scalar-pack,$(TEST_ARGS)),$(filter-out undefined,$(o
 RESULT_SUFFIX := $(RESULT_SUFFIX)_scalarpack
 endif
 
+# Issue #43: so is a run that clears the pack-buffer lines (cbo.zero) before each pack.
+ifneq (,$(findstring --zero-pack-lines,$(TEST_ARGS)))
+RESULT_SUFFIX := $(RESULT_SUFFIX)_zeroline
+endif
+
 # Issue #16: a run without the config.json nc overrides is a different configuration, so
 # it gets its own results file too (the driver does the same for its logs).
 ifneq (,$(findstring --no-nc-overrides,$(TEST_ARGS)))

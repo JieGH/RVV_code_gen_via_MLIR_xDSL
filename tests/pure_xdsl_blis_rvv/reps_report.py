@@ -5,7 +5,8 @@ Issues #35/#36: summarise the per-rep logs that `--save-reps` writes (reps_*.txt
 For each case (a row label and the nc it ran at) of each launch: GOPs by mean time (the
 reference's formula, total ops over total time) and by median rep, the CV of the reps'
 GOPs, the best rep, the share of slow reps, and whether the slow reps come clumped
-together or scattered. Then one line per packer and case across launches.
+together or scattered. Then one line per packer and case across launches (a launch with
+--zero-pack-lines, issue #43, counts as its own packer: "vector+zeroline").
 
 Slow reps: the reps' GOPs are cut into two groups at the point that separates them best
 (1-D two-means). If the slower group's mean is under 80% of the faster group's, the case
@@ -161,6 +162,11 @@ class LaunchRow:
     fast_start_s_avg: float
 
 
+def _packer(f: Path) -> str:
+    """The packer a per-rep log was made with, and whether its pack lines were cleared (#43)."""
+    return ("scalar" if "_scalarpack" in f.name else "vector") + ("+zeroline" if "_zeroline" in f.name else "")
+
+
 def _reps_files(target: Path) -> list[Path]:
     return [target] if target.is_file() else sorted(target.rglob("reps_*.txt*"))
 
@@ -170,7 +176,7 @@ def launch_table(targets: list[Path]) -> list[LaunchRow]:
     per: dict[tuple[str, str, int], list[CaseStats]] = {}
     for target in targets:
         for f in _reps_files(target):
-            packer = "scalar" if "_scalarpack" in f.name else "vector"
+            packer = _packer(f)
             for (layer, nc), case in read_reps(f).items():
                 per.setdefault((packer, layer, nc), []).append(case_stats(case.ops, case.seconds))
     rows: list[LaunchRow] = []
@@ -216,7 +222,7 @@ def counter_table(targets: list[Path]) -> list[CounterRow]:
     launches: dict[tuple[str, str, int], int] = {}
     for target in targets:
         for f in _reps_files(target):
-            packer = "scalar" if "_scalarpack" in f.name else "vector"
+            packer = _packer(f)
             for (layer, nc), case in read_reps(f).items():
                 launches[(packer, layer, nc)] = launches.get((packer, layer, nc), 0) + 1
                 is_slow = slow_reps(case.ops, case.seconds)

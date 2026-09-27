@@ -427,6 +427,7 @@ struct RunSettings {
     string tmin_source;
     bool scalar_pack;
     string scalar_pack_source;
+    bool zero_pack_lines;
     bool no_nc_overrides;
     string dataset;
     string raw_log, summary_log, perf_log;
@@ -481,6 +482,11 @@ static void print_run_overview(const RunSettings& r) {
 #endif
     overview_line("Packing", r.scalar_pack ? "scalar packing forced" : "RVV vector packing",
                   r.scalar_pack ? r.scalar_pack_source : "default");
+    // Issue #43: whether the pack-buffer lines are cleared (cbo.zero) before each pack.
+    overview_line("Pack lines", r.zero_pack_lines
+                      ? "cleared with cbo.zero before each pack (inside the pack timer)"
+                      : "not cleared: each line the packer writes is read from the L2 first",
+                  r.zero_pack_lines ? "--zero-pack-lines" : "default");
     overview_line("Kernel family", string(CONFIG_DATATYPE) + " " + CONFIG_METHOD + " | VLEN " +
                                        to_string(CONFIG_VLEN) + " | arch " + CONFIG_ARCH,
                   "config.json");
@@ -529,6 +535,7 @@ int main(int argc, char** argv) {
     bool force_scalar_pack = (getenv("USE_SCALAR_PACK") != NULL);
     string scalar_pack_source = force_scalar_pack ? "USE_SCALAR_PACK" : "default";
     bool no_nc_overrides = false;
+    bool zero_pack_lines = false;  // issue #43
     // Issue #27: the reference design's run protocol (test_gemm.c:339-361) is the default
     // wherever it can run. The instrumented build cannot (its timers make the numbers
     // incomparable, issue #14), so its default is the older warm-up protocol.
@@ -549,6 +556,8 @@ int main(int argc, char** argv) {
         if (string(argv[i]) == "--scalar-pack") {
             force_scalar_pack = true;
             scalar_pack_source = "--scalar-pack";
+        } else if (string(argv[i]) == "--zero-pack-lines") {
+            zero_pack_lines = true;
         } else if (string(argv[i]) == "--no-nc-overrides") {
             no_nc_overrides = true;
         } else if (string(argv[i]) == "--save-reps") {
@@ -577,7 +586,14 @@ int main(int argc, char** argv) {
     }
 
     if (dataset_file == "") {
-        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack] [--no-ref-protocol | --ref-protocol] [--tmin <seconds>] [--no-nc-overrides] [--save-reps] [--raw-events <name=code,...|x60-l2>]" << endl;
+        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack] [--zero-pack-lines] [--no-ref-protocol | --ref-protocol] [--tmin <seconds>] [--no-nc-overrides] [--save-reps] [--raw-events <name=code,...|x60-l2>]" << endl;
+        return 1;
+    }
+    // Issue #43: the DOT dispatch clears no lines (its K pad is zeroed on purpose instead), so a
+    // DOT run with the switch would carry a name for something it did not do.
+    if (zero_pack_lines && string(CONFIG_METHOD).find("DOT") != string::npos) {
+        cerr << "Error: --zero-pack-lines is for the AXPY kernels only; this is a DOT kernel ("
+             << CONFIG_METHOD << "), whose dispatch clears no lines." << endl;
         return 1;
     }
     vector<RawEvent> raw_events;
@@ -614,9 +630,10 @@ int main(int argc, char** argv) {
     // Likewise a run without the config.json nc overrides never shares a file with one that
     // has them: they are different configurations (issue #16).
     // A scalar-pack-live run is the issue #26 experiment, so it never shares a log with the
-    // vector-pack one either.
+    // vector-pack one either, nor a run that clears the pack lines (issue #43) one that does not.
     const string log_suffix = string(RVV_LOG_SUFFIX) + (ref_protocol ? "_refproto" : "") +
                               (force_scalar_pack ? "_scalarpack" : "") +
+                              (zero_pack_lines ? "_zeroline" : "") +
                               (no_nc_overrides ? "_no_nc_override" : "");
     const string log_stem = string("_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + log_suffix + ".txt";
     // Ensure logs directory exists (handled by Makefile)
@@ -636,7 +653,7 @@ int main(int argc, char** argv) {
         raw_open = perf_gemm_open_raw(&perf, codes.data(), (int) codes.size()) == 0;
     }
     print_run_overview({ref_protocol, protocol_source, tmin, tmin_source, force_scalar_pack,
-                        scalar_pack_source, no_nc_overrides, dataset_file, raw_log_name, summary_log_name, perf_log_name,
+                        scalar_pack_source, zero_pack_lines, no_nc_overrides, dataset_file, raw_log_name, summary_log_name, perf_log_name,
                         save_reps, reps_log_name, raw_events, raw_open});
     bool raw_exists = false;
     {
@@ -860,7 +877,7 @@ int main(int argc, char** argv) {
             if (!ref_protocol) {
                 for (int w = 0; w < 5; ++w) {
                     double dump_pt=0, dump_kt=0; uint64_t dump_pb=0;
-                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &dump_pt, &dump_kt, &dump_pb, force_scalar_pack, nullptr);
+                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &dump_pt, &dump_kt, &dump_pb, force_scalar_pack, zero_pack_lines, nullptr);
                 }
             }
 
@@ -957,7 +974,7 @@ int main(int argc, char** argv) {
                 // Not under --ref-protocol (issue #27): the reference has no such pass.
                 for (int r = 0; !ref_protocol && r < N_REPS; ++r) {
                     double pt = 0.0, kt = 0.0; uint64_t pb = 0;
-                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, true, &perf);
+                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, true, zero_pack_lines, &perf);
                     total_scalar_pack_time += pt;
                     total_pack_bytes += pb;
                 }
@@ -1017,7 +1034,7 @@ int main(int argc, char** argv) {
                     const perf_counts raw_pack_before = perf.pack, raw_compute_before = perf.compute;
                     const uint64_t raw_rejected_before = perf.raw_rejected;
 #endif
-                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, force_scalar_pack, &perf);
+                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, force_scalar_pack, zero_pack_lines, &perf);
 #if RVV_INSTRUMENTED
                     rep_total.push_back(kt + pt);
                     rep_pack_s.push_back(pt);

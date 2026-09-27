@@ -48,9 +48,9 @@ STUB_HEADER = """\
 struct NcOverrideEntry { const char* label; int nc; };
 %(nc_overrides)s
 
-void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf);
+void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf);
 
-typedef void (*gemm_blis_fn)(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf);
+typedef void (*gemm_blis_fn)(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf);
 
 struct KernelVariant { const char* name; int mr; int nr; gemm_blis_fn func; };
 static const KernelVariant generated_variants[] = { {"MR4_NR4", 4, 4, stub_gemm} };
@@ -68,7 +68,7 @@ STUB_KERNEL = """\
 #include <thread>
 #include "generated_kernels.h"
 
-static int calls_total = 0, calls_scalar_pack = 0;
+static int calls_total = 0, calls_scalar_pack = 0, calls_zero_lines = 0;
 // Issue #18: non-zero elements Ac/Bc held when a shape first reached the kernel.
 static long fresh_nonzero = 0;
 // Issue #19: the first shape's Ac/Bc as allocated, next to what the reference asks for.
@@ -76,7 +76,7 @@ static size_t ac_usable = 0, bc_usable = 0, ac_wanted = 0, bc_wanted = 0;
 static size_t ac_needed = 0, bc_needed = 0;
 struct StubReport {
     ~StubReport() {
-        fprintf(stderr, "STUB_CALLS total=%d scalar_pack=%d\\n", calls_total, calls_scalar_pack);
+        fprintf(stderr, "STUB_CALLS total=%d scalar_pack=%d zero_lines=%d\\n", calls_total, calls_scalar_pack, calls_zero_lines);
         fprintf(stderr, "STUB_FRESH_BUFFERS nonzero=%ld\\n", fresh_nonzero);
         fprintf(stderr, "STUB_BUFFER_BYTES ac=%zu ac_wanted=%zu bc=%zu bc_wanted=%zu "
                 "ac_needed=%zu bc_needed=%zu\\n",
@@ -84,9 +84,10 @@ struct StubReport {
     }
 } stub_report;
 
-void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf) {
+void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf) {
     calls_total++;
     if (use_scalar_pack) calls_scalar_pack++;
+    if (zero_pack_lines) calls_zero_lines++;
     if (ac_wanted == 0) {
         // test_gemm.c:271-272 with -DKR=1: (MR+mc)*(KR+kc) floats for Ac, (KR+kc)*(NR+nc) for Bc.
         ac_wanted = (size_t)(mr + mc) * (1 + kc) * sizeof(float);
@@ -229,10 +230,18 @@ def instrumented(tmp_path_factory: pytest.TempPathFactory) -> Driver:
     return Driver(tmp_path_factory.mktemp("instr"), instrumented=1)
 
 
-def _stub_calls(stderr: str) -> tuple[int, int]:
+def _stub_call_counts(stderr: str) -> dict[str, int]:
     line = next(ln for ln in stderr.splitlines() if ln.startswith("STUB_CALLS"))
-    fields = dict(tok.split("=") for tok in line.split()[1:])
-    return int(fields["total"]), int(fields["scalar_pack"])
+    return {key: int(value) for key, value in (tok.split("=") for tok in line.split()[1:])}
+
+
+def _stub_calls(stderr: str) -> tuple[int, int]:
+    counts = _stub_call_counts(stderr)
+    return counts["total"], counts["scalar_pack"]
+
+
+def _stub_zero_lines_calls(stderr: str) -> int:
+    return _stub_call_counts(stderr)["zero_lines"]
 
 
 REFPROTO_RAW = "raw_fp32_STUB_noinstr_refproto.txt"
@@ -964,3 +973,89 @@ def test_the_uninstrumented_build_refuses_raw_events(uninstrumented: Driver):
     proc = uninstrumented.run("--tmin", "0.05", "--save-reps", "--raw-events", "x60-l2")
     assert proc.returncode != 0
     assert "instrumented build" in proc.stderr
+
+
+# ---------------------------------------------------------------------------
+# Issue #43: --zero-pack-lines clears the pack-buffer lines with cbo.zero before each pack.
+# Off by default; a run with it on is a different configuration, so it gets its own logs.
+# ---------------------------------------------------------------------------
+ZEROLINE_RAW = "raw_fp32_STUB_noinstr_refproto_zeroline.txt"
+
+
+def test_line_clearing_is_off_by_default_and_the_overview_says_so(uninstrumented: Driver):
+    proc = uninstrumented.run("--tmin", "0.05")
+    assert _stub_zero_lines_calls(proc.stderr) == 0
+    line = next(ln for ln in _overview(proc.stdout).splitlines() if "Pack lines" in ln)
+    assert "not cleared" in line and "[default]" in line
+
+
+def test_a_zero_lines_run_clears_in_every_timed_rep_and_says_so(uninstrumented: Driver):
+    proc = uninstrumented.run("--tmin", "0.1", "--zero-pack-lines", env={"STUB_SLEEP_MS": "10"})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    (row,) = uninstrumented.raw_rows(ZEROLINE_RAW)
+    total_calls, _ = _stub_calls(proc.stderr)
+    assert _stub_zero_lines_calls(proc.stderr) == total_calls == int(row["N_Reps"])
+    line = next(ln for ln in _overview(proc.stdout).splitlines() if "Pack lines" in ln)
+    assert "cbo.zero" in line and "[--zero-pack-lines]" in line
+
+
+def test_a_zero_lines_run_writes_its_own_logs_and_leaves_the_default_ones_alone(
+    uninstrumented: Driver,
+):
+    proc = uninstrumented.run("--tmin", "0.05", "--zero-pack-lines", "--save-reps")
+    for kind in ("raw", "summary", "perf", "reps"):
+        assert (uninstrumented.cwd / "logs" / f"{kind}_fp32_STUB_noinstr_refproto_zeroline.txt").is_file()
+    assert not (uninstrumented.cwd / "logs" / REFPROTO_RAW).exists()
+    assert f"logs/{ZEROLINE_RAW}" in _overview(proc.stdout)
+
+
+def test_the_zero_lines_name_sits_between_the_scalar_pack_and_the_nc_names(with_nc_override: Driver):
+    with_nc_override.run("--tmin", "0.05", "--scalar-pack", "--zero-pack-lines", "--no-nc-overrides")
+    assert (
+        with_nc_override.cwd / "logs" / "raw_fp32_STUB_noinstr_refproto_scalarpack_zeroline_no_nc_override.txt"
+    ).is_file()
+
+
+def test_the_warm_up_scalar_pack_pass_clears_lines_too(uninstrumented: Driver):
+    # The warm-up protocol's scalar-pack pass is the scalar packer's own timing: it must be
+    # taken under the same conditions as the timed reps.
+    proc = uninstrumented.run("--no-ref-protocol", "--zero-pack-lines")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    total_calls, _ = _stub_calls(proc.stderr)
+    assert _stub_zero_lines_calls(proc.stderr) == total_calls
+
+
+def test_line_clearing_is_refused_for_a_dot_kernel(dot_method: Driver):
+    # The DOT dispatch has no line clearing (issue #43 is scoped to AXPY): a run that said it
+    # was on would be mislabelled.
+    proc = dot_method.run("--tmin", "0.05", "--zero-pack-lines")
+    assert proc.returncode != 0
+    assert "--zero-pack-lines" in proc.stderr and "DOT" in proc.stderr
+
+
+def test_the_results_file_of_a_zero_lines_run_is_its_own(tmp_path: Path):
+    assert _results_file(tmp_path / "a", "--zero-pack-lines") == "_noinstr_refproto_zeroline"
+    assert (
+        _results_file(tmp_path / "b", "--scalar-pack --zero-pack-lines --no-nc-overrides")
+        == "_noinstr_refproto_scalarpack_zeroline_no_nc_override"
+    )
+
+
+def test_script_passes_zero_pack_lines_to_the_driver_and_names_its_logs():
+    out = _run_script("--dry-run", "--zero-pack-lines").stdout
+    line = next(ln for ln in out.splitlines() if "Pack lines" in ln)
+    assert "cbo.zero" in line and "[--zero-pack-lines]" in line
+    assert "raw_*_noinstr_refproto_zeroline.txt" in out
+    args = next(ln for ln in out.splitlines() if "Driver args" in ln)
+    assert "--zero-pack-lines" in args.split()
+
+    out = _run_script("--dry-run", "--scalar-pack", "--zero-pack-lines", "--no-nc-overrides").stdout
+    assert "raw_*_noinstr_refproto_scalarpack_zeroline_no_nc_override.txt" in out
+
+
+def test_script_leaves_line_clearing_off_by_default():
+    out = _run_script("--dry-run").stdout
+    line = next(ln for ln in out.splitlines() if "Pack lines" in ln)
+    assert "not cleared" in line and "[default]" in line
+    args = next(ln for ln in out.splitlines() if "Driver args" in ln)
+    assert "--zero-pack-lines" not in args

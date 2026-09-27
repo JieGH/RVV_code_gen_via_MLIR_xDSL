@@ -20,6 +20,9 @@ Two tests, two seams:
   actually exercised, and checks them against `pack_RB_scalar`/`pack_CB_scalar`
   (verified correct by the first test). Requires the RISC-V board reachable via the
   `fej` jump host; skips with a clear reason if that hardware isn't reachable.
+  Issue #43: the same run also clears the pack buffers with the real `cbo.zero`
+  (`templates/pack_lines.h`) before the `_v_if` packers write them, and checks that the
+  packed layout is still the scalar one and that exactly the whole lines were cleared.
 """
 
 import os
@@ -404,6 +407,7 @@ def test_rvv_vector_pack_matches_scalar_reference_on_board(
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <cstdlib>
 #include <riscv_vector.h>
 
 extern "C" {{
@@ -413,6 +417,33 @@ extern "C" {{
 {render_scalar_pack_functions("float", "float")}
 {REFERENCE_ORACLE_CPP}
 {_fill_matrix_source()}
+
+{(Path(__file__).parent / "templates" / "pack_lines.h").read_text()}
+
+// Issue #43: an aligned buffer of `n` floats, every slot a sentinel no packer writes.
+static float* sentinel_buffer(size_t n) {{
+    float* p = (float*) std::aligned_alloc(64, (n * sizeof(float) + 63) / 64 * 64);
+    for (size_t i = 0; i < n; ++i) p[i] = 7.0f;
+    return p;
+}}
+
+// Packs with `pack` into a buffer cleared by the real cbo.zero, and with the scalar packer into
+// one cleared by memset over the same whole lines: the two must match slot for slot, so the
+// packed data survives and the pad slots on whole lines are 0 while the others keep the sentinel.
+template <typename VecPack, typename SclPack>
+static int compare_after_cbo_zero(const char* name, size_t n, VecPack pack, SclPack scalar) {{
+    float* vec = sentinel_buffer(n);
+    float* want = sentinel_buffer(n);
+    rvv_zero_whole_lines(vec, n * sizeof(float));
+    const rvv_line_span s = rvv_whole_lines(want, n * sizeof(float));
+    std::memset((void*) s.first, 0, s.count * RVV_CBOZ_LINE);
+    pack(vec);
+    scalar(want);
+    const int f = compare_buffers(name, vec, want, n);
+    std::free(vec);
+    std::free(want);
+    return f;
+}}
 
 int main() {{
     int failures = 0;
@@ -478,6 +509,14 @@ int main() {{
         ref_pack_CB(false, kc, mc, B, ldM_B, Bc_ref_else, RR);
         failures += compare_buffers("pack_CB_v_if", Bc_vec_if, Bc_scalar, (size_t)kc * nc_pad);
         failures += compare_buffers("pack_CB_v_else", Bc_vec_else, Bc_ref_else, (size_t)kc * nc_pad);
+
+        // Issue #43: the same, into buffers the dispatch has cleared with cbo.zero.
+        failures += compare_after_cbo_zero("pack_RB_v_if after cbo.zero", (size_t)mc_pad * kc,
+            [&](float* d) {{ pack_RB_v_if_AXPY_FP32_Pack_fp32_MR{rr}(A, d, mc, kc, ldM_A); }},
+            [&](float* d) {{ pack_RB_scalar(mc, kc, A, ldM_A, d, RR); }});
+        failures += compare_after_cbo_zero("pack_CB_v_if after cbo.zero", (size_t)kc * nc_pad,
+            [&](float* d) {{ pack_CB_v_if_AXPY_FP32_Pack_fp32_NR{rr}(B, d, kc, mc, ldM_B); }},
+            [&](float* d) {{ pack_CB_scalar(kc, mc, B, ldM_B, d, RR); }});
 
         delete[] A; delete[] Ac_vec_if; delete[] Ac_vec_else; delete[] Ac_scalar; delete[] Ac_ref_else;
         delete[] B; delete[] Bc_vec_if; delete[] Bc_vec_else; delete[] Bc_scalar; delete[] Bc_ref_else;
