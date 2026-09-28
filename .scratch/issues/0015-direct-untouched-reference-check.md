@@ -403,3 +403,48 @@ numbers here rather than treating this issue's findings in isolation. Dated 2026
 source found in §11 (2026-07-29), just before this issue's own board runs (§7/§8, 2026-09-22); not verified
 here whether it uses `prev_xdsl`, the reference, or some other baseline as its comparison point — check before
 citing a number from it alongside anything in this issue.
+
+## 13. The scoped MR×NR sweep from §9, run (2026-09-23/24)
+
+The sweep §9 described as "handed over, not yet executed" was run. Log pasted into the session directly (not
+saved under `tests/pure_xdsl_blis_rvv/logs/` — no path recorded for where the user ran it beyond `fej
+jlei@jbpi2:~/ws_bpi/RVV_ukernels_benchmark/gemm_blis_family`). Params match §9's plan: `OPT=LDX`, `GATHER=2`
+(`macc`), `loadAB`, `FAMILY_EXO`/`RVV_EXO`, FP32, dataset `bert_b1_b5.dat` — which turns out to carry **5**
+shapes, not 2: `1024×384×1024` (B1), `384×384×64` (B2), `64×384×384` (B3), `4096×384×1024` (B4),
+`1024×384×4096` (B5). `MR ∈ {8,16,24,32,40,48}`, `NR ∈ {2,4,...,32}` even, tmin 3.0 s, one rep per shape (no
+jitter stats — raw driver GFLOPS only, `PASS` column is `-` throughout, i.e. no correctness check requested
+this run).
+
+**Buildable: 54 of 96 combos.** The rest fail one of two ways, both at compile time (no board time wasted on
+either):
+- **Missing 1×1 fringe kernel** (`gemm_RVV_1x1_b0_col_fp32` undeclared) — the vendored kernel set stops
+  existing past a rough `MR×NR` ceiling: NR≥30 for MR=16, NR≥20 for MR=24, NR≥16 for MR=32, NR≥12 for MR=40,
+  NR≥10 for MR=48. Matches §9 point 3/4's finding that the reference only ships kernels it happened to
+  generate, not a full grid.
+- **One corrupted vendored file**: `16×14`'s header include line is truncated
+  (`kernels_RVV_16x14_fp32.c:1` reads `s_RVV_16x14_fp32.h"` — missing the `#include "kernel`/`fp32_kernel`
+  prefix). Not a missing-kernel gap like the others; this one file is bad. Not investigated further (out of
+  scope for this issue — flag for whoever next needs 16×14).
+
+**Best available tile per B-shape (GFLOPS, single rep, `--tmin 3`, jbpi2, `OPT=LDX`):**
+
+| Shape | Best MR×NR | GFLOPS | Runner-up |
+|---|---|---|---|
+| B1 (1024×384×1024) | **32×6** | 7.19 | 48×4 (7.00), 24×8 (6.93) |
+| B2 (384×384×64)    | **16×10** | 10.4 | 24×8 (9.53), 16×8 (9.49) |
+| B3 (64×384×384)    | **8×28** | 6.25 | 8×20 / 24×8 (6.12) |
+| B4 (4096×384×1024) | **32×6** | 7.20 | 24×8 (7.12), 48×4 (6.87) |
+| B5 (1024×384×4096) | **32×6** | 7.91 | 48×4 (7.37), 24×8 (6.87) |
+
+**What this adds to §11's conclusion:** B1/B4/B5 all peak at the same tile, **32×6** — which is also the
+*only* real, published pin the reference can build for those shapes (§6/§9). So §11's B1/B5 comparison
+wasn't just the only buildable option, it was also the best buildable option; nothing else in the 54-combo
+sweep beats it for those three shapes. B1's 7.19 here is close to but not identical to §7's 7.15–7.18 (same
+tile, different day/rep count — expected noise, not a discrepancy).
+
+B2/B3 have no real pin to compare against at all (§6: the reference never shipped 16×15). Their "best
+available" numbers (16×10 → 10.4, 8×28 → 6.25) are informative for tuning intuition but still not a
+same-pin comparison to anything — consistent with §11's existing caveat, not a new finding for those two.
+
+**Not done:** other `OPT` modes (`BASE`, plain `RVV_EXO` without `LDX`), other `GATHER` variants, `MC`/`NC`
+overrides, and a correctness pass (`PASS` column unused this run) — all out of scope for what was asked.
