@@ -1,0 +1,130 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=1.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+\setlist{nosep,leftmargin=1.3em}
+\titlespacing*{\section}{0pt}{1.1ex}{0.6ex}
+\titlespacing*{\subsection}{0pt}{0.9ex}{0.4ex}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45ex}
+\renewcommand{\arraystretch}{1.08}
+\newcommand{\iss}[1]{\href{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/#1}{\##1}}
+\newcommand{\up}[1]{\textcolor{red!70!black}{#1}}
+\newcommand{\down}[1]{\textcolor{blue!60!black}{#1}}
+\newcommand{\good}[1]{\textcolor{green!45!black}{\textbf{#1}}}
+
+\title{\vspace{-1.2cm}\textbf{32$\times$6 vs 32$\times$7, settled inside one launch}\\[2pt]
+\large Brief of issue \iss{37} (settled, decision: keep 32$\times$7), from the \iss{31}--\iss{34} audit}
+\author{RVV\_code\_gen\_via\_MLIR\_xDSL, \texttt{pure-xdsl}\\ commit \texttt{d810e5b}}
+\date{28 September 2026}
+
+\begin{document}
+\maketitle
+\vspace{-0.8cm}
+
+\paragraph{Scope.} \iss{32} read 32$\times$6 ahead of the shipped 32$\times$7 in 8 of 8 pairs (0.5--3.3\%), but
+every one of those pairs ran on core 0 --- later shown (\iss{39} audit) to run 5--10\% slower than a pinned
+non-zero core, and itself not a controlled comparison (each tile its own launch, not two rows of one launch).
+\iss{37} asked whether the gap survives a fair test: both tiles inside \textbf{one} launch, on a non-zero core,
+repeated over several launches, deciding only if one tile wins in every launch (the \iss{39} house rules).
+\textbf{Every speed number here is from the uninstrumented build} (\texttt{INSTRUMENTED=0}), reference protocol,
+\texttt{--tmin 10}, core 4, board \texttt{jbpi2}. Speed is in GOPs, by mean time (the reference's own formula)
+and by median rep --- the two matched to within 0.01 GOPs in every case below. Every log cited is committed
+(Appendix~A).
+
+\paragraph{Cases} (config \texttt{config\_issue37\_nr6\_vs\_nr7.json}, \texttt{--no-nc-overrides}):
+B4 = 4096$\times$384$\times$1024; S1--S5 = the square shapes, 1000$^3$ up to 5000$^3$. Both tiles run against
+identical shapes (\texttt{issue37\_b4\_square\_32x6.dat} mirrors the shipped \texttt{issue2\_square\_bert\_32x7.dat}),
+each its own row/\texttt{pj\_gen/} project, built and run back to back within one launch.
+
+\section{Bottom line}
+\begin{enumerate}
+  \item \good{32$\times$7 wins all 6 cases in all 3 launches --- 18 of 18.} No case and no launch went the other
+  way; the earlier \iss{32} result does not survive a controlled, non-zero-core test.
+  \item The margin is not close: \up{3.7--8.7\%} on the 3-launch average, above the \iss{39} noise threshold
+  ($\sim$3\%) that would otherwise call for more launches. B4 has the smallest gap (3.7\%); S2 the largest (8.7\%).
+  \item \textbf{Decision: no change.} 32$\times$7 stays pinned for B4 and S1--S5 in \texttt{config.json}. The
+  comparison config and dataset are kept in the repo for anyone who wants to rerun it.
+  \item Board checked for other users' processes before each of the 3 launches; clear every time, so nothing here
+  is contention noise.
+\end{enumerate}
+
+\section{Speed: 3-launch average}
+Average over the 3 launches, GOPs. Mean time and median rep matched everywhere (std-dev/median 0--1\% throughout).
+
+\begin{center}\footnotesize\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+case (M$\times$N$\times$K) & 32$\times$6 avg GOPs & 32$\times$7 avg GOPs & 32$\times$7 margin \\
+\midrule
+B4 (4096$\times$384$\times$1024) & 7.80 & \good{8.09} & \up{+3.7\%} \\
+S1 (1000$\times$1000$\times$1000) & 8.32 & \good{8.90} & \up{+7.0\%} \\
+S2 (2000$\times$2000$\times$2000) & 8.46 & \good{9.20} & \up{+8.7\%} \\
+S3 (3000$\times$3000$\times$3000) & 8.73 & \good{9.39} & \up{+7.6\%} \\
+S4 (4000$\times$4000$\times$4000) & 8.65 & \good{9.22} & \up{+6.6\%} \\
+S5 (5000$\times$5000$\times$5000) & 8.83 & \good{9.53} & \up{+7.9\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Speed: launch by launch}
+GOPs by mean time (32$\times$6 / 32$\times$7). Each launch runs both tiles as two rows of the same config.
+
+\begin{center}\footnotesize\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+case & launch 1 (11:36) & launch 2 (11:43) & launch 3 (11:50) \\
+\midrule
+B4 & 7.71 / \good{8.14} & 7.87 / \good{7.96} & 7.82 / \good{8.16} \\
+S1 & 8.30 / \good{8.89} & 8.31 / \good{8.91} & 8.34 / \good{8.89} \\
+S2 & 8.41 / \good{9.22} & 8.44 / \good{9.23} & 8.54 / \good{9.15} \\
+S3 & 8.73 / \good{9.46} & 8.72 / \good{9.34} & 8.74 / \good{9.38} \\
+S4 & 8.65 / \good{9.28} & 8.61 / \good{9.16} & 8.68 / \good{9.21} \\
+S5 & 8.80 / \good{9.61} & 8.86 / \good{9.45} & 8.82 / \good{9.52} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{How to read it.} 32$\times$7 is ahead in all 18 cells; there is no launch and no shape where 32$\times$6
+catches up. S3--S5 at 32$\times$6 fit only 1--2 reps in \texttt{tmin}=10s in launch 1 (flagged as near-single cold
+samples in that run's log); the same shapes got more reps in launches 2--3 and the ranking did not move, so the
+thin-rep launch-1 points do not change the decision.
+
+\section{What was built}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.6cm}X@{}}
+\toprule
+Part & What it does \\
+\midrule
+New dataset & \texttt{datasets/issue37\_b4\_square\_32x6.dat}: B4 + S1--S5, the same shapes as the shipped
+\texttt{issue2\_square\_bert\_32x7.dat}, so both tiles are compared on identical inputs. \\
+New config & \texttt{config\_issue37\_nr6\_vs\_nr7.json}: two pinned rows, $[32,7]$ against the shipped dataset and
+$[32,6]$ against the new one, \texttt{skip\_ref\_run=true}, \texttt{iterations=5} (same cost-saving knobs as the
+shipped 32$\times$7 row). One launch already builds and runs both tiles back to back --- no new script needed. \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Checks:} \texttt{--dry-run} against the new config before any board time; \texttt{test\_house\_rules.py}
+(5 passed) confirms every log cited here is a committed run folder.
+
+\appendix
+\section{Logs (all committed, \texttt{tests/pure\_xdsl\_blis\_rvv/logs/})}
+Config \texttt{config\_issue37\_nr6\_vs\_nr7.json}, \texttt{--no-nc-overrides --cpu 4 --tmin 10}, board
+\texttt{jbpi2}, all exit 0.
+\begin{itemize}
+  \item launch 1: \texttt{run\_2026-09-28\_113634}
+  \item launch 2: \texttt{run\_2026-09-28\_114331}
+  \item launch 3: \texttt{run\_2026-09-28\_115034}
+  \item all three land in commit \texttt{d810e5b}, alongside the new dataset, the new config and the issue
+  write-up: \texttt{.scratch/issues/} \texttt{0022-32x6-vs-32x7-settle.md}
+\end{itemize}
+
+\end{document}
