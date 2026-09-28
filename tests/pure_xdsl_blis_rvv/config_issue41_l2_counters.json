@@ -1,0 +1,8 @@
+[
+    // Issues #41 / #42: per-rep L2 and prefetch counts (the X60's raw events), fast reps against
+    // slow reps. DEBUG build only (timers cost 11-17%): the counts are for the comparison, never
+    // quoted as speed. Four cases in one launch; the two packers alternate A-B-B-A-A-B:
+    //   compile_macro_bench.sh --config config_issue41_l2_counters.json --instr --no-nc-overrides --cpu 4 --raw-events x60-l2 [--scalar-pack]
+    // then: reps_report.py <the six run folders>
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi", ["issue41_l2_counters.dat"], true, 1000]
+]

@@ -1,0 +1,209 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=1.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+\setlist{nosep,leftmargin=1.3em}
+\titlespacing*{\section}{0pt}{1.1ex}{0.6ex}
+\titlespacing*{\subsection}{0pt}{0.9ex}{0.4ex}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45ex}
+\renewcommand{\arraystretch}{1.08}
+\newcommand{\iss}[1]{\href{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/#1}{\##1}}
+\newcommand{\slow}[1]{\textcolor{red!70!black}{#1}}
+\newcommand{\steady}[1]{\textcolor{green!45!black}{#1}}
+
+\title{\vspace{-1.2cm}\textbf{Why B3 has two speeds, and what a smaller \texttt{nc} does}\\[2pt]
+\large Brief of issues \iss{35}, \iss{36} and \iss{39}}
+\author{RVV\_code\_gen\_via\_MLIR\_xDSL, \texttt{pure-xdsl} branch}
+\date{27 September 2026}
+
+\begin{document}
+\maketitle
+\vspace{-0.8cm}
+
+\paragraph{Scope.} Three follow-ups from the \#31--\#34 audit. \iss{35}: how a smaller \texttt{nc} (the width of
+the packed B block) changes the speed and steadiness of B3 (64$\times$384$\times$384) and the other layers with a small
+M, and what B3's shipped setting should be. \iss{36}: why the vector packer is slow on B3. \iss{39}: house rules for
+benchmark results. All runs on 27 September 2026 on \texttt{jbpi} (BananaPi, SpacemiT X60, VLEN=256), pinned to
+\textbf{core 4}, tile 16x15. Unless marked otherwise every number is from the uninstrumented build
+(\texttt{INSTRUMENTED=0}), reference protocol, \texttt{--tmin 10}. GOPs include packing. ``Mean time'' is the
+reference's formula (all operations over all time); ``median'' is the median rep. Every number comes from a
+committed log (list in Appendix~A).
+
+\section{Bottom line}
+\begin{enumerate}
+  \item \textbf{B3 does not have a slow packer; it has a slow state.} Each B3 run starts fast and, after
+  0.1--0.5\,s (vector packer) or 0.5--8\,s (scalar packer), falls into a second speed about half as fast, where it
+  mostly stays. In that state \emph{both} the packing and the microkernel take longer, and the clock is unchanged:
+  the core is waiting on memory. When B3 is in its fast state the vector packer is as fast as the scalar one or faster.
+  \item \textbf{The vector packer's loss on B3 is how often it is in the slow state}: 66--86\% of reps at every
+  \texttt{nc} from 96 to 384, against 0--46\% for the scalar packer. Both packers read B in exactly the same order;
+  the vector one only sends the reads faster.
+  \item \textbf{A smaller \texttt{nc} helps the scalar packer, not the shipped vector one.} Scalar: B3 is steady
+  and fastest at \texttt{nc} 96--128 (7.3--7.4 GOPs, $+$11\% over 384). Vector: \texttt{nc}=128 gives 5.52 against
+  4.73 at 384, still two-speed. Only \texttt{nc}$\le$64 (packed B within the 32\,KiB L1) keeps the vector packer steady.
+  \item \textbf{No version of the cache model gives B3 a small \texttt{nc}}, not even with the real L2 in place of the
+  missing L3. \textbf{Recommendation: drop the B3 override by default}; quote \texttt{nc}=128 only as a labelled
+  hand-tuned number, and treat the slow state as the thing to fix.
+  \item \textbf{House rules are written} (\iss{39}): never core 0; small gaps are compared inside one launch and
+  repeated; every quoted number comes from a committed log. A new \texttt{--save-reps} option keeps every rep's time.
+\end{enumerate}
+
+\section{The slow state (\#36)}
+\textbf{Every run starts fast.} The per-rep log shows the two speeds come in long stretches, not at random
+(10--100 times fewer changes of speed than chance would give). First 80 reps of B3, 16x14, vector packer (F fast, s slow):
+\begin{center}\small\texttt{FFFFFFFFFFFFFFFFFFFFFsFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFsssssssssssss}\end{center}
+
+\textbf{In a slow rep both halves slow down.} Instrumented build (warm-up protocol, 1000 reps; debug numbers,
+not comparable with the rest of this report), median per rep, fast reps against slow reps of the same run:
+
+\begin{center}\small
+\begin{tabular}{llllrr}
+\toprule
+tile & case & packer & fast: pack / compute (ms) & slow: pack / compute (ms) & slow reps \\
+\midrule
+16x14 & B3 & vector & 0.64 / 1.78 & 1.58 / 2.79 & 412 / 1000 \\
+16x15 & B3 & vector & 0.75 / 1.88 & 1.46 / 2.59 & 842 / 1000 \\
+16x15 & B3, \texttt{nc}=128 & vector & 0.74 / 1.58 & 1.53 / 2.12 & 533 / 1000 \\
+16x16 & B3 & vector & 0.55 / 3.20 & 1.68 / 4.40 & 569 / 1000 \\
+16x15 & B3, K=256 & vector & 0.33 / 1.02 & 0.83 / 1.69 & 967 / 1000 \\
+16x14 & B3 & scalar & 0.76 / 1.71 & 1.24 / 1.98 & 721 / 1000 \\
+16x15 & B3 & scalar & 0.69 / 1.52 & 1.11 / 1.85 & 103 / 1000 \\
+16x15 & B3, \texttt{nc}=128 & scalar & 0.97 / 1.56 & --- & 0 / 1000 \\
+16x15 & B3, K=256 & scalar & 0.47 / 1.00 & 1.19 / 1.57 & 981 / 1000 \\
+\multicolumn{3}{l}{B2, Reuse24: both packers, all tiles} & one speed & --- & 0 / 1000 \\
+\bottomrule
+\end{tabular}
+\end{center}
+In the slow state packing takes 1.6--3.1 times as long and the kernel 16--66\% longer. Cycles per second stay at
+1.63--1.81\,GHz in both states, so the core runs at full clock and stalls on memory.
+
+\textbf{The two packers walk memory the same way.} The generated vector \texttt{pack\_CB} and the scalar one
+read the same addresses of B in the same order (per 15-column panel, per k, 15 elements 1536\,B apart) and write
+the same layout. The vector one uses two strided vector loads per row where the scalar one uses 15 loads, so it
+has more requests in flight.
+
+\textbf{Ruled out:} the CPU clock (governor \texttt{performance}; clock unchanged in the slow state); transparent
+huge pages moving memory (\texttt{madvise} only, 0\,kB in use); B not fitting in the L2 (B3 with K=256, where B
+fits, is the slowest case). \textbf{Leading guess, not tested:} a state of the shared L2 (512\,KiB, 16-way, shared by
+cores 4--7) or of the hardware prefetcher that, once entered, makes this access pattern miss far more often.
+
+\section{A smaller \texttt{nc} (\#35)}
+All eleven \texttt{nc} values, the Reuse layers, B2 and the N/K variants ran inside one launch, each setting its own
+dataset row; three launches per packer in the order vector, scalar, scalar, vector, vector, scalar. Average of the
+three launches (lowest--highest launch in brackets). ``Slow'' is the share of reps in the slower of two clearly
+separate speeds. Packed B block = 128$\times$\texttt{nc}$\times$4\,B.
+
+\begin{center}\small
+\begin{tabular}{rr|llrr|llrr}
+\toprule
+& & \multicolumn{4}{c|}{\textbf{vector packer (shipped)}} & \multicolumn{4}{c}{\textbf{scalar packer}} \\
+\texttt{nc} & B blk & mean time & median & CV\% & slow & mean time & median & CV\% & slow \\
+\midrule
+32  & 16\,KiB  & \steady{6.53} (6.43--6.59) & 6.53 & 0.9  & 0\%  & 5.31 (5.21--5.48) & 5.31 & 0.6  & 0\% \\
+64  & 32\,KiB  & 6.71 (6.50--7.01) & 7.55 & 16.0 & 22\% & 6.65 (6.60--6.74) & 6.65 & 1.1  & 0\% \\
+96  & 48\,KiB  & 5.81 (5.48--6.34) & 5.59 & 22.4 & 66\% & \steady{7.27} (7.16--7.42) & 7.28 & 1.6  & 0\% \\
+120 & 60\,KiB  & 5.67 (5.45--5.85) & 5.31 & 23.6 & 77\% & 7.26 (7.05--7.41) & 7.62 & 9.4  & 10\% \\
+128 & 64\,KiB  & 5.52 (5.37--5.73) & 5.16 & 24.4 & 76\% & \steady{7.36} (7.31--7.43) & 7.58 & 7.1  & 6\% \\
+192 & 96\,KiB  & 5.55 (5.44--5.69) & 4.83 & 27.4 & 76\% & 7.04 (6.68--7.65) & 7.48 & 15.0 & 37\% \\
+256 & 128\,KiB & 5.10 (5.04--5.18) & 4.55 & 26.9 & 79\% & 7.07 (6.57--7.54) & 7.63 & 13.3 & 29\% \\
+320 & 160\,KiB & 4.89 (4.65--5.07) & 4.34 & 28.4 & 81\% & 7.14 (6.75--7.76) & 7.82 & 13.8 & 23\% \\
+384 & 192\,KiB & \slow{4.73} (4.65--4.79) & 4.27 & 30.7 & 86\% & \slow{6.65} (6.36--7.06) & 7.21 & 21.0 & 46\% \\
+\bottomrule
+\end{tabular}\\[2pt]
+{\footnotesize B3 (64$\times$384$\times$384), GOPs. \texttt{nc} = 240 and 375 were also run and follow the same trend (issue \#35 \S6).}
+\end{center}
+
+\textbf{Other layers.} More reuse of each packed block protects against the slow state. Reuse24 (M=384) is steady
+with the scalar packer at every \texttt{nc} and 0--13\% slow with the vector one; it is fastest at a large
+\texttt{nc} (scalar 9.29 at 384, vector 8.53--8.56 at 240--384). Reuse8 and Reuse12 (M=128, 192) behave like B3
+with the vector packer from \texttt{nc}=96 up, and are nearly steady with the scalar one. B2, the control, is
+steady under both packers (CV 1--6\%) and faster at \texttt{nc}=384 (vector 11.98, scalar 11.82).
+
+\textbf{Is it \texttt{nc} or N?} With the scalar packer and \texttt{nc} held at 128, B3 with N = 192, 256, 320,
+384 gives 7.47, 7.54, 7.22, 7.36 GOPs, nearly steady (0--6\% slow). With \texttt{nc}=N the same shapes are 16--46\%
+slow. So \#34's ``slow when N=384'' was \texttt{nc}=N=384. With the vector packer every variant is two-speed
+(61--86\% slow).
+
+\textbf{The cache model (host only).} \texttt{get\_optim\_mc\_nc\_kc} sizes \texttt{nc} for an L3 the board does
+not have. Rerun with the real L2 (sysfs: 512\,KiB, 16-way; \texttt{bananapi.h} says 8-way):
+
+\begin{center}\small
+\begin{tabular}{llccc}
+\toprule
+layer & M$\times$N$\times$K & \texttt{nc} shipped (L3) & \texttt{nc} with L2, 8-way & \texttt{nc} with L2, 16-way \\
+\midrule
+B3 & 64$\times$384$\times$384 & 384 & 384 (model: 512) & 384 (model: 640) \\
+Reuse24 & 384$\times$384$\times$384 & 384 & 128 & 192 \\
+B2 & 384$\times$384$\times$64 & 384 & 256 & 256 \\
+B1, B4, B5, S1--S5 & & 384--1024 & 128 & 128 \\
+\bottomrule
+\end{tabular}
+\end{center}
+The L2 version still gives B3 \texttt{nc}=384 and would instead shrink \texttt{nc} for Reuse24 and the large
+layers, which the sweep shows is the wrong way for Reuse24. Swapping the L3 for the L2 is not a fix.
+
+\section{Recommendation}
+\begin{enumerate}
+  \item \textbf{Drop the B3 \texttt{nc}=128 override by default.} With the shipped vector packer it is worth
+  $+$17\% but leaves B3 two-speed (CV 24\%); the steadiness issue \#1 saw holds only for the scalar packer. The model
+  cannot produce 128, and head-to-head comparisons need the reference's blocking. Quote an \texttt{nc}=128 number only
+  as hand-tuned. (An uncommitted \texttt{config.json} edit already removes it; the five tests that expect 128 must be
+  updated in the same commit as that decision.)
+  \item \textbf{Chase the slow state} (\#36 next steps): per-rep L2 miss and prefetch counters in fast against slow
+  reps; whether the other cores of the 4--7 cluster are active when it starts; a run on the other cluster (not
+  core 0); padding \texttt{ldb} off a power of two (B3 with K=256, ties to \#38); the same on \texttt{jbpi2}.
+  \item A rule-based small \texttt{nc} (``packed B within the L1'' for small-M layers with the vector packer) fits
+  the data but costs the Reuse layers speed and has no known cause behind it yet. Not proposed.
+\end{enumerate}
+
+\section{House rules and tooling (\#39)}
+Written in \texttt{docs/agents/execution.md}, pointed to from \texttt{README.md}:
+\begin{enumerate}
+  \item \textbf{Never pin to core 0} (it takes every device interrupt and runs 5--10\% slower); name the core with
+  every number. Example commands and \texttt{run\_pack\_swap.sh} now use core 4. The two overnight sweep scripts keep
+  core 0 only so reruns match their 19--20 September runs.
+  \item \textbf{One launch is not a result.} For gaps under about 3\%, put both settings inside one launch and repeat
+  over at least three launches in A-B-B-A order.
+  \item \textbf{Every quoted number comes from a committed log} under \texttt{tests/pure\_xdsl\_blis\_rvv/logs/}.
+  \item \textbf{Name build, protocol and core.} The default run command is now \texttt{--cpu 4}.
+\end{enumerate}
+\textbf{New:} \texttt{compile\_macro\_bench.sh --save-reps} writes every timed rep (with its \texttt{mc}/\texttt{nc}/\texttt{kc};
+in the instrumented build, its pack and compute time) to \texttt{reps\_*.txt}, after the timed loop so nothing is added
+to the timing, and gzips it on fetch. \texttt{reps\_report.py} summarises a set of launches: GOPs by mean time and by
+median rep, CV, slow-rep share, how bunched the slow reps are, and how long a run stays fast. This study is the
+first to follow the rules.
+
+\textbf{Not done:} the second board, other tiles in the \texttt{nc} sweep, L2 counters, the \texttt{ldb} test.
+
+\appendix
+\section{Logs}
+All under \texttt{tests/pure\_xdsl\_blis\_rvv/logs/}, \texttt{jbpi}, core 4, committed in \texttt{24c15a7}.
+\begin{center}\small
+\begin{tabular}{lll}
+\toprule
+run directory & run & config \\
+\midrule
+\texttt{run\_2026-09-27\_104338} & sweep, vector & \texttt{config\_issue35\_nc\_sweep.json}, \texttt{--tmin 10 --save-reps} \\
+\texttt{run\_2026-09-27\_105417} & sweep, scalar & same, \texttt{--scalar-pack} \\
+\texttt{run\_2026-09-27\_110456} & sweep, scalar & same, \texttt{--scalar-pack} \\
+\texttt{run\_2026-09-27\_111536} & sweep, vector & same \\
+\texttt{run\_2026-09-27\_112614} & sweep, vector & same \\
+\texttt{run\_2026-09-27\_113653} & sweep, scalar & same, \texttt{--scalar-pack} \\
+\texttt{run\_2026-09-27\_114341} & instrumented, vector & \texttt{config\_issue36\_instr\_split.json}, \texttt{--instr --save-reps} \\
+\texttt{run\_2026-09-27\_115023} & instrumented, scalar & same, \texttt{--scalar-pack} \\
+\bottomrule
+\end{tabular}
+\end{center}
+Model check: \texttt{.scratch/issues/0020-model-check.c} and \texttt{-model-check.txt}. Full tables: issue files
+\texttt{0020} (\#35 \S6) and \texttt{0021} (\#36, Results).
+\end{document}

@@ -16,7 +16,7 @@ set -o pipefail
 #
 # Cases: B3 (MR16_NR15) first, then S1 (MR32_NR7), from config_pack_swap.json; B2, B3 and B4
 # from config_pack_swap_b2b3b4.json (--config).
-# Defaults are the default run command's: --no-nc-overrides --cpu 0 --tmin 10.
+# Defaults: --no-nc-overrides --cpu 4 --tmin 10 (core 4 since issue #39: never core 0).
 #
 # Usage (jump-host):
 #   REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" \
@@ -38,7 +38,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${HERE}/board_pin.sh"
 LOGS="${HERE}/logs"
 SHARED=()
-CPU_ARGS=(--cpu 0)
+CPU_ARGS=(--cpu 4)
 CPU_FLAG=false
 NO_PIN=false
 CPU=""
@@ -54,6 +54,7 @@ while [[ "$#" -gt 0 ]]; do
         --riscv-user|--riscv-ip|--riscv-port)   SHARED+=("$1" "$2"); shift ;;
         --cpu)                                  CPU_ARGS=("$1" "$2"); CPU="$2"; CPU_FLAG=true; shift ;;
         --no-pin)                               CPU_ARGS=("$1"); NO_PIN=true ;;
+        --allow-core-0)                         SHARED+=("$1"); ALLOW_CORE0=true ;;
         --tmin)                                 TMIN_ARGS=("$1" "$2"); shift ;;
         --config)                               CONFIG="$2"; shift         ;;
         --shipped-nc)                           NC_ARGS=(); COMPARE_ARGS=(--shipped-nc) ;;
@@ -65,7 +66,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # Refuse a bad pin now: the first run would only notice it after a build on the board.
-pin_check "${CPU_FLAG}" "${NO_PIN}" "${CPU}" || exit 1
+pin_check "${CPU_FLAG}" "${NO_PIN}" "${CPU}" "${ALLOW_CORE0:-false}" || exit 1
 
 BENCH=("${HERE}/compile_macro_bench.sh" --config "${CONFIG}" "${SHARED[@]}" "${CPU_ARGS[@]}" "${TMIN_ARGS[@]}" "${NC_ARGS[@]}")
 

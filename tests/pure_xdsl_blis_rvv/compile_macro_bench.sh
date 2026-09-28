@@ -34,6 +34,21 @@ set -e
 # Use it for a head-to-head number; a run without it is the shipped configuration. The two
 # never share a log: this one's are named *_no_nc_override.txt.
 #
+# Per-rep log (issues #35, #36; on by default since issue #39, --no-save-reps turns it off):
+# logs/reps_*.txt, one row per timed rep in the order the reps ran, with the row's mc/nc/kc
+# (and, in the --instr build, each rep's pack and compute time). Written after each shape's
+# timed loop, so it adds nothing to the timing. Fetched gzipped, never merged into all_*.txt;
+# read it with reps_report.py.
+#
+# --zero-pack-lines (issue #43, off by default): before each pack, clear with cbo.zero every
+# whole 64-byte line of the Ac/Bc block the packer is about to write, so its stores no longer
+# read those lines from the L2 first. AXPY kernels only. Its logs are named *_zeroline.txt.
+#
+# --raw-events <name=code,...|x60-l2> (issue #42, --instr only, needs the per-rep log): the
+# core's own event codes (the X60's L2 and prefetch events for the preset), counted per rep
+# into a Pack_<name> and a Compute_<name> column of the per-rep log. Every launch also records
+# the raw events, and each core's busy share during each project's timed run, in provenance.txt.
+#
 # Issue #21: the timed run is pinned to one core (--cpu N, default BENCH_CPU_DEFAULT in
 # board_pin.sh, shared with run_ref_baseline.sh so both sides time on the same one), and the
 # conditions it ran under (governor, /proc/cpuinfo, compiler, load) are written to
@@ -55,6 +70,10 @@ RISCV_WORKSPACE="xdsl_rvv_microkernel"
 CONFIG="config.json"
 TEST_ARGS=""
 FORCE_NC=""
+# Issue #39: every launch keeps its per-rep times (reps_report.py reads them across launches).
+SAVE_REPS=true
+SAVE_REPS_SOURCE="default"
+RAW_EVENTS=""
 # Issue #14: 0 (default) compiles the per-tile timers and counters out, so RVV_Time_ms
 # carries no timer tax and is comparable to the reference. 1 keeps them, for debugging
 # our own pack/compute split. The two write to separate logs.
@@ -77,6 +96,7 @@ PIN_CPU="${BENCH_CPU_DEFAULT}"
 PIN_SOURCE="default"
 CPU_FLAG=false
 NO_PIN=false
+ALLOW_CORE0=false
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -88,14 +108,19 @@ while [[ "$#" -gt 0 ]]; do
         --riscv-workspace) RISCV_WORKSPACE="$2";     shift      ;;
         --config)          CONFIG="$2";              shift      ;;
         --scalar-pack)     TEST_ARGS="${TEST_ARGS} --scalar-pack" ;;
+        --zero-pack-lines) TEST_ARGS="${TEST_ARGS} --zero-pack-lines" ;;
         --ref-protocol)    PROTOCOL_FLAG="--ref-protocol"       ;;
         --no-ref-protocol) PROTOCOL_FLAG="--no-ref-protocol"    ;;
         --dry-run)         DRY_RUN=true                         ;;
         --tmin)            TMIN="$2";                shift      ;;
         --force-nc)        FORCE_NC="$2";            shift      ;;
         --no-nc-overrides) TEST_ARGS="${TEST_ARGS} --no-nc-overrides" ;;
+        --save-reps)       SAVE_REPS=true; SAVE_REPS_SOURCE="--save-reps"    ;;
+        --no-save-reps)    SAVE_REPS=false; SAVE_REPS_SOURCE="--no-save-reps" ;;
+        --raw-events)      RAW_EVENTS="$2";          shift      ;;
         --cpu)             PIN_CPU="$2"; CPU_FLAG=true; shift   ;;
         --no-pin)          NO_PIN=true                          ;;
+        --allow-core-0)    ALLOW_CORE0=true                     ;;
         --no-instr)        INSTRUMENTED="0"; BUILD_SOURCE="--no-instr" ;;
         --instr)           INSTRUMENTED="1"; BUILD_SOURCE="--instr"    ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
@@ -131,9 +156,20 @@ if [ -n "${FORCE_NC}" ] && [[ "${TEST_ARGS}" == *--no-nc-overrides* ]]; then
     exit 1
 fi
 TEST_ARGS="${TEST_ARGS}${PROTOCOL_FLAG:+ ${PROTOCOL_FLAG}}${TMIN:+ --tmin ${TMIN}}"
+if [ "${SAVE_REPS}" = true ]; then TEST_ARGS="${TEST_ARGS} --save-reps"; fi
+# Issue #42: refuse here what the driver would refuse on the board, before any board time.
+if [ -n "${RAW_EVENTS}" ]; then
+    if [ "${INSTRUMENTED}" != "1" ]; then
+        echo "Error: --raw-events needs --instr: the uninstrumented build compiles the counters out."; exit 1
+    fi
+    if [ "${SAVE_REPS}" != true ]; then
+        echo "Error: --raw-events writes only to the per-rep log: drop --no-save-reps."; exit 1
+    fi
+    TEST_ARGS="${TEST_ARGS} --raw-events ${RAW_EVENTS}"
+fi
 
 # Issue #21: refuse a bad core, and --cpu with --no-pin, rather than let the later flag win.
-pin_check "${CPU_FLAG}" "${NO_PIN}" "${PIN_CPU}" || exit 1
+pin_check "${CPU_FLAG}" "${NO_PIN}" "${PIN_CPU}" "${ALLOW_CORE0}" || exit 1
 if [ "${CPU_FLAG}" = true ]; then
     PIN_SOURCE="--cpu"
 elif [ "${NO_PIN}" = true ]; then
@@ -157,6 +193,13 @@ fi
 # Issue #26: a scalar-pack run has its own logs (the driver and the Makefile do the same), and
 # the suffix goes before the nc one.
 case "${TEST_ARGS}" in *--scalar-pack*) BUILD_LOGS="${BUILD_LOGS%.txt}_scalarpack.txt" ;; esac
+# Issue #43: so does a run that clears the pack lines, between the scalar-pack and nc suffixes.
+case "${TEST_ARGS}" in
+    *--zero-pack-lines*)
+        BUILD_LOGS="${BUILD_LOGS%.txt}_zeroline.txt"
+        ZERO_LINES_BANNER="cleared with cbo.zero before each pack (inside the pack timer)"; ZERO_LINES_SOURCE="--zero-pack-lines" ;;
+    *)  ZERO_LINES_BANNER="not cleared: each line the packer writes is read from the L2 first"; ZERO_LINES_SOURCE="default" ;;
+esac
 case "${TEST_ARGS}" in *--no-nc-overrides*) NO_NC_OVERRIDES=true; BUILD_LOGS="${BUILD_LOGS%.txt}_no_nc_override.txt" ;; *) NO_NC_OVERRIDES=false ;; esac
 # Issue #27: every number names its protocol as well as its build.
 if [ "${REF_PROTOCOL}" = "1" ]; then
@@ -189,6 +232,7 @@ else
     ov "Correctness" "checked BEFORE timing (unless skip_ref_run in ${CONFIG})"
 fi
 ov "Packing" "$(case "${TEST_ARGS}" in *--scalar-pack*) echo "scalar packing forced";; *) echo "RVV vector packing";; esac)" "$(case "${TEST_ARGS}" in *--scalar-pack*) echo "--scalar-pack";; *) echo default;; esac)"
+ov "Pack lines" "${ZERO_LINES_BANNER}" "${ZERO_LINES_SOURCE}"
 ov "Cache blocking" "analytical model" "default"
 if [ "${NO_NC_OVERRIDES}" = true ]; then
     ov "" "nc overrides: OFF (every shape uses the heuristic's nc; the nc table in ${CONFIG} is ignored)" "--no-nc-overrides"
@@ -204,9 +248,21 @@ fi
 ov "Config" "${CONFIG}" "$([ "${CONFIG}" = "config.json" ] && echo default || echo "--config")"
 ov "Board" "${RISCV_USER}@${RISCV_REMOTE_IP}:${RISCV_SSH_PORT}, ${TARGET_MODE}, workspace ${RISCV_WORKSPACE}"
 ov "Logs" "${BUILD_LOGS}"
+if [ "${SAVE_REPS}" = true ]; then
+    ov "" "${BUILD_LOGS/raw_/reps_} (every timed rep, in the order it ran)" "${SAVE_REPS_SOURCE}"
+else
+    ov "" "per-rep times: not saved" "${SAVE_REPS_SOURCE}"
+fi
+if [ -n "${RAW_EVENTS}" ]; then
+    ov "" "raw events: ${RAW_EVENTS} (a Pack_ and a Compute_ column each in the per-rep log)" "--raw-events"
+else
+    ov "" "raw events: none" "default"
+fi
+ov "" "busy share of every core during each timed run (make run), from /proc/stat -> provenance.txt" "default"
+ov "Driver args" "${TEST_ARGS# }"
 echo "$SEP"
 if [ "${DRY_RUN}" = true ]; then
-    echo "  --dry-run: stopping here. Nothing was generated, synced or run."
+    echo "  --dry-run: stopping here. Nothing was generated, synced or run, and no provenance or busy share recorded."
     exit 0
 fi
 
@@ -319,7 +375,7 @@ fi
 # fails, what lands in provenance.txt is the ssh error, and compare_ref_baseline.py then
 # reports the pinning as unknown rather than assume it.
 PROVENANCE="$(board_provenance "${PIN_CPU}" | ssh_board_no_tty "sh -s" 2>&1)" || true
-ssh_board "cd ${REMOTE_DIR}/pj_gen && while read d; do (cd \"\$d\" && make clean && make all INSTRUMENTED=${INSTRUMENTED} && ${FORCE_NC_ENV}${PIN_PREFIX}make run INSTRUMENTED=${INSTRUMENTED} TEST_ARGS=\"${TEST_ARGS}\"); done < compile_order.txt"
+ssh_board "cd ${REMOTE_DIR}/pj_gen && while read d; do (cd \"\$d\" && make clean && make all INSTRUMENTED=${INSTRUMENTED} && mkdir -p logs && $(board_cpu_times) > logs/cpu_times_before && ${FORCE_NC_ENV}${PIN_PREFIX}make run INSTRUMENTED=${INSTRUMENTED} TEST_ARGS=\"${TEST_ARGS}\"; rc=\$?; $(board_cpu_times) > logs/cpu_times_after; exit \$rc); done < compile_order.txt"
 
 # ============================================================
 # [4/4] Fetch logs
@@ -335,6 +391,7 @@ mkdir -p "${RUN_DIR}"
     echo "  board          : ${RISCV_USER}@${RISCV_REMOTE_IP}"
     echo "  build          : ${BUILD_BANNER}"
     echo "  protocol       : ${PROTOCOL_BANNER}"
+    echo "  pack lines     : ${ZERO_LINES_BANNER}"
     echo "  logs           : ${BUILD_LOGS}"
     echo "${PROVENANCE}"
 } > "${RUN_DIR}/provenance.txt"
@@ -357,6 +414,8 @@ for proj_dir in "${RUN_DIR}"/*/; do
     for f in "$proj_dir"*.txt; do
         [ -f "$f" ] || continue
         kind=$(basename "$f")  # e.g. raw_fp32_AXPY_FP32_Pack.txt
+        # --save-reps logs run to ~10 MB a launch: kept per project and gzipped, never merged.
+        if [[ "$kind" == reps_* ]]; then gzip -9 -f "$f"; continue; fi
         merged="${RUN_DIR}/all_${kind}"
         if [[ "$kind" == summary_* ]]; then
             { echo "=== ${proj_name} ==="; cat "$f"; echo ""; } >> "$merged"
@@ -370,6 +429,8 @@ for proj_dir in "${RUN_DIR}"/*/; do
     echo "  [OK] Fetched logs to ${proj_dir}"
 done
 echo "  [OK] Merged cross-project results into ${RUN_DIR}/all_*.txt"
+# Issue #42: what the launch counted, and how busy each core was during each timed run.
+launch_conditions "${RAW_EVENTS}" "${RUN_DIR}" >> "${RUN_DIR}/provenance.txt"
 
 # Per-case comparison table (pack/compute ms, pack % of total, KerGOPs, Ref GOPs,
 # speedup vs ref, Vector Pack Gain %) built from all_raw_*.txt. See docs/metrics.md.

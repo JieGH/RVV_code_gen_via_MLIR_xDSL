@@ -48,9 +48,9 @@ STUB_HEADER = """\
 struct NcOverrideEntry { const char* label; int nc; };
 %(nc_overrides)s
 
-void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf);
+void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf);
 
-typedef void (*gemm_blis_fn)(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf);
+typedef void (*gemm_blis_fn)(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf);
 
 struct KernelVariant { const char* name; int mr; int nr; gemm_blis_fn func; };
 static const KernelVariant generated_variants[] = { {"MR4_NR4", 4, 4, stub_gemm} };
@@ -68,7 +68,7 @@ STUB_KERNEL = """\
 #include <thread>
 #include "generated_kernels.h"
 
-static int calls_total = 0, calls_scalar_pack = 0;
+static int calls_total = 0, calls_scalar_pack = 0, calls_zero_lines = 0;
 // Issue #18: non-zero elements Ac/Bc held when a shape first reached the kernel.
 static long fresh_nonzero = 0;
 // Issue #19: the first shape's Ac/Bc as allocated, next to what the reference asks for.
@@ -76,7 +76,7 @@ static size_t ac_usable = 0, bc_usable = 0, ac_wanted = 0, bc_wanted = 0;
 static size_t ac_needed = 0, bc_needed = 0;
 struct StubReport {
     ~StubReport() {
-        fprintf(stderr, "STUB_CALLS total=%d scalar_pack=%d\\n", calls_total, calls_scalar_pack);
+        fprintf(stderr, "STUB_CALLS total=%d scalar_pack=%d zero_lines=%d\\n", calls_total, calls_scalar_pack, calls_zero_lines);
         fprintf(stderr, "STUB_FRESH_BUFFERS nonzero=%ld\\n", fresh_nonzero);
         fprintf(stderr, "STUB_BUFFER_BYTES ac=%zu ac_wanted=%zu bc=%zu bc_wanted=%zu "
                 "ac_needed=%zu bc_needed=%zu\\n",
@@ -84,9 +84,10 @@ struct StubReport {
     }
 } stub_report;
 
-void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, perf_gemm_counters* perf) {
+void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf) {
     calls_total++;
     if (use_scalar_pack) calls_scalar_pack++;
+    if (zero_pack_lines) calls_zero_lines++;
     if (ac_wanted == 0) {
         // test_gemm.c:271-272 with -DKR=1: (MR+mc)*(KR+kc) floats for Ac, (KR+kc)*(NR+nc) for Bc.
         ac_wanted = (size_t)(mr + mc) * (1 + kc) * sizeof(float);
@@ -229,10 +230,18 @@ def instrumented(tmp_path_factory: pytest.TempPathFactory) -> Driver:
     return Driver(tmp_path_factory.mktemp("instr"), instrumented=1)
 
 
-def _stub_calls(stderr: str) -> tuple[int, int]:
+def _stub_call_counts(stderr: str) -> dict[str, int]:
     line = next(ln for ln in stderr.splitlines() if ln.startswith("STUB_CALLS"))
-    fields = dict(tok.split("=") for tok in line.split()[1:])
-    return int(fields["total"]), int(fields["scalar_pack"])
+    return {key: int(value) for key, value in (tok.split("=") for tok in line.split()[1:])}
+
+
+def _stub_calls(stderr: str) -> tuple[int, int]:
+    counts = _stub_call_counts(stderr)
+    return counts["total"], counts["scalar_pack"]
+
+
+def _stub_zero_lines_calls(stderr: str) -> int:
+    return _stub_call_counts(stderr)["zero_lines"]
 
 
 REFPROTO_RAW = "raw_fp32_STUB_noinstr_refproto.txt"
@@ -790,3 +799,263 @@ def test_the_results_file_of_a_scalar_pack_run_is_its_own(tmp_path: Path):
         _results_file(tmp_path / "c", "--scalar-pack --no-ref-protocol")
         == "_noinstr_scalarpack"
     )
+
+
+# ---------------------------------------------------------------------------
+# --save-reps (issues #35, #36): every timed rep's own time, in the order the reps ran, so
+# slow reps can be seen coming in runs or at random. The raw log keeps only the summary.
+# ---------------------------------------------------------------------------
+REFPROTO_REPS = "reps_fp32_STUB_noinstr_refproto.txt"
+
+
+def test_save_reps_writes_one_row_per_timed_rep_in_the_order_they_ran(uninstrumented: Driver):
+    proc = uninstrumented.run("--tmin", "0.1", "--save-reps", env={"STUB_SLEEP_MS": "10"})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    (row,) = uninstrumented.raw_rows(REFPROTO_RAW)
+    reps = uninstrumented.raw_rows(REFPROTO_REPS)
+    assert len(reps) == int(row["N_Reps"]) >= 3
+    assert [int(r["Rep"]) for r in reps] == list(range(len(reps)))
+    assert {(r["Layer"], r["M"], r["N"], r["K"], r["Variant"]) for r in reps} == {
+        ("T1", "32", "32", "32", "MR4_NR4")
+    }
+    # nc is on every row, so a sweep over nc inside one launch reads straight off the file
+    assert {r["NC"] for r in reps} == {"32"}
+    # the rep times are the ones the mean time is made of
+    seconds = [float(r["Seconds"]) for r in reps]
+    assert all(s >= 0.010 for s in seconds)
+    assert sum(seconds) / len(seconds) * 1e3 == pytest.approx(float(row["RVV_Time_ms"]), rel=0.02)
+
+
+def test_without_save_reps_no_per_rep_log_is_written(uninstrumented: Driver):
+    proc = uninstrumented.run("--tmin", "0.05")
+    assert "per-rep times: not saved" in _overview(proc.stdout)
+    assert not (uninstrumented.cwd / "logs" / REFPROTO_REPS).exists()
+
+
+def test_the_overview_names_the_per_rep_log(uninstrumented: Driver):
+    ov = _overview(uninstrumented.run("--tmin", "0.05", "--save-reps").stdout)
+    line = next(ln for ln in ov.splitlines() if "logs/" + REFPROTO_REPS in ln)
+    assert "[--save-reps]" in line
+
+
+def test_the_per_rep_log_follows_the_run_s_own_log_name(with_nc_override: Driver):
+    with_nc_override.run("--tmin", "0.05", "--save-reps", "--scalar-pack", "--no-nc-overrides")
+    assert (
+        with_nc_override.cwd / "logs" / "reps_fp32_STUB_noinstr_refproto_scalarpack_no_nc_override.txt"
+    ).is_file()
+
+
+def test_the_per_rep_log_carries_each_rows_own_nc(with_nc_override: Driver):
+    # An nc sweep inside one launch: the same shape under two labels, one overridden.
+    with_nc_override.run("--tmin", "0.05", "--save-reps", dataset="twins.dat")
+    reps = with_nc_override.raw_rows(REFPROTO_REPS)
+    assert {r["Layer"]: r["NC"] for r in reps} == {"T1": "16", "T10": "32"}
+
+
+def test_the_instrumented_per_rep_log_splits_each_rep_into_pack_and_compute(instrumented: Driver):
+    proc = instrumented.run("--save-reps")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    reps = instrumented.raw_rows("reps_fp32_STUB.txt")
+    assert len(reps) == CONFIG_ITERATIONS
+    for r in reps:
+        # the stub reports 1 us of each
+        assert float(r["Pack_Seconds"]) == pytest.approx(1e-6)
+        assert float(r["Compute_Seconds"]) == pytest.approx(1e-6)
+        assert float(r["Seconds"]) == pytest.approx(2e-6)
+
+
+def test_the_uninstrumented_per_rep_log_has_no_split(uninstrumented: Driver):
+    uninstrumented.run("--tmin", "0.05", "--save-reps")
+    for r in uninstrumented.raw_rows(REFPROTO_REPS):
+        assert r["Pack_Seconds"] == r["Compute_Seconds"] == "nan"
+        assert r["Pack_Cycles"] == r["Compute_Cycles"] == "nan"
+
+
+def test_script_saves_per_rep_times_by_default():
+    # Issue #39: one launch is not a result, so every launch keeps its reps for reps_report.py.
+    out = _run_script("--dry-run").stdout
+    line = next(ln for ln in out.splitlines() if "reps_*_noinstr_refproto.txt" in ln)
+    assert "[default]" in line
+
+
+def test_script_no_save_reps_turns_the_per_rep_log_off():
+    line = next(
+        ln for ln in _run_script("--dry-run", "--no-save-reps").stdout.splitlines()
+        if "per-rep times" in ln
+    )
+    assert "not saved" in line and "[--no-save-reps]" in line
+
+
+def test_script_still_takes_save_reps_explicitly():
+    out = _run_script("--dry-run", "--save-reps").stdout
+    line = next(ln for ln in out.splitlines() if "reps_*_noinstr_refproto.txt" in ln)
+    assert "[--save-reps]" in line
+
+
+# ---------------------------------------------------------------------------
+# --raw-events (issue #42): the X60's own event codes, counted per rep next to the cycles, so
+# fast reps can be put beside slow ones. Each event adds a pack and a compute column at the
+# end of the per-rep log. The host refuses every perf event (perf_event_paranoid 4), so here
+# the columns are always nan: what is under test is the flag and the log, not the counts.
+# ---------------------------------------------------------------------------
+REPS_COLUMNS = "Layer,M,N,K,Variant,MC,NC,KC,Rep,Seconds,Pack_Seconds,Compute_Seconds,Pack_Cycles,Compute_Cycles"
+X60_L2 = ["l2_load_access", "l2_load_miss", "l2_store_access", "l2_ar_channel_stall_cycle",
+          "l2_aw_channel_stall_cycle", "l1d_miss", "l1d_prefetch_refill", "l1d_prefetch_hit"]
+
+
+def _reps_header(driver: Driver, name: str = "reps_fp32_STUB.txt") -> str:
+    return (driver.cwd / "logs" / name).read_text().splitlines()[0]
+
+
+def test_without_raw_events_the_per_rep_log_is_as_before(instrumented: Driver):
+    instrumented.run("--save-reps")
+    assert _reps_header(instrumented) == REPS_COLUMNS
+
+
+def test_each_raw_event_adds_a_pack_and_a_compute_column_in_the_order_given(instrumented: Driver):
+    proc = instrumented.run("--save-reps", "--raw-events", "l2_miss=0xb9,l2_acc=184")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert _reps_header(instrumented) == (
+        REPS_COLUMNS + ",Pack_l2_miss,Compute_l2_miss,Pack_l2_acc,Compute_l2_acc"
+    )
+    reps = instrumented.raw_rows("reps_fp32_STUB.txt")
+    assert len(reps) == CONFIG_ITERATIONS
+    # the events could not open here, and a count that is missing is never written as 0
+    assert all(r[c] == "nan" for r in reps for c in ("Pack_l2_miss", "Compute_l2_acc"))
+    # ... and the usual columns are still filled in
+    assert float(reps[0]["Pack_Seconds"]) == pytest.approx(1e-6)
+
+
+def test_the_x60_l2_preset_names_the_checked_events(instrumented: Driver):
+    proc = instrumented.run("--save-reps", "--raw-events", "x60-l2")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    extra = _reps_header(instrumented).split(",")[len(REPS_COLUMNS.split(",")):]
+    assert extra == [f"{region}_{ev}" for ev in X60_L2 for region in ("Pack", "Compute")]
+
+
+def test_the_overview_names_the_raw_events_and_says_they_did_not_open(instrumented: Driver):
+    ov = _overview(instrumented.run("--save-reps", "--raw-events", "l2_miss=0xb9").stdout)
+    line = next(ln for ln in ov.splitlines() if "l2_miss=0xb9" in ln)
+    assert "[--raw-events]" in line
+    assert "could not open" in line and "nan" in line
+
+
+def test_the_overview_says_when_no_raw_events_were_asked_for(instrumented: Driver):
+    ov = _overview(instrumented.run("--save-reps").stdout)
+    assert "raw events: none" in ov
+
+
+@pytest.mark.parametrize(
+    "value, why",
+    [
+        ("l2_miss", "name=code"),
+        ("l2 miss=185", "name"),
+        ("l2_miss=abc", "code"),
+        ("a=1,a=2", "twice"),
+        (",".join(f"e{i}=1" for i in range(9)), "at most 8"),
+        ("", "name=code"),
+    ],
+)
+def test_a_bad_raw_event_list_is_refused_saying_why(instrumented: Driver, value: str, why: str):
+    proc = instrumented.run("--save-reps", "--raw-events", value)
+    assert proc.returncode != 0
+    assert "--raw-events" in proc.stderr and why in proc.stderr
+    assert not (instrumented.cwd / "logs" / "reps_fp32_STUB.txt").exists()
+
+
+def test_raw_events_without_save_reps_are_refused(instrumented: Driver):
+    proc = instrumented.run("--raw-events", "x60-l2")
+    assert proc.returncode != 0
+    assert "--save-reps" in proc.stderr
+
+
+def test_the_uninstrumented_build_refuses_raw_events(uninstrumented: Driver):
+    proc = uninstrumented.run("--tmin", "0.05", "--save-reps", "--raw-events", "x60-l2")
+    assert proc.returncode != 0
+    assert "instrumented build" in proc.stderr
+
+
+# ---------------------------------------------------------------------------
+# Issue #43: --zero-pack-lines clears the pack-buffer lines with cbo.zero before each pack.
+# Off by default; a run with it on is a different configuration, so it gets its own logs.
+# ---------------------------------------------------------------------------
+ZEROLINE_RAW = "raw_fp32_STUB_noinstr_refproto_zeroline.txt"
+
+
+def test_line_clearing_is_off_by_default_and_the_overview_says_so(uninstrumented: Driver):
+    proc = uninstrumented.run("--tmin", "0.05")
+    assert _stub_zero_lines_calls(proc.stderr) == 0
+    line = next(ln for ln in _overview(proc.stdout).splitlines() if "Pack lines" in ln)
+    assert "not cleared" in line and "[default]" in line
+
+
+def test_a_zero_lines_run_clears_in_every_timed_rep_and_says_so(uninstrumented: Driver):
+    proc = uninstrumented.run("--tmin", "0.1", "--zero-pack-lines", env={"STUB_SLEEP_MS": "10"})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    (row,) = uninstrumented.raw_rows(ZEROLINE_RAW)
+    total_calls, _ = _stub_calls(proc.stderr)
+    assert _stub_zero_lines_calls(proc.stderr) == total_calls == int(row["N_Reps"])
+    line = next(ln for ln in _overview(proc.stdout).splitlines() if "Pack lines" in ln)
+    assert "cbo.zero" in line and "[--zero-pack-lines]" in line
+
+
+def test_a_zero_lines_run_writes_its_own_logs_and_leaves_the_default_ones_alone(
+    uninstrumented: Driver,
+):
+    proc = uninstrumented.run("--tmin", "0.05", "--zero-pack-lines", "--save-reps")
+    for kind in ("raw", "summary", "perf", "reps"):
+        assert (uninstrumented.cwd / "logs" / f"{kind}_fp32_STUB_noinstr_refproto_zeroline.txt").is_file()
+    assert not (uninstrumented.cwd / "logs" / REFPROTO_RAW).exists()
+    assert f"logs/{ZEROLINE_RAW}" in _overview(proc.stdout)
+
+
+def test_the_zero_lines_name_sits_between_the_scalar_pack_and_the_nc_names(with_nc_override: Driver):
+    with_nc_override.run("--tmin", "0.05", "--scalar-pack", "--zero-pack-lines", "--no-nc-overrides")
+    assert (
+        with_nc_override.cwd / "logs" / "raw_fp32_STUB_noinstr_refproto_scalarpack_zeroline_no_nc_override.txt"
+    ).is_file()
+
+
+def test_the_warm_up_scalar_pack_pass_clears_lines_too(uninstrumented: Driver):
+    # The warm-up protocol's scalar-pack pass is the scalar packer's own timing: it must be
+    # taken under the same conditions as the timed reps.
+    proc = uninstrumented.run("--no-ref-protocol", "--zero-pack-lines")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    total_calls, _ = _stub_calls(proc.stderr)
+    assert _stub_zero_lines_calls(proc.stderr) == total_calls
+
+
+def test_line_clearing_is_refused_for_a_dot_kernel(dot_method: Driver):
+    # The DOT dispatch has no line clearing (issue #43 is scoped to AXPY): a run that said it
+    # was on would be mislabelled.
+    proc = dot_method.run("--tmin", "0.05", "--zero-pack-lines")
+    assert proc.returncode != 0
+    assert "--zero-pack-lines" in proc.stderr and "DOT" in proc.stderr
+
+
+def test_the_results_file_of_a_zero_lines_run_is_its_own(tmp_path: Path):
+    assert _results_file(tmp_path / "a", "--zero-pack-lines") == "_noinstr_refproto_zeroline"
+    assert (
+        _results_file(tmp_path / "b", "--scalar-pack --zero-pack-lines --no-nc-overrides")
+        == "_noinstr_refproto_scalarpack_zeroline_no_nc_override"
+    )
+
+
+def test_script_passes_zero_pack_lines_to_the_driver_and_names_its_logs():
+    out = _run_script("--dry-run", "--zero-pack-lines").stdout
+    line = next(ln for ln in out.splitlines() if "Pack lines" in ln)
+    assert "cbo.zero" in line and "[--zero-pack-lines]" in line
+    assert "raw_*_noinstr_refproto_zeroline.txt" in out
+    args = next(ln for ln in out.splitlines() if "Driver args" in ln)
+    assert "--zero-pack-lines" in args.split()
+
+    out = _run_script("--dry-run", "--scalar-pack", "--zero-pack-lines", "--no-nc-overrides").stdout
+    assert "raw_*_noinstr_refproto_scalarpack_zeroline_no_nc_override.txt" in out
+
+
+def test_script_leaves_line_clearing_off_by_default():
+    out = _run_script("--dry-run").stdout
+    line = next(ln for ln in out.splitlines() if "Pack lines" in ln)
+    assert "not cleared" in line and "[default]" in line
+    args = next(ln for ln in out.splitlines() if "Driver args" in ln)
+    assert "--zero-pack-lines" not in args

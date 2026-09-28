@@ -1,0 +1,9 @@
+# Issue #43: --zero-pack-lines against the baseline (config_issue43_zero_lines.json).
+# B3 has two speeds (#36): at the model's nc (384) and at the shipped nc=128 (override on the
+# B3_nc128 label). B3_K256 is its slowest form (#34); B2 and Reuse24 are one-speed controls.
+# layer     M     N     K
+B3          64    384   384
+B3_nc128    64    384   384
+B3_K256     64    384   256
+B2          384   384   64
+R24         384   384   384

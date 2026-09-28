@@ -1,0 +1,96 @@
+Run on the board, generated 2026-09-27T23:58:25+02:00 by compile_macro_bench.sh
+  board          : jlei@jbpi2
+  build          : UNINSTRUMENTED (INSTRUMENTED=0) -- comparable to the reference design
+  protocol       : REFERENCE (tmin=10 s) -- no warm-up, reps until tmin
+  pack lines     : cleared with cbo.zero before each pack (inside the pack timer)
+  logs           : raw_*_noinstr_refproto_zeroline.txt
+  cpu pin        : 4
+  affinity       : pid 245715's current affinity list: 4
+  host           : jbpi2 (Linux 6.6.63 riscv64)
+  compiler (gcc) : gcc (Bianbu 13.2.0-23ubuntu4bb3) 13.2.0
+  compiler (g++) : g++ (Bianbu 13.2.0-23ubuntu4bb3) 13.2.0
+  governor       :  8 performance 
+  load average   : 3.00 3.00 2.88 1/461 245730
+  taken          : 2026-09-27T23:55:58+02:00
+  /proc/cpuinfo  :
+processor	: 0
+hart		: 0
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt_ime
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 1
+hart		: 1
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt_ime
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 2
+hart		: 2
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt_ime
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 3
+hart		: 3
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt_ime
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 4
+hart		: 4
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 5
+hart		: 5
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 6
+hart		: 6
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 7
+hart		: 7
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+  raw events     : none
+  busy share     : fp32_AXPY_FP32_Pack_vlen256_MR16NR15: cpu0 0% cpu1 0% cpu2 0% cpu3 0% cpu4 100% cpu5 0% cpu6 0% cpu7 0%

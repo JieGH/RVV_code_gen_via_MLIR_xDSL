@@ -39,6 +39,56 @@ using namespace std;
 
 static const char* PERF_REGIONS[] = {"Vector_Pack", "Scalar_Pack", "Compute"};
 
+// Issue #42: one raw event asked for with --raw-events.
+struct RawEvent {
+    string name;
+    uint64_t code;
+};
+
+static string hex_code(uint64_t code) {
+    ostringstream s;
+    s << "0x" << std::hex << code;
+    return s.str();
+}
+
+// Parses --raw-events: name=code items separated by commas, where an item may also be the
+// preset name. Returns "" or what is wrong with the list.
+static string parse_raw_events(const string& arg, vector<RawEvent>& out) {
+    const string form = "--raw-events takes name=code items separated by commas, or the preset " +
+                        string(PERF_X60_L2_PRESET_NAME);
+    size_t start = 0;
+    for (;;) {
+        size_t comma = arg.find(',', start);
+        string item = arg.substr(start, comma == string::npos ? string::npos : comma - start);
+        if (item == PERF_X60_L2_PRESET_NAME) {
+            for (int i = 0; i < PERF_X60_L2_PRESET_COUNT; ++i)
+                out.push_back({PERF_X60_L2_PRESET[i].name, PERF_X60_L2_PRESET[i].code});
+        } else {
+            size_t eq = item.find('=');
+            if (eq == string::npos || eq == 0 || eq + 1 == item.size())
+                return form + " (got '" + item + "').";
+            string name = item.substr(0, eq), code_s = item.substr(eq + 1);
+            for (char ch : name)
+                if (!(isalnum((unsigned char) ch) || ch == '_'))
+                    return "--raw-events: the event name '" + name + "' may only hold letters, digits and _.";
+            char* end = nullptr;
+            uint64_t code = std::strtoull(code_s.c_str(), &end, 0);
+            if (end == code_s.c_str() || *end != '\0' || code_s[0] == '-')
+                return "--raw-events: '" + code_s + "' is not an event code (a number such as 0xb9 or 185).";
+            out.push_back({name, code});
+        }
+        if (comma == string::npos) break;
+        start = comma + 1;
+    }
+    for (size_t i = 0; i < out.size(); ++i)
+        for (size_t j = 0; j < i; ++j)
+            if (out[i].name == out[j].name) return "--raw-events: '" + out[i].name + "' is named twice.";
+    if ((int) out.size() > PERF_MAX_RAW)
+        return "--raw-events: at most " + to_string(PERF_MAX_RAW) + " events fit in the raw group, got " +
+               to_string(out.size()) + ".";
+    return "";
+}
+
 // Issue #14: an uninstrumented build has no inner timers and no counters, so its
 // breakdown columns are nan. Its logs get their own names so a noinstr run and an
 // instrumented run of the same project never append to the same file.
@@ -377,9 +427,14 @@ struct RunSettings {
     string tmin_source;
     bool scalar_pack;
     string scalar_pack_source;
+    bool zero_pack_lines;
     bool no_nc_overrides;
     string dataset;
     string raw_log, summary_log, perf_log;
+    bool save_reps;
+    string reps_log;
+    vector<RawEvent> raw_events;
+    bool raw_open;
 };
 
 static void overview_line(const char* key, const string& value, const string& source = "") {
@@ -427,6 +482,11 @@ static void print_run_overview(const RunSettings& r) {
 #endif
     overview_line("Packing", r.scalar_pack ? "scalar packing forced" : "RVV vector packing",
                   r.scalar_pack ? r.scalar_pack_source : "default");
+    // Issue #43: whether the pack-buffer lines are cleared (cbo.zero) before each pack.
+    overview_line("Pack lines", r.zero_pack_lines
+                      ? "cleared with cbo.zero before each pack (inside the pack timer)"
+                      : "not cleared: each line the packer writes is read from the L2 first",
+                  r.zero_pack_lines ? "--zero-pack-lines" : "default");
     overview_line("Kernel family", string(CONFIG_DATATYPE) + " " + CONFIG_METHOD + " | VLEN " +
                                        to_string(CONFIG_VLEN) + " | arch " + CONFIG_ARCH,
                   "config.json");
@@ -453,12 +513,29 @@ static void print_run_overview(const RunSettings& r) {
     overview_line("Logs", r.raw_log);
     overview_line("", r.summary_log);
     overview_line("", r.perf_log);
+    // Issues #35/#36: whether slow reps come in runs or at random needs each rep's own time.
+    if (r.save_reps)
+        overview_line("", r.reps_log + " (every timed rep, in the order it ran)", "--save-reps");
+    else
+        overview_line("", "per-rep times: not saved", "default");
+    // Issue #42: the core's own event codes, counted per rep, in the per-rep log only.
+    if (r.raw_events.empty()) {
+        overview_line("", "raw events: none", "default");
+    } else {
+        string list;
+        for (const RawEvent& e : r.raw_events) list += (list.empty() ? "" : ", ") + e.name + "=" + hex_code(e.code);
+        overview_line("", "raw events: " + list + (r.raw_open
+                              ? " -- counting; a Pack_ and a Compute_ column each in the per-rep log"
+                              : " -- could not open: their per-rep columns are nan"),
+                      "--raw-events");
+    }
 }
 
 int main(int argc, char** argv) {
     bool force_scalar_pack = (getenv("USE_SCALAR_PACK") != NULL);
     string scalar_pack_source = force_scalar_pack ? "USE_SCALAR_PACK" : "default";
     bool no_nc_overrides = false;
+    bool zero_pack_lines = false;  // issue #43
     // Issue #27: the reference design's run protocol (test_gemm.c:339-361) is the default
     // wherever it can run. The instrumented build cannot (its timers make the numbers
     // incomparable, issue #14), so its default is the older warm-up protocol.
@@ -471,13 +548,23 @@ int main(int argc, char** argv) {
     double tmin = 3.0;  // seconds; matches run_ref_baseline.sh
     string tmin_source = "default";
     string dataset_file = "";
+    bool save_reps = false;
+    bool raw_events_given = false;
+    string raw_events_arg;
 
     for (int i = 1; i < argc; ++i) {
         if (string(argv[i]) == "--scalar-pack") {
             force_scalar_pack = true;
             scalar_pack_source = "--scalar-pack";
+        } else if (string(argv[i]) == "--zero-pack-lines") {
+            zero_pack_lines = true;
         } else if (string(argv[i]) == "--no-nc-overrides") {
             no_nc_overrides = true;
+        } else if (string(argv[i]) == "--save-reps") {
+            save_reps = true;
+        } else if (string(argv[i]) == "--raw-events") {
+            raw_events_given = true;
+            if (i + 1 < argc) raw_events_arg = argv[++i];
         } else if (string(argv[i]) == "--ref-protocol") {
             ref_protocol = true;
             protocol_source = "--ref-protocol";
@@ -499,8 +586,32 @@ int main(int argc, char** argv) {
     }
 
     if (dataset_file == "") {
-        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack] [--no-ref-protocol | --ref-protocol] [--tmin <seconds>] [--no-nc-overrides]" << endl;
+        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack] [--zero-pack-lines] [--no-ref-protocol | --ref-protocol] [--tmin <seconds>] [--no-nc-overrides] [--save-reps] [--raw-events <name=code,...|x60-l2>]" << endl;
         return 1;
+    }
+    // Issue #43: the DOT dispatch clears no lines (its K pad is zeroed on purpose instead), so a
+    // DOT run with the switch would carry a name for something it did not do.
+    if (zero_pack_lines && string(CONFIG_METHOD).find("DOT") != string::npos) {
+        cerr << "Error: --zero-pack-lines is for the AXPY kernels only; this is a DOT kernel ("
+             << CONFIG_METHOD << "), whose dispatch clears no lines." << endl;
+        return 1;
+    }
+    vector<RawEvent> raw_events;
+    if (raw_events_given) {
+#if !RVV_INSTRUMENTED
+        cerr << "Error: --raw-events needs the instrumented build (make INSTRUMENTED=1): this build compiles\n"
+                "       the counters out, so that its times carry no counter reads (issue #14)." << endl;
+        return 1;
+#endif
+        string why = parse_raw_events(raw_events_arg, raw_events);
+        if (!why.empty()) {
+            cerr << "Error: " << why << endl;
+            return 1;
+        }
+        if (!save_reps) {
+            cerr << "Error: --raw-events needs --save-reps: its counts are written only to the per-rep log." << endl;
+            return 1;
+        }
     }
     if (tmin_source != "default" && !ref_protocol) {
         cerr << "Error: --tmin only applies to the reference protocol (this run uses the warm-up protocol:\n"
@@ -519,17 +630,31 @@ int main(int argc, char** argv) {
     // Likewise a run without the config.json nc overrides never shares a file with one that
     // has them: they are different configurations (issue #16).
     // A scalar-pack-live run is the issue #26 experiment, so it never shares a log with the
-    // vector-pack one either.
+    // vector-pack one either, nor a run that clears the pack lines (issue #43) one that does not.
     const string log_suffix = string(RVV_LOG_SUFFIX) + (ref_protocol ? "_refproto" : "") +
                               (force_scalar_pack ? "_scalarpack" : "") +
+                              (zero_pack_lines ? "_zeroline" : "") +
                               (no_nc_overrides ? "_no_nc_override" : "");
     const string log_stem = string("_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + log_suffix + ".txt";
     // Ensure logs directory exists (handled by Makefile)
     string raw_log_name = "logs/raw" + log_stem;
     string summary_log_name = "logs/summary" + log_stem;
     string perf_log_name = "logs/perf" + log_stem;
+    string reps_log_name = "logs/reps" + log_stem;
+    // Issue #8: hardware counters supplement the wall-clock columns; they go to a separate
+    // log so the raw log's schema is unchanged. Opened before the overview so that it can say
+    // whether the raw events (issue #42) opened.
+    perf_gemm_counters perf;
+    perf_gemm_open(&perf);
+    bool raw_open = false;
+    if (!raw_events.empty()) {
+        vector<uint64_t> codes;
+        for (const RawEvent& e : raw_events) codes.push_back(e.code);
+        raw_open = perf_gemm_open_raw(&perf, codes.data(), (int) codes.size()) == 0;
+    }
     print_run_overview({ref_protocol, protocol_source, tmin, tmin_source, force_scalar_pack,
-                        scalar_pack_source, no_nc_overrides, dataset_file, raw_log_name, summary_log_name, perf_log_name});
+                        scalar_pack_source, zero_pack_lines, no_nc_overrides, dataset_file, raw_log_name, summary_log_name, perf_log_name,
+                        save_reps, reps_log_name, raw_events, raw_open});
     bool raw_exists = false;
     {
         ifstream check(raw_log_name);
@@ -549,10 +674,6 @@ int main(int argc, char** argv) {
         cerr << "Warning: Could not open " << summary_log_name << " for writing." << endl;
     }
 
-    // Issue #8: hardware counters supplement the wall-clock columns above; they go to a
-    // separate log so the raw log's schema is unchanged.
-    perf_gemm_counters perf;
-    perf_gemm_open(&perf);
 #if RVV_INSTRUMENTED
     if (perf.fd < 0) {
         cout << "[INFO] perf_event_open() counter group unavailable; perf_ log columns will be nan." << endl;
@@ -575,6 +696,25 @@ int main(int argc, char** argv) {
             }
         }
         perf_log << ",Vector_Pack_Cycles_CV_Pct,Compute_Cycles_CV_Pct,Compute_FLOPs_per_Cycle,Arith_Intensity_FLOPs_per_Byte\n";
+    }
+
+    // One row per timed rep. Written after each shape's timed loop, from the times the
+    // loop already keeps, so saving them adds nothing inside the timed interval.
+    ofstream reps_log;
+    if (save_reps) {
+        bool reps_exists = false;
+        {
+            ifstream check(reps_log_name);
+            reps_exists = check.good() && check.peek() != std::ifstream::traits_type::eof();
+        }
+        reps_log.open(reps_log_name, ios_base::app);
+        if (!reps_log.is_open()) {
+            cerr << "Warning: Could not open " << reps_log_name << " for writing." << endl;
+        } else if (!reps_exists) {
+            reps_log << "Layer,M,N,K,Variant,MC,NC,KC,Rep,Seconds,Pack_Seconds,Compute_Seconds,Pack_Cycles,Compute_Cycles";
+            for (const RawEvent& e : raw_events) reps_log << ",Pack_" << e.name << ",Compute_" << e.name;
+            reps_log << "\n";
+        }
     }
 
     ifstream dataset_stream(dataset_file);
@@ -737,7 +877,7 @@ int main(int argc, char** argv) {
             if (!ref_protocol) {
                 for (int w = 0; w < 5; ++w) {
                     double dump_pt=0, dump_kt=0; uint64_t dump_pb=0;
-                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &dump_pt, &dump_kt, &dump_pb, force_scalar_pack, nullptr);
+                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &dump_pt, &dump_kt, &dump_pb, force_scalar_pack, zero_pack_lines, nullptr);
                 }
             }
 
@@ -808,6 +948,10 @@ int main(int argc, char** argv) {
             bool scalar_perf_valid = false, rvv_perf_valid = false;
             perf_counts scalar_pack_counts = {}, vector_pack_counts = {}, compute_counts = {};
             vector<double> rep_pack_cycles, rep_compute_cycles;
+            // Issue #42: each rep's raw counts, n_raw per rep; nan for a rep any of whose
+            // windows the raw group was shared out for, or once a read of it failed.
+            const size_t n_raw = raw_events.size();
+            vector<double> rep_raw_pack, rep_raw_compute;
             double num_ops = 2.0 * m * n * k;
             double pack_bytes_per_rep = 0.0;
             // Reps the RVV loop actually ran; 0 if it did not run (default protocol, FAIL).
@@ -830,7 +974,7 @@ int main(int argc, char** argv) {
                 // Not under --ref-protocol (issue #27): the reference has no such pass.
                 for (int r = 0; !ref_protocol && r < N_REPS; ++r) {
                     double pt = 0.0, kt = 0.0; uint64_t pb = 0;
-                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, true, &perf);
+                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, true, zero_pack_lines, &perf);
                     total_scalar_pack_time += pt;
                     total_pack_bytes += pb;
                 }
@@ -862,6 +1006,12 @@ int main(int argc, char** argv) {
                 // --ref-protocol, whose rep count is not known in advance.
                 std::vector<double> rep_total;
                 rep_total.reserve(ref_protocol ? (size_t)1 << 20 : (size_t)N_REPS);
+#if RVV_INSTRUMENTED
+                // The two halves of rep_total, kept apart for --save-reps.
+                std::vector<double> rep_pack_s, rep_compute_s;
+                rep_pack_s.reserve(N_REPS);
+                rep_compute_s.reserve(N_REPS);
+#endif
                 perf_gemm_reset(&perf);
 
                 auto start = chrono::high_resolution_clock::now();
@@ -881,12 +1031,21 @@ int main(int argc, char** argv) {
 #if RVV_INSTRUMENTED
                     uint64_t pack_cycles_before = perf.pack.v[PERF_EV_CYCLES];
                     uint64_t compute_cycles_before = perf.compute.v[PERF_EV_CYCLES];
+                    const perf_counts raw_pack_before = perf.pack, raw_compute_before = perf.compute;
+                    const uint64_t raw_rejected_before = perf.raw_rejected;
 #endif
-                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, force_scalar_pack, &perf);
+                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, force_scalar_pack, zero_pack_lines, &perf);
 #if RVV_INSTRUMENTED
                     rep_total.push_back(kt + pt);
+                    rep_pack_s.push_back(pt);
+                    rep_compute_s.push_back(kt);
                     rep_pack_cycles.push_back((double) (perf.pack.v[PERF_EV_CYCLES] - pack_cycles_before));
                     rep_compute_cycles.push_back((double) (perf.compute.v[PERF_EV_CYCLES] - compute_cycles_before));
+                    const bool raw_ok = perf.raw_valid && perf.raw_rejected == raw_rejected_before;
+                    for (size_t e = 0; e < n_raw; ++e) {
+                        rep_raw_pack.push_back(raw_ok ? (double) (perf.pack.raw[e] - raw_pack_before.raw[e]) : std::nan(""));
+                        rep_raw_compute.push_back(raw_ok ? (double) (perf.compute.raw[e] - raw_compute_before.raw[e]) : std::nan(""));
+                    }
 #else
                     auto rep_mark = chrono::high_resolution_clock::now();
                     rep_total.push_back(chrono::duration<double>(rep_mark - prev_mark).count());
@@ -940,6 +1099,24 @@ int main(int argc, char** argv) {
                     sq_sum += (rep_gops[r] - mean_gops) * (rep_gops[r] - mean_gops);
                 }
                 ker_gflops_std = std::sqrt(sq_sum / n_reps);
+
+                if (reps_log.is_open()) {
+                    for (int r = 0; r < n_reps; ++r) {
+                        reps_log << label_str << "," << m << "," << n << "," << k << "," << variant.name << ","
+                                 << mc << "," << nc << "," << kc << "," << r << "," << rep_total[r] << ",";
+#if RVV_INSTRUMENTED
+                        reps_log << rep_pack_s[r] << "," << rep_compute_s[r] << ",";
+                        if (perf.valid) reps_log << rep_pack_cycles[r] << "," << rep_compute_cycles[r];
+                        else reps_log << "nan,nan";
+                        for (size_t e = 0; e < n_raw; ++e)
+                            reps_log << "," << rep_raw_pack[r * n_raw + e] << "," << rep_raw_compute[r * n_raw + e];
+#else
+                        reps_log << "nan,nan,nan,nan";
+#endif
+                        reps_log << "\n";
+                    }
+                    reps_log.flush();
+                }
 
                 rvv_time_val = avg_time * 1000.0;
 

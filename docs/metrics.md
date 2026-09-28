@@ -22,6 +22,9 @@ tests/pure_xdsl_blis_rvv/logs/run_<timestamp>/
   comparison.md                    # per-case table built from all_raw_*.txt, see below
 ```
 
+With `--save-reps`, each project directory also holds `reps_<dtype>_<method><suffix>.txt.gz`
+(see "Per-rep log" below). It is gzipped on fetch and not merged into an `all_*` file.
+
 `comparison.md` is generated automatically by `summarize_run.py` at the end of the
 fetch step. To regenerate it by hand against an existing run directory:
 
@@ -231,6 +234,94 @@ packing strategy on our microkernel.)
   S1 (`config_pack_swap.json`); `compare_pack_swap.py` prints e2e GOPs for each side, the
   difference, and the spread between repeats of the same side. A difference smaller than that
   spread is called "within noise".
+
+## Clearing the pack lines (`--zero-pack-lines`, issue #43)
+
+On the X60 a store to a line that is not in the cache first reads that line from the L2, even
+when the packer then overwrites all 64 bytes of it (~1.0 `l2_load_access` per line written,
+#42's probe). `--zero-pack-lines` clears each whole 64-byte line of the Ac or Bc block with
+`cbo.zero` just before the pack, so the packer's stores land on lines already in the cache.
+
+- **What is cleared.** Only lines lying wholly inside the block the pack call writes (every
+  panel, the last partial panel's pad slots included); a partly written line at either end is
+  left alone. Ac and Bc are allocated 64-byte aligned, so for a full block that is every line.
+  The helper is `templates/pack_lines.h`; on the host it does nothing.
+- **Where it runs.** Inside the pack timer and the pack counter window, for both packers
+  (`--scalar-pack` too) and for the warm-up protocol's scalar-pack pass. The time it takes is
+  pack time.
+- **AXPY only.** The DOT dispatch zeroes its K pad on purpose and clears no lines; the driver
+  refuses the flag for a DOT kernel.
+- **Own logs.** `_zeroline` after `_scalarpack`, before `_no_nc_override`.
+  `reps_report.py` reports such a launch as its own packer (`vector+zeroline`), so on and off
+  never pool.
+- **Comparison.** `config_issue43_zero_lines.json` (B3 at `nc`=128 and 384, B3_K256, B2,
+  Reuse24), switch off/on A-B-B-A-A-B on core 4: first `--instr --raw-events x60-l2` for the
+  counts, then uninstrumented with `--tmin 10` for the speed.
+
+## Per-rep log (`--save-reps`, issues #35 and #36)
+
+`raw_*.txt` keeps only a summary of each case's reps (mean, median, percentiles). To see
+whether slow reps come in runs or at random, `--save-reps` writes every timed rep, one row
+each, in the order they ran, to `reps_*.txt` beside the raw log (same suffixes, so it never
+mixes across builds, protocols, packers or `nc` settings):
+
+| column | meaning |
+|---|---|
+| `Layer,M,N,K,Variant` | as in the raw log |
+| `MC,NC,KC` | the cache blocking this row actually ran with (after any `nc` override), so an `nc` sweep inside one launch reads straight off the file |
+| `Rep` | 0 for the first timed rep; under the reference protocol rep 0 is the cold one |
+| `Seconds` | the time charged to this rep: the same number the raw log's mean and median are made of. Uninstrumented: this rep's wall clock. Instrumented: its pack + compute timers |
+| `Pack_Seconds`, `Compute_Seconds` | instrumented only (`nan` otherwise): the two halves of `Seconds` |
+| `Pack_Cycles`, `Compute_Cycles` | instrumented only, and only when the perf counters opened (`nan` otherwise) |
+| `Pack_<event>`, `Compute_<event>` | only with `--raw-events` (issue #42, instrumented only): one pair per raw event, in the order given, after the columns above. `nan` when the raw group could not open, and for a rep any of whose counter windows the raw group was shared out for |
+
+The file is written after each case's timed loop, from the times the loop already keeps, so
+saving it adds no work inside the timed interval. It runs to ~10 MB a launch at `--tmin 10`, so the
+fetch step gzips it (~0.8 MB). `reps_report.py <run dir> [...]` reads it (plain or gzipped) and prints,
+per packer and case across the launches given: GOPs by mean time (average, lowest and highest launch)
+and by median rep, CV, best rep, the share of slow reps (the slower of two clearly separate speeds),
+how bunched together the slow reps are, and how long each case stays fast from its start.
+When the log carries counts (the cycles, and any raw events), a second table puts fast reps
+beside slow reps: per case and counter, the mean per rep over the fast and over the slow reps of
+all the launches given, and slow/fast (issue #42). Each run folder's line also names its raw
+events and every core's busy share over the launch, from `provenance.txt`.
+
+### Raw events (`--raw-events`, issue #42)
+
+The generic L2 and prefetch events open on the X60 but read 0 (issue #41); the core's own event
+codes count. `--raw-events name=code,...` opens them as a second counter group beside the usual
+one (at most 8; the X60 has 16 programmable counters and the usual group takes 8), read at the
+same pack and compute windows, so a raw event the board refuses never takes the usual counters
+with it. `--raw-events x60-l2` is the checked preset (`PERF_X60_L2_PRESET` in
+`templates/perf_counters.h`, codes from the vendor kernel's perf tables), checked on `jbpi` by
+`test_perf_counters.py`:
+
+Source of every code: the vendor kernel's `tools/perf/pmu-events/arch/riscv/spacemit/x60/cache.json`
+(spacemit-com/linux-6.6). Checked on `jbpi`: kernel 6.6.63 `#2.2.7.2` (Bianbu), 2026-09-27; the SBI
+firmware version is not readable without root there (`dmesg` is closed to users). Counts per 64 B
+line, streaming 64 KiB (fits the L2) and 4 MiB (does not), 20 passes:
+
+| event | code | in preset | checked | 64 KiB read | 4 MiB read | 64 KiB write | 4 MiB write |
+|---|---|---|---|---|---|---|---|
+| `l2_load_access` | 0xb8 | yes | counts | 1.03 | 1.01 | 0.86 | 1.01 |
+| `l2_load_miss` | 0xb9 | yes | counts | 0.002 | 0.002 | 0.001 | 0.05 |
+| `l2_store_access` | 0xbc | yes | counts | 1.02 | 0.99 | 0.86 | 1.01 |
+| `l2_ar_channel_stall_cycle` | 0xbb | yes | counts | 0.00 | 2.84 | 0.03 | 28.7 |
+| `l2_aw_channel_stall_cycle` | 0xbd | yes | counts (near 0) | 0 | 0 | 0 | 0.001 |
+| `l1d_miss` | 0xab | yes | counts | 0.06 | 0.02 | 0.84 | 1.00 |
+| `l1d_prefetch_refill` | 0xae | yes | counts | 0.93 | 0.94 | 0 | 0 |
+| `l1d_prefetch_hit` | 0xaf | yes | counts | 1.93 | 1.96 | 0 | 0 |
+| `l2_ar_channel_request` | 0xba | no | counts | 2.06 | 2.01 | 2.22 | 2.27 |
+| `l1d_excl_evict` | 0xac | no | counts | 1.01 | 0.99 | 0.84 | 1.00 |
+| `l1d_access` | 0xaa | no | counts | 3.00 | 3.00 | 1.00 | 1.00 |
+| generic `LL-*`, `cache-references`, `cache-misses`, prefetch, `bus-cycles` | - | no | read 0 (#41) | | | | |
+
+"No" rows were checked by the one-off probe of #42 (not in `test_perf_counters.py`); the preset holds
+8 because the usual group already takes 8 of the 16 programmable counters.
+
+Read it this way: demand L2 load misses stay near 0 on a streaming read, because the prefetcher
+runs ahead of the loads; the AR channel stall cycles (the core waiting on reads past the L2) are
+the clear sign of memory traffic. The build must be `--instr`, and the per-rep log must be on.
 
 ## Hardware perf counters (perf log, issue #8)
 

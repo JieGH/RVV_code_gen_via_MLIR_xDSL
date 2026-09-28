@@ -1,0 +1,9 @@
+# Issue #41 / #42: L2 and prefetch counts per rep, fast reps against slow reps. Run in the
+# instrumented build with --raw-events x60-l2 (config_issue41_l2_counters.json).
+# B3 has two speeds (#36); B3_K256 is its slowest form (#34, B fits the L2 and still slows);
+# B2 and Reuse24 are the one-speed controls. All at MR16_NR15 and the model's nc.
+# layer     M     N     K
+B3          64    384   384
+B3_K256     64    384   256
+B2          384   384   64
+R24         384   384   384

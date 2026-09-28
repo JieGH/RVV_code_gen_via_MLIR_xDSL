@@ -1,0 +1,190 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=1.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+\setlist{nosep,leftmargin=1.3em}
+\titlespacing*{\section}{0pt}{1.1ex}{0.6ex}
+\titlespacing*{\subsection}{0pt}{0.9ex}{0.4ex}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45ex}
+\renewcommand{\arraystretch}{1.08}
+\newcommand{\iss}[1]{\href{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/#1}{\##1}}
+\newcommand{\up}[1]{\textcolor{red!70!black}{#1}}
+\newcommand{\down}[1]{\textcolor{blue!60!black}{#1}}
+
+\title{\vspace{-1.2cm}\textbf{Counting the X60's L2 and prefetcher per rep:\\ what B3's slow state is}\\[2pt]
+\large Brief of issue \iss{42} (implemented), with the first answer for \iss{41}}
+\author{RVV\_code\_gen\_via\_MLIR\_xDSL, \texttt{pure-xdsl} branch, commit \texttt{5d04deb}}
+\date{27 September 2026}
+
+\begin{document}
+\maketitle
+\vspace{-0.8cm}
+
+\paragraph{Scope.} \iss{41} asks why B3 (64$\times$384$\times$384) falls into a state about half as fast after a
+short fast start (\iss{36}). Its first check found that the generic L2 and prefetch counters open on the X60 but
+always read 0. \iss{42} is the spec that fixes this: find the X60's own event codes, count them per rep, and put
+fast reps beside slow reps. This brief covers what was built, how it was checked, the review, and what the first
+nine board launches show. All runs on \texttt{jbpi} (BananaPi, SpacemiT X60, VLEN=256), tile 16$\times$15,
+\texttt{nc}=384 (the model's), \texttt{--no-nc-overrides}. \textbf{Every count here comes from the instrumented build}
+(\texttt{INSTRUMENTED=1}, warm-up protocol, 1000 fixed reps): these numbers show where time goes, and are
+\textbf{not speed numbers to quote} against the reference. Every log cited is committed (Appendix~A).
+
+\section{Bottom line}
+\begin{enumerate}
+  \item \textbf{The X60's L2 and prefetch events can be counted.} They are raw codes \texttt{0xa0}--\texttt{0xbf} in
+  the vendor kernel's perf tables; the board lets any code \texttt{0x00}--\texttt{0xff} through. All the ones we use
+  count sensibly, checked on the board by a test that now runs with the suite.
+  \item \textbf{New tooling:} \texttt{--raw-events x60-l2} (instrumented build only) adds a pack and a compute count
+  per event to every rep in \texttt{reps\_*.txt}; \texttt{reps\_report.py} puts fast reps beside slow reps for every
+  counter, over several launches; each launch records which core was busy during its timed run.
+  \item \textbf{What B3's slow state is:} in slow reps the L2 is accessed \emph{exactly as often}, but demand L2
+  misses are \up{2--4$\times$} and L1D prefetch hits and refills \down{about halve}. The L1D hardware prefetcher is
+  doing about half its work, and the lines it no longer brings in become demand misses. The same pattern holds for
+  both packers, for B3 with K=256, and for Reuse24's few slow reps.
+  \item \textbf{It is not the shared L2 of cores 4--7, nor a neighbour.} On core 2 (the other cluster, its own L2) B3
+  has two speeds just the same, with the same counter pattern; during a timed run no other core is busy.
+  \item \textbf{Still open:} what makes the prefetcher back off, and what can stand in for it (next steps in
+  \S5; the X60 has no prefetch hints, so the fixes specified are \iss{43} and \iss{44}).
+\end{enumerate}
+
+\section{What was built (\iss{42})}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{4.1cm}X@{}}
+\toprule
+Part & What it does \\
+\midrule
+Counter header & An optional second counter group of raw events (up to 8) beside the usual 10-event group, read
+at the same pack and compute windows. Kept apart, so an event the board refuses never takes the usual counters down,
+and a window the raw group was shared out for only spoils that rep's raw counts. Holds the checked
+\texttt{x60-l2} preset. \\
+Driver & \texttt{--raw-events name=code,...} or \texttt{x60-l2}: a \texttt{Pack\_<event>} and a
+\texttt{Compute\_<event>} column per event at the end of the per-rep log; \texttt{nan} when the group cannot open
+or a rep's window was shared out. Refused in the uninstrumented build, without \texttt{--save-reps}, and for a bad
+list (not \texttt{name=code}, a bad name or code, a name twice, more than 8). The run overview says what was asked
+for and whether it opened. \\
+\texttt{compile\_macro\_bench.sh} & The same flag, refused before any board time without \texttt{--instr} or with
+\texttt{--no-save-reps}. \texttt{provenance.txt} gains the raw events and each core's busy share \emph{during each
+timed run} (read from \texttt{/proc/stat} on the board just before and just after \texttt{make run}). \\
+\texttt{reps\_report.py} & A second table: per case and counter, the mean per rep over fast reps and over slow
+reps of all launches given, and slow/fast. Same fast/slow split as the launch table (rep 0 left out), same
+``fewer than 3 launches'' warning; the per-run line names the raw events and the busy share. \\
+Tests & 4 counter-header tests, 13 driver tests, 6 report tests, 7 script tests, and an on-board check of the
+preset (both groups open together, neither is shared out, each event counts as below). Full suite: 266 passed. \\
+\bottomrule
+\end{tabularx}
+
+\section{The X60 events, checked on the board}
+Counts per 64-byte line, streaming a 64\,KiB buffer (fits the 512\,KiB L2) and a 4\,MiB one (does not), 20
+passes, core 4 (kernel 6.6.63 \texttt{\#2.2.7.2}; the firmware version is not readable without root).
+
+\begin{center}\small
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+event & code & 64\,KiB read & 4\,MiB read & 64\,KiB write & 4\,MiB write \\
+\midrule
+\texttt{l2\_load\_access} & 0xb8 & 1.03 & 1.01 & 0.86 & 1.01 \\
+\texttt{l2\_load\_miss} & 0xb9 & 0.002 & 0.002 & 0.001 & 0.05 \\
+\texttt{l2\_store\_access} & 0xbc & 1.02 & 0.99 & 0.86 & 1.01 \\
+\texttt{l2\_ar\_channel\_stall\_cycle} & 0xbb & 0.00 & 2.84 & 0.03 & 28.7 \\
+\texttt{l2\_aw\_channel\_stall\_cycle} & 0xbd & 0 & 0 & 0 & 0.001 \\
+\texttt{l1d\_miss} & 0xab & 0.06 & 0.02 & 0.84 & 1.00 \\
+\texttt{l1d\_prefetch\_refill} & 0xae & 0.93 & 0.94 & 0 & 0 \\
+\texttt{l1d\_prefetch\_hit} & 0xaf & 1.93 & 1.96 & 0 & 0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+One surprise: on a streaming \emph{read}, demand L2 misses stay near 0 even at 4\,MiB, because the prefetcher runs
+ahead of the loads. The time spent waiting past the L2 shows up in the AR-channel stall cycles instead (0 at 64\,KiB,
+2.8 per line at 4\,MiB). So a missing prefetch, not a bigger working set, is what turns into demand misses.
+
+\section{Fast reps against slow reps}
+Nine launches in the order V4 S4 V2 \textbar{} V2 S4 V4 \textbar{} V4 S4 V2 (V/S = vector/scalar packer, 4/2 =
+core), so each pairing runs A-B-B-A-A-B, three launches each. Ratios are slow reps over fast reps, mean per rep,
+pooled over the three launches; ``pack / compute'' are the two counter windows.
+
+\begin{center}\small
+\begin{tabular}{@{}lrcccc@{}}
+\toprule
+case (packer, core) & slow reps & cycles & L2 accesses & L2 load misses & L1D prefetch hits \\
+ & & pack / compute & pack / compute & pack / compute & pack / compute \\
+\midrule
+B3 (vector, 4) & 51\% & 2.09 / 1.51 & 1.01 / 0.95 & \up{2.52 / 3.13} & \down{0.40 / 0.51} \\
+B3 (vector, 2) & 64\% & 1.89 / 1.47 & 1.01 / 0.95 & \up{2.25 / 3.02} & \down{0.50 / 0.56} \\
+B3\_K256 (vector, 4) & 60\% & 1.97 / 1.50 & 1.05 / 0.95 & \up{3.22 / 3.73} & \down{0.52 / 0.52} \\
+B3\_K256 (scalar, 4) & 36\% & 2.10 / 1.46 & 1.27 / 0.93 & \up{4.21 / 3.39} & \down{0.31 / 0.49} \\
+Reuse24 (vector, 4) & 7\% & 1.44 / 1.11 & -- & \up{1.62 / 1.23} & \down{0.62 / 0.48} \\
+B3 (scalar, 4) & 0\% & \multicolumn{4}{c}{one speed in these three launches} \\
+B2 (both packers, 4) & 0\% & \multicolumn{4}{c}{one speed} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Also in B3's slow reps (vector, core 4): L1D prefetch refills 0.46 / 0.58, L1D misses in the compute window 3.06,
+AR-channel stall cycles 0.43 / 0.48 (fewer requests go past the L2, while the core waits longer on the ones it makes).
+
+\paragraph{How to read it.} The slow reps do the same work against the L2 (same access counts), so the L2 is not
+filling up or thrashing: B3\_K256, whose B fits the L2, slows down more, not less. What changes is who brings the
+lines in. In a fast rep the prefetcher does; in a slow rep it does about half as much, and each line it skips costs a
+demand miss. Core 2 gives the same picture, so this is not the cores 4--7 cluster or anything running on cores 5--7.
+
+\section{What is known, and what is next}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{5.3cm}X@{}}
+\toprule
+Ruled out & Evidence \\
+\midrule
+CPU clock, huge pages, B not fitting the L2 & \iss{36} \\
+The L2 filling up or thrashing & same L2 access count in fast and slow reps; B3\_K256 slows more \\
+The shared L2 of cores 4--7, a neighbour process & core 2 shows the same; busy share during a timed run: core 4
+100\%, all others 0\% \\
+\bottomrule
+\end{tabularx}
+
+\textbf{Named so far:} the L1D hardware prefetcher backs off to about half its work. \textbf{Next} (\iss{41}):
+(1) the same counts in 100-rep windows around the switch, to see what changes just before it; (2) \texttt{ldb}
+padding off 384 (\iss{41} step 4, \iss{38}); (3) stand-ins for the hardware prefetcher: the X60 has \emph{no} prefetch hints (no Zicbop, so
+\texttt{prefetch.r} would do nothing), but it has \texttt{cbo.zero}, which runs in user mode on 64-byte lines. Two
+fixes are now specified, on hold: \iss{43}, \texttt{cbo.zero} on the pack buffers so their writes stop reading
+lines from the L2, and \iss{44}, packing B one column at a time (one stream instead of 15); (4) repeat on
+\texttt{jbpi2}. Meanwhile B3's \texttt{nc}=128 override is back as the baseline.
+
+\section{Review}
+Two-axis review of the change (sub-agents, on standards and on the spec), then fixed before commit:
+\begin{itemize}
+  \item \emph{Standards:} no breach of a documented rule. One judgement call: the fast/slow split was written twice
+  in \texttt{reps\_report.py}. \textbf{Fixed}: one function, used by both tables.
+  \item \emph{Spec:} (a) the busy share was read over the whole launch, so it counted the board build (cores 1, 2, 6
+  at 15--58\% in the nine launches). \textbf{Fixed}: read around each timed run; checked on a tenth launch (core 4
+  at 100\%, every other core at 0\%). (b) Firmware version not recorded: \textbf{noted} as not readable without root.
+  (c) The event table lacked per-row source and ``checked'' columns: \textbf{added} in \texttt{docs/metrics.md},
+  with the three codes checked but left out of the preset. (d) The table in \iss{41}: \textbf{added} (\S8 there).
+\end{itemize}
+Caveat carried forward: the nine launches' busy shares predate fix (a), so they cannot show a neighbour during the
+timed run; the core-2 result and the tenth launch are what rule one out.
+
+\appendix
+\section{Logs (all committed, \texttt{tests/pure\_xdsl\_blis\_rvv/logs/})}
+Build \texttt{INSTRUMENTED=1}, warm-up protocol, 1000 reps, \texttt{--no-nc-overrides}, \texttt{--raw-events x60-l2},
+\texttt{jbpi}, config \texttt{config\_issue41\_l2\_counters.json}.
+\begin{itemize}
+  \item core 4, vector: \texttt{run\_2026-09-27\_131302}, \texttt{run\_2026-09-27\_132606}, \texttt{run\_2026-09-27\_132843}
+  \item core 4, scalar: \texttt{run\_2026-09-27\_131537}, \texttt{run\_2026-09-27\_132328}, \texttt{run\_2026-09-27\_133117}
+  \item core 2, vector: \texttt{run\_2026-09-27\_131815}, \texttt{run\_2026-09-27\_132052}, \texttt{run\_2026-09-27\_133354}
+  \item busy-share check (not in the tables): \texttt{run\_2026-09-27\_133825}
+\end{itemize}
+Beside them, in \texttt{.scratch/issues/}:
+\begin{itemize}
+  \item reports: \texttt{0025-reps-report-core4.md}, \texttt{0025-reps-report-core2.md}
+  \item event probe: \texttt{0026-raw-probe.c}, \texttt{0026-raw-probe.txt}
+  \item event table: \texttt{docs/metrics.md}, ``Raw events''
+\end{itemize}
+
+\end{document}

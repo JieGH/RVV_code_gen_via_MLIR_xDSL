@@ -1,0 +1,30 @@
+# jbpi, core 4, 2026-09-27 ~12:40, output of 0025-pmu-probe.c (kernel 6.6.63, perf_event_paranoid=2,
+# /sys/bus/event_source/devices/cpu/events does not exist). Every event opened; only these counted.
+== stream 64 KiB x 20
+  cycles                     321565  (15.70 per 64B line)
+  cache-references                0
+  cache-misses                    0
+  LL-read-access                  0
+  LL-read-miss                    0
+  LL-write-access                 0
+  LL-write-miss                   0
+  LL-prefetch-access              0
+  LL-prefetch-miss                0
+  L1D-prefetch-access             0
+  L1D-prefetch-miss               0
+  L1D-read-miss                1558  (0.08 per 64B line)
+  bus-cycles                      0
+== stream 4096 KiB x 20
+  cycles                   65495994  (49.97 per 64B line)
+  cache-references                0
+  cache-misses                    0
+  LL-read-access                  0
+  LL-read-miss                    0
+  LL-write-access                 0
+  LL-write-miss                   0
+  LL-prefetch-access              0
+  LL-prefetch-miss                0
+  L1D-prefetch-access             0
+  L1D-prefetch-miss               0
+  L1D-read-miss             1308188  (1.00 per 64B line)
+  bus-cycles                      0

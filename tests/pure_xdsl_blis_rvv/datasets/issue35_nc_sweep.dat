@@ -1,0 +1,62 @@
+# Issue #35: nc sweep inside one launch (.scratch/issues/0020-b3-smaller-nc-exploration.md, section 3).
+# Every row is one (layer, nc) setting; nc comes from the per-label override in
+# config_issue35_nc_sweep.json (rows with no override run at the model's nc, which is N).
+# B3 = 64x384x384; R8/R12/R24 = the Reuse8/12/24 layers of testCase_repeat.dat (M = 128/192/384),
+# i.e. mc/mr = 4/8/12/24 at MR16_NR15. nc values: powers of two and multiples of NR=15 (120, 240, 375).
+# B2 is the steady control. The B3_N*/B3_K256 rows repeat issue #34 section 7.2's shapes at nc=N and
+# at nc=128 (issue #35 step 4: is it nc or N?). Generated order: nc outer, layer inner.
+# layer        M     N     K
+B3_nc32        64    384  384
+R8_nc32        128   384  384
+R12_nc32       192   384  384
+R24_nc32       384   384  384
+B3_nc64        64    384  384
+R8_nc64        128   384  384
+R12_nc64       192   384  384
+R24_nc64       384   384  384
+B3_nc96        64    384  384
+R8_nc96        128   384  384
+R12_nc96       192   384  384
+R24_nc96       384   384  384
+B3_nc120       64    384  384
+R8_nc120       128   384  384
+R12_nc120      192   384  384
+R24_nc120      384   384  384
+B3_nc128       64    384  384
+R8_nc128       128   384  384
+R12_nc128      192   384  384
+R24_nc128      384   384  384
+B3_nc192       64    384  384
+R8_nc192       128   384  384
+R12_nc192      192   384  384
+R24_nc192      384   384  384
+B3_nc240       64    384  384
+R8_nc240       128   384  384
+R12_nc240      192   384  384
+R24_nc240      384   384  384
+B3_nc256       64    384  384
+R8_nc256       128   384  384
+R12_nc256      192   384  384
+R24_nc256      384   384  384
+B3_nc320       64    384  384
+R8_nc320       128   384  384
+R12_nc320      192   384  384
+R24_nc320      384   384  384
+B3_nc375       64    384  384
+R8_nc375       128   384  384
+R12_nc375      192   384  384
+R24_nc375      384   384  384
+B3_nc384       64    384  384
+R8_nc384       128   384  384
+R12_nc384      192   384  384
+R24_nc384      384   384  384
+B2_nc128       384   384  64
+B2_nc384       384   384  64
+B3_N192        64    192  384
+B3_N192_nc128  64    192  384
+B3_N256        64    256  384
+B3_N256_nc128  64    256  384
+B3_N320        64    320  384
+B3_N320_nc128  64    320  384
+B3_K256        64    384  256
+B3_K256_nc128  64    384  256

@@ -9,7 +9,7 @@
 # "Fatal error: can't create gemm_b1_xdsl.o: Stale file handle". The local pj_gen is
 # shared the same way (the generator wipes it). So a second run waits for the first.
 #
-# Flags are the default run command (--no-nc-overrides --cpu 0 --tmin 10). One run takes
+# Flags are the default run command (--no-nc-overrides --cpu 4 --tmin 10; core 4 since issue #39). One run takes
 # about 10 min; the schedule alternates boards every 30 min (10 run + 20 idle).
 
 set -e
@@ -38,4 +38,4 @@ echo "$(date -Is) got the lock for ${BOARD}" >> "${LOG}"
 REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322" \
   ./tests/pure_xdsl_blis_rvv/compile_macro_bench.sh --jump \
   --riscv-user jlei --riscv-ip "${BOARD}" --riscv-port 22 \
-  --no-nc-overrides --cpu 0 --tmin 10 >> "${LOG}" 2>&1
+  --no-nc-overrides --cpu 4 --tmin 10 >> "${LOG}" 2>&1

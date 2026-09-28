@@ -1,0 +1,9 @@
+[
+    // Issues #35 step 2 and #36 step 1: the instrumented pack/compute split, per rep with --save-reps.
+    // DEBUG numbers only (timers cost 11-17%): never quote against the reference or mix with the
+    // uninstrumented sweep. Run with --instr (warm-up protocol, fixed 1000 reps), once per packer:
+    //   compile_macro_bench.sh --config config_issue36_instr_split.json --instr --cpu 4 --save-reps [--scalar-pack]
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi", ["issue36_instr_split.dat"], true, 1000, {"B3_nc384": 384, "B3_nc128": 128, "R24_nc384": 384, "R24_nc128": 128}],
+    ["fp32", "AXPY_FP32_Pack", [16, 14], 256, "jbpi", ["issue2_bert_16x15.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 16], 256, "jbpi", ["issue2_bert_16x15.dat"], true, 1000]
+]
