@@ -1,0 +1,9 @@
+[
+    // B1/B5: is 32x7 also faster than the shipped 32x6 (set by the issue #2 test plan to match
+    // prev_xdsl)? The #37 test (config_issue37_nr6_vs_nr7.json) extended to the two BERT layers it
+    // left out. Both tiles as rows of one launch; two configs with the rows in opposite order, run
+    // A-B-B-A over four launches, because #37 always ran 32x7 first. Run with --no-nc-overrides
+    // --cpu 4 --tmin 10. Same knobs as the shipped 32x6 row (skip_ref_run=true, iterations=1000).
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["issue2_bert_32x6.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["b1b5_32x7.dat"], true, 1000]
+]

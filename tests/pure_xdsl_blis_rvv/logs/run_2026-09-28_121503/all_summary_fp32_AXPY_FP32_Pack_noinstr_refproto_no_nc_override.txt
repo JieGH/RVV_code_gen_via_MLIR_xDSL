@@ -1,0 +1,8 @@
+=== fp32_AXPY_FP32_Pack_vlen256_MR32NR6 ===
+▶ B1 (1024x384x1024)     | best variant 32x6 [32 rows x 6 columns of C per tile] | 7.95 GOPs by mean time [whole GEMM call, packing included] | 7.95 GOPs median rep | 99 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:768 nc:384 kc:128)
+▶ B5 (1024x384x4096)     | best variant 32x6 [32 rows x 6 columns of C per tile] | 7.68 GOPs by mean time [whole GEMM call, packing included] | 7.69 GOPs median rep | 24 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:768 nc:384 kc:128)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR32NR7 ===
+▶ B1 (1024x384x1024)     | best variant 32x7 [32 rows x 7 columns of C per tile] | 8.14 GOPs by mean time [whole GEMM call, packing included] | 8.15 GOPs median rep | 102 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:768 nc:384 kc:128)
+▶ B5 (1024x384x4096)     | best variant 32x7 [32 rows x 7 columns of C per tile] | 7.66 GOPs by mean time [whole GEMM call, packing included] | 7.67 GOPs median rep | 24 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:768 nc:384 kc:128)
+
