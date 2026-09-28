@@ -37,17 +37,19 @@ SpacemiT X60: findings of issues \#31 to \#43\par}
 \vspace{0.4cm}
 {\normalsize \texttt{RVV\_code\_gen\_via\_MLIR\_xDSL}, branch \texttt{pure-xdsl}\par}
 \vspace{0.2cm}
-{\normalsize 28 September 2026\par}
+{\normalsize 28 September 2026 (revised the same day to add the result of issue \#37)\par}
 \vfill
 \begin{minipage}{0.88\linewidth}\setlength{\parskip}{0.8ex}
 \textbf{Summary}\par\smallskip
-This report brings together thirteen issues (\#31--\#39, \#41--\#43) that looked into why our design, a matrix
+This report brings together thirteen issues (\#31--\#39, \#41--\#44) that looked into why our design, a matrix
 multiplication (GEMM) whose inner kernels are generated with xDSL, is slower on some test layers than expected
 and than the reference design. The work ran from 24 to 28 September 2026 on two BananaPi M2 Pro boards.
 
 The main finding is that \textbf{our generated code is not the cause}. At the same tile size, our kernels use the
 same number of vector registers as the reference's kernels, spill exactly the same values to memory, and run at
-the same speed when one is swapped for the other. The losses come from three other places: tiles that need more
+the same speed when one is swapped for the other. A controlled test (\#37) also settled the choice of tile for B4
+and the square shapes: the shipped 32x7 tile, which uses all 32 registers, beat 32x6 in all 18 comparisons, by
+3.7--8.7\%; for B1 and B5, which keep 32x6, the same test found a gain of 2\% or less. The losses come from three other places: tiles that need more
 than the 32 vector registers the hardware has; the shape of some layers, which forces more packing work per
 operation (layer B4); and a memory ``slow state'' on layer B3, in which the processor's L1 data prefetcher does
 only about half its normal work, so that both packing and computing slow down. A first fix for B3, clearing the
@@ -92,8 +94,11 @@ noise.
 
 \subsection{Scope}
 Table~\ref{tab:issues} lists the issues. Number \#40 is a merged pull request, not an investigation, and is not
-covered. Issues \#37, \#38 and \#44 were written as plans and are on hold; they appear only as recommendations.
-The detailed results are in four earlier briefs \cite{b3134,b353639,b42,b43}. This report does not repeat every
+covered. Issues \#38 and \#44 were written as plans and are on hold; they appear only as recommendations.
+Issue \#37 was also on hold when this report was first written; it was run on 28 September and its result is
+now included (Section~\ref{sec:tile37}), together with a follow-up test on B1 and B5 run the same day
+(Section~\ref{sec:b1b5}; write-up \texttt{.scratch/issues/0029}, no GitHub issue). The detailed results are in five earlier briefs
+\cite{b3134,b353639,b42,b43,b37}. This report does not repeat every
 number from them. It brings their results together, says what they mean as a whole, and states what is still
 unknown.
 
@@ -109,7 +114,8 @@ unknown.
 \iss{34} & Why is B4 slower than the square shapes at the same tile? & closed: answered \\
 \iss{35} & What does a smaller packed-B block (\texttt{nc}) do for B3? & done; decision made \\
 \iss{36} & Why is the vector packer slow on B3? & measured; cause narrowed \\
-\iss{37} & 32x6 or 32x7 for B4? & on hold; keep 32x7 \\
+\iss{37} & 32x6 or 32x7 for B4 and S1--S5, tested inside one launch? & closed: 32x7 \\
+follow-up & 32x6 or 32x7 for B1 and B5 (the \#37 test, extended) & measured; on hold \\
 \iss{38} & Cheaper A packing and matrix padding for B4 & on hold \\
 \iss{39} & Rules for trustworthy benchmark results & adopted \\
 \iss{41} & What is B3's slow state? & open; main cause named \\
@@ -220,10 +226,13 @@ A result from \#31 that our kernel was 7\% faster than the reference's on B4 was
 repeat on core 4. It should not be quoted.
 
 \subsection{Tile size and the 32-register limit (\#31, \#32, \#37)}
+\label{sec:tiles}
 Table~\ref{tab:tiles} shows how speed changes with the tile width NR. The rule is simple: \textbf{speed falls
 sharply only when a tile needs more than 32 registers}. Below or at the limit, speed changes smoothly, and there
 is no sign of a hidden cost for using all 32. The tiles we ship (16x15 for B2 and B3, 32x7 for B4 and the square
-shapes) are at or near the best.
+shapes) are at or near the best. B1 and B5 ship with 32x6. That tile was not chosen by a speed test: it was
+fixed by the issue \#2 test plan, which gives every case the same tile as the older xDSL design (prev\_xdsl),
+so that the two can be compared at matched tiles. B1 and B5 were not part of these sweeps.
 
 \begin{table}[h]
 \centering\small
@@ -244,8 +253,85 @@ so the absolute values are a little low; the comparison inside each row is still
 
 One open point was whether 32x6 (28 registers) is better than 32x7 for B4. In \#32 it was ahead in all eight
 pairs (8.05 against 7.84 GOPs, for example), but all of these ran on core 0. In \#34 on core 4, 32x7 was ahead;
-on core 2, 32x6 was ahead by a small amount. The two tiles are therefore level within the noise. \#37 describes a
-fair test inside one launch; it is on hold, and 32x7 stays.
+on core 2, 32x6 was ahead by a small amount. Up to that point the two tiles were level within the noise, and
+\#37 was written to settle the question with a fair test.
+
+\subsection{32x6 against 32x7, settled inside one launch (\#37)}
+\label{sec:tile37}
+\#37 ran both tiles as two rows of the same launch, on B4 and on the square shapes S1--S5, with identical shapes
+for both tiles. The launch was repeated three times on \texttt{jbpi2}, core 4, uninstrumented build, reference
+timing method, \texttt{-{}-tmin 10}, following the \#39 house rules. The board was checked for other users'
+programs before each launch and was idle each time. The rule set in advance was to decide only if one tile won
+in every launch.
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Case} & \textbf{Launch 1} & \textbf{Launch 2} & \textbf{Launch 3} & \textbf{Average} & \textbf{32x7 ahead by} \\
+\midrule
+B4 & 7.71 / \good{8.14} & 7.87 / \good{7.96} & 7.82 / \good{8.16} & 7.80 / \good{8.09} & 3.7\% \\
+S1 & 8.30 / \good{8.89} & 8.31 / \good{8.91} & 8.34 / \good{8.89} & 8.32 / \good{8.90} & 7.0\% \\
+S2 & 8.41 / \good{9.22} & 8.44 / \good{9.23} & 8.54 / \good{9.15} & 8.46 / \good{9.20} & 8.7\% \\
+S3 & 8.73 / \good{9.46} & 8.72 / \good{9.34} & 8.74 / \good{9.38} & 8.73 / \good{9.39} & 7.6\% \\
+S4 & 8.65 / \good{9.28} & 8.61 / \good{9.16} & 8.68 / \good{9.21} & 8.65 / \good{9.22} & 6.6\% \\
+S5 & 8.80 / \good{9.61} & 8.86 / \good{9.45} & 8.82 / \good{9.52} & 8.83 / \good{9.53} & 7.9\% \\
+\bottomrule
+\end{tabular}
+\caption{32x6 / 32x7. \#37, \texttt{jbpi2}, core 4, uninstrumented, GOPs by mean time. The median-rep figures
+match these to within 0.01 GOPs in every cell, so they are not shown separately.}
+\label{tab:tile37}
+\end{table}
+
+Table~\ref{tab:tile37} shows the result. \textbf{32x7 was faster in all 18 comparisons} (six cases, three
+launches). The gap on the three-launch average is 3.7\% for B4 and 6.6--8.7\% for the square shapes, above the
+roughly 3\% that the \#39 rules treat as noise between launches. The decision is to keep 32x7 for B4 and S1--S5;
+the test's config and data files stay in the repository so it can be run again.
+
+Three facts limit this result. All three launches ran on one board (\texttt{jbpi2}). Inside each launch the
+32x7 row always ran first and the 32x6 row second, so the order was not swapped. And the largest square shapes
+at 32x6 fitted only one or two repetitions into the 10 seconds in the first launch; they had more in the other
+two launches, and the ranking did not change. None of these is large enough to explain a gap of 4--9\% that
+points the same way in every cell.
+
+The \#37 result also corrects \#32, which had read 32x6 ahead by 0.5--3.3\%. Those pairs were separate launches
+on core 0, where the same program varies by more than that gap (Section~\ref{sec:noise}). The \#32 reading was
+therefore within its own noise; \#37 does not show exactly why it pointed the other way.
+
+Finally, the result fits the register rule above: below the limit, a tile that uses more of the 32 registers
+is not penalised, and here it is clearly faster. A likely reason is that 32x7 uses each loaded column of A seven
+times instead of six, but \#37 did not measure the reason.
+
+\paragraph{Follow-up: B1 and B5.}
+\label{sec:b1b5}
+B1 and B5 were left out of \#37 because they ship with 32x6 (Section~\ref{sec:tiles}; the tile comes
+from the issue \#2 test plan). The same test was run on them the same day \cite{b1b5}: four launches on \texttt{jbpi2},
+core 4, uninstrumented build, reference timing method, \texttt{-{}-tmin 10}. Unlike \#37, the order of the two
+tiles was swapped between launches (32x7 first, 32x6 first, 32x6 first, 32x7 first). The board had no other
+user's programs at any check. The second board, \texttt{jbpi}, was not used: another user's job was running
+on core 6 and then on core 4 itself.
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+\textbf{Case} & \textbf{Launch 1} & \textbf{Launch 2} & \textbf{Launch 3} & \textbf{Launch 4} & \textbf{Average} &
+\textbf{32x7 ahead by} \\
+\midrule
+B1 & 7.96 / \good{8.12} & 7.95 / \good{8.14} & 8.02 / \good{8.14} & 7.95 / \good{8.09} & 7.97 / \good{8.12} & 1.9\% \\
+B5 & 7.68 / \good{7.83} & \good{7.68} / 7.66 & 7.70 / \good{7.74} & 7.71 / \good{7.78} & 7.69 / 7.75 & 0.8\% \\
+\bottomrule
+\end{tabular}
+\caption{32x6 / 32x7 for B1 (1024$\times$384$\times$1024) and B5 (1024$\times$384$\times$4096).
+\texttt{jbpi2}, core 4, uninstrumented, GOPs by mean time; by median rep matches to within 0.01 GOPs.}
+\label{tab:b1b5}
+\end{table}
+
+For B1, 32x7 was ahead in all four launches, but only by 1.5--2.4\%. For B5 the two tiles are level: 32x7 is
+ahead by 0.8\% on average but lost one launch. Both gaps are much smaller than for B4 (3.7\%) and the square
+shapes (6.6--8.7\%). This fits the fact that 384 columns split evenly into tiles of 6 (64 tiles) but not of 7
+(54 full tiles and one part tile), but the reason was not measured. \textbf{Decision: on hold.} B1 and B5 keep
+32x6, which also keeps their tile the same as prev\_xdsl's.
 
 \subsection{Why B4 is slower than the square shapes (\#34, \#38)}
 B4 runs its compute loop within 2\% of the speed of the square shape S1, so the kernel is not the problem. The
@@ -323,7 +409,7 @@ back as the baseline by the user's decision. B3 at \texttt{nc} = 128 still has t
 The X60 has no software prefetch instruction, but it does have \texttt{cbo.zero}, which sets a whole 64-byte
 cache line to zero. The idea in \#43 was to clear each pack-buffer line just before packing into it, so that the
 packer's writes would not first have to read the old line from the L2. The switch
-(\texttt{--zero-pack-lines}) is off by default. It was measured over 168 launches: seven rounds on each board,
+(\texttt{-{}-zero-pack-lines}) is off by default. It was measured over 168 launches: seven rounds on each board,
 each round in the order off, on, on, off, off, on (Table~\ref{tab:cbo}).
 
 \begin{table}[h]
@@ -360,7 +446,8 @@ Several early findings turned out to be smaller than the noise in the measuremen
   \item \textbf{Core 0 is slower.} It handles the board's device interrupts and runs the same program 5--10\%
   slower than core 4. All 32 launches of \#32 ran on core 0.
   \item \textbf{Launches differ.} The same program on the same core within the same hour varied by up to 1.7\%
-  (\#33). Two cores in \#34 differed by up to 4\%, enough to reverse which tile won.
+  (\#33). Two cores in \#34 differed by up to 4\%, enough to reverse which tile won. When the tile question was
+tested fairly in \#37, the \#32 result (32x6 ahead, all on core 0) turned out to point the wrong way.
   \item \textbf{B3 is noisy inside a launch.} Its spread from rep to rep was 14--43\%, against about 1\% for the
   large shapes.
   \item \textbf{Some logs were not kept.} The core-0 swap runs of \#31 and the reference-side runs of \#33 left no
@@ -380,7 +467,9 @@ causes. The code generator was the first suspect, but every direct test (registe
 shows our kernels to be equal to the reference's. What does limit speed is:
 \begin{enumerate}
   \item \textbf{Register budget.} Tiles that need more than 32 registers lose about 40\% of their speed on both
-  designs. This is a property of the tile, not of the tool, and our shipped tiles stay within the budget.
+  designs. This is a property of the tile, not of the tool, and our shipped tiles stay within the budget. Inside
+  the budget, using all of it pays: 32x7 (32 registers) is 4--9\% faster than 32x6 (28 registers) on B4 and the
+  square shapes (\#37).
   \item \textbf{Layer shape.} A narrow N (384) means more packing per operation. This explains why B4 trails the
   square shapes. The reference packs in the same way, so this is not a difference between the designs.
   \item \textbf{A memory slow state on small-M layers.} B3 has only 64 rows, so each packed block of B is used
@@ -399,6 +488,11 @@ GOPs depending on the packer, \texttt{nc} and time.
   or have no saved log. The conclusions drawn from them hold because later, better-controlled runs agree, not
   because of those runs alone.
   \item The hardware-counter study of \#42 ran only on \texttt{jbpi}. The \#43 speed results cover both boards.
+  The \#37 tile test ran only on \texttt{jbpi2}, always in the order 32x7 then 32x6, and did not run the
+  reference.
+  \item \#37 covered B4 and S1--S5 only. B1 and B5, which ship with 32x6 (set by the issue \#2 test plan to
+  match prev\_xdsl), were tested afterwards on one board only (\texttt{jbpi2}); the second board was busy with
+  another user's job.
   \item The instrumented build changes timing slightly. Its counts explain behaviour, but its speed figures must
   not be compared with the reference.
   \item Why \texttt{cbo.zero} helps is not known. Turning it on by default without that knowledge risks keeping a
@@ -411,7 +505,11 @@ GOPs depending on the packer, \texttt{nc} and time.
   \item Our xDSL-generated microkernels are as good as the reference's Exo kernels: same registers, same spills,
   same speed within noise.
   \item Speed drops sharply only for tiles that need more than 32 vector registers. The shipped tiles (16x15 and
-  32x7) are at or near the best; 32x6 and 32x7 are level for B4.
+  32x7) are at or near the best.
+  \item 32x7 is faster than 32x6 for B4 and S1--S5: it won all 18 comparisons in \#37, by 3.7\% for B4 (8.09
+  against 7.80 GOPs) and 6.6--8.7\% for the square shapes. The earlier core-0 result from \#32, which pointed
+  the other way, was within its own noise. 32x7 stays. For B1 and B5 the gain is small (1.9\%) or absent
+  (0.8\%, not in every launch); they keep 32x6 for now.
   \item B4 is slower than the square shapes because its narrow N forces about 2.3 times more packing per
   operation. Widening N to 1024 raises it from 8.10 to 9.02 GOPs.
   \item B3's instability is a memory slow state in which the L1 data prefetcher does about half its work. It is
@@ -426,8 +524,10 @@ GOPs depending on the packer, \texttt{nc} and time.
 %-------------------------------------------------------------------- 6
 \section{Recommendations}
 \begin{enumerate}
-  \item \textbf{Keep the shipped tiles}, including 32x7 for B4, and keep \texttt{nc} = 128 as B3's baseline,
-  always labelled as a hand-set value.
+  \item \textbf{Keep the shipped tiles}, including 32x7 for B4 and S1--S5 (now confirmed by \#37), and keep
+  \texttt{nc} = 128 as B3's baseline, always labelled as a hand-set value.
+  \item \textbf{B1 and B5: on hold, no tile change.} If this is picked up again, repeat the Section~\ref{sec:b1b5}
+  test on \texttt{jbpi} once that board is free; the configs and data file are in the repository.
   \item \textbf{Run a control for \#43} with the same extra loop but without \texttt{cbo.zero}, before deciding
   whether to turn the switch on by default.
   \item \textbf{Measure the reference's B3 with the per-rep records}, to find out whether it also has two speeds.
@@ -449,7 +549,14 @@ GOPs depending on the packer, \texttt{nc} and time.
 \texttt{.scratch/reports/issue-42-brief.pdf}, 27 September 2026.
 \bibitem{b43} \emph{Clearing the pack lines with \texttt{cbo.zero}: speed over 14 rounds on two boards. Brief of
 issue \#43}, \texttt{.scratch/reports/issue-43-brief.pdf}, 28 September 2026.
-\bibitem{issues} Issue files \texttt{.scratch/issues/0016}--\texttt{0028} and GitHub issues \#31--\#44,
+\bibitem{b37} \emph{32x6 vs 32x7, settled inside one launch. Brief of issue \#37},
+\texttt{.scratch/reports/issue-37-brief.pdf}, 28 September 2026.\\
+Logs in \texttt{tests/pure\_xdsl\_blis\_rvv/logs/}: \texttt{run\_2026-09-28\_113634}, \texttt{\_114331} and
+\texttt{\_115034} (commit \texttt{d810e5b}).
+\bibitem{b1b5} \emph{B1 and B5: 32x6 vs 32x7, inside one launch}, \texttt{.scratch/issues/0029-b1b5-32x6-vs-32x7.md},
+28 September 2026.\\ Logs in \texttt{tests/pure\_xdsl\_blis\_rvv/logs/}: \texttt{run\_2026-09-28\_121056}, \texttt{\_121503},
+\texttt{\_121903} and \texttt{\_122304}.
+\bibitem{issues} Issue files \texttt{.scratch/issues/0016}--\texttt{0029} and GitHub issues \#31--\#44,
 \url{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues}.
 \end{thebibliography}
 
@@ -465,7 +572,7 @@ issue \#43}, \texttt{.scratch/reports/issue-43-brief.pdf}, 28 September 2026.
 \#31 & The 32x7 tile is not B4's problem; our kernel and the reference's run level on core 4. & Conclusion holds; its
 first evidence was indirect, and a claim about the k-loop was wrong (every case uses the same \texttt{kc}). \\
 \#32 & Speed falls only above 32 registers; scalar packer wins on B3 only. & Holds; all runs on core 0; ``32x6 is
-faster'' not proven. \\
+faster'' not proven, and reversed by \#37. \\
 \#33 & Same registers, identical spills, same speed as the reference at 16x16 and 24x10. & Holds; small
 percentages were over-read; some logs not kept. \\
 \#34 & B4's loss is packing per operation, caused by N=384; M a power of two adds a little. & Summarised, not
@@ -474,7 +581,10 @@ audited. \\
 per packer, house rules followed. \\
 \#36 & B3's slowness is a memory slow state affecting packing and compute alike. & Instrumented build; one board.
 \\
-\#37 & (Plan) settle 32x6 against 32x7 inside one launch. & On hold. \\
+\#37 & 32x7 beats 32x6 on B4 and S1--S5 in all 18 comparisons (3.7--8.7\%); 32x7 stays. & Three launches,
+core 4, one board; fixed run order. \\
+follow-up & B1: 32x7 ahead by 1.9\% in every launch; B5 level. On hold, 32x6 kept. & Four launches A-B-B-A,
+core 4, one board. \\
 \#38 & (Plan) cheaper A pack; pad row lengths off powers of two. & On hold. \\
 \#39 & House rules for benchmarks; per-rep records. & Adopted. \\
 \#41 & The L1 prefetcher does about half its work in slow reps; not the L2, not a neighbour. & Nine launches, one

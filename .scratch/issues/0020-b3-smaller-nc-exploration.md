@@ -2,6 +2,8 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/35
 
+**Engineering report (#31-#44, all issues together):** [issues-31-43-engineering-report.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-43-engineering-report.pdf) ([LaTeX source](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-43-engineering-report.tex)), 2026-09-28.
+
 **Role / Label:** `needs-triage` — from the #31-#34 audit report ([issues-31-34-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-34-brief.pdf)), next step 1.
 Expanded 2026-09-27 from "keep or drop the override?" into a study of `nc`, after the discussion in §2.
 **Performance results per test:** Appendix A of the audit report, rows 6 and 22 (B3 sweep; B3 with B shrunk under L2).

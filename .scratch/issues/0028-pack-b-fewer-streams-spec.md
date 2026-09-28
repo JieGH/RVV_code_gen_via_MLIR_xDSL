@@ -2,6 +2,8 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/44
 
+**Engineering report (#31-#44, all issues together):** [issues-31-43-engineering-report.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-43-engineering-report.pdf) ([LaTeX source](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-43-engineering-report.tex)), 2026-09-28.
+
 **Status:** 📝 Specified 2026-09-27. **Implementation on hold until the user says go.**
 **Parent:** #41 (§8: the slow state is the L1D prefetcher doing about half its work). Sibling: #43.
 **Baseline:** `config.json` pins B3 to `nc`=128 again (user's decision, 2026-09-27); this work is measured
