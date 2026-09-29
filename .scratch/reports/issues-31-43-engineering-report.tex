@@ -380,7 +380,8 @@ The reference design packs in the same way and should pay the same cost for this
 changes (a cheaper A pack, and padding the matrix row lengths away from powers of two); it is on hold.
 
 \subsection{B3's two speeds (\#32, \#35, \#36, \#41, \#42)}
-B3 is the least stable case. The investigation moved in four steps.
+B3 is the least stable case. The investigation moved in four steps, and two later issues then asked how far the
+result reaches: across other shapes (Section~\ref{sec:survey47}) and into the reference design (Section~\ref{sec:ref46}).
 
 \paragraph{Step 1: it looked like a slow packer.} In \#32 the scalar packer beat the vector packer on B3 in every
 run (for example 8.25 against 5.28 GOPs at 16x15). On every other shape the vector packer was level or slightly
@@ -430,7 +431,11 @@ In other words, in a slow rep the L1 prefetcher does about half its usual work, 
 brings in turns into a wait for memory. The same pattern appears with both packers, for B3 with K=256, and for
 Reuse24's few slow reps. Running on core 2, which belongs to the other group of cores and has its own L2, gives
 the same result, and no other core was busy during the timed runs. So the cause is not the shared L2 and not
-another program. What makes the prefetcher back off is still unknown.
+another program. What makes the prefetcher back off is still unknown. The later work adds two clues: the state is
+not B3's alone but appears in every shape with few rows and several K blocks on the 16x15 tile, and the reference design has it
+too (Sections~\ref{sec:survey47} and~\ref{sec:ref46}); and the control run of \#46 suggests that the placement of the buffers in
+memory can change it. The first observation says the cause is general to the board and this kind of access; the second gives a
+new thing to test.
 
 \paragraph{Decision on \texttt{nc} for B3.} After \#35 the hand-set value \texttt{nc} = 128 for B3 was first
 removed, because the model cannot produce it. After \#41 and \#42 named the prefetcher as the cause, it was put
@@ -752,7 +757,9 @@ and what sets the degree is unknown; buffer placement in memory is one candidate
   \item B4 is slower than the square shapes because its narrow N forces about 2.3 times more packing per
   operation. Widening N to 1024 raises it from 8.10 to 9.02 GOPs.
   \item B3's instability is a memory slow state in which the L1 data prefetcher does about half its work. It is
-  not the shared L2, not another program, and not the packer's own speed.
+  not the shared L2, not another program running on the same core group (the counter study), and not the packer's own speed. It is
+  general (every shape in the saved logs with at most 384 rows and a K of 256 or more, Section~\ref{sec:survey47}) and it is shared with
+  the reference design (Section~\ref{sec:ref46}).
   \item Clearing the pack lines with \texttt{cbo.zero} raises B3 (\texttt{nc} = 128) from about 5.6 to about 6.0
   GOPs and Reuse24 from about 8.0 to 8.35 GOPs, lowers B2 from 12.40 to about 12.25 GOPs, and its reason is
   unknown.
