@@ -65,12 +65,11 @@ records the testing rules adopted as a result.
 The 29 September revision adds two findings. First, the slow state is not B3's alone (\#47): in the logs already
 saved it appears in every shape with at most 384 rows and a K of 256 or more, on the 16x15 tile, and in none of
 the shapes with 1000 rows or more, which all ran on other tiles; it does not switch on at a fixed time,
-repetition count or amount of data packed. Second, the reference design shares the slow state (\#46): B3 with K=256 falls into it in both designs, and the
-reference's B3 shows a much milder form (12--29\% of repetitions slow, against 87--89\% for ours). Whether that mild form belongs to the
-reference itself is not settled: adding a per-repetition record to the reference changed one case by 30\% until it was rewritten to
-leave the memory layout alone, and even the final version runs B3 about 6\% slower than the unchanged driver, which is itself steady.
-The first series ran while another user's job was on the boards (red note); a repeat on \texttt{jbpi} in a quiet window
-reproduces the picture, and the repeat on \texttt{jbpi2} is queued.
+repetition count or amount of data packed. Second, the reference design shares the slow state on B3 with K=256 (\#46), but not on plain B3: in quiet-window repeats on both boards our B3
+was 87--89\% slow, the reference's 22\% on \texttt{jbpi} and 0\% on \texttt{jbpi2}. Adding a per-repetition record to the reference changed one
+case by 30\% until it was rewritten to leave the memory layout alone, and even the final version changes B3 by about 5\% with the opposite sign on the
+two boards, so the reference's own B3 cannot be read more finely than that. The first series ran while another user's job was on the boards
+(red note); both boards were then repeated in quiet windows.
 \end{minipage}
 \vspace{1.5cm}
 \end{titlepage}
@@ -140,7 +139,7 @@ follow-up & 32x6 or 32x7 for B1 and B5 (the \#37 test, extended) & measured; on 
 \iss{42} & Tooling to count L2 and prefetch events per repetition & built; first results \\
 \iss{43} & Fix 1: clear pack-buffer lines with \texttt{cbo.zero} & built; measured; off by default \\
 \iss{44} & Fix 2: pack B one column at a time & specified; on hold \\
-\iss{46} & Does the reference design's B3 also have two speeds? & measured; \texttt{jbpi} repeated quiet; \texttt{jbpi2} repeat queued \\
+\iss{46} & Does the reference design's B3 also have two speeds? & measured; repeated in quiet windows on both boards \\
 \iss{47} & Which shapes enter the slow state, and does it depend on time, reps or bytes? & answered from saved logs \\
 \bottomrule
 \end{tabularx}
@@ -626,9 +625,10 @@ build was steady only because it is already as slow as our slow state.
 \texttt{cc1plus}, \texttt{ld} and \texttt{mixed-precision} at 48--100\% of a core, moving between cores 0 to 6, on \texttt{jbpi2}; once it was found on core 4 itself.
 These eight launches are not clean.}
 
-\paragraph{Repeat in a quiet window (\texttt{jbpi}, 22:00--23:00 on the same day).} When \texttt{jbpi} was free of other users' jobs the whole
-series was run again on it (four launches, same script and patch, twelve runs; the eight load readings show only system processes, so this
-series carries no red note). Table~\ref{tab:quiet} gives the result.
+\paragraph{Repeat in quiet windows, both boards.} When the boards were free of other users' jobs the whole series was run again on each of
+them: \texttt{jbpi} from 22:00 and \texttt{jbpi2} from 22:55 on the same day (four launches each, same script and patch, twelve runs each). The
+load readings before and after every launch show only system processes, so these two series carry no red note. Tables~\ref{tab:quiet}
+and~\ref{tab:quiet2} give the results.
 
 \begin{table}[h]
 \centering\small
@@ -644,31 +644,55 @@ Reuse24 & 10\%; 8.48 (8.85) & 3\% (0--9\%); 8.46 (8.62) & 0\%; 5.17 & 7.94 / 8.3
 B2 & 0\%; 12.56 & 0\%; 9.89 & 0\%; 6.64 & 9.81 / 9.93 / 9.96 / 9.80 \\
 \bottomrule
 \end{tabular}}
-\caption{The quiet-window repeat on \texttt{jbpi}: slow-rep share and speed, average of four launches. \#46, core 4, uninstrumented,
-reference timing method, \texttt{nc}=384. The last column is the unchanged reference, which has no per-repetition record, so only its
-mean is known.}
+\caption{Quiet-window repeat on \texttt{jbpi}: slow-rep share and speed, average of four launches. \#46, core 4, uninstrumented,
+reference timing method, \texttt{nc}=384. The last column is the unchanged reference, which has no per-repetition record, so only its mean is known.}
 \label{tab:quiet}
 \end{table}
 
-The control on this series: of eight rows, three agree, one agrees inside its own spread (B3 with K=256 at 16x14, where the unchanged
-reference alone moves from 5.06 to 6.50), one disagrees (Reuse24 at 16x14), and three have the same sign in every launch, the largest being
-\textbf{B3 at 16x14: the patched driver is 5.7\% slower than the unchanged one} (6.81--7.49 against 7.52--7.61).
+\begin{table}[h]
+\centering\small
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Case} & \textbf{Ours 16x15} & \textbf{Reference 16x14, patched} & \textbf{Reference 16x16, patched} & \textbf{Reference 16x14, unchanged} \\
+ & slow reps; GOPs mean (median) & slow reps; GOPs mean (median) & slow reps; GOPs mean & GOPs mean, per launch \\
+\midrule
+B3 & \slow{89\%}; 4.40 (4.25) & \good{0\%} (every launch); 7.44 (7.74) & 2\%; 4.45 & 7.06 / 7.33 / 7.23 / 6.93 \\
+B3 with K=256 & \slow{88\%}; 4.90 (4.59) & \slow{60\%} (37--82\%); 5.50 (6.13) & 0\%; 4.68 & 5.28 / 5.77 / 5.32 / 5.07 \\
+Reuse24 & 12\%; 8.62 (9.16) & 4\% (0--12\%); 8.33 (8.61) & 0\%; 5.19 & 8.35 / 8.61 / 7.81 / 8.10 \\
+B2 & 0\%; 12.65 & 0\%; 9.96 & 0\%; 6.85 & 9.95 / 9.95 / 9.96 / 9.98 \\
+\bottomrule
+\end{tabular}}
+\caption{Quiet-window repeat on \texttt{jbpi2}, same layout as Table~\ref{tab:quiet}.}
+\label{tab:quiet2}
+\end{table}
 
-\paragraph{Answer.} Two things hold in the quiet window as in the first series. Our B3 is far more affected than the reference's (87\% of
-repetitions slow at 4.5 GOPs, against at most 22\% at 7.1--7.6 GOPs), and B3 with K=256 is the same slow state in both designs
-(80\% of the reference's repetitions, 94\% of ours; the unchanged reference's mean moves between 5.06 and 6.50 from launch to
-launch, which is what two speeds look like from outside). What is \emph{not} settled is whether the reference's B3 has a slow state
-of its own. The unchanged driver's B3 is steady across all four quiet launches (7.52--7.61, spread 1\%) and 6\% above the patched one,
-which shows 12--29\% slow repetitions. Either the patch, even with no heap use, still tips B3 into a mild slow state, or the unchanged
-driver has slow repetitions that its total hides. The per-repetition record cannot tell the two apart, because the unchanged driver has none:
-that is the limit of the method. Its first-series B3 numbers were more scattered (6.05--7.37 on the two boards), which fits other users' load
-adding dips on top. The slow state is therefore a property of the board and of the access pattern the two designs share (so the chain of
-\#41, \#43 and \#44 applies to both); the difference on B3 is one of degree, with the tile (16x14 against 16x15, not tested), the reference's own
-packers and kernels, buffer placement (shown above to matter) and the order of calls inside a repetition as untested candidates. Speeds are
-shown side by side for context only, as the tiles differ.
-\rednote{The quiet-window repeat exists for \texttt{jbpi} only. \texttt{jbpi2} still had another user's jobs running when the
-repeat was made and is covered only by the first series; a run of the whole series on both boards is queued for 00:00 on 30 September
-(series \texttt{issue46\_2026-09-29\_122353}) and is not in this report.}
+The control in the two quiet series (eight rows each): on \texttt{jbpi}, three rows agree, one agrees inside its own spread, one disagrees, and three
+have the same sign in every launch; on \texttt{jbpi2}, three agree, one agrees inside its spread, three disagree and one has the same sign
+every time. The clearest case is B3 at 16x14, where the sign of the difference \emph{changes with the board}: the patched driver is
+5.7\% slower than the unchanged one on \texttt{jbpi} (6.81--7.49 against 7.52--7.61) and on average 4.3\% faster on \texttt{jbpi2}
+(7.29--7.55 against 6.93--7.33). A fixed cost of the patch would have the same sign on both boards; this looks like the patch moving
+buffers in memory and B3 reacting differently on each board, which is consistent with the alignment reading given above.
+
+\paragraph{Answer.} Three things hold in both quiet series and in the first one.
+\begin{itemize}
+  \item \textbf{B3 with K=256 is the same slow state in both designs on both boards.} The reference's repetitions are 80\% slow on \texttt{jbpi} and 60\% on
+  \texttt{jbpi2} (37--82\% by launch), ours 94\% and 88\%; the unchanged reference's mean moves between 5.07 and 6.50 from launch to launch, which is
+  what two speeds look like from outside.
+  \item \textbf{On plain B3 the reference is far steadier than ours.} Ours is 87--89\% slow at 4.4--4.5 GOPs. The reference's B3 at 16x14 is 0\% slow on
+  \texttt{jbpi2} in every launch (7.3--7.55 GOPs) and 12--29\% slow on \texttt{jbpi} (7.1 GOPs), and the unchanged driver's totals are steady
+  (7.52--7.61 on \texttt{jbpi}, 6.93--7.33 on \texttt{jbpi2}). The mild slow state seen in the first, loaded series (13--39\% in 6 of 8 launches) is
+  therefore partly board-dependent and partly the effect of other users' load.
+  \item \textbf{Reuse24 and B2 look alike in both designs} (few or no slow repetitions), and the reference's 16x16 build, which spills, is steady because it is already
+  as slow as our slow state.
+\end{itemize}
+What is not settled is why. The slow state is a property of the board and of the access pattern the designs share (so the chain of \#41, \#43 and \#44 applies to both), and
+the difference on B3 is one of degree. The candidates are the tile (16x14 against 16x15, not tested), the reference's own packers and kernels, buffer placement (the
+control's board-dependent sign points at it) and the order of calls inside a repetition. Speeds are shown side by side for context only, as the tiles differ.
+Whether the mild slow share on \texttt{jbpi} belongs to the reference itself or is added by the patch cannot be told, because the unchanged driver has no per-repetition record:
+that is the limit of the method.
+\rednote{Only the first series (both boards) ran under another user's load; it is kept as the record of the patch attempts and the first reading. The two quiet series
+replace it for the numbers above.}
 
 \subsection{Checking the new tooling (\#46, \#47)}
 \label{sec:review}
@@ -755,18 +779,17 @@ shows our kernels to be equal to the reference's. What does limit speed is:
 The third cause is the only one still open, and it is also the largest: B3 moves between roughly 4.5 and 7.5
 GOPs depending on the packer, \texttt{nc} and time. \#47 and \#46 widen and narrow it. It is wider than B3: every
 shape with at most 384 rows and a K of 256 or more in the saved logs has it, so it is not a quirk of one layer. And
-it is shared: the reference has it as well, fully on B3 with K=256, and at most in a mild form on B3 itself
-(12--29\% of repetitions slow in the patched driver against 87--89\% for ours; the unchanged driver's B3 is steady, so even this mild form
-may come from the patch). The remaining difference between the designs on B3 is therefore one of degree,
-and what sets the degree is unknown; buffer placement in memory is one candidate the control run brought up.
+it is shared: the reference has it as well, fully on B3 with K=256 (60--80\% of repetitions slow in the quiet windows), but on plain B3
+only mildly or not at all (22\% on \texttt{jbpi}, 0\% on \texttt{jbpi2}, against 87--89\% for ours). So the board can produce the state in both designs, and what our
+design does on B3 to fall into it so much more is the open question; buffer placement in memory is one candidate the control run brought up.
 
 \subsection{Limitations}
 \begin{itemize}
   \item The reference design's B3 was measured only in \#46, at the tiles 16x14 and 16x16 (the reference ships no
-  16x15), with one kernel set and one \texttt{nc}. Its control run does not pass case by case even in the quiet window, and the patched driver runs B3 about 6\% slower than the unchanged one;
-  the first series ran under another user's load (red note in Section~\ref{sec:ref46}) and only \texttt{jbpi} has been repeated in a quiet window.
-  ``B3 with K=256 has the slow state in both designs'' and ``ours is much more affected than the reference'' are safe; ``the reference's B3 has
-  a slow state of its own'' is not settled.
+  16x15), with one kernel set and one \texttt{nc}. Its control run does not pass case by case even in the quiet windows, and the patched driver's B3 differs from the unchanged one by
+  about 5\% with opposite signs on the two boards (Section~\ref{sec:ref46}); the first series ran under another user's load (red note) and both boards were then
+  repeated in quiet windows. ``B3 with K=256 has the slow state in both designs'' and ``ours is much more affected on plain B3 than the reference'' hold in both
+  quiet series; ``the reference's B3 has a mild slow state of its own'' does not (0\% on \texttt{jbpi2}, 22\% on \texttt{jbpi}, and the patch may add it).
   \item The \#32 tile sweep ran entirely on core 0, and several numbers in \#31 and \#33 come from a single launch
   or have no saved log. The conclusions drawn from them hold because later, better-controlled runs agree, not
   because of those runs alone.
@@ -812,11 +835,11 @@ and what sets the degree is unknown; buffer placement in memory is one candidate
   256 or more and the 16x15 tile, with a share that falls as the number of rows grows, and in none of the shapes with 1000
   rows or more, which ran on other tiles. It does not switch on at a fixed time, repetition count or amount of data
   packed; the switch point looks like a chance event.
-  \item The reference design shares the slow state (\#46): fully on B3 with K=256 (80--94\% slow in the quiet window, both designs), and only a
-  mild form appears on B3 (12--29\% of repetitions slow, against 87--89\% for ours), a form that the unchanged reference does not show in its
-  mean (steady at 7.5--7.6 GOPs) and that may be induced by the per-repetition record itself. B3's instability is therefore mainly a difference
-  of degree between the designs, with the tile, the packers and the placement of buffers in memory as untested candidates. The first series was
-  under another user's load; \texttt{jbpi} was repeated in a quiet window with the same picture, \texttt{jbpi2} is queued.
+  \item The reference design shares the slow state on B3 with K=256 (60--80\% of its repetitions slow in the quiet windows, 88--94\% of ours), but not on plain B3
+  (\#46): there ours is 87--89\% slow at 4.4--4.5 GOPs, the reference 22\% on \texttt{jbpi} and 0\% on \texttt{jbpi2} at 7.1--7.6 GOPs. B3's instability is therefore
+  mainly a property of our design and blocking, on a board whose prefetcher can produce it in both; the tile, the packers and the placement of buffers in
+  memory are untested candidates for what makes the difference. The first series was under another user's load; both boards were repeated in quiet windows and
+  those numbers are the ones quoted.
   \item Adding a measurement to a timed program can change what it measures: a per-repetition record in the reference changed one case by 30\%
   until it was rewritten to leave the heap alone. A control run is part of the method, and the new tooling was reviewed (Section~\ref{sec:review}).
 \end{enumerate}
@@ -830,11 +853,10 @@ and what sets the degree is unknown; buffer placement in memory is one candidate
   test on \texttt{jbpi} once that board is free; the configs and data file are in the repository.
   \item \textbf{Run a control for \#43} with the same extra loop but without \texttt{cbo.zero}, before deciding
   whether to turn the switch on by default.
-  \item \textbf{Read the quiet-window repeat of \#46 on \texttt{jbpi2}} (series \texttt{issue46\_2026-09-29\_122353}, queued for
-  00:00 on 30 September; \texttt{jbpi} is done and is in Section~\ref{sec:ref46}) and add it here. Find a way to watch the reference's B3 without a patch
-  that changes it (for example a hardware counter read from outside the process). Then run our generator at 16x14 against the reference at 16x14, to take the tile out of
+  \item \textbf{Find out what makes our B3 slow where the reference's is not} (\#46 answered that it is: 87--89\% against 0--22\%). Find a way to watch the
+  reference's B3 without a patch that changes it (for example a hardware counter read from outside the process). Then run our generator at 16x14 against the reference at 16x14, to take the tile out of
   the comparison, and test buffer placement (give both designs the same offsets modulo 4096). The reference's own B3 was
-  measured in \#46 (Section~\ref{sec:ref46}): it shows only a mild slow state, and whether that is the reference's own is open.
+  measured in \#46 (Section~\ref{sec:ref46}): steady or mildly slow, far less than ours.
   \item \textbf{Continue \#41}: record the counters in short windows around the moment of the switch to the slow
   state, test padding the B row length away from 384, and repeat the counter study on \texttt{jbpi2}. From \#47: run B3 on the 32x6
   tile and Reuse24 or B1 on the 16x15 tile (tile against rows), a sweep of M at K=N=384 on one tile (M = 64 to 1024) to find where the
@@ -863,8 +885,8 @@ Logs in \texttt{tests/pure\_xdsl\_blis\_rvv/logs/}: \texttt{run\_2026-09-28\_113
 28 September 2026.\\ Logs in \texttt{tests/pure\_xdsl\_blis\_rvv/logs/}: \texttt{run\_2026-09-28\_121056}, \texttt{\_121503},
 \texttt{\_121903} and \texttt{\_122304}.
 \bibitem{b46} \emph{Does the reference design's B3 also have two speeds?}, \url{.scratch/issues/0030-reference-b3-per-rep.md}
-(GitHub \#46), 29 September 2026.\\ Series \texttt{issue46\_2026-09-29\_122340} (four launches on each board, under load), the quiet-window repeat on \texttt{jbpi}
-\texttt{issue46\_2026-09-29\_215925}, and the failed
+(GitHub \#46), 29 September 2026.\\ Series \texttt{issue46\_2026-09-29\_122340} (four launches on each board, under load), the quiet-window repeats
+\texttt{issue46\_2026-09-29\_215925} (\texttt{jbpi}) and \texttt{issue46\_2026-09-29\_225532} (\texttt{jbpi2}), and the failed
 patch versions \texttt{issue46\_2026-09-29\_111401} and \texttt{\_115638} in \url{tests/pure_xdsl_blis_rvv/logs/}.
 \bibitem{b47} \emph{The slow state across every shape}, \url{.scratch/issues/0031-slow-state-survey-all-shapes.md} (GitHub \#47),
 29 September 2026.\\ Output: \url{tests/pure_xdsl_blis_rvv/logs/issue47_slow_state_survey.md}.
@@ -905,10 +927,9 @@ board. \\
 \#43 & \texttt{cbo.zero} raises B3 (\texttt{nc}=128) and Reuse24, lowers B2 slightly; reason unknown. & 168
 launches, two boards. \\
 \#44 & (Plan) pack B one column at a time. & On hold. \\
-\#46 & B3 with K=256 has the slow state in both designs; ours is far more affected on B3 (87--89\% slow reps against at most 22--29\% for the
-patched reference); whether the reference's own B3 has one is not settled (its unchanged B3 is steady). & Four launches per board, core 4; control
-run does not pass case by case (patched B3 6\% slower); first series under another user's load (red note); \texttt{jbpi} repeated in a quiet window with the
-same result, \texttt{jbpi2} queued. \\
+\#46 & B3 with K=256 has the slow state in both designs; on plain B3 ours is 87--89\% slow, the reference 22\% (\texttt{jbpi}) and 0\% (\texttt{jbpi2}). & Four launches per
+board, core 4, in three series; first series under another user's load (red note); both boards repeated in quiet windows; control run does not pass case by case (patched B3
+about 5\% off, opposite sign on the two boards). \\
 \#47 & The slow state is in every shape with at most 384 rows, K of 256 or more, on 16x15; none in shapes of 1000 rows or more (other tiles);
 no constant time, reps or bytes. & Saved logs, three or more launches per case; tile and rows not separated; older logs have no record of
 other users' load. \\

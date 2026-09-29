@@ -7,7 +7,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/46
 ([LaTeX source](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-43-engineering-report.tex)).
 
 **Role / Label:** `needs-triage` — follow-up of #36 and #41. Measure only: no fix is sought here.
-**Status:** ✅ Measured 2026-09-29 on both boards (4 launches each, core 4). **Answer: the reference's B3 has two speeds too, but a milder form than ours** (§7.4). The control run does not pass case by case (§7.3), so the size of the slow share is not exact. 🔴 RED NOTE: the first series (both boards) ran while another user's job (`psiwins`) was on the board (§7.6). **`jbpi` was then repeated in a quiet window** (22:00-23:00, no other user's process at any check; §7.8) and agrees on the answer, and sharpens it: K=256 is shared by both designs; for B3 the unchanged reference looks steady while the patched one shows 22% slow reps, so the reference's own B3 is not settled. `jbpi2` is still to be repeated (series `issue46_2026-09-29_122353`, queued for 00:00 on 2026-09-30; not in this file yet).
+**Status:** ✅ Measured 2026-09-29 on both boards, first under another user's load, then **repeated in quiet windows on both boards** (no other user's process at any reading; §7.8, §7.9). **Answer: B3 with K=256 is the same slow state in both designs; on plain B3 the reference is far steadier than ours** (quiet window: 87-89% of our reps slow at 4.4-4.5 GOPs; the patched reference 22% on `jbpi` and 0% on `jbpi2`, at 7.1-7.6 GOPs). The control run does not pass case by case, and the patch's effect on B3 has opposite sign on the two boards (§7.3, §7.9), which points at buffer placement. The first series (§7.1-§7.6) carries a 🔴 RED NOTE for other users' load.
 **Target:** `jbpi` first, then `jbpi2`; core 4; house rules of #39 apply.
 **Shape(s):** B3 (64×384×384) at the reference's `nc`=384. Controls: B2 (one speed in our runs), B3 with K=256, Reuse24.
 **Primary Sources:**
@@ -233,11 +233,36 @@ What this changes:
   GOPs) is far more affected than the reference's (at most 22%, 7.1-7.6 GOPs)**, and K=256 is the same in both.
 - The first series' unclean B3 numbers for the unchanged reference (6.05-7.37 on the two boards) were more scattered than these quiet ones
   (7.52-7.61), which fits other users' load adding dips on top.
-- `jbpi2` is not repeated yet.
+- `jbpi2` is in §7.9.
+
+### 7.9 Quiet-window repeat on `jbpi2` (series `issue46_2026-09-29_225532`, 22:55-23:48, 4 launches)
+
+Board checked idle before it started (no other user's process on either board); no other user at any reading in the series (no
+`load_warnings.txt`): **no red note**. Run folders (`runs.tsv` in the series folder): ours `run_2026-09-29_225755`, `run_2026-09-29_232157`, `run_2026-09-29_232420`, `run_2026-09-29_234845`; unchanged reference `refbase_2026-09-29_225755`, `refbase_2026-09-29_231411`, `refbase_2026-09-29_232945`, `refbase_2026-09-29_233514`; patched reference `refbase_2026-09-29_230318`, `refbase_2026-09-29_230848`, `refbase_2026-09-29_232421`, `refbase_2026-09-29_234046`.
+
+Slow-rep share, average of 4 launches; GOPs by mean time (by median rep):
+
+| case | ours 16x15 | reference 16x14 (patched) | reference 16x16 (patched) | unchanged reference 16x14 (mean GOPs per launch) |
+|---|---|---|---|---|
+| B3 | 89%; 4.40 (4.25) | **0% in every launch**; 7.44 (7.74) | 2%; 4.45 | 7.06 / 7.33 / 7.23 / 6.93 |
+| B3_K256 | 88%; 4.90 (4.59) | **60%** (37-82%); 5.50 (6.13) | 0%; 4.68 | 5.28 / 5.77 / 5.32 / 5.07 |
+| Reuse24 | 12%; 8.62 (9.16) | 4% (0-12%); 8.33 (8.61) | 0%; 5.19 | 8.35 / 8.61 / 7.81 / 8.10 |
+| B2 | 0%; 12.65 | 0%; 9.96 | 0%; 6.85 | 9.95 / 9.95 / 9.96 / 9.98 |
+
+Control (8 rows): 3 agree, 1 agrees inside its spread (Reuse24 at 16x14), 3 disagree (B3 at 16x14: +4.8, +3.0, +0.8, **+8.7%**; K256 at 16x14, whose
+two speeds make single launches move -10% to +21%; B3 at 16x16: +11.4%), 1 same sign (Reuse24 at 16x16, +3.3%).
+
+What this adds:
+- **On `jbpi2` the reference's B3 shows no slow reps at all** (0% in all four launches, 7.3-7.55 GOPs), while ours is 89% slow at 4.4. So on plain B3 the
+  designs differ clearly; the reference's mild slow state on `jbpi` (22%, §7.8) is board-dependent (and in the first, loaded series `jbpi2` had 0-23%).
+- **K=256 is a slow state in both designs on both boards**: reference 80% (`jbpi`) and 60% (`jbpi2`); ours 94% and 88%.
+- **The patch's effect on B3 at 16x14 has opposite sign on the two boards**: patched 5.7% *slower* than unchanged on `jbpi`, 4.3% on average *faster*
+  on `jbpi2`. A fixed cost of the patch would have the same sign on both; this looks like the patch moving buffers, and B3 reacting differently on each
+  board. So single-case gaps of the control are mostly this layout effect, and the mild `jbpi` slow share of the patched B3 may be part of it.
 
 ### 7.7 Next
 
-1. Read the 00:00 series (`issue46_2026-09-29_122353`, both boards) with `issue46_report.py` and add `jbpi2` here (`jbpi` is done, §7.8).
+1. (Done) `jbpi2` repeated in a quiet window, §7.9; the 00:00 series was cancelled as redundant.
 2. Ours at 16x14 (our generator can emit it) against the reference at 16x14, to take the tile out of the comparison.
 2b. Give the reference's B3 a way to be watched without the patch changing it (for example a hardware counter read from outside the process), so that its B3 can be settled.
 3. Test the buffer alignment: give the reference's `Ac`/`Bc` and ours the same offsets modulo 4096 and see whether B3 changes.

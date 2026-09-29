@@ -1,0 +1,12 @@
+jlei                 50.0   1       00:00 bash
+root                 12.8   3       00:00 sshd
+root                  0.5   6 57-13:15:25 disp_eng_share_thread
+systemd-oom           0.0   7 57-13:15:32 systemd-oomd
+root                  0.0   0    12:25:00 kworker/0:1H-mmc_complete
+root                  0.0   1 57-13:15:40 vq1
+root                  0.0   2 57-13:15:40 vq0
+root                  0.0   0    09:45:17 kworker/0:0-events
+root                  0.0   5    11:45:20 kworker/5:0-events_power_efficient
+root                  0.0   6 57-13:15:25 ksdioirqd/mmc1
+root                  0.0   3 57-13:15:31 NetworkManager
+messagebus            0.0   3 57-13:15:31 dbus-daemon
