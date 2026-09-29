@@ -1,0 +1,14 @@
+2026-09-29T12:23:41+02:00 jbpi launch 1 (before): psiwins spmv 99.3% on core 0, up 33:14; 
+2026-09-29T12:37:22+02:00 jbpi launch 1 (after): psiwins spmv 99.4% on core 0, up 46:56; 
+2026-09-29T12:50:40+02:00 jbpi2 launch 1 (after): psiwins cc1plus 99.7% on core 5, up 00:32; 
+2026-09-29T12:50:41+02:00 jbpi launch 2 (before): psiwins spmv 99.5% on core 0, up 01:00:14; 
+2026-09-29T13:05:36+02:00 jbpi launch 2 (after): psiwins spmv 94.5% on core 0, up 01:15:10; 
+2026-09-29T13:05:37+02:00 jbpi2 launch 2 (before): psiwins cc1plus 99.9% on core 5, up 15:29; 
+2026-09-29T13:21:04+02:00 jbpi2 launch 2 (after): psiwins mixed-precision 99.0% on core 5, up 05:35; 
+2026-09-29T13:21:05+02:00 jbpi launch 3 (before): psiwins spmv 91.9% on core 0, up 01:30:39; 
+2026-09-29T13:34:47+02:00 jbpi launch 3 (after): psiwins spmv 92.9% on core 0, up 01:44:20; 
+2026-09-29T13:34:48+02:00 jbpi2 launch 3 (before): psiwins mixed-precision 99.2% on core 2, up 19:18; 
+2026-09-29T13:50:22+02:00 jbpi2 launch 3 (after): psiwins mixed-precision 99.3% on core 1, up 34:52; 
+2026-09-29T13:50:22+02:00 jbpi launch 4 (before): psiwins spmv 93.8% on core 0, up 01:59:56; 
+2026-09-29T14:03:51+02:00 jbpi2 launch 4 (before): psiwins mixed-precision 99.6% on core 4, up 06:19; 
+2026-09-29T14:18:40+02:00 jbpi2 launch 4 (after): psiwins mixed-precision 99.6% on core 3, up 21:09; 

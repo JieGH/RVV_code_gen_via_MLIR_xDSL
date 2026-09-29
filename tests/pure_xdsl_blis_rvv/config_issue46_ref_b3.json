@@ -1,0 +1,7 @@
+[
+    // Issue #46: our side of "does the reference design's B3 also have two speeds?". B3 at the model's
+    // nc=384 (the reference's own nc) with B2, B3_K256 and R24 as the controls, MR16_NR15. Run through
+    // run_issue46.sh, which alternates it with the reference (unchanged and with the per-rep record):
+    //   compile_macro_bench.sh --config config_issue46_ref_b3.json --no-nc-overrides --cpu 4 --tmin 10
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi", ["issue46_ref_b3.dat"], true, 1000, {}]
+]

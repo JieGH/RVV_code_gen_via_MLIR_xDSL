@@ -44,6 +44,13 @@ def test_read_reps_groups_rows_by_case_in_rep_order(tmp_path: Path):
     assert cases[("B3_nc128", 128)].ops == OPS
 
 
+def test_read_reps_keeps_the_shape_and_the_blocking_of_each_case(tmp_path: Path):
+    # Issue #47: the survey needs M, N, K, MC, KC and the tile next to the times.
+    f = _write(tmp_path / "reps.txt", _rows("B3", 384, [FAST, SLOW]))
+    case = read_reps(f)[("B3", 384)]
+    assert (case.m, case.n, case.k, case.mc, case.kc, case.variant) == (64, 384, 384, 64, 128, "MR16_NR15")
+
+
 def test_gops_by_mean_time_is_the_reference_formula_and_median_is_the_median_rep():
     st = case_stats(OPS, [FAST, FAST, SLOW])
     assert st.gops_mean_time == pytest.approx(3 * OPS / ((2 * FAST + SLOW) * 1e9))
@@ -132,6 +139,20 @@ def test_a_zero_lines_launch_is_its_own_packer_row(tmp_path: Path):
 
     runs = [run("a", ""), run("b", "_zeroline"), run("c", "_scalarpack_zeroline_no_nc_override")]
     assert [r.packer for r in launch_table(runs)] == ["vector", "vector+zeroline", "scalar+zeroline"]
+
+
+def test_the_reference_designs_per_rep_files_are_their_own_rows_per_built_tile(tmp_path: Path):
+    # Issue #46: reps_ref_<tile>_<variant>.txt.gz come from the reference design, not from our
+    # vector packer, and the 16x14 and 16x16 builds are two different kernels: never pooled.
+    def run(name: str, fname: str) -> Path:
+        d = tmp_path / name
+        _write(d / fname, _rows("B3", 384, [FAST] * 4))
+        return d
+
+    runs = [run("a", "reps_fp32_AXPY_FP32_Pack_noinstr_refproto_no_nc_override.txt"),
+            run("b", "reps_ref_16x14_macc.txt"), run("c", "reps_ref_16x16_macc.txt"), run("d", "reps_ref_16x14_macc.txt")]
+    assert [(r.packer, r.launches) for r in launch_table(runs)] == [
+        ("vector", 1), ("reference 16x14", 2), ("reference 16x16", 1)]
 
 
 def test_command_line_prints_a_markdown_table(tmp_path: Path):
@@ -296,3 +317,23 @@ def test_the_conditions_line_names_the_raw_events_and_the_other_cores_busy_share
     old = _run_dir(tmp_path, "run_old", False, _rows("B3", 384, [FAST] * 3))
     (old / "provenance.txt").write_text(PROVENANCE.format(pin="4"))
     assert run_conditions(old).raw_events == "unknown" and run_conditions(old).busy_share == "unknown"
+
+
+# 2026-09-29: another user's job on the board moves its thermal state even from another core, so
+# a run made under one carries a red note, and a clean or unrecorded run carries none.
+def test_a_run_under_another_users_load_gets_a_red_note(tmp_path: Path):
+    d = _run_dir(tmp_path, "run_a", False, _rows("B3_nc128", 128, [FAST] * 4))
+    (d / "provenance.txt").write_text(
+        PROVENANCE.format(pin="4") + "  other users    : psiwins spmv 92.0% on core 0, up 01:21:45; \n")
+    out = _cli(d)
+    note = next(ln for ln in out.splitlines() if "RED NOTE" in ln)
+    assert "run_a" in note and "psiwins spmv 92.0% on core 0" in note and "quiet window" in note
+    assert "RED NOTE" in out.splitlines()[-1] or any("RED NOTE" in ln for ln in out.splitlines()[-3:])  # also in the summary at the end
+
+
+def test_a_run_with_no_other_users_or_no_record_has_no_red_note(tmp_path: Path):
+    a = _run_dir(tmp_path, "run_a", False, _rows("B3_nc128", 128, [FAST] * 4))
+    (a / "provenance.txt").write_text(PROVENANCE.format(pin="4") + "  other users    : none\n")
+    b = _run_dir(tmp_path, "run_b", False, _rows("B3_nc128", 128, [FAST] * 4))
+    (b / "provenance.txt").write_text(PROVENANCE.format(pin="4"))  # made before the probe existed
+    assert "RED NOTE" not in _cli(a, b)

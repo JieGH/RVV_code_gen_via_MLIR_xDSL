@@ -1,0 +1,2 @@
+2026-09-29T11:56:39+02:00 jbpi launch 1 (before): psiwins spmv 99.6% on core 0, up 06:12; 
+2026-09-29T12:10:10+02:00 jbpi launch 1 (after): psiwins spmv 99.1% on core 0, up 19:44; 
