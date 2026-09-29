@@ -1,0 +1,9 @@
+Issue #46 series: 4 launches on each of jbpi, boards taking turns, 4 launches of 3 runs
+  Start     : mar 29 sep 21:59
+  Settings  : --cpu 4 --tmin 10, reference LDX kernels (variant 2, macc, bracketed)
+  Steps     : O ours | P reference, driver unchanged (control) | R reference with the per-rep record
+  Load      : other users' processes are read before and after every launch; a heavy one is flagged red, not a stop
+  Launch 1   : O P R
+  Launch 2   : R P O
+  Launch 3   : O R P
+  Launch 4   : P R O
