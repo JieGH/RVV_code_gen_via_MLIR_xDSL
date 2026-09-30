@@ -7,7 +7,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/48
 ([LaTeX source](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-43-engineering-report.tex)).
 
 **Role / Label:** `needs-triage` — new direction for B3, opened 2026-09-30 at the user's request before the session closed. Step 1 and the tooling are done (§7); no board run yet.
-**Status:** 🔧 Step 1 done 2026-09-30: the packer table is in §7.1, from the packer code, checked by a test against the builders. The scripts for the sweep are written and tested (§7.3); **no board run has been made yet** (board time waits for the user's go, §7.3).
+**Status:** ✅ Measured 2026-09-30 on both boards (25 tiles, vector and scalar packer, uninstrumented and instrumented, 3-4 launches each, core 4, no other user's job at any reading). **Answer (§8): the slow state of B3 follows NR, not MR or kc. With the vector packer every tile with NR up to 6 is steady and every tile with NR of 7 or more is two-speed, at every MR from 4 to 32; the scalar packer is far steadier at NR of 8 and up. Our 16x14 is as slow as our 16x15, so the tile does not explain why the reference's 16x14 is steady.** Packer table in §7.1; the sweep, the tooling and the results in §7.3 and §8.
 **Target:** `jbpi` and `jbpi2`, core 4, quiet window (no other user's job on the board; see `docs/agents/execution.md`, rule 5), house rules of #39.
 **Shape(s):** B3 (64×384×384) first; B3 with K=256 and Reuse24 as controls; B2 as the steady control.
 **Primary Sources:**
@@ -73,9 +73,9 @@ the reference design (#46) except as a same-launch control if a 16x14 build of o
 ## 6. Closure
 
 - [x] Table of what each vector packer does per MR and NR, written into this issue before any run (§7.1, 2026-09-30).
-- [ ] Sweep run on both boards in quiet windows, at least 3 launches per point, logs committed, no red note (or the note stated).
-- [ ] Packing and compute read apart, for fast and slow reps, per tile.
-- [ ] Written answer: does the packing side of B3 depend on MR and NR, and does the slow state?
+- [x] Sweep run on both boards, at least 3 launches per point (4 for the vector and scalar arms on `jbpi2`), logs committed, no red note: no other user's job at any reading (§8.1, 2026-09-30). Not in a midnight window; none was needed, the boards were quiet.
+- [x] Packing and compute read apart, for fast and slow reps, per tile (§8.4).
+- [x] Written answer: does the packing side of B3 depend on MR and NR, and does the slow state? (§8.5)
 
 ---
 
@@ -170,5 +170,115 @@ The numbers (from `python tests/pure_xdsl_blis_rvv/pack_dims_table.py`, B3 = 64x
 
 ### 7.4 Still to do
 
-- Board runs (§7.3): waiting for the user's go. Start with `run_issue48.sh --start-at 00:00 --arms vec,scalar`, then `--arms vec-instr,scalar-instr`.
-- Closure items 2-4 of §6 (sweep run, packing and compute read apart, written answer).
+Nothing for the closure of this issue; the follow-ups are in §8.6.
+
+---
+
+## 8. Results (2026-09-30)
+
+### 8.1 What was run, and under what conditions
+
+- **Runs.** The 25-tile sweep on both boards, `--no-nc-overrides` (B3 at nc=384), core 4, `--tmin 10` for the uninstrumented arms (reference protocol), `--instr` (warm-up protocol, 1000 reps) for the instrumented ones. Each tile ran B3, B3_K256, B2 and Reuse24.
+  Vector arms and scalar arms, uninstrumented and instrumented. Launches: `jbpi2` 4 for `vec` and `scalar` (one from the series that was stopped and restarted, see below) and 3 for the instrumented arms; `jbpi` 3 for each.
+- **The boards ran at the same time**, one series each (separate board workspaces and host checkouts: the boards share one NFS home). The two timings should be independent (separate hardware; only the NFS server and the jump host are shared), but the runs were not one after the other.
+- **Other users: none.** All 26 run folders record `other users : none` at the start of their run, and no series wrote a `load_warnings.txt` (the processes of each board are read before and after every run). The other cores of both boards were at 0-1% busy during every run
+  (`busy share` in each `provenance.txt`). `issue48_report.py` prints no RED NOTE. (Earlier in the day, 12:19, a `psiwins` job of 1.6-1.8 cores was on both boards; it was gone by 14:04 and did not come back. The short smoke test at 12:26-12:40, made under that job, was deleted and is not used.)
+- **Series folders** (all committed): `logs/issue48_2026-09-30_124654` (stopped after 2 runs, when the work was split across the boards; its 2 runs are kept: `run_2026-09-30_134329`, `run_2026-09-30_135936`), `logs/issue48_2026-09-30_140902` (`jbpi2`, 12 runs) and `logs/issue48_2026-09-30_140902_jbpi` (`jbpi`, 12 runs; renamed on copy, both series started in the same second).
+  12 of 12 runs ok in each of the last two. Full report, all shapes and tiles: `logs/issue48_2026-09-30_report.md` (`python tests/pure_xdsl_blis_rvv/issue48_report.py <the three series folders>`). Console logs: `logs/issue48.out` (the stopped series), `logs/issue48_jbpi2.out`, `logs/issue48_jbpi.out`.
+- **Numbers below** are GOPs by mean time (the reference's formula) averaged over the launches, with the share of slow reps in brackets, from the uninstrumented builds. The instrumented builds (§8.4) explain where time goes and are not quoted as speed.
+
+### 8.2 B3 (64x384x384) per tile: speed and slow-rep share
+
+| tile | kc | vector, jbpi2 (4 launches) | vector, jbpi (3) | scalar, jbpi2 (4) | scalar, jbpi (3) |
+|---|---|---|---|---|---|
+| 4x4 | 384 | 3.55 (0%) | 3.55 (0%) | 3.39 (0%) | 3.38 (0%) |
+| 4x8 | 384 | 2.75 (78%) | 2.62 (82%) | - | - |
+| 4x16 | 256 | 2.62 (81%) | 2.73 (76%) | - | - |
+| 8x4 | 384 | 4.91 (0%) | 4.91 (0%) | - | - |
+| 8x8 | 256 | 3.46 (88%) | 3.84 (73%) | - | - |
+| 8x14 | 256 | 3.61 (89%) | 3.48 (93%) | - | - |
+| 8x15 | 256 | 3.37 (92%) | 3.54 (90%) | 4.73 (49%) | 4.83 (46%) |
+| 8x16 | 256 | 3.57 (88%) | 3.75 (81%) | - | - |
+| 8x24 | 170 | 4.92 (54%) | 5.20 (53%) | - | - |
+| 8x31 | 132 | 4.32 (75%) | 4.11 (84%) | - | - |
+| 12x8 | 170 | 2.44 (72%) | 2.36 (82%) | - | - |
+| 16x4 | 256 | 5.32 (0%) | 5.30 (0%) | - | - |
+| 16x6 | 256 | 6.71 (0%) | 6.77 (0%) | - | - |
+| 16x7 | 256 | 4.76 (68%) | 4.44 (79%) | - | - |
+| 16x8 | 256 | 3.56 (94%) | 3.72 (89%) | 7.28 (2%) | 7.03 (8%) |
+| 16x12 | 128 | 5.10 (78%) | 4.71 (88%) | - | - |
+| 16x14 | 128 | 4.72 (86%) | 4.51 (81%) | 6.98 (33%) | 7.19 (32%) |
+| 16x15 | 128 | 4.43 (92%) | 4.53 (89%) | 6.77 (39%) | 6.13 (52%) |
+| 16x16 | 128 | 3.53 (67%) | 3.29 (25%) | 3.83 (60%) | 3.79 (55%) |
+| 24x6 | 170 | 5.35 (0%) | 5.38 (0%) | - | - |
+| 24x8 | 170 | 3.30 (89%) | 3.33 (87%) | - | - |
+| 24x9 | 170 | 3.69 (83%) | 3.55 (89%) | - | - |
+| 32x4 | 128 | 5.78 (0%) | 5.80 (0%) | - | - |
+| 32x6 | 128 | 6.33 (0%) | 6.32 (0%) | 5.89 (0%) | 5.92 (0%) |
+| 32x7 | 128 | 5.39 (83%) | 5.30 (87%) | - | - |
+
+- **Steady** (0% slow reps, both boards, every launch): 4x4, 8x4, 16x4, 16x6, 24x6, 32x4, 32x6. **Two-speed** (53-94% slow): every tile with NR of 7 or more, at every MR from 4 to 32: 4x8, 4x16, 8x8, 8x14..8x31, 12x8, 16x7, 16x8, 16x12..16x15, 24x8, 24x9, 32x7. 16x16 (over the register budget) is two-speed on both boards too (67% and 25% of reps), slowly.
+- **kc does not explain it.** The steady tiles have kc = 384 (4x4, 8x4), 256 (16x4, 16x6), 170 (24x6) and 128 (32x4, 32x6); the two-speed ones have kc = 384 (4x8), 256, 170 and 128.
+- **8x24** (kc = 170, 3 B vectors per k) is the least slow two-speed tile (53-54% of reps). **16x16** and 8x31 (the ends of the register range) are slow too.
+- **The best B3 tiles are NR=6**: 16x6 at 6.71 / 6.77 GOPs and 32x6 at 6.33 / 6.32, against the shipped 16x15 at 4.43 / 4.53 (`jbpi2` / `jbpi`). But see §8.3.
+
+### 8.3 The controls on the same tiles (vector packer; `jbpi2` / `jbpi`; GOPs, slow reps in brackets)
+
+| tile | B3 | B3_K256 | B2 | Reuse24 |
+|---|---|---|---|---|
+| 16x6 | 6.71 (0%) / 6.77 (0%) | 4.49 (58%) / 4.96 (48%) | 10.27 (0%) / 10.25 (0%) | 9.14 (0%) / 9.11 (0%) |
+| 16x8 | 3.56 (94%) / 3.72 (89%) | 6.74 (0%) / 6.76 (0%) | 10.24 (0%) / 10.33 (0%) | 8.94 (0%) / 8.64 (0%) |
+| 16x14 | 4.72 (86%) / 4.51 (81%) | 4.44 (93%) / 4.52 (93%) | 11.87 (0%) / 11.84 (0%) | 8.29 (0%) / 8.31 (0%) |
+| 16x15 | 4.43 (92%) / 4.53 (89%) | 4.93 (88%) / 4.76 (94%) | 12.59 (0%) / 12.56 (0%) | 8.45 (17%) / 8.79 (4%) |
+| 16x16 | 3.53 (67%) / 3.29 (25%) | 3.45 (88%) / 3.73 (77%) | 7.95 (0%) / 7.95 (0%) | 4.93 (0%) / 4.89 (0%) |
+| 32x6 | 6.33 (0%) / 6.32 (0%) | 5.54 (30%) / 5.54 (19%) | 10.65 (0%) / 10.62 (0%) | 9.37 (0%) / 9.35 (0%) |
+| 32x7 | 5.39 (83%) / 5.30 (87%) | 5.93 (62%) / 6.01 (59%) | 11.80 (0%) / 11.70 (0%) | 9.81 (0%) / 9.81 (0%) |
+| 24x6 | 5.35 (0%) / 5.38 (0%) | 3.56 (85%) / 3.57 (81%) | 9.33 (0%) / 9.30 (0%) | 6.36 (14%) / 6.29 (69%) |
+| 8x8 | 3.46 (88%) / 3.84 (73%) | 3.54 (89%) / 3.39 (95%) | 8.14 (0%) / 8.14 (0%) | 7.55 (0%) / 7.52 (0%) |
+| 4x4 | 3.55 (0%) / 3.55 (0%) | 3.93 (0%) / 3.91 (0%) | 4.19 (0%) / 4.20 (0%) | 4.21 (0%) / 4.22 (0%) |
+
+- **B2 and Reuse24 are steady on almost every tile**, so the slow state is not the board or the day: on the same launches where B3 is 90% slow, B2 is at 0%. The exceptions are Reuse24 at 16x15 (17% / 4% slow reps), 24x6 (14% / 69%) and 8x24 (11% / 4%).
+- **B3_K256 is not the same rule as B3.** At 16x8 it is steady (6.74 / 6.76 GOPs, 0% slow) though B3 at 16x8 is 89-94% slow; at 16x6 it is two-speed (58% / 48%) though B3 at 16x6 is steady; at 32x6 it is partly slow (30% / 19%). So "NR of 6 or less is steady" holds for B3 (K=384) and not for K=256: the threshold moves with K.
+- **No tile wins every shape.** 16x6 is the best for B3 (6.7) and Reuse24 (9.1) and loses B2 (10.3 against 12.6 at 16x15). 16x15 is the best for B2 and loses B3 (4.5) badly. The shipped tile is a choice between the shapes, not a setting.
+
+### 8.4 Packing and compute apart (instrumented builds, B3; debug numbers, not speed)
+
+Mean time per rep in milliseconds, pooled over the launches: fast reps, then slow reps, and pack's share of pack + compute.
+
+| tile, packer | jbpi2: fast reps pack / compute ms; slow reps; pack share | jbpi: same |
+|---|---|---|
+| 4x4 vector | 1.09 / 4.48; slow no slow reps; pack 20% | 1.08 / 4.47; slow no slow reps; pack 19% |
+| 16x6 vector | 0.97 / 1.85; slow no slow reps; pack 34% | 0.99 / 1.86; slow no slow reps; pack 35% |
+| 32x6 vector | 1.32 / 1.73; slow no slow reps; pack 43% | 1.32 / 1.74; slow no slow reps; pack 43% |
+| 32x7 vector | 1.25 / 1.90; slow no slow reps; pack 40% | 1.29 / 1.94; slow 1.47 / 2.14; pack 40% |
+| 8x8 vector | 0.79 / 2.27; slow 1.70 / 3.81; pack 30% | 0.83 / 2.29; slow 1.69 / 3.76; pack 31% |
+| 16x8 vector | 0.76 / 1.86; slow 1.69 / 3.32; pack 33% | 0.76 / 1.88; slow 1.69 / 3.29; pack 33% |
+| 16x14 vector | 0.72 / 1.89; slow 1.52 / 2.74; pack 33% | 0.66 / 1.80; slow 1.43 / 2.66; pack 32% |
+| 16x15 vector | 0.71 / 1.80; slow 1.48 / 2.68; pack 34% | 0.73 / 1.79; slow 1.46 / 2.67; pack 34% |
+| 16x8 scalar | 0.77 / 1.79; slow (2 slow reps); pack 30% | 0.80 / 1.79; slow 1.50 / 2.68; pack 31% |
+| 16x14 scalar | 0.69 / 1.67; slow 1.15 / 1.97; pack 30% | 0.70 / 1.68; slow 1.20 / 1.97; pack 30% |
+| 16x15 scalar | 0.71 / 1.51; slow 1.13 / 1.82; pack 33% | 0.72 / 1.51; slow 1.39 / 2.00; pack 35% |
+| 32x6 scalar | 1.50 / 1.73; slow no slow reps; pack 46% | 1.50 / 1.74; slow no slow reps; pack 46% |
+
+- **In a slow rep both halves slow down**, on every tile: pack takes 1.6-2.2 times as long (vector, 16x8: 0.76 to 1.69 ms; 16x15: 0.71 to 1.48; scalar 16x15: 0.71 to 1.13) and compute 1.2-1.8 times (vector, 16x8: 1.86 to 3.32 ms; scalar 16x15: 1.51 to 1.82). This is the #36 finding, now on 25 tiles: the slow state is not a packer-only effect.
+- **Tiles that never go slow have no slow reps in either half** (4x4, 16x6, 32x6 vector, 32x6 scalar): pack and compute are each one speed.
+- **In fast reps the pack time depends on the tile** (vector packer): 16x6 needs 0.97-0.99 ms against 0.66-0.76 ms for 16x8..16x15, and 32x6 needs 1.32 ms against 0.76 at 16x8. The reads and writes are the same number of bytes for B3 at every tile, so this is cost per vector op and per panel, not data; the sweep does not say which. Pack's share of a fast rep (vector): 19-20% at 4x4, 30-35% at MR 8 and 16, 40-43% at MR=32.
+- **The instrumented build is not the same experiment.** 32x7 has no slow reps on `jbpi2` and 578 of 2997 on `jbpi` in the instrumented build, against 83-87% slow reps uninstrumented on both boards. The instrumented timers and the warm-up protocol change when the state sets in, so only the fast-against-slow split is read from it.
+
+### 8.5 Answer
+
+**Does the packing side of B3 depend on MR and NR, and does the slow state?**
+
+1. **The slow state depends on NR, and not on MR or kc.** With the vector packer, B3 is steady on every tile with NR of 4 or 6 (MR 4, 8, 16, 24 and 32, each with the NR values tried) and two-speed on every tile with NR of 7 or more (MR 4, 8, 12, 16, 24 and 32), on both boards, in every launch. This is the "packing and the slow state move with NR" outcome of §4: the tile decides it. MR changes the speed level but not whether the state appears.
+2. **The threshold sits between 6 and 7 columns of the B panel.** NR is the number of columns of B the packer reads at once, each one a separate read stream (§7.1). Six streams are steady, seven are not (16x7: 68-79% slow; 32x7: 83-87%). #44's suspicion that the prefetcher cannot follow more streams fits this, and so does the scalar packer below. It is still a suspicion: nothing here counts prefetcher events.
+3. **The scalar packer is much steadier from NR=8 up** (same addresses, same order, one element at a time): 16x8 is 2% / 8% slow at 7.28 / 7.03 GOPs, against 94% / 89% slow and 3.56 / 3.72 for the vector packer, which makes the vector packer about half as fast there. At 16x14 it is 33% / 32% slow (6.98 / 7.19 GOPs), at 16x15 39% / 52% and at 8x15 49% / 46%, so it is not free of the state, only later into it. At NR of 6 or less the vector packer is equal or ahead (32x6 6.33 against 5.89 GOPs, 4x4 3.55 against 3.39).
+4. **#46: the tile does not explain the reference.** Our 16x14 is 86% / 81% slow (4 and 3 launches), as much as our 16x15 (92% / 89%). The reference's 16x14 is steady (#46). So the 14th column is not the cause; what differs between the two designs at 16x14 is not the tile (the packers, the buffer placement: #46 §7.2, or the kernels).
+5. **#47: rows matter too.** The steady big shapes ran at 32x7 and were steady (#47); B3 at 32x7 is 83-87% slow. So NR of 7 is enough to go slow on B3 and not on a shape with a large M; the state needs a small M (few A panels) as well.
+6. **K matters** (§8.3): B3_K256 goes slow at 16x6 and stays steady at 16x8, the opposite of B3. The clean rule above is for K = 384.
+
+### 8.6 What to do with it (not done here: changing the shipped tile or the packer is out of scope)
+
+- **A tile for small-M shapes is a decision, on this table:** 16x6 gives B3 6.7 GOPs against 4.5 at the shipped 16x15 and Reuse24 9.1 against 8.5-8.8, and costs B2 (10.3 against 12.6). B3_K256 at 16x6 is slow. The shapes of the real models (issue #2's matrix) need the same sweep before a tile is chosen; B1, B4, B5 and S1-S5 have M of 1000 and more, where 32x6 and 32x7 are steady (#47).
+- **Test the stream count directly** (#44 is the test: pack B one column at a time). This table is the prediction: with one stream per pack, NR=15 should behave like NR=6.
+- **Count the prefetcher events** at 16x6 against 16x7 (`--raw-events x60-l2`, #42), the smallest pair that flips the state, to see whether the prefetch hit and refill counts halve between them as in #41.
+- **Repeat the decisive points at midnight** only if another user's job appears: all readings here were quiet.

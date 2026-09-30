@@ -1,0 +1,13 @@
+board	launch	position	arm	result_dir	exit
+jbpi	1	1	vec	run_2026-09-30_150552	0
+jbpi	1	2	scalar	run_2026-09-30_152200	0
+jbpi	1	3	vec-instr	run_2026-09-30_163007	0
+jbpi	1	4	scalar-instr	run_2026-09-30_164918	0
+jbpi	2	1	scalar	run_2026-09-30_170515	0
+jbpi	2	2	vec-instr	run_2026-09-30_181321	0
+jbpi	2	3	scalar-instr	run_2026-09-30_183229	0
+jbpi	2	4	vec	run_2026-09-30_192853	0
+jbpi	3	1	vec-instr	run_2026-09-30_203712	0
+jbpi	3	2	scalar-instr	run_2026-09-30_205621	0
+jbpi	3	3	vec	run_2026-09-30_215248	0
+jbpi	3	4	scalar	run_2026-09-30_220853	0

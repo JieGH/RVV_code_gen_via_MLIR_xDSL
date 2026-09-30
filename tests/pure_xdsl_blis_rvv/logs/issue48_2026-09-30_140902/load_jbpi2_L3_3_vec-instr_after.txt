@@ -1,0 +1,12 @@
+jlei                 50.0   3       00:00 bash
+root                 10.6   6       00:00 sshd
+root                  0.5   2 58-12:10:16 disp_eng_share_thread
+systemd-oom           0.0   5 58-12:10:23 systemd-oomd
+root                  0.0   2 58-12:10:31 vq1
+root                  0.0   7 58-12:10:31 vq0
+root                  0.0   0  1-11:19:51 kworker/0:1H-kblockd
+root                  0.0   4    03:16:10 kworker/4:0-mm_percpu_wq
+root                  0.0   0  1-08:40:08 kworker/0:0-events
+root                  0.0   6 58-12:10:16 ksdioirqd/mmc1
+root                  0.0   7       23:02 kworker/u16:3-rpciod
+root                  0.0   5 58-12:10:22 NetworkManager
