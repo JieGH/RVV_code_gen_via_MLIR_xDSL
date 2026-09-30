@@ -23,7 +23,7 @@
 # reps_report.py prints a RED NOTE for every run folder whose provenance.txt records it. Numbers that decide
 # something come from a quiet window (midnight): use --start-at 00:00.
 #
-# Board time (one launch, one board): about 50 min for `vec`, 50 for `vec-instr`, 20 for each scalar arm.
+# Board time (one launch, one board): about 60 min for `vec`, 60 for `vec-instr`, 20 for each scalar arm.
 #
 # Logs: logs/issue48_<stamp>/ : plan.txt, runs.tsv (board, launch, position, arm, run folder, exit), one log per
 # run, load_<board>_L<n>_<arm>_{before,after}.txt, load_warnings.txt. The run folders are the usual logs/run_*.

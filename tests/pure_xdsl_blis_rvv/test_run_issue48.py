@@ -164,7 +164,7 @@ def test_the_dry_run_prints_the_plan_and_starts_nothing(tmp_path: Path):
 
     assert done.returncode == 0, done.stdout + done.stderr
     assert "Launch 1   : vec scalar" in done.stdout and "Launch 2   : scalar vec" in done.stdout
-    assert "19 tiles x 4 shapes" in done.stdout and "6 tiles x 4 shapes" in done.stdout
+    assert "25 tiles x 4 shapes" in done.stdout and "7 tiles x 4 shapes" in done.stdout
     assert not list(logs.glob("issue48_*"))
 
 
@@ -174,6 +174,7 @@ def test_the_sweep_config_holds_the_tiles_the_issue_names_and_the_scalar_arm_is_
 
     assert {8, 16, 24, 32} <= {mr for mr, _ in full}
     assert {(16, 14), (16, 15), (16, 16)} <= full  # #46's pair and the over-budget reference
+    assert {(4, 4), (4, 8), (4, 16), (8, 4), (16, 4), (12, 8), (16, 8), (8, 16), (8, 8)} <= full  # the small and odd tiles asked for on 2026-09-30
     over = [t for t in full if pack_plan(t[0], t[1], 64, 384, 128).over_register_budget]
     assert over == [(16, 16)]  # the one known-bad reference; every other tile fits the 32 registers
     assert scalar < full

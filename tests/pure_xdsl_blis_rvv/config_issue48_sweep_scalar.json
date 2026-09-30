@@ -1,11 +1,12 @@
 [
     // Issue #48: the scalar-pack arm of the B3 sweep, on the tiles that matter for telling a packer effect from a
     // tile effect (16x8 and 16x16 have no fringe panel, 16x14 and 16x15 are the #46 pair, 8x15 has one A vector per
-    // k-step, 32x6 is the big-shape tile). Same shapes as config_issue48_sweep.json. Run with --scalar-pack.
+    // k-step, 32x6 is the big-shape tile, 4x4 is the smallest tile). Same shapes as config_issue48_sweep.json. Run with --scalar-pack.
     ["fp32", "AXPY_FP32_Pack", [16, 8], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
     ["fp32", "AXPY_FP32_Pack", [16, 14], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
     ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
     ["fp32", "AXPY_FP32_Pack", [16, 16], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
     ["fp32", "AXPY_FP32_Pack", [8, 15], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000]
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [4, 4], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000]
 ]

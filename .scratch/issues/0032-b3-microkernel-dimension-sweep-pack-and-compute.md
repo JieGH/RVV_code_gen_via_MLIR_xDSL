@@ -41,7 +41,7 @@ MR and NR in a way the total speed hides.
 - The earlier NR sweep (#32) ran on core 0, read total speed only, and did not look at reps or at the pack/compute split.
 - (Added 2026-09-30, §7.2: #36 had run our 16x14 and 16x16 once, instrumented, so "nobody has tested it" holds only for the uninstrumented speed over several launches.)
 
-## 3. Plan (the draft; §7.3 says what was built, and where it differs: controls on every tile, a scalar arm on 6 tiles)
+## 3. Plan (the draft; §7.3 says what was built, and where it differs: controls on every tile, a scalar arm on 7 tiles)
 
 1. **Read the packers.** Write down, from `pack_builder.py`, what the vector A packer and B packer do per panel for each MR and NR:
    vectors per column of an A panel (MR/8), the partial vector for NR not a multiple of 8, strides, bytes per panel row, whether
@@ -95,8 +95,8 @@ Both packers are the `_if` functions of `pack_builder.py` (the driver never call
 - **What moves with NR:** the number of read streams (NR), the number of B vectors per k (1 up to NR=8, 2 up to 16, then 3, 4), the partial vector (NR not a multiple of 8:
   15 = 8+7, 14 = 8+6, 12 = 8+4), the bytes between rows of `Bc` (60 for NR=15, 56 for 14, 64 for 16), and so how many of its vector stores straddle two lines
   (41% for NR=15, 31% for 14, 12% for 12, **0% for 8, 16 and 24**), and whether the last column panel is partial (384 is divisible by 6, 8, 12, 16 and 24, not by 7, 14, 15, 31).
-- **The tile also changes the blocking.** (kc, "K blocks" and "on a line" in the table are for the first, full K block; the last block is smaller, e.g. 170, 170, 44 for kc=170 and 132, 132, 120 for kc=132, and its panels can differ in alignment.) `get_optim_mc_nc_kc` takes MR and NR: for B3 it gives kc = 128 at 16x12..16x16 and at MR=32, **256** at 16x6..16x8 and 8x8..8x16,
-  **170** at MR=24 and 8x24, **132** at 8x31 (mc = 64 and nc = 384 everywhere; for MR=16 only NR=8 and below gets 256, NR=9..16 all get 128). So a tile change is also a kc change, and with kc = 170
+- **The tile also changes the blocking.** (kc, "K blocks" and "on a line" in the table are for the first, full K block; the last block is smaller, e.g. 170, 170, 44 for kc=170 and 132, 132, 120 for kc=132, and its panels can differ in alignment.) `get_optim_mc_nc_kc` takes MR and NR: for B3 it gives kc = 128 at 16x12..16x16 and at MR=32, **256** at 16x4..16x8, 4x16 and 8x8..8x16, **384** (the whole K, one K block) at 4x4, 4x8 and 8x4,
+  **170** at MR=24, 12x8 and 8x24, **132** at 8x31 (mc = 64 and nc = 384 everywhere; for MR=16 only NR=8 and below gets 256, NR=9..16 all get 128). So a tile change is also a kc change, and with kc = 170
   or 132 some `Bc` panels are not a whole number of lines (8x31, 24x6 and 24x9, marked NO below). The reps logs carry the real mc/kc of every run; the report prints kc next to each tile, and kc
   has to be read as a second thing that moved.
 - **Fringe tiles go the slow way.** The shipped build is pinned to one tile; every tile with `cur_mr < MR` or `cur_nr < NR` runs the kernel into a temp buffer and copies C in and out
@@ -129,6 +129,12 @@ The numbers (from `python tests/pure_xdsl_blis_rvv/pack_dims_table.py`, B3 = 64x
 | 32x4 | 64 | 384 | 128 | 3 | 4 (8+8+8+8) | 2 (none) | 128 | 0% | 1 (4) | 96 (none) | 16 | 0% | 2048 yes | 20 | 0 / 192 |
 | 32x6 | 64 | 384 | 128 | 3 | 4 (8+8+8+8) | 2 (none) | 128 | 0% | 1 (6) | 64 (none) | 24 | 25% | 3072 yes | 28 | 0 / 128 |
 | 32x7 | 64 | 384 | 128 | 3 | 4 (8+8+8+8) | 2 (none) | 128 | 0% | 1 (7) | 55 (6, 6) | 28 | 38% | 3584 yes | 32 | 2 / 110 |
+| 4x4 | 64 | 384 | 384 | 1 | 1 (4) | 16 (none) | 16 | 0% | 1 (4) | 96 (none) | 16 | 0% | 6144 yes | 5 | 0 / 1536 |
+| 4x8 | 64 | 384 | 384 | 1 | 1 (4) | 16 (none) | 16 | 0% | 1 (8) | 48 (none) | 32 | 0% | 12288 yes | 9 | 0 / 768 |
+| 4x16 | 64 | 384 | 256 | 2 | 1 (4) | 16 (none) | 16 | 0% | 2 (8+8) | 24 (none) | 64 | 0% | 16384 yes | 17 | 0 / 384 |
+| 8x4 | 64 | 384 | 384 | 1 | 1 (8) | 8 (none) | 32 | 0% | 1 (4) | 96 (none) | 16 | 0% | 6144 yes | 5 | 0 / 768 |
+| 16x4 | 64 | 384 | 256 | 2 | 2 (8+8) | 4 (none) | 64 | 0% | 1 (4) | 96 (none) | 16 | 0% | 4096 yes | 10 | 0 / 384 |
+| 12x8 | 64 | 384 | 170 | 3 | 2 (8+4) | 6 (4, 4+0) | 48 | 13% | 1 (8) | 48 (none) | 32 | 0% | 5440 yes | 18 | 48 / 288 |
 
 `test_pack_dims_table.py` checks the vector counts of the table against the real builders (the loads, stores and `setvl`s in the innermost loop of `build_pack_CB_v_if` and
 `build_pack_RB_v_if` for 11 NR and 7 MR values), so the table cannot drift from `pack_builder.py`.
@@ -145,18 +151,18 @@ The numbers (from `python tests/pure_xdsl_blis_rvv/pack_dims_table.py`, B3 = 64x
 
 ### 7.3 The sweep, as built
 
-- **Tiles** (`config_issue48_sweep.json`, 19 pinned rows, all four shapes of `datasets/issue46_ref_b3.dat` on each: B3, B3_K256, B2, Reuse24, so every tile carries its own controls):
-  MR=16 x NR 6, 7, 8, 12, 14, 15, 16; MR=8 x NR 8, 14, 15, 16, 24, 31; MR=24 x NR 6, 8, 9; MR=32 x NR 4, 6, 7. NR stops at the register limit for each MR (31, 15, 9, 7), except 16x16, kept once as the
-  known-bad reference. The plan's "NR from 4" is not followed for every MR and some NR between are left out (16x9..11 and 16x13, 8x17..23 and 25..30): 19 tiles already take about 50 min a launch, and
+- **Tiles** (`config_issue48_sweep.json`, 25 pinned rows, all four shapes of `datasets/issue46_ref_b3.dat` on each: B3, B3_K256, B2, Reuse24, so every tile carries its own controls):
+  MR=16 x NR 6, 7, 8, 12, 14, 15, 16; MR=8 x NR 8, 14, 15, 16, 24, 31; MR=24 x NR 6, 8, 9; MR=32 x NR 4, 6, 7; and, added at the user's request on 2026-09-30, the small and odd tiles 4x4, 4x8, 4x16, 8x4, 16x4 and 12x8 (a side of 4 is one partial vector with vl = 4; 12 is an MR that is not a multiple of 8, so its A chunks are 8+4; 4x4 has 1536 tiles per block, so per-tile cost should dominate there). NR stops at the register limit for each MR (31, 15, 9, 7), except 16x16, kept once as the
+  known-bad reference. The plan's "NR from 4" is not followed for every MR and some NR between are left out (16x9..11 and 16x13, 8x17..23 and 25..30): 25 tiles already take about 60 min a launch, and
   the points kept are the ones that tell the causes above apart. Any gap in the curve is a later, cheaper follow-up. Why these: 16x14 against 16x15 is #46's open pair; 16x6/8/12/16 have no fringe column panel and 16x7/14/15 have one, so a fringe panel and a partial vector come apart
   (12 = 8+4 has a partial vector and no fringe panel); MR=8 has one A vector per k-step; MR=32 is the row count of the steady big shapes (#47).
-- **Scalar arm** (`config_issue48_sweep_scalar.json`, 6 tiles: 16x8, 16x14, 16x15, 16x16, 8x15, 32x6): the scalar packer reads the same addresses in the same order, so a packer effect and a tile effect come apart
+- **Scalar arm** (`config_issue48_sweep_scalar.json`, 7 tiles: 16x8, 16x14, 16x15, 16x16, 8x15, 32x6, 4x4): the scalar packer reads the same addresses in the same order, so a packer effect and a tile effect come apart
   on the tiles that matter, without doubling the board time.
 - **Four arms** in `run_issue48.sh`: `vec` and `scalar` (uninstrumented, reference protocol, `--tmin 10`: speed, slow-rep share), `vec-instr` and `scalar-instr` (`--instr`, warm-up protocol, 1000 reps:
   `Pack_Seconds` and `Compute_Seconds` of every rep; `--raw-events x60-l2` optional). Always `--no-nc-overrides --cpu 4`. The arms rotate from launch to launch (vec, scalar / scalar, vec / ...), the two boards take
   turns, one run at a time under the shared lock, other users' processes are read before and after every run (RED NOTE, never a stop).
-- **Board time** (about, from the 2.4-minute run of four shapes on one tile on 2026-09-29): 50 min for one `vec` or `vec-instr` launch on one board, 20 min for one scalar arm. 3 launches on each of the two boards:
-  `vec` + `scalar` about 7 h, `vec-instr` + `scalar-instr` about 7 h. So two quiet windows (two nights), or one if the instrumented arms are cut to one board.
+- **Board time** (about, from the 2.4-minute run of four shapes on one tile on 2026-09-29): 60 min for one `vec` or `vec-instr` launch on one board, 20 min for one scalar arm. 3 launches on each of the two boards:
+  `vec` + `scalar` about 8 h, `vec-instr` + `scalar-instr` about 8 h. So two quiet windows (two nights), or one if the instrumented arms are cut to one board.
 - **Reading** (`issue48_report.py <series folder>`): per board and shape, one row per tile and packer: GOPs by mean time (average, lowest-highest launch), by median rep, slow-rep share, fast start, CV, kc;
   and for the instrumented arms: pack share of pack+compute, and pack and compute milliseconds per rep in fast reps and in slow reps. Fewer than 3 launches and any RED NOTE are flagged.
 - **Tests:** `test_pack_dims_table.py` (34), `test_run_issue48.py` (13, stubbed bench, no board), `test_issue48_report.py` (10), plus one new test in `test_reps_report.py` (`reps_report.read_reps` now keeps
