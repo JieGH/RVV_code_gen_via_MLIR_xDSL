@@ -41,6 +41,9 @@
 #   --tmin S | --cpu N  as for the other scripts (defaults 10 and core 4; core 0 needs --allow-core-0).
 #                       --tmin is only given to the uninstrumented arms
 #   --raw-events E      give E (a name=code list, or x60-l2) to the instrumented arms
+#   --workspace NAME    the workspace directory on the board (compile_macro_bench.sh --riscv-workspace). The boards
+#                       share one NFS home, so two series running at once, one per board, each need their own
+#                       (and their own checkout of the repo on this host: every run rewrites pj_gen/)
 #   --direct            reach the boards directly instead of through the jump host
 #   --riscv-user U --riscv-port P    (defaults jlei, 22)
 #   --dry-run           print the plan and the first run's settings, then stop
@@ -70,6 +73,7 @@ NO_PIN=false
 CPU=""
 TMIN=10
 RAW_EVENTS=""
+WORKSPACE=""
 MODE_ARG="--jump"
 RISCV_USER="jlei"
 RISCV_PORT="22"
@@ -88,6 +92,7 @@ while [[ "$#" -gt 0 ]]; do
         --no-pin)        CPU_ARGS=(--no-pin); NO_PIN=true ;;
         --allow-core-0)  ALLOW_CORE0=true ;;
         --raw-events)    RAW_EVENTS="$2"; shift ;;
+        --workspace)     WORKSPACE="$2"; shift ;;
         --direct)        MODE_ARG="--direct" ;;
         --riscv-user)    RISCV_USER="$2"; shift ;;
         --riscv-port)    RISCV_PORT="$2"; shift ;;
@@ -140,6 +145,7 @@ build_cmd() {
         scalar-instr) CMD+=(--scalar-pack --instr) ;;
     esac
     case "${arm}" in *-instr) [ -n "${RAW_EVENTS}" ] && CMD+=(--raw-events "${RAW_EVENTS}") ;; esac
+    [ -n "${WORKSPACE}" ] && CMD+=(--riscv-workspace "${WORKSPACE}")
     return 0
 }
 

@@ -109,6 +109,17 @@ def test_raw_events_without_an_instrumented_arm_is_refused(tmp_path: Path):
     assert done.returncode == 1 and "--raw-events needs an instrumented arm" in done.stderr
 
 
+def test_a_workspace_is_passed_on_to_every_run_and_left_out_by_default(tmp_path: Path):
+    # The boards share one NFS home, so a second series on the other board needs its own workspace directory.
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    _, logs = run_series(tmp_path / "a", ",".join(["ok"] * 8), "--workspace", "ws_b")
+    _, plain = run_series(tmp_path / "b", ",".join(["ok"] * 8))
+
+    assert all("--riscv-workspace ws_b" in ln for ln in (logs / "calls.txt").read_text().splitlines())
+    assert all("--riscv-workspace" not in ln for ln in (plain / "calls.txt").read_text().splitlines())
+
+
 def test_core_0_is_refused(tmp_path: Path):
     done, _ = run_series(tmp_path, ALL_OK, "--cpu", "0")
 
