@@ -62,6 +62,9 @@ class Case:
     mc: int = 0
     kc: int = 0
     variant: str = ""
+    # Issue #48: the instrumented build's pack and compute time of each rep, in seconds (nan when not measured).
+    pack_seconds: list[float] = field(default_factory=list[float])
+    compute_seconds: list[float] = field(default_factory=list[float])
     # Issue #42: each counter column's per-rep counts, reps in the order they ran.
     counters: dict[str, list[float]] = field(default_factory=dict[str, list[float]])
 
@@ -116,6 +119,8 @@ def read_reps(path: Path) -> dict[tuple[str, int], Case]:
             case = cases.setdefault(key, Case(ops=ops, m=int(row["M"]), n=int(row["N"]), k=int(row["K"]),
                                               mc=int(row["MC"]), kc=int(row["KC"]), variant=row["Variant"]))
             case.seconds.append(float(row["Seconds"]))
+            case.pack_seconds.append(float(row.get("Pack_Seconds", "nan")))
+            case.compute_seconds.append(float(row.get("Compute_Seconds", "nan")))
             for c in columns:
                 case.counters.setdefault(c, []).append(float(row[c]))
     return cases

@@ -51,6 +51,17 @@ def test_read_reps_keeps_the_shape_and_the_blocking_of_each_case(tmp_path: Path)
     assert (case.m, case.n, case.k, case.mc, case.kc, case.variant) == (64, 384, 384, 64, 128, "MR16_NR15")
 
 
+def test_read_reps_keeps_each_reps_pack_and_compute_seconds_and_nan_for_an_uninstrumented_log(tmp_path: Path):
+    # Issue #48: the tile sweep splits every rep into pack and compute time (the instrumented build's columns).
+    instr = "B3,64,384,384,MR16_NR15,64,384,128,{r},0.0030,{p},{c},1,2\n"
+    f = _write(tmp_path / "instr.txt", instr.format(r=0, p=0.0010, c=0.0018) + instr.format(r=1, p=0.0015, c=0.0012))
+    plain = _write(tmp_path / "plain.txt", _rows("B3", 384, [FAST]))
+
+    case = read_reps(f)[("B3", 384)]
+    assert case.pack_seconds == [0.0010, 0.0015] and case.compute_seconds == [0.0018, 0.0012]
+    assert all(x != x for x in read_reps(plain)[("B3", 384)].pack_seconds)  # nan
+
+
 def test_gops_by_mean_time_is_the_reference_formula_and_median_is_the_median_rep():
     st = case_stats(OPS, [FAST, FAST, SLOW])
     assert st.gops_mean_time == pytest.approx(3 * OPS / ((2 * FAST + SLOW) * 1e9))
