@@ -44,6 +44,11 @@ set -e
 # whole 64-byte line of the Ac/Bc block the packer is about to write, so its stores no longer
 # read those lines from the L2 first. AXPY kernels only. Its logs are named *_zeroline.txt.
 #
+# --pad-ldb <elements> (issue #49, off by default): ldb (B's leading dimension) becomes
+# k + <elements> instead of k, moving where the B read streams land in memory; k, the data
+# and the correctness check are unchanged. Logs get a _padldb<N> suffix (after _zeroline,
+# before _no_nc_override), so a padded run never shares a log with an unpadded one.
+#
 # --raw-events <name=code,...|x60-l2> (issue #42, --instr only, needs the per-rep log): the
 # core's own event codes (the X60's L2 and prefetch events for the preset), counted per rep
 # into a Pack_<name> and a Compute_<name> column of the per-rep log. Every launch also records
@@ -109,6 +114,7 @@ while [[ "$#" -gt 0 ]]; do
         --config)          CONFIG="$2";              shift      ;;
         --scalar-pack)     TEST_ARGS="${TEST_ARGS} --scalar-pack" ;;
         --zero-pack-lines) TEST_ARGS="${TEST_ARGS} --zero-pack-lines" ;;
+        --pad-ldb)         TEST_ARGS="${TEST_ARGS} --pad-ldb $2";    shift      ;;
         --ref-protocol)    PROTOCOL_FLAG="--ref-protocol"       ;;
         --no-ref-protocol) PROTOCOL_FLAG="--no-ref-protocol"    ;;
         --dry-run)         DRY_RUN=true                         ;;

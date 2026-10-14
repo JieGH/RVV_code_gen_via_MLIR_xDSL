@@ -1,0 +1,12 @@
+[
+    // Issue #50: prefetcher counters at the four tiles that flip the slow state of #48 (vector
+    // packer, jbpi/jbpi2): 16x6 (steady at K=384, slow at K=256), 16x7 (slow at K=384, #48's own
+    // pair to 16x6), 16x8 (slow at K=384, steady at K=256), and the shipped 16x15 as an anchor to
+    // #41's counter numbers. Same four rows as config_issue48_sweep.json, same dataset
+    // (datasets/issue46_ref_b3.dat: B3, B3_K256, and the steady control B2). Run through
+    // run_issue50.sh --instr --raw-events x60-l2 (#42).
+    ["fp32", "AXPY_FP32_Pack", [16, 6], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 7], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 8], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000]
+]

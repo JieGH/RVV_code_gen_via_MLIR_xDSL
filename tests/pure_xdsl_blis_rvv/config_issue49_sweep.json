@@ -1,0 +1,9 @@
+[
+    // Issue #49: does the B3_K256 flip follow ldb, not NR? The decisive test pads B's leading
+    // dimension (driver flag --pad-ldb, run through run_issue49.sh) at the two tiles that flip
+    // in opposite directions between K=384 and K=256 (#48 report): 16x6 (steady at K=384, slow
+    // at K=256) and 16x8 (slow at K=384, steady at K=256). Same two rows as config_issue48_sweep.json,
+    // same dataset (datasets/issue46_ref_b3.dat: B3, B3_K256, and the steady controls B2 and R24).
+    ["fp32", "AXPY_FP32_Pack", [16, 6], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 8], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000]
+]

@@ -47,7 +47,7 @@ instrumented build was used only to split each rep into pack time and compute ti
 \texttt{jbpi2} 4 (vector and scalar) and 3 (instrumented); \texttt{jbpi} 3 throughout. Every log cited is committed
 (Appendix~A).
 
-\section{Bottom line}
+\section{Findings}
 \begin{enumerate}
   \item \textbf{The slow state follows NR.} With the vector packer, B3 is \good{steady} (no slow rep in any launch, on
   either board) on every tile with NR of 4 or 6, and \up{two-speed} (53--94\% slow reps; 16$\times$16, over the register budget, 25--67\%) on every tile with NR of 7 or
@@ -57,17 +57,51 @@ instrumented build was used only to split each rep into pack time and compute ti
   \item \textbf{The scalar packer is far steadier from NR\,=\,8 upwards.} On 16$\times$8 it runs at about 7.0--7.3 GOPs
   with 2--8\% slow reps; the vector packer runs at 3.6--3.7 GOPs with 89--94\% slow reps. At NR of 6 or less the
   vector packer is level with or ahead of the scalar one.
-  \item \textbf{\iss{46}: the tile does not explain the reference.} Our 16$\times$14 is as slow as our 16$\times$15
-  (81--86\% against 89--92\% slow reps), whereas the reference's 16$\times$14 is steady. The difference between the
-  two designs lies elsewhere (packers, buffer placement or kernels).
-  \item \textbf{\iss{47}: rows and depth matter as well.} 32$\times$7 is steady on the large shapes but 83--87\% slow
+  \item \textbf{In a slow rep both halves slow down:} packing takes 1.6--2.2 times as long and compute 1.2--1.8 times.
+  \item \textbf{Rows and depth matter as well (\iss{47}).} 32$\times$7 is steady on the large shapes but 83--87\% slow
   on B3; and B3 with K=256 behaves differently from B3 (slow on 16$\times$6, steady on 16$\times$8). ``NR of 6 or less
   is steady'' is a rule for B3 at K=384, not a general one.
-  \item \textbf{In a slow rep both halves slow down:} packing takes 1.6--2.2 times as long and compute 1.2--1.8 times.
   \item \textbf{No tile wins every shape.} For B3, 16$\times$6 reaches 6.71 / 6.77 GOPs (\texttt{jbpi2} / \texttt{jbpi})
   against 4.43 / 4.53 for the shipped 16$\times$15; but B2 is lower on 16$\times$6 (10.27 / 10.25 against
-  12.59 / 12.56). Whether to change the shipped tile is the user's decision (out of scope here).
+  12.59 / 12.56).
 \end{enumerate}
+
+\section{Hypothesis}
+\textbf{Working hypothesis (not tested here).} The B packer reads NR columns of B at once, each a separate read stream.
+The L1 prefetcher can follow up to six streams; at seven or more it backs off to about half its normal work (the pattern
+\iss{41} and \iss{42} counted on 16$\times$15), the lines arrive late, and the rep slows. This is the suspicion of \iss{44}.
+
+\emph{What it explains:} the threshold between six and seven at every MR (finding 1); why MR and kc do not matter
+(finding 2); why the scalar packer, which reads the same addresses in the same order but one element at a time, goes
+slow later and less (finding 3).
+
+\emph{What it does not explain yet:} why compute slows as well as packing (finding 4); why 32$\times$7 is steady on shapes with
+many rows and why B3 with K=256 is slow at 16$\times$6 (finding 5). So the stream count is at most one of the conditions.
+
+\emph{How to test it:} \iss{44} (pack B one column at a time) predicts that a 15-column panel then behaves like a
+6-column one. Counting prefetcher events on 16$\times$6 against 16$\times$7 (\texttt{-{}-raw-events x60-l2}) shows whether
+the prefetch hits halve between them. \textbf{Nothing in this sweep counts prefetcher events;} the stream count is read from the
+pattern in the data.
+
+\section{Conclusion and impact}
+\textbf{Conclusion.} Yes: the microkernel tile decides whether B3's slow state appears, and it does so through NR, the
+number of B columns the packer reads at once. Packing also depends on the tile: in fast reps the vector packer needs
+0.97--0.99 ms at 16$\times$6 against 0.66--0.76 ms at NR of 8 to 15, and 1.32 ms at 32$\times$6. The tile does \emph{not} explain
+the reference design (\iss{46}): our 16$\times$14 is as slow as our 16$\times$15 (81--86\% against 89--92\% slow reps),
+while the reference's 16$\times$14 is steady, so the difference between the two designs lies elsewhere (packers, buffer
+placement or kernels).
+
+\textbf{Impact.}
+\begin{itemize}
+  \item For small-M shapes such as B3, the shipped 16$\times$15 tile is the wrong choice: 16$\times$6 gives
+  6.71 / 6.77 GOPs against 4.43 / 4.53 (and Reuse24 about 9.1 against 8.5--8.8).
+  \item The same tile costs B2 (10.27 against 12.59 GOPs), and B3 with K=256 is slow on 16$\times$6. No single tile is best,
+  so the tile has to be chosen per shape; that is the user's decision and out of scope here.
+  \item The vector packer is where the tile matters most: with seven or more B streams it runs at about half the speed of the scalar
+  packer (16$\times$8: 3.6--3.7 against 7.0--7.3 GOPs). If \iss{44} confirms the hypothesis, a change to the packer, not to the tile,
+  could keep wide tiles steady.
+\end{itemize}
+
 
 \section{What the vector packers do for each tile}
 The shipped packers are \texttt{pack\_RB\_v\_if} (A) and \texttt{pack\_CB\_v\_if} (B). The A packer loads MR/8 contiguous
@@ -258,7 +292,12 @@ afternoon and evening, not at midnight; no other user's job appeared, so a quiet
   \item Run \iss{44} (pack B one column at a time): this brief predicts that a 15-column panel should then behave like a
   6-column one.
   \item Count prefetcher events on 16$\times$6 against 16$\times$7 (\texttt{-{}-raw-events x60-l2}, \iss{42}), the
-  smallest pair that flips the state.
+  smallest pair that flips the state. \textbf{Now \iss{50}}: widened to the two B3\_K256 tiles that flip the other way
+  (16$\times$6 and 16$\times$8), script \texttt{run\_issue50.sh}, not yet run (needs board access).
+  \item Opened as \iss{49}: whether the B3\_K256 flip follows \texttt{ldb} rather than NR (the premise \iss{44} rests
+  on). Its desk table (no board) already found that none of stream count, page/offset geometry, kc/K-blocks or a
+  simple MR threshold alone splits every steady tile from every slow one across both K=384 and K=256 --- the decisive
+  test (padding \texttt{ldb} directly, \texttt{run\_issue49.sh}) is the next step, also not yet run.
 \end{itemize}
 
 \section*{Appendix A: logs and code}

@@ -428,6 +428,8 @@ struct RunSettings {
     bool scalar_pack;
     string scalar_pack_source;
     bool zero_pack_lines;
+    int pad_ldb;
+    string pad_ldb_source;
     bool no_nc_overrides;
     string dataset;
     string raw_log, summary_log, perf_log;
@@ -487,6 +489,12 @@ static void print_run_overview(const RunSettings& r) {
                       ? "cleared with cbo.zero before each pack (inside the pack timer)"
                       : "not cleared: each line the packer writes is read from the L2 first",
                   r.zero_pack_lines ? "--zero-pack-lines" : "default");
+    // Issue #49: pads B's leading dimension (ldb = k + pad) to move where the B read
+    // streams land in memory, without changing k, the data or the correctness check.
+    overview_line("Pad ldb", r.pad_ldb > 0
+                      ? ("ldb = k + " + to_string(r.pad_ldb) + " elements")
+                      : "ldb = k (no padding)",
+                  r.pad_ldb_source);
     overview_line("Kernel family", string(CONFIG_DATATYPE) + " " + CONFIG_METHOD + " | VLEN " +
                                        to_string(CONFIG_VLEN) + " | arch " + CONFIG_ARCH,
                   "config.json");
@@ -536,6 +544,8 @@ int main(int argc, char** argv) {
     string scalar_pack_source = force_scalar_pack ? "USE_SCALAR_PACK" : "default";
     bool no_nc_overrides = false;
     bool zero_pack_lines = false;  // issue #43
+    int pad_ldb = 0;  // issue #49: elements added to B's leading dimension beyond k
+    string pad_ldb_source = "default";
     // Issue #27: the reference design's run protocol (test_gemm.c:339-361) is the default
     // wherever it can run. The instrumented build cannot (its timers make the numbers
     // incomparable, issue #14), so its default is the older warm-up protocol.
@@ -558,6 +568,15 @@ int main(int argc, char** argv) {
             scalar_pack_source = "--scalar-pack";
         } else if (string(argv[i]) == "--zero-pack-lines") {
             zero_pack_lines = true;
+        } else if (string(argv[i]) == "--pad-ldb") {
+            char* end;
+            pad_ldb = (i + 1 < argc) ? (int) std::strtol(argv[i + 1], &end, 10) : -1;
+            if (i + 1 >= argc || end == argv[i + 1] || *end != '\0' || pad_ldb < 0) {
+                cerr << "Error: --pad-ldb needs a non-negative integer number of elements." << endl;
+                return 1;
+            }
+            pad_ldb_source = "--pad-ldb";
+            ++i;
         } else if (string(argv[i]) == "--no-nc-overrides") {
             no_nc_overrides = true;
         } else if (string(argv[i]) == "--save-reps") {
@@ -586,7 +605,7 @@ int main(int argc, char** argv) {
     }
 
     if (dataset_file == "") {
-        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack] [--zero-pack-lines] [--no-ref-protocol | --ref-protocol] [--tmin <seconds>] [--no-nc-overrides] [--save-reps] [--raw-events <name=code,...|x60-l2>]" << endl;
+        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack] [--zero-pack-lines] [--pad-ldb <elements>] [--no-ref-protocol | --ref-protocol] [--tmin <seconds>] [--no-nc-overrides] [--save-reps] [--raw-events <name=code,...|x60-l2>]" << endl;
         return 1;
     }
     // Issue #43: the DOT dispatch clears no lines (its K pad is zeroed on purpose instead), so a
@@ -634,6 +653,7 @@ int main(int argc, char** argv) {
     const string log_suffix = string(RVV_LOG_SUFFIX) + (ref_protocol ? "_refproto" : "") +
                               (force_scalar_pack ? "_scalarpack" : "") +
                               (zero_pack_lines ? "_zeroline" : "") +
+                              (pad_ldb > 0 ? ("_padldb" + to_string(pad_ldb)) : "") +
                               (no_nc_overrides ? "_no_nc_override" : "");
     const string log_stem = string("_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + log_suffix + ".txt";
     // Ensure logs directory exists (handled by Makefile)
@@ -653,7 +673,7 @@ int main(int argc, char** argv) {
         raw_open = perf_gemm_open_raw(&perf, codes.data(), (int) codes.size()) == 0;
     }
     print_run_overview({ref_protocol, protocol_source, tmin, tmin_source, force_scalar_pack,
-                        scalar_pack_source, zero_pack_lines, no_nc_overrides, dataset_file, raw_log_name, summary_log_name, perf_log_name,
+                        scalar_pack_source, zero_pack_lines, pad_ldb, pad_ldb_source, no_nc_overrides, dataset_file, raw_log_name, summary_log_name, perf_log_name,
                         save_reps, reps_log_name, raw_events, raw_open});
     bool raw_exists = false;
     {
@@ -749,16 +769,20 @@ int main(int argc, char** argv) {
             continue; 
         }
 
-        int lda = m, ldb = k, ldc = m;
-        
+        // Issue #49: ldb (B's leading dimension, column-major) is k plus an optional pad in
+        // elements (--pad-ldb), to move where the NR read streams land in memory without
+        // changing k, the data or the correctness check below.
+        int lda = m, ldb = k + pad_ldb, ldc = m;
+
         // Over-allocate buffers by 32 in each dimension to prevent segfaults/heap corruption.
         // The simple pure_xdsl macrokernel does not have edge-case handling for un-padded fringes,
         // so it will unconditionally write out of bounds up to the next MR/NR multiple.
         size_t pad_m = m + 32;
         size_t pad_n = n + 32;
         size_t pad_k = k + 32;
+        size_t pad_ldb_rows = (size_t) ldb + 32;  // B's row count follows ldb, not k, once padded
         A_TYPE* A = alloc_aligned<A_TYPE>(pad_m * pad_k);
-        B_TYPE* B = alloc_aligned<B_TYPE>(pad_k * pad_n);
+        B_TYPE* B = alloc_aligned<B_TYPE>(pad_ldb_rows * pad_n);
         C_TYPE* C = alloc_aligned<C_TYPE>(pad_m * pad_n);
         C_TYPE* Cg = alloc_aligned<C_TYPE>(pad_m * pad_n);
         
