@@ -1,0 +1,12 @@
+jlei                  500   3       00:00 ps
+jlei                 33.3   0       00:00 bash
+root                 14.2   4       00:00 sshd
+root                  0.5   2 72-05:55:54 disp_eng_share_thread
+systemd-oom           0.0   1 72-05:56:01 systemd-oomd
+messagebus            0.0   1 72-05:56:01 dbus-daemon
+root                  0.0   4 72-05:56:09 vq1
+root                  0.0   5 72-05:56:09 vq0
+root                  0.0   5 72-05:56:00 NetworkManager
+root                  0.0   1 72-05:55:55 ksdioirqd/mmc1
+root                  0.0   1       11:35 kworker/u16:0-xprtiod
+root                  0.0   1       22:43 kworker/u16:5-nfsiod

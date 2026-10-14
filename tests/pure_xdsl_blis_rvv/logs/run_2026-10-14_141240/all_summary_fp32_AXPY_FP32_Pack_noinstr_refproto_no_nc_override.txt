@@ -1,0 +1,11 @@
+=== fp32_AXPY_FP32_Pack_vlen256_MR16NR6 ===
+▶ B3 (64x384x384)        | best variant 16x6 [16 rows x 6 columns of C per tile] | 6.66 GOPs by mean time [whole GEMM call, packing included] | 6.68 GOPs median rep | 3528 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:64 nc:384 kc:256)
+▶ B2 (384x384x64)        | best variant 16x6 [16 rows x 6 columns of C per tile] | 10.35 GOPs by mean time [whole GEMM call, packing included] | 10.35 GOPs median rep | 5482 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:384 nc:384 kc:64)
+▶ B3_K256 (64x384x256)   | best variant 16x6 [16 rows x 6 columns of C per tile] | 4.38 GOPs by mean time [whole GEMM call, packing included] | 4.10 GOPs median rep | 3482 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:64 nc:384 kc:256)
+▶ R24 (384x384x384)      | best variant 16x6 [16 rows x 6 columns of C per tile] | 9.15 GOPs by mean time [whole GEMM call, packing included] | 9.16 GOPs median rep | 809 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:384 nc:384 kc:256)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR16NR8 ===
+▶ B3 (64x384x384)        | best variant 16x8 [16 rows x 8 columns of C per tile] | 3.47 GOPs by mean time [whole GEMM call, packing included] | 3.28 GOPs median rep | 1838 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:64 nc:384 kc:256)
+▶ B2 (384x384x64)        | best variant 16x8 [16 rows x 8 columns of C per tile] | 10.20 GOPs by mean time [whole GEMM call, packing included] | 10.22 GOPs median rep | 5407 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:384 nc:384 kc:64)
+▶ B3_K256 (64x384x256)   | best variant 16x8 [16 rows x 8 columns of C per tile] | 6.86 GOPs by mean time [whole GEMM call, packing included] | 7.06 GOPs median rep | 5454 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:64 nc:384 kc:256)
+▶ R24 (384x384x384)      | best variant 16x8 [16 rows x 8 columns of C per tile] | 8.89 GOPs by mean time [whole GEMM call, packing included] | 9.01 GOPs median rep | 785 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:384 nc:384 kc:256)

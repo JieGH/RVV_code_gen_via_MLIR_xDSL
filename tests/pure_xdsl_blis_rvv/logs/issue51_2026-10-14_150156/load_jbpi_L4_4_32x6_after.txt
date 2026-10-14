@@ -1,0 +1,12 @@
+jlei                  600   7       00:00 ps
+root                  9.6   4       00:00 sshd
+root                  0.5   2 72-06:44:21 disp_eng_share_thread
+psiwins               0.4   0       37:38 sshd
+systemd-oom           0.0   0 72-06:44:28 systemd-oomd
+root                  0.0   7       45:43 kworker/u16:3-nfsiod
+root                  0.0   2       36:14 kworker/u16:4-rpciod
+psiwins               0.0   4       37:38 wireplumber
+psiwins               0.0   2       37:39 systemd
+messagebus            0.0   6 72-06:44:27 dbus-daemon
+root                  0.0   0 72-06:44:36 vq1
+root                  0.0   0 72-06:44:36 vq0

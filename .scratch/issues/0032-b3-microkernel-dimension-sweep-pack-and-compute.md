@@ -282,3 +282,13 @@ Mean time per rep in milliseconds, pooled over the launches: fast reps, then slo
 - **Test the stream count directly** (#44 is the test: pack B one column at a time). This table is the prediction: with one stream per pack, NR=15 should behave like NR=6.
 - **Count the prefetcher events** at 16x6 against 16x7 (`--raw-events x60-l2`, #42), the smallest pair that flips the state, to see whether the prefetch hit and refill counts halve between them as in #41.
 - **Repeat the decisive points at midnight** only if another user's job appears: all readings here were quiet.
+
+## 9. Sub-issues (opened 2026-10-14, in priority order)
+
+The B3_K256 rows of §8.3 do not follow the "NR up to 6 is steady" rule (16x6 goes slow at K=256, 16x8 goes steady), so the follow-ups start from that.
+
+1. **#49** [[0033-b-stream-layout-k256-flip]]: where the B read streams land in memory. The step between streams is `ldb`*4 = 1536 B at K=384 and 1024 B at K=256. A desk table first, then a padded-`ldb` board test. It tests the premise of #44.
+2. **#50** [[0034-prefetcher-counters-four-corners]]: prefetcher counters at the four tiles that flip (16x6/16x7 at K=384, 16x6/16x8 at K=256).
+3. **#51** [[0035-slow-state-m-sweep]]: sweep M at fixed tiles, so the rows and the tile come apart (#47's open point).
+4. **#52** [[0036-reference-16x14-vs-ours-code-read]]: read the reference and ours side by side at 16x14 (desk only).
+5. **#53** [[0037-scalar-vs-vector-packer-on-controls]]: scalar against vector packer on all four shapes, from the committed logs (desk only).

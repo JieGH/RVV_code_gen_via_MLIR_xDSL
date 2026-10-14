@@ -1,0 +1,12 @@
+root                 10.0   6       00:00 sshd
+root                  0.5   3 72-12:18:39 disp_eng_share_thread
+systemd-oom           0.0   6 72-12:18:46 systemd-oomd
+psiwins               0.0   6    06:11:56 sshd
+messagebus            0.0   3 72-12:18:46 dbus-daemon
+root                  0.0   5 72-12:18:54 vq1
+root                  0.0   5 72-12:18:54 vq0
+root                  0.0   3 72-12:18:45 NetworkManager
+root                  0.0   1 72-12:18:36 bluetoothd
+root                  0.0   1 72-12:18:40 ksdioirqd/mmc1
+root                  0.0   5    05:41:52 kworker/5:0-events
+root                  0.0   7 72-11:52:45 fwupd

@@ -7,8 +7,8 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/49
 **Comes from:** #48 §8.3 and §8.5 (answer 6, "K matters"), and the B3_K256 tables of the #48 report
 (`tests/pure_xdsl_blis_rvv/logs/issue48_2026-09-30_report.md`, "jbpi, B3_K256" and "jbpi2, B3_K256").
 
-**Role / Label:** `needs-triage` — sub-issue of #48, priority 1 of the #48 follow-ups (opened 2026-10-14). Step 1 done (§8, below): no single desk quantity splits it. The `--pad-ldb` driver option and `run_issue49.sh` (step 2) are built and host-validated; not yet run against the real boards.
-**Status:** 🟡 Open. Step 1 done; step 2 ready, awaiting board access.
+**Role / Label:** `needs-triage` — sub-issue of #48, priority 1 of the #48 follow-ups (opened 2026-10-14). Step 1 (§8) and step 2 (§9/§11) are both done: H1 (stream count alone) is refuted, H2 (layout) holds but not as a simple monotone rule.
+**Status:** 🟢 Answered (§11, below). Board time: `jbpi` only, 12/12 runs, no red note.
 **Target:** step 1 none (desk, done); step 2 `jbpi` and `jbpi2`, core 4, house rules of #39.
 **Shape(s):** B3 (64x384x384) and B3_K256 (64x384x256); B2 and Reuse24 as steady controls.
 **Primary Sources:**
@@ -164,9 +164,63 @@ use for more than two settings, which still satisfies the rule's actual intent (
 first or last). Flagged by the Spec review as a deviation from the issue's literal wording;
 recorded here as a deliberate, precedented choice rather than silently resolved.
 
+## 11. Step 2: the board result (2026-10-14)
+
+`run_issue49.sh --boards jbpi` ran the full plan: 3 launches, pads rotating (0 8 16 128 / 8 16
+128 0 / 16 128 0 8), tiles 16x6 and 16x8, shapes B3/B3_K256/B2/R24 (`issue49_2026-10-14_133529`,
+12/12 runs ok, no red note). **One board only, not two**: `jbpi2` had another user's job pinned
+at ~100% the whole time this ran; the plan's "`jbpi` and `jbpi2`" target is not met and the
+cross-board check is still open. GOPs by mean time and slow-rep share, 3 launches each
+(`reps_report.py` per tile per pad, read from the per-tile `reps_*.txt.gz` inside each run — the
+two tiles share one dataset/config row, so `reps_report.py` run on the whole run directory
+merges them; it has to be pointed at each tile's own reps file to tell 16x6 apart from 16x8):
+
+| tile | shape (K, native ldb step) | pad0 (ldb=k, step shown) | pad8 | pad16 | pad128 |
+|---|---|---|---|---|---|
+| 16x6 | B3 (K=384, 1536 B) | 6.68 GOps, 0% slow | 6.05, 0% | 7.14, 0% | 5.53, 0% |
+| 16x6 | B3_K256 (K=256, 1024 B) | **4.35, 61% slow** | 6.95, 0% | 7.90, 0% | 6.47, 0% |
+| 16x6 | B2 (K=64, steady control) | 10.31, 0% | 10.10, 0% | 10.15, 0% | **8.25, 47% slow** |
+| 16x6 | R24 (steady control) | 9.16, 0% | 8.94, 0% | 9.30, 0% | 9.12, 0% |
+| 16x8 | B3 (K=384, 1536 B) | **3.48, 95% slow** | 5.83, 0% | **4.73, 56% slow** | 6.12, 0% |
+| 16x8 | B3_K256 (K=256, 1024 B) | 6.84, 0% | 6.79, 0% | **4.57, 76% slow** | **5.48, 56% slow** |
+| 16x8 | B2 (steady control) | 10.24, 0% | 10.21, 0% | 10.30, 0% | 10.16, 0% |
+| 16x8 | R24 (steady control) | 8.86, 0% | 8.79, 0% | 8.76, 7% | 8.81, 0% |
+
+`ldb*4` at each pad: K=384 → 1536/1568/1600/2048 B (pad128 is a power of two); K=256 →
+1024/1056/1088/1536 B (pad128 equals K=384's own native step).
+
+**Answer: H1 is refuted outright — padding changes the state while NR, K and kc are all
+unchanged (e.g. 16x8/B3: 95% slow at pad0, 0% at pad8, same tile, same shape, same NR). It is
+where the streams land, not how many there are.** But H2 does not reduce to a simple rule
+either:
+
+- **At 16x6, padding is a clean win.** The one slow case (B3_K256, pad0, step=1024 B exactly —
+  a power of two) is fixed by every pad tried, including pad128, which moves its step to 1536 B
+  (K=384's own untouched step, which is fine at NR=6). B3 itself never moves off steady here.
+- **At 16x8, padding is not monotone and not even one-directional.** pad8 is a clean win on
+  both shapes. pad16 is a net loss (56% and 76% slow, worse than pad0 on B3_K256, which was
+  clean). pad128 fixes B3 (its long-standing #48 problem, 95%→0%) but *newly breaks* B3_K256
+  (0%→56%) — the same ldb (512 for B3, 384 for B3_K256 — wait, pad128 gives B3 ldb=512 and
+  B3_K256 ldb=384, two different absolute values) lands one shape well and the other badly.
+- **Padding can break a shape that was never slow.** B2 (K=64, steady in every #48/#49 run
+  until now) goes 47% slow at 16x6/pad128 (ldb=192, step=768 B) — a landing pattern this issue
+  never probed before pad128 existed. Padding is not a safe blanket fix; it can move the
+  collision onto a previously-clean shape.
+
+This matches H2 (the streams' byte offsets, not their count) over H1, but rules out "any
+padding helps" or "a power-of-two step is always bad" as the mechanism — the effect is specific
+to the resulting `ldb` value at each tile, consistent with a page- or cache-set collision that
+depends on the exact byte offset, not a monotone function of how far `ldb` is from `k`. **For
+#44** (pack B one column at a time): its premise — that reducing the stream *count* removes the
+slow state — is not what this data shows fixes it; a stream-count fix might still help by
+accident (fewer streams changes the offsets too) but the decisive lever shown here is the
+landing pattern, which #44 does not control directly. A fix would need to pick `ldb` per tile
+per shape against the actual cache geometry, not pad by a fixed amount.
+
 ## 10. Closure
 
 - [x] Desk table for both K, with the result (one splitting quantity, or none), written here before any board run. See §8: none found.
 - [x] Driver option for a padded `ldb`, with a test that the result still checks. See §9: `--pad-ldb`, `test_pad_ldb.py`.
-- [ ] Step 2 run on both boards, 3 launches, logs committed, no red note (or the red note in the report). `run_issue49.sh` is ready; not yet run (no board access from this session).
-- [ ] Written answer: stream count, stream placement, kc or buffer start, and what it means for #44.
+- [x] Step 2 run — `jbpi` only (not `jbpi2`, occupied throughout), 3 launches, logs committed, no red note. See §11.
+- [x] Written answer: H1 refuted, H2 confirmed but non-monotone and tile/shape-specific; padding is not a safe blanket fix (B2 regression at pad128); implication for #44 noted. See §11.
+- [ ] `jbpi2` cross-check, once free, to confirm this is not a `jbpi`-specific artifact.

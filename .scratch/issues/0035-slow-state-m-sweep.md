@@ -6,7 +6,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/51
 shows up in every shape with M up to 384 that ran on 16x15 and in none with M of 1000 or more, which all ran on 32x6/32x7).
 
 **Role / Label:** `needs-triage` — sub-issue of #48, priority 3 of the #48 follow-ups (opened 2026-10-14). Needs a new dataset file and a pinned-tile config, no generator change.
-**Status:** 🟡 Dataset, configs and series script ready (§6-§7, below); the board runs themselves are not done.
+**Status:** 🟢 Answered (§9, below). Board time: `jbpi` only, 25/25 runs, no red note (two earlier attempts on the same series were contaminated by another user's job and discarded — see §9).
 **Target:** `jbpi` and `jbpi2`, core 4, quiet window, house rules of #39.
 **Shape(s):** new: M in {64, 128, 192, 256, 384, 512, 1000} with N=384 and K=384, and the same M at K=256. B2 as the steady control.
 **Primary Sources:**
@@ -114,9 +114,51 @@ setsid nohup ./tests/pure_xdsl_blis_rvv/run_issue51.sh --start-at 00:00 \
     > tests/pure_xdsl_blis_rvv/logs/issue51.out 2>&1 < /dev/null &
 ```
 
+## 9. The board result (2026-10-14)
+
+`run_issue51.sh --boards jbpi` ran the plan: 5 launches (full tile-rotation cycle), 25/25 runs,
+clean (`issue51_2026-10-14_215835`). **One board only, not two** — `jbpi2` had another user's
+job pinned at ~100% throughout; the cross-board check is still open. Two earlier attempts at
+this same series (`issue51_2026-10-14_150156`, `issue51_2026-10-14_181219`) picked up that same
+job wandering onto `jbpi` partway through (launches 3-5 both times) and are discarded — not
+cited below; they are kept in `logs/` with their own RED NOTEs for the record.
+
+Slow-rep share by M, `reps_report.py` per tile (5 launches each), B2 control 0% everywhere:
+
+| tile | K | M=64 | 128 | 192 | 256 | 384 | 512 | 1000 | mc at these M |
+|---|---|---|---|---|---|---|---|---|---|
+| 16x6 | 384 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 64,128,192,256,**384,384,384** |
+| 16x6 | 256 | 77 | 62 | 60 | 51 | 49 | 35 | **0** | (same) |
+| 32x6 | 384 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 64,128,192,256,384,512,768 |
+| 32x6 | 256 | 34 | 58 | 37 | **0** | 0 | 0 | 0 | (same) |
+| 16x8 | 384 | 93 | **0** | 0 | 0 | 0 | 0 | 0 | 64,128,192,256,**384,384,384** |
+| 16x8 | 256 | 0 | 0 | 0 | 0 | 0 | 0 | **33** | (same) |
+| 16x15 (shipped) | 384 | 84 | 58 | 65 | 45 | 23 | **0** | 0 | 64,128,192,256,384,512,768 |
+| 16x15 (shipped) | 256 | 92 | 95 | 92 | 85 | 81 | 17 | **0** | (same) |
+| 32x7 | 384 | 63 | **0** | 0 | 0 | 0 | 0 | 0 | 64,128,192,256,384,512,768 |
+| 32x7 | 256 | 76 | 75 | 61 | 53 | 28 | **0** | 0 | (same) |
+
+**Answer: the threshold M is not one value — it moves with both tile and K, sometimes by a lot
+(16x6/K256 needs M=1000 to clear; 32x6/K256 clears by M=256) — so rows and tile work together,
+as the plan's second reading bullet expected. But mc alone does not explain it either: 16x6 and
+16x8 cap `mc` at 384 from M=384 onward (§6), yet 16x6/K256's slow share keeps falling across
+M=384→512→1000 (49%→35%→0%) at the *same* `mc` — raw M (or the number of ic-iterations, 1→2→3
+at this mc) still moves the needle after `mc` itself stops growing.**
+
+**The important result is 16x8/K256: it is clean (0% slow) from M=256 through M=512, then goes
+33% slow at M=1000 — the only case in this sweep where the state *reappears* at large M after
+being clear.** Same `mc` (384, saturated) at M=384, 512 and 1000; only M=1000 is slow. This is
+exactly the plan's third reading bullet ("some tile stays slow at M=1000: the real-model shapes
+are at risk on that tile"): **16x8 at K=256 is not safe for a large-M real-model shape**, and
+should be flagged against the tile choice (#48 §8.6) and any real-model matrix (issue #2),
+alongside the already-known risk that 16x6/16x15/32x7 at K=256 need M up to 512-1000 to clear
+at all. The only combinations clean at every M tried, both K: 16x6/384, 32x6/384 (and 32x6/256
+from M≥256).
+
 ## 8. Closure
 
 - [x] Dataset and pinned-tile config committed, mc and kc of every point printed. See §6.
-- [ ] Runs on both boards, 3 launches per board, logs committed, no red note (or the red note in the report). `run_issue51.sh` is ready; not yet run (no board access from this session).
-- [ ] Table of slow-rep share against M per tile, for both K, written here.
-- [ ] Written answer: the M (or mc, or A-panel count) where the state stops, per tile, and whether a big-M shape can go slow.
+- [x] Runs — `jbpi` only (not `jbpi2`, occupied throughout), 5 launches, logs committed, no red note (after two discarded contaminated attempts). See §9.
+- [x] Table of slow-rep share against M per tile, for both K, written here. See §9.
+- [x] Written answer: the threshold M differs by tile and K and does not reduce to `mc` alone; 16x8/K256 re-enters the slow state at M=1000 after being clean at smaller M — flagged as a real-model risk. See §9.
+- [ ] `jbpi2` cross-check, once free.

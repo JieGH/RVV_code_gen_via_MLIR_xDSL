@@ -132,6 +132,7 @@ sweep. A tile at the edge of the block (a fringe tile) is computed through a tem
 time and moves with the tile.
 
 \section{B3 on every tile, vector packer}
+\label{sec:b3vector}
 GOPs by mean time, GOPs by median rep, and the share of slow reps (\%), averaged over the launches (4 on \texttt{jbpi2},
 3 on \texttt{jbpi}). Green: no slow rep in any launch.
 
@@ -230,6 +231,7 @@ shapes: 16$\times$6 is best for B3 and Reuse24 and costs B2 about 2.3 GOPs; 16$\
 about 2.2 GOPs.
 
 \section{Packing and compute apart}
+\label{sec:packvcompute}
 Instrumented build, B3; these are debug numbers, not speed. Mean milliseconds per rep, pooled over the launches: fast
 reps (pack / compute), slow reps (pack / compute), and pack's share of pack plus compute (\%).
 
@@ -263,7 +265,84 @@ tile, packer & fast reps & slow reps & pack \% & fast reps & slow reps & pack \%
   both boards. Only the fast-against-slow split is read from it.
 \end{itemize}
 
+\section{The three follow-ups: \iss{49}, \iss{50}, \iss{51}}
+Opened 2026-10-14 as priority 1--3 of this brief's own next steps (then \S\ref{sec:nextsteps} below);
+run and answered 2026-10-14 on \texttt{jbpi} only (\texttt{jbpi2} was occupied by another user's job the whole time each
+ran, so none of the three has its \texttt{jbpi2} cross-check yet). Full write-ups: \texttt{.scratch/issues/0033}, \texttt{0034},
+\texttt{0035}.
+
+\subsection*{\iss{49}: does the state follow \texttt{ldb}, not NR?}
+The decisive test: pad \texttt{ldb} (B's leading dimension) by 0, 8, 16 or 128 elements, data and the correctness check
+unchanged, at the two tiles that flip in opposite directions between K=384 and K=256 (16$\times$6, 16$\times$8). GOPs by
+mean time (slow-rep \%), 3 launches:
+
+\begin{center}\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+tile & shape (native step) & pad0 & pad8 & pad16 & pad128 \\
+\midrule
+16$\times$6 & B3 (1536\,B) & \good{6.68 (0)} & \good{6.05 (0)} & \good{7.14 (0)} & \good{5.53 (0)} \\
+16$\times$6 & B3\_K256 (1024\,B) & \up{4.35 (61)} & \good{6.95 (0)} & \good{7.90 (0)} & \good{6.47 (0)} \\
+16$\times$6 & B2 (control) & \good{10.31 (0)} & \good{10.10 (0)} & \good{10.15 (0)} & \up{8.25 (47)} \\
+16$\times$6 & R24 (control) & \good{9.16 (0)} & \good{8.94 (0)} & \good{9.30 (0)} & \good{9.12 (0)} \\
+16$\times$8 & B3 (1536\,B) & \up{3.48 (95)} & \good{5.83 (0)} & \up{4.73 (56)} & \good{6.12 (0)} \\
+16$\times$8 & B3\_K256 (1024\,B) & \good{6.84 (0)} & \good{6.79 (0)} & \up{4.57 (76)} & \up{5.48 (56)} \\
+16$\times$8 & B2 (control) & \good{10.24 (0)} & \good{10.21 (0)} & \good{10.30 (0)} & \good{10.16 (0)} \\
+16$\times$8 & R24 (control) & \good{8.86 (0)} & \good{8.79 (0)} & 8.76 (7) & \good{8.81 (0)} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Answer: padding changes the state while NR, K and kc all stay fixed, so stream \emph{count} alone (H1) is
+refuted.} But it is not a simple monotone rule either: at 16$\times$8, pad8 cures both shapes, pad16 makes both worse
+than pad0, and pad128 cures B3 but newly breaks B3\_K256; at 16$\times$6, pad128 newly breaks the B2 control
+(\textbf{0\%$\to$47\% slow}) though every tile tried before had been clean there. This is layout (H2), but tied to the
+exact resulting \texttt{ldb}, not to how far it sits from a power of two. \textbf{For \iss{44}}: its premise (fewer
+streams fixes it) is not what moves the needle here --- a stream-count fix might still help by accident, but padding
+is not a safe blanket fix (it creates a new slow case, B2 at pad128) and a per-tile \texttt{ldb} choice would need the
+real cache geometry, not a fixed offset.
+
+\subsection*{\iss{50}: do the prefetcher counters follow the flip?}
+Instrumented build (warm-up protocol, 1000 reps), \texttt{-{}-raw-events x60-l2}, 3 launches. \textbf{Neither pair this
+issue named actually flips in this build} (16$\times$6/16$\times$7 at K=384: 0\%/0\% slow; 16$\times$8/16$\times$6 at
+K=256: 0\%/1\%) --- the same instrumented-build caveat as \S\ref{sec:packvcompute} above. Where this build \emph{does}
+flip (16$\times$8/B3, and the 16$\times$15 anchor on both B3 and B3\_K256), the slow reps repeat \iss{41}'s pattern
+tightly: Pack\_Cycles 1.9--2.0$\times$, L1D prefetch hit (compute) \textbf{0.51$\times$ in all three cases}, L1D miss
+(compute) 3.0--4.4$\times$. One mechanism, not three. For the two named pairs the counters are silent; the
+uninstrumented wall-time numbers already in \S\ref{sec:b3vector} and \iss{49} above are the only evidence for them.
+
+\subsection*{\iss{51}: at a fixed tile, what M clears the slow state?}
+M $\in$ \{64, 128, 192, 256, 384, 512, 1000\}, N=384, both K=384 and K=256, 5 tiles, 5 launches (B2 control 0\% slow
+throughout). Slow-rep \% by M:
+
+\begin{center}\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}llccccccc@{}}
+\toprule
+tile & K & 64 & 128 & 192 & 256 & 384 & 512 & 1000 \\
+\midrule
+16$\times$6 & 384 & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} \\
+16$\times$6 & 256 & \up{77} & \up{62} & \up{60} & \up{51} & \up{49} & \up{35} & \good{0} \\
+32$\times$6 & 384 & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} \\
+32$\times$6 & 256 & \up{34} & \up{58} & \up{37} & \good{0} & \good{0} & \good{0} & \good{0} \\
+16$\times$8 & 384 & \up{93} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} \\
+16$\times$8 & 256 & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \up{33} \\
+16$\times$15 (shipped) & 384 & \up{84} & \up{58} & \up{65} & \up{45} & \up{23} & \good{0} & \good{0} \\
+16$\times$15 (shipped) & 256 & \up{92} & \up{95} & \up{92} & \up{85} & \up{81} & \up{17} & \good{0} \\
+32$\times$7 & 384 & \up{63} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} \\
+32$\times$7 & 256 & \up{76} & \up{75} & \up{61} & \up{53} & \up{28} & \good{0} & \good{0} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Answer: the threshold M is not one value; it moves with both tile and K.} \texttt{mc} alone does not explain
+it either: 16$\times$6 and 16$\times$8 cap \texttt{mc} at 384 from M=384 on, yet 16$\times$6/K256's slow share keeps
+falling across M=384$\to$512$\to$1000 (49\%$\to$35\%$\to$0\%) at that same, already-saturated \texttt{mc}.
+\textbf{The one case that reverses direction: 16$\times$8/K256 is clean from M=256 through 512, then goes
+\up{33\% slow at M=1000}} --- same saturated \texttt{mc} (384) at M=384, 512 and 1000, only M=1000 slow. This is the
+real-model risk this issue's plan flagged in advance: a tile and K combination that looks safe at moderate M can still
+fall into the slow state at the M of an actual model layer, and 16$\times$8 at K=256 should be weighed against that
+before any tile choice. Only 16$\times$6/K384 and 32$\times$6 (both K) are clean at every M tried here.
+
 \section{Conditions, limits and next steps}
+\label{sec:nextsteps}
 \paragraph{Conditions.} All 26 run folders record \texttt{other users : none} at the start of the run, no series wrote
 a load warning, and the processes read before and after every run list no other user's job, so there is no
 ``other users present'' note to attach to these numbers. The seven unpinned cores of each board were at 0--1\% busy
@@ -285,19 +364,22 @@ afternoon and evening, not at midnight; no other user's job appeared, so a quiet
   \item B3 only is analysed in detail. The other shapes are in the full report (Appendix~A).
 \end{itemize}
 
-\paragraph{Next steps.}
+\paragraph{Next steps.} \iss{49}, \iss{50} and \iss{51} (above) are answered on \texttt{jbpi} as of 2026-10-14. What is
+still open:
 \begin{itemize}
-  \item Choosing a tile for small-M shapes is a decision on this evidence; the shapes of the real models need the same
-  sweep first.
-  \item Run \iss{44} (pack B one column at a time): this brief predicts that a 15-column panel should then behave like a
-  6-column one.
-  \item Count prefetcher events on 16$\times$6 against 16$\times$7 (\texttt{-{}-raw-events x60-l2}, \iss{42}), the
-  smallest pair that flips the state. \textbf{Now \iss{50}}: widened to the two B3\_K256 tiles that flip the other way
-  (16$\times$6 and 16$\times$8), script \texttt{run\_issue50.sh}, not yet run (needs board access).
-  \item Opened as \iss{49}: whether the B3\_K256 flip follows \texttt{ldb} rather than NR (the premise \iss{44} rests
-  on). Its desk table (no board) already found that none of stream count, page/offset geometry, kc/K-blocks or a
-  simple MR threshold alone splits every steady tile from every slow one across both K=384 and K=256 --- the decisive
-  test (padding \texttt{ldb} directly, \texttt{run\_issue49.sh}) is the next step, also not yet run.
+  \item \textbf{The \texttt{jbpi2} cross-check} for all three --- none of the three has it yet (\texttt{jbpi2} was
+  occupied by another user's job throughout each run).
+  \item \textbf{\iss{44}} (pack B one column at a time) is no longer a clean test of "fewer streams fixes it": \iss{49}
+  shows the state follows the exact landing of the streams, not their count, so \iss{44} should be read as one way to
+  change the landing, not as confirming or refuting a stream-count story on its own.
+  \item \textbf{The tile choice for small-M shapes} (16$\times$6 was the leading candidate, \S\ref{sec:b3vector}) now
+  has to weigh \iss{51}'s finding that 16$\times$8 at K=256 --- clean at M up to 512 --- goes slow again at M=1000; a
+  tile that looks safe at a moderate M sweep is not guaranteed safe at the M of a real model layer.
+  \item \textbf{A fix for \iss{49}'s B2 regression} (padding \texttt{ldb} by 128 broke a previously-clean control):
+  any padding-based fix for B3 needs to be checked against every shape it is applied to, not just the one it targets.
+  \item \iss{52} (reference vs.\ ours at 16$\times$14, desk-only) and \iss{53} (scalar vs.\ vector packer on the
+  controls, desk-only, from these same logs) are answered; see their issue files for the code-level and packer-choice
+  findings, out of scope for this brief's board numbers.
 \end{itemize}
 
 \section*{Appendix A: logs and code}
@@ -313,6 +395,15 @@ All paths are under \texttt{tests/pure\_xdsl\_blis\_rvv/}; all are committed (co
   \path{config_issue48_sweep.json} and \path{config_issue48_sweep_scalar.json} (the tiles),
   \path{run_issue48.sh} (the series; \texttt{-{}-workspace} for one series per board), \path{issue48_report.py}.
   \item Write-up and the written answer: \path{.scratch/issues/0032-b3-microkernel-dimension-sweep-pack-and-compute.md}, \S7--\S8.
+  \item \iss{49}: series \path{logs/issue49_2026-10-14_133529} (\texttt{jbpi}, 12 runs); code \path{run_issue49.sh},
+  \path{config_issue49_sweep.json}, the \texttt{-{}-pad-ldb} driver option; write-up
+  \path{.scratch/issues/0033-b-stream-layout-k256-flip.md}, \S8--\S11.
+  \item \iss{50}: series \path{logs/issue50_2026-10-14_143115} (\texttt{jbpi}, 3 runs); code \path{run_issue50.sh},
+  \path{config_issue50_sweep.json}; write-up \path{.scratch/issues/0034-prefetcher-counters-four-corners.md}, \S8.
+  \item \iss{51}: series \path{logs/issue51_2026-10-14_215835} (\texttt{jbpi}, 25 runs, the clean attempt --- two earlier
+  attempts, \path{logs/issue51_2026-10-14_150156} and \path{logs/issue51_2026-10-14_181219}, are discarded for another
+  user's job on \texttt{jbpi} partway through); code \path{run_issue51.sh}, \path{config_issue51_*.json},
+  \path{datasets/issue51_m_sweep.dat}; write-up \path{.scratch/issues/0035-slow-state-m-sweep.md}, \S6, \S9.
 \end{itemize}
 
 \end{document}

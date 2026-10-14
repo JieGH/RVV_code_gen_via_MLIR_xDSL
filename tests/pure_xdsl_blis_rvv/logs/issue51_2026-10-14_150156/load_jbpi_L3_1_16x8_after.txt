@@ -1,0 +1,12 @@
+jlei                  800   7       00:00 ps
+psiwins               115   6       00:12 mixed-precision
+jlei                 33.3   0       00:00 bash
+root                 13.2   0       00:00 sshd
+psiwins               0.6   5       01:52 wireplumber
+root                  0.5   4 72-06:08:35 disp_eng_share_thread
+psiwins               0.5   2       01:53 systemd
+psiwins               0.2   1       01:52 sshd
+psiwins               0.1   5       01:52 pipewire-pulse
+psiwins               0.1   7       01:52 pipewire
+root                  0.1   1       00:28 kworker/u16:4-events_unbound
+psiwins               0.0   2       01:52 pipewire

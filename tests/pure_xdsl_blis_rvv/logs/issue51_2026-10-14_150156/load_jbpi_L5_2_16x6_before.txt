@@ -1,0 +1,12 @@
+jlei                  500   4       00:00 ps
+root                 14.2   1       00:00 sshd
+root                  0.5   1 72-06:52:49 disp_eng_share_thread
+psiwins               0.3   0       46:06 sshd
+systemd-oom           0.0   7 72-06:52:56 systemd-oomd
+root                  0.0   2       54:12 kworker/u16:3-events_unbound
+root                  0.0   7       44:43 kworker/u16:4-rpciod
+psiwins               0.0   6       46:06 wireplumber
+messagebus            0.0   6 72-06:52:56 dbus-daemon
+root                  0.0   4 72-06:53:04 vq1
+root                  0.0   2 72-06:53:04 vq0
+root                  0.0   1 72-06:52:55 NetworkManager

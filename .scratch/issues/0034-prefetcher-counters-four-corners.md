@@ -6,8 +6,8 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/50
 
 **Comes from:** #48 §8.6 ("count the prefetcher events at 16x6 against 16x7"), widened to the two B3_K256 tiles that flip the other way (#48 §8.3).
 
-**Role / Label:** `needs-triage` — sub-issue of #48, priority 2 of the #48 follow-ups (opened 2026-10-14). No code change: `--instr --raw-events x60-l2` already exists (#42). The series wrapper (`run_issue50.sh`) is built and host-validated; not yet run against the real boards.
-**Status:** 🟡 Open. Script ready, awaiting board access.
+**Role / Label:** `needs-triage` — sub-issue of #48, priority 2 of the #48 follow-ups (opened 2026-10-14). No code change: `--instr --raw-events x60-l2` already exists (#42).
+**Status:** 🟢 Answered (§8, below). Board time: `jbpi` only, 3/3 runs, no red note.
 **Target:** `jbpi` and `jbpi2`, core 4, house rules of #39.
 **Shape(s):** B3 (64x384x384), B3_K256 (64x384x256); B2 as the steady control.
 **Primary Sources:**
@@ -60,11 +60,58 @@ the two shapes (16x6 at K=384 against K=256), what moves in the counters when on
 
 Any change to the generator, the driver or the packers; the reference design; tiles beyond these four.
 
+## 8. The board result (2026-10-14)
+
+`run_issue50.sh --boards jbpi` ran the plan: 3 launches (`issue50_2026-10-14_143115`, 3/3 runs
+ok, no red note). **One board only, not two** — `jbpi2` had another user's job pinned at
+~100% throughout; the cross-board check is still open.
+
+**Step 1 first: neither named pair actually flips in this instrumented (warm-up protocol,
+1000-rep) build.** Slow-rep share per tile/shape (`reps_report.py` on each tile's own
+`reps_*.txt.gz`, 3 launches):
+
+| tile | B3 (K=384) | B3_K256 | B2 |
+|---|---|---|---|
+| 16x6 | 0% | 1% (1 of ~300 reps) | 0% |
+| 16x7 | 0% | 15% | 0% |
+| 16x8 | **65% slow** (4.89→4.69 GOps) | 0% | 0% |
+| 16x15 (anchor) | **50% slow** | **54% slow** | 0% |
+
+The two pairs this issue asked about (16x6 steady / 16x7 two-speed at K=384; 16x8 steady / 16x6
+two-speed at K=256) both come back essentially one-speed here — exactly the #48 §8.4 caveat
+this issue's own plan (step 4) anticipated ("the instrumented build changes when the state
+starts"). Per that plan's own fallback: **for those two pairs, read the uninstrumented
+cycle-count evidence already in #48/#49 instead** (#48: 16x6/16x7 at K=384 = 0%/79-68% slow;
+#49 §11: 16x6/16x8 at K=256 = 61%/0% slow at pad0) — the counters here cannot see them.
+
+**What this build does show a flip on — 16x8/B3 and the 16x15 anchor on both shapes — repeats
+#41's exact pattern, tightly:**
+
+| tile / shape | Pack_Cycles slow/fast | Compute_Cycles slow/fast | L1D prefetch hit, pack | L1D prefetch hit, compute | L1D miss, compute | L2 load miss, compute |
+|---|---|---|---|---|---|---|
+| 16x8 / B3 | 2.00x | 1.65x | 0.45x | 0.51x | 4.42x | 6.58x |
+| 16x15 / B3 (anchor) | 2.04x | 1.52x | 0.41x | 0.51x | 3.01x | n/a (l2_load_miss not in this table; ar-stall 0.47x) |
+| 16x15 / B3_K256 | 1.91x | 1.49x | 0.52x | 0.51x | 3.17x | n/a |
+
+Compute-phase L1D prefetch hit ratio is 0.51x in all three — the same mechanism, not three
+different ones. Pack takes about twice as long and gets roughly half its prefetch hits; demand
+misses (L1D, L2) run 1.6–6.6x higher in the slow reps, in both pack and compute. This extends
+#41's finding (previously one tile, 16x15/B3) to a second tile (16x8) and a second shape at the
+anchor tile (16x15/B3_K256): wherever this build actually shows a flip, it is the same
+prefetcher-backing-off mechanism, not a different one per tile or K.
+
+**Answer:** the counters follow the state, not NR, everywhere this build can see a flip at all
+— but it can't see the two pairs the issue specifically asked about, so the question "does the
+steady tile of *those* pairs look like the two-speed tile's fast reps" stays open; the
+uninstrumented reference-protocol numbers (#48 §8.2, #49 §11) are the only evidence for those
+two, and they show the same ~2x slowdown by wall time without a counter breakdown.
+
 ## 6. Closure
 
-- [ ] Instrumented runs with raw events on both boards, 3 launches per board, logs committed, no red note (or the red note in the report).
-- [ ] Counter table per tile and shape, fast and slow reps, pack and compute apart, written here.
-- [ ] Written answer: do the counters follow the state or NR, and does the instrumented build show the same flips?
+- [x] Instrumented runs with raw events — `jbpi` only (not `jbpi2`, occupied throughout), 3 launches, logs committed, no red note. See §8.
+- [x] Counter table per tile and shape, fast and slow reps, pack and compute apart, written here. See §8.
+- [x] Written answer: counters follow the state wherever a flip shows up in this build (16x8/B3, 16x15 both shapes); the two named pairs don't flip here at all — fall back to #48/#49's uninstrumented numbers for them. See §8.
+- [ ] `jbpi2` cross-check, once free.
 
 ## 7. The series script (2026-10-14)
 

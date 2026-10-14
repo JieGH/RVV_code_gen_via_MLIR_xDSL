@@ -1,0 +1,12 @@
+jlei                  600   5       00:00 ps
+psiwins              99.9   2       16:29 mixed-precision
+root                 12.7   7       00:00 sshd
+jlei                 12.5   1       00:00 sshd
+root                  0.5   0 72-10:01:51 disp_eng_share_thread
+psiwins               0.0   0    03:55:08 sshd
+systemd-oom           0.0   3 72-10:01:58 systemd-oomd
+root                  0.0   0       05:10 kworker/u16:4-xprtiod
+root                  0.0   0       12:05 kworker/u16:1-xprtiod
+messagebus            0.0   3 72-10:01:57 dbus-daemon
+root                  0.0   1 72-10:02:06 vq1
+root                  0.0   0 72-10:02:06 vq0

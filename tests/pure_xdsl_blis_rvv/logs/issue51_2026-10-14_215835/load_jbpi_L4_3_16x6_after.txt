@@ -1,0 +1,12 @@
+jlei                  500   1       00:00 ps
+jlei                 33.3   0       00:00 bash
+root                 11.9   2       00:00 sshd
+root                  0.5   5 72-13:34:45 disp_eng_share_thread
+systemd-oom           0.0   2 72-13:34:52 systemd-oomd
+psiwins               0.0   6    07:28:02 sshd
+messagebus            0.0   6 72-13:34:52 dbus-daemon
+root                  0.0   5 72-13:35:00 vq1
+root                  0.0   7 72-13:35:00 vq0
+root                  0.0   3 72-13:34:51 NetworkManager
+root                  0.0   4 72-13:34:42 bluetoothd
+root                  0.0   1 72-13:34:46 ksdioirqd/mmc1

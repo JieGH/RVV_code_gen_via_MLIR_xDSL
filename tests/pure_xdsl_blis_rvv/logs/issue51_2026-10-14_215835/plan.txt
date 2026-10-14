@@ -1,0 +1,10 @@
+Issue #51 series: 5 launches on each of jbpi, boards taking turns, tiles 16x6,32x6,16x8,16x15,32x7 (25 runs)
+  Start     : mié 14 oct 21:58
+  Settings  : --cpu 4 --no-nc-overrides --tmin 10, vector packer
+  Dataset   : datasets/issue51_m_sweep.dat (15 shapes: M in {64,128,192,256,384,512,1000} x K in {384,256}, plus B2)
+  Load      : other users' processes are read before and after every run; a heavy one is flagged red, not a stop
+  Launch 1   : 16x6 32x6 16x8 16x15 32x7
+  Launch 2   : 32x6 16x8 16x15 32x7 16x6
+  Launch 3   : 16x8 16x15 32x7 16x6 32x6
+  Launch 4   : 16x15 32x7 16x6 32x6 16x8
+  Launch 5   : 32x7 16x6 32x6 16x8 16x15

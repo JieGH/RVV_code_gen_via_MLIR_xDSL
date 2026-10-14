@@ -1,0 +1,14 @@
+2026-10-14T15:48:31+02:00 jbpi L3_1_16x8 (after): psiwins mixed-precision 115% on core 6, up 00:12; 
+2026-10-14T15:48:32+02:00 jbpi L3_2_16x15 (before): psiwins mixed-precision 121% on core 6, up 00:13; 
+2026-10-14T15:53:08+02:00 jbpi L3_2_16x15 (after): psiwins mixed-precision 215% on core 1, up 04:49; 
+2026-10-14T15:53:09+02:00 jbpi L3_3_32x7 (before): psiwins mixed-precision 215% on core 1, up 04:50; 
+2026-10-14T15:57:28+02:00 jbpi L3_3_32x7 (after): psiwins mixed-precision 208% on core 2, up 01:49; 
+2026-10-14T15:57:29+02:00 jbpi L3_4_16x6 (before): psiwins mixed-precision 208% on core 2, up 01:50; 
+2026-10-14T16:06:27+02:00 jbpi L3_5_32x6 (after): psiwins mixed-precision 98.5% on core 5, up 00:47; 
+2026-10-14T16:06:28+02:00 jbpi L4_1_16x15 (before): psiwins mixed-precision 98.6% on core 5, up 00:47; 
+2026-10-14T16:10:55+02:00 jbpi L4_1_16x15 (after): psiwins mixed-precision 99.7% on core 5, up 05:14; 
+2026-10-14T16:10:56+02:00 jbpi L4_2_32x7 (before): psiwins mixed-precision 99.7% on core 5, up 05:15; 
+2026-10-14T16:15:26+02:00 jbpi L4_2_32x7 (after): psiwins mixed-precision 100% on core 1, up 02:07; 
+2026-10-14T16:15:27+02:00 jbpi L4_3_16x6 (before): psiwins mixed-precision 100% on core 1, up 02:08; 
+2026-10-14T16:19:56+02:00 jbpi L4_3_16x6 (after): psiwins mixed-precision 99.9% on core 1, up 06:37; 
+2026-10-14T16:19:57+02:00 jbpi L4_4_32x6 (before): psiwins mixed-precision 99.9% on core 1, up 06:38; 
