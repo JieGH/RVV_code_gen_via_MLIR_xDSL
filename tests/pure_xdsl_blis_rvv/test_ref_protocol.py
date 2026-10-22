@@ -38,7 +38,7 @@ STUB_HEADER = """\
 #include <stdint.h>
 #include "perf_counters.h"
 
-#define CONFIG_DATATYPE "fp32"
+#define CONFIG_DATATYPE "%(datatype)s"
 #define CONFIG_METHOD "%(method)s"
 #define CONFIG_VLEN 256
 #define CONFIG_ARCH "host"
@@ -48,9 +48,9 @@ STUB_HEADER = """\
 struct NcOverrideEntry { const char* label; int nc; };
 %(nc_overrides)s
 
-void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf);
+void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, int pack_b_variant, perf_gemm_counters* perf);
 
-typedef void (*gemm_blis_fn)(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf);
+typedef void (*gemm_blis_fn)(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, int pack_b_variant, perf_gemm_counters* perf);
 
 struct KernelVariant { const char* name; int mr; int nr; gemm_blis_fn func; };
 static const KernelVariant generated_variants[] = { {"MR4_NR4", 4, 4, stub_gemm} };
@@ -69,6 +69,9 @@ STUB_KERNEL = """\
 #include "generated_kernels.h"
 
 static int calls_total = 0, calls_scalar_pack = 0, calls_zero_lines = 0;
+// Issue #55: calls that carried a non-zero B packer variant, those of them that were scalar-pack
+// calls (must be none), and the last variant seen.
+static int calls_variant = 0, calls_variant_scalar = 0, last_variant = 0;
 // Issue #18: non-zero elements Ac/Bc held when a shape first reached the kernel.
 static long fresh_nonzero = 0;
 // Issue #19: the first shape's Ac/Bc as allocated, next to what the reference asks for.
@@ -76,7 +79,8 @@ static size_t ac_usable = 0, bc_usable = 0, ac_wanted = 0, bc_wanted = 0;
 static size_t ac_needed = 0, bc_needed = 0;
 struct StubReport {
     ~StubReport() {
-        fprintf(stderr, "STUB_CALLS total=%d scalar_pack=%d zero_lines=%d\\n", calls_total, calls_scalar_pack, calls_zero_lines);
+        fprintf(stderr, "STUB_CALLS total=%d scalar_pack=%d zero_lines=%d variant_calls=%d variant_scalar=%d last_variant=%d\\n",
+                calls_total, calls_scalar_pack, calls_zero_lines, calls_variant, calls_variant_scalar, last_variant);
         fprintf(stderr, "STUB_FRESH_BUFFERS nonzero=%ld\\n", fresh_nonzero);
         fprintf(stderr, "STUB_BUFFER_BYTES ac=%zu ac_wanted=%zu bc=%zu bc_wanted=%zu "
                 "ac_needed=%zu bc_needed=%zu\\n",
@@ -84,10 +88,12 @@ struct StubReport {
     }
 } stub_report;
 
-void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf) {
+void stub_gemm(int m, int n, int k, float alpha, float* A, int lda, float* B, int ldb, float beta, float* C, int ldc, float* Ac, float* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, int pack_b_variant, perf_gemm_counters* perf) {
     calls_total++;
     if (use_scalar_pack) calls_scalar_pack++;
     if (zero_pack_lines) calls_zero_lines++;
+    if (pack_b_variant != 0) { calls_variant++; if (use_scalar_pack) calls_variant_scalar++; }
+    last_variant = pack_b_variant;
     if (ac_wanted == 0) {
         // test_gemm.c:271-272 with -DKR=1: (MR+mc)*(KR+kc) floats for Ac, (KR+kc)*(NR+nc) for Bc.
         ac_wanted = (size_t)(mr + mc) * (1 + kc) * sizeof(float);
@@ -139,6 +145,7 @@ class Driver:
         skip_ref_run: bool = False,
         nc_overrides: dict[str, int] | None = None,
         method: str = "STUB",
+        datatype: str = "fp32",
     ):
         compiler = shutil.which("g++") or shutil.which("c++")
         c_compiler = shutil.which("gcc") or shutil.which("cc")
@@ -166,6 +173,7 @@ class Driver:
                 "iterations": CONFIG_ITERATIONS,
                 "skip_ref": "#define SKIP_REF_RUN 1" if skip_ref_run else "",
                 "method": method,
+                "datatype": datatype,
                 "nc_overrides": nc_decl,
             }
         )

@@ -98,7 +98,7 @@ HARNESS = """\
 #include <vector>
 #include "gemm_headers.h"
 
-extern "C" void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, int32_t lda, float* B, int32_t ldb, float beta, float* C, int32_t ldc, float* Ac, float* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf);
+extern "C" void gemm_blis_generic(int32_t m, int32_t n, int32_t k, float alpha, float* A, int32_t lda, float* B, int32_t ldb, float beta, float* C, int32_t ldc, float* Ac, float* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, int pack_b_variant, perf_gemm_counters* perf);
 
 static float rnd() {
     static unsigned s = 12345;
@@ -123,7 +123,7 @@ static void run_case(int m, int n, int k, int mc, int nc, int kc, float beta, bo
     double pt = 0, kt = 0;
     uint64_t pb = 0;
     gemm_blis_generic(m, n, k, alpha, A.data(), m, B.data(), k, beta, C.data(), m, Ac, Bc,
-                      mc, nc, kc, mr, nr, &pt, &kt, &pb, scalar, zero_lines, nullptr);
+                      mc, nc, kc, mr, nr, &pt, &kt, &pb, scalar, zero_lines, 0, nullptr);
 
     double worst = 0;
     bool finite = true;
