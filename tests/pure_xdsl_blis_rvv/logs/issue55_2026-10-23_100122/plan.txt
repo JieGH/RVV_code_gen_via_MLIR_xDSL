@@ -1,0 +1,14 @@
+Issue #55 series: 3 launches on each of jbpi2, boards taking turns, variants row,col-g2,col-g4,col-g1-m4,col-gall (15 GEMM runs, 48 pack-only runs)
+  Start     : vie 23 oct 10:01
+  Settings  : --cpu 4 --no-nc-overrides --tmin 10, uninstrumented, reference protocol, config config_issue55_tiles.json (3 tiles x 4 shapes)
+  Idle gate : before every run, 2 readings of top -bn2 -d1 (second sample) 60 s apart; idle = no other user's process >= 20% of a core and overall idle >= 85%;
+              busy -> wait 300 s and retry up to 10800 s, then stop the series; one reading after each run, a busy one discards it (re-queued once at the end of the launch)
+  Launch 1   : row col-g2 col-g4 col-g1-m4 col-gall
+  Launch 2   : col-g2 col-g4 col-g1-m4 col-gall row
+  Launch 3   : col-g4 col-g1-m4 col-gall row col-g2
+  Pack-only : after the GEMM arms of each launch; 1000 reps, core 4, shapes B3 (64 384 384) and B3_K256 (64 384 256), tiles 16x8 and 16x15
+  Pack-only launch 1: col-g2 col-g4 col-g1-m4 col-gall
+  Pack-only launch 2: col-g4 col-g1-m4 col-gall col-g2
+  Pack-only launch 3: col-g1-m4 col-gall col-g2 col-g4
+  Board time per board (estimate, nothing measured): GEMM 108 min (2.4 min per tile per arm) + pack-only 48 min (1 min per variant per case) + idle gates 74 min
+    = about 230 min (3.8 h) per board; the boards take turns, so about 230 min (3.8 h) for the series, plus any waiting for an idle board and re-queued runs
