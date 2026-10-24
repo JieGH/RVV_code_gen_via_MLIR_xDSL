@@ -2,6 +2,8 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/55
 
+**Report:** [issue-54-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-54-brief.pdf) ([LaTeX source](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-54-brief.tex)), 23 October 2026 (results of this spec's variants, issue #54).
+
 **Status:** 📝 Specified 2026-10-22. Not built. Workflow (phases, gates, who does what) and progress: [[0039-progress-log]].
 **Parent:** #54 [[0038-b3-which-read-property-of-pack-b-sets-off-the-slow-state]]. Related: #44 [[0028-pack-b-fewer-streams-spec]] (this
 spec builds #44's one-column order as one of its variants, in C instead of xDSL; #44 itself stays on hold).

@@ -2,6 +2,8 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/54
 
+**Report:** [issue-54-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-54-brief.pdf) ([LaTeX source](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-54-brief.tex)), 23 October 2026.
+
 **Comes from:** #48 §8.5 (the slow state follows NR; the scalar packer is far steadier at NR ≥ 8), #53 §7 (the scalar packer wins by
 being steadier, not cheaper: same fast-rep pack time), #49 §11 (padding `ldb` changes the state at a fixed NR, so stream count
 alone is not the cause), #50 §8 (a slow rep halves the L1D prefetch hits in both pack and compute).
