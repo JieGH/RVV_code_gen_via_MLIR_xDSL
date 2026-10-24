@@ -209,3 +209,10 @@ Gate: pending Opus review
   - scalar 16x8 cells marked red, matching the rule.
   - "Eight read orders".
 - Rebuilt clean. Waiting for the user's go to commit and link it from #54, #55, #48 and #44.
+
+### 2026-10-24 — published locally and cleaned up (user's go)
+- `pure-xdsl` fast-forwarded to `issue55-pack-b-variants` (bf6f2366); no overlap with the user's uncommitted files. Host tests on pure-xdsl with the board blocker: 196 passed.
+- Committed ba2d9289 (#54/#55 files, progress log, brief PDF + LaTeX, #48 note) and 27bdb794 (brief links in #44, #48, #54, #55; all four synced to GitHub). The links point to `blob/pure-xdsl`, so they resolve only after pure-xdsl is pushed. The local branch is ahead of origin; nothing has been pushed.
+- Console `.log`/`.out` files are gitignored (house practice; no series has committed them). All 230 logs and 3 `.out` files were copied into the main tree's log folders, kept on disk and checked equal.
+- Removed worktree `-issue55-jbpi` with plain `git worktree remove` (no force), after deleting only verified copies, the failed 19:20 attempt and two pid files. The `.venv` symlink was removed; the target is intact.
+- Kept: worktree `-issue55` and branch `issue55-pack-b-variants`, until the user says they are no longer needed; board workspaces `xdsl_rvv_microkernel/issue55_jbpi2` and `issue55_jbpi`. The user's own untracked files (`.vscode/`, issue30 logs, issue49-51 pid files) are untouched.
