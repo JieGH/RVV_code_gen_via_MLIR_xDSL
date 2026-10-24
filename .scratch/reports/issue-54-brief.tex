@@ -1,0 +1,269 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=1.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{url}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+\setlist{nosep,leftmargin=1.3em}
+\titlespacing*{\section}{0pt}{1.1ex}{0.6ex}
+\titlespacing*{\subsection}{0pt}{0.9ex}{0.4ex}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45ex}
+\renewcommand{\arraystretch}{1.08}
+\newcommand{\iss}[1]{\href{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/#1}{\##1}}
+\newcommand{\up}[1]{\textcolor{red!70!black}{#1}}
+\newcommand{\down}[1]{\textcolor{blue!60!black}{#1}}
+\newcommand{\good}[1]{\textcolor{green!45!black}{\textbf{#1}}}
+\newcommand{\bad}[1]{\textcolor{red!70!black}{\textbf{#1}}}
+
+\title{\vspace{-1.2cm}\textbf{What in the B packer's reads sets off B3's slow state,\\ and a packer that keeps B3 steady}\\[2pt]
+\large Brief of issue \iss{54} (spec \iss{55}), a follow-up of \iss{44}, \iss{48}, \iss{49}, \iss{50} and \iss{53}}
+\author{RVV\_code\_gen\_via\_MLIR\_xDSL, \texttt{pure-xdsl}; branch \texttt{issue55-pack-b-variants}\\
+SpacemiT X60 (RVV 1.0, VLEN 256), \texttt{jbpi2}; series 1 on 2026-10-22, series 2 on 2026-10-23}
+\date{23 October 2026}
+
+\begin{document}
+\maketitle
+\vspace{-0.8cm}
+
+\begin{center}
+\fcolorbox{blue!50!black}{blue!4}{\parbox{0.96\textwidth}{\small
+\textbf{Summary.} B3 (64$\times$384$\times$384) on the shipped 16$\times$15 tile runs at about 4.5 GOPs, because most reps
+fall into a ``slow state'' in which pack and compute are both slower (\iss{48}, \iss{50}). We changed only the B packer,
+behind a switch. Bc's layout, the microkernel, the blocking and the cache model stay fixed. There are eight read orders (the shipped one and seven
+variants), and each writes a byte-identical Bc.
+
+\textbf{Finding 1.} The trigger is reading 4 bytes from each column of B per touch. All three packers that do this (scalar loads
+included) go slow on most 16$\times$8 and 16$\times$15 cells, and it happens even with no compute between packs. None of them
+goes slow on 16$\times$6 B3.
+
+\textbf{Finding 2.} Reading one column at a time (\texttt{col-g1}, \texttt{col-g1-m4}) gives no slow rep in any GEMM cell, on any
+tile, K, board or night. On the shipped tile, B3 goes from 4.53--4.63 to 7.01--7.05 GOPs by mean time (from 4.28 to
+7.00--7.05 by median rep). B2 stays within 0.09 GOPs for \texttt{col-g1-m4} (0.21 for \texttt{col-g1}),
+and Reuse24 loses its slow reps.
+
+\textbf{Finding 3.} Reading 2, 4 or all columns side by side removes the 4-byte trigger, but it brings back bad cells that depend
+on tile and K, not on group size. It also brings a new state, ``steadily slow'' (\texttt{col-g2} at K=256).}}
+\end{center}
+
+\paragraph{How the numbers were taken.} Every speed number is from the uninstrumented build (\texttt{INSTRUMENTED=0}), reference
+protocol, \texttt{-{}-tmin 10}, core 4, \texttt{-{}-no-nc-overrides}, 3 launches per case, left rotation, on the board
+\texttt{jbpi2}. Speed is in GOPs, by mean time (the reference's formula) and by median rep; ``slow \%'' is the share of reps in the slow state.
+The secondary board \texttt{jbpi} was run in series 1 as a cross-check only. No board counters were read.
+
+\section{Background}
+B is column-major. Bc holds NR-wide panels, row-major inside a panel: element $(k,j)$ of panel $p$ sits at
+\texttt{Bc[p*NR*kc + k*NR + j]}. The shipped xDSL packer does, for each k, one strided \texttt{vlse32} that gathers 8 columns.
+At K=384 the stride is $\texttt{ldb}\cdot 4 = 1536$ B, so each instruction touches 8 cache lines and takes 4 B from each.
+
+What the earlier issues found: the slow state follows NR (\iss{48}); the scalar packer is steadier but not cheaper (\iss{53});
+padding \texttt{ldb} flips the state, not in a simple order (\iss{49}); and slow reps halve the L1D prefetch hits (\iss{50}).
+The X60 has no Zicbop and its prefetcher is undocumented. So this work changes the read pattern that the prefetcher sees, and
+watches the result.
+
+\section{The three properties and the variants}
+A read order has three properties: (A) how a read is issued (strided vector, scalar, or unit-stride vector); (B) how many columns are
+read side by side; (C) how many bytes are taken from one column per touch. Each variant changes these, and only these.
+All variants write the same Bc: a host test compares them byte for byte, and the board test (5400 cases) has bad\,=\,0.
+\texttt{col-gall} reads up to 24 columns at once; NR is at most 24 here, so it means NR.
+
+\begin{center}\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lp{5.6cm}lcc@{}}
+\toprule
+variant & how B is read & A: issue & B: columns at once & C: bytes per column \\
+\midrule
+\texttt{row} (shipped, xDSL) & \texttt{vlse32} across 8 columns per k & strided vector & NR & 4 \\
+\texttt{row-intr} & the same, written as C intrinsics & strided vector & NR & 4 \\
+\texttt{scalar} & one element at a time & scalar & NR & 4 \\
+\texttt{col-gall} & \texttt{vle32} of 8 floats down each column, all NR columns side by side, then strided stores into Bc & unit-stride vector & NR & 32 \\
+\texttt{col-g4} & the same, 4 columns at a time & unit-stride vector & 4 & 32 \\
+\texttt{col-g2} & the same, 2 columns at a time & unit-stride vector & 2 & 32 \\
+\texttt{col-g1} & one column at a time (the order \iss{44} asked for) & unit-stride vector & 1 & 32 \\
+\texttt{col-g1-m4} & one column at a time, LMUL\,=\,4: 32 floats per load & unit-stride vector & 1 & 128 (two whole lines) \\
+\bottomrule
+\end{tabular}
+\end{center}
+\texttt{row-intr} is a control: it should behave like \texttt{row}. If it does not, the C path itself changes something (see Caveats).
+
+\section{Results: B3 and B3\_K256}
+Each cell is GOPs by mean time / GOPs by median rep / slow \%. Three tiles are pinned (16$\times$6, 16$\times$8, 16$\times$15), each on B3
+(K=384) and B3\_K256. S1 is series 1, S2 is series 2. \texttt{row}, \texttt{col-g1-m4} and \texttt{col-gall} ran in both;
+\texttt{row-intr}, \texttt{scalar} and \texttt{col-g1} in S1 only; \texttt{col-g2} and \texttt{col-g4} in S2 only. Red bold: bad cells (any slow reps, or steadily slow).
+
+\paragraph{Readers that take 4 bytes per column.}
+\begin{center}\footnotesize\setlength{\tabcolsep}{2.8pt}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & \multicolumn{2}{c}{16$\times$6} & \multicolumn{2}{c}{16$\times$8} & \multicolumn{2}{c}{16$\times$15} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+variant & B3 & B3\_K256 & B3 & B3\_K256 & B3 & B3\_K256 \\
+\midrule
+\texttt{row} (S1) & \good{6.72/6.73/0} & \bad{4.81/5.33/51} & \bad{3.83/3.65/84} & \bad{3.65/3.55/96} & \bad{4.63/4.28/86} & \bad{4.72/4.56/94} \\
+\texttt{row} (S2) & \good{6.70/6.71/0} & \bad{5.49/6.74/34} & \bad{3.61/3.34/91} & \bad{3.65/3.56/96} & \bad{4.53/4.28/89} & \bad{4.94/4.67/89} \\
+\texttt{row-intr} & \good{6.30/6.33/0} & \bad{4.33/4.42/63} & \bad{3.50/3.30/93} & \bad{3.76/3.63/93} & \bad{4.37/4.18/86} & \bad{4.60/4.46/94} \\
+\texttt{scalar} & \good{6.19/6.19/0} & \bad{5.87/6.47/41} & \bad{6.89/7.45/9} & \bad{7.39/7.91/14} & \bad{6.98/7.81/38} & \bad{4.64/4.42/91} \\
+\bottomrule
+\end{tabular}
+\end{center}
+{\footnotesize Table 1. Uninstrumented (INSTRUMENTED=0), reference protocol \texttt{-{}-tmin 10}, core 4, \texttt{-{}-no-nc-overrides}, 3 launches, board \texttt{jbpi2}.
+Source: \texttt{report\_series1\_jbpi2.md} and \texttt{report\_series2\_jbpi2.md}, section 1.}
+
+\paragraph{Readers that take whole columns.}
+\begin{center}\footnotesize\setlength{\tabcolsep}{2.8pt}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & \multicolumn{2}{c}{16$\times$6} & \multicolumn{2}{c}{16$\times$8} & \multicolumn{2}{c}{16$\times$15} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+variant & B3 & B3\_K256 & B3 & B3\_K256 & B3 & B3\_K256 \\
+\midrule
+\texttt{col-g1} (S1) & \good{6.90/6.95/0} & \good{7.61/7.58/0} & \good{7.05/7.09/0} & \good{7.88/7.90/0} & \good{7.05/7.05/0} & \good{8.01/8.02/0} \\
+\texttt{col-g1-m4} (S1) & \good{6.89/6.94/0} & \good{7.72/7.66/0} & \good{7.07/7.11/0} & \good{7.87/7.90/0} & \good{7.03/7.02/0} & \good{7.96/8.01/0} \\
+\texttt{col-g1-m4} (S2) & \good{6.88/6.93/0} & \good{7.70/7.65/0} & \good{7.08/7.11/0} & \good{7.92/7.94/0} & \good{7.01/7.00/0} & \good{7.88/7.88/0} \\
+\texttt{col-g2} (S2) & 6.36/6.39/0 & \bad{3.48/3.47/0} & 6.51/6.55/0 & \bad{3.89/3.89/0} & 6.48/6.48/0 & 7.86/7.91/0 \\
+\texttt{col-g4} (S2) & 6.48/6.53/0 & \bad{3.32/3.01/82} & 7.11/7.13/0 & 8.18/8.21/0 & 7.17/7.17/0 & 7.57/7.59/0 \\
+\texttt{col-gall} (S1) & \bad{4.22/4.50/69} & \bad{4.38/4.59/48} & 7.11/7.12/0 & 6.69/6.69/0 & 6.72/6.72/0 & 7.59/7.60/0 \\
+\texttt{col-gall} (S2) & \bad{3.88/3.77/84} & \bad{4.24/4.47/54} & 7.10/7.11/0 & 6.65/6.66/0 & 6.67/6.67/0 & 7.57/7.58/0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+{\footnotesize Table 2. Uninstrumented (INSTRUMENTED=0), reference protocol \texttt{-{}-tmin 10}, core 4, \texttt{-{}-no-nc-overrides}, 3 launches, board \texttt{jbpi2}.
+Source: the same two reports, section 1. Green: no slow rep and in step with the other column readers.}
+
+The two \texttt{col-g1} readers have no slow rep in any of their 18 cells, and the S1 and S2 cells of \texttt{col-g1-m4} agree to within
+0.08 GOPs. The two \texttt{col-g2} cells at K=256 on 16$\times$6 and 16$\times$8 have no slow rep either, yet they run at
+3.48 and 3.89 GOPs, against 7.70 and 7.92 for \texttt{col-g1-m4} (details in \S\ref{sec:insight}).
+
+\emph{Cross-check on \texttt{jbpi}} (series 1 only): every GEMM cell falls in the same class, slow or steady. Steady \texttt{col-g1} and
+\texttt{col-g1-m4} cells are within 0.15 GOPs of \texttt{jbpi2}, and cells in the slow state move by up to 0.43 GOPs.
+
+\section{Results: the pack-only loop}
+This loop runs the B packer alone, with no compute between packs and one clock read per rep. Each cell is slow-rep share (\%) /
+mean time of the fast reps (ms). When a packer is mostly slow, its ``fast'' mean is taken over few reps.
+
+\begin{center}\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+ & \multicolumn{2}{c}{16$\times$15} & \multicolumn{2}{c}{16$\times$8} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+variant & B3 & B3\_K256 & B3 & B3\_K256 \\
+\midrule
+\texttt{row-intr} (S1) & \bad{91} / 0.6443 & \bad{33} / 0.3779 & \bad{91} / 0.8762 & 0 / 0.2185 \\
+\texttt{scalar} (S1) & \bad{84} / 0.6571 & \bad{95} / 0.4179 & 5 / 0.6393 & 0 / 0.3776 \\
+\texttt{col-g1} (S1) & 0 / 0.8907 & 0 / 0.4121 & 6 / 0.6086 & 7 / 0.2892 \\
+\texttt{col-g1-m4} (S1) & 0 / 0.8218 & 0 / 0.3638 & 6 / 0.5598 & 5 / 0.2459 \\
+\texttt{col-g1-m4} (S2) & 0 / 0.8525 & 0 / 0.3711 & 6 / 0.5599 & 4 / 0.2518 \\
+\texttt{col-g2} (S2) & 0 / 1.1542 & 0 / 0.4821 & 0 / 0.8949 & 0 / 0.6583 \\
+\texttt{col-g4} (S2) & 0 / 1.0525 & 0 / 0.5111 & 0 / 0.8039 & 0 / 0.3488 \\
+\texttt{col-gall} (S1) & 0 / 1.4031 & 0 / 0.6554 & 0 / 1.0775 & 0 / 0.3307 \\
+\texttt{col-gall} (S2) & 0 / 1.3852 & 0 / 0.6840 & 0 / 1.0925 & 0 / 0.3265 \\
+\bottomrule
+\end{tabular}
+\end{center}
+{\footnotesize Table 3. Uninstrumented (INSTRUMENTED=0), reference protocol \texttt{-{}-tmin 10}, core 4, \texttt{-{}-no-nc-overrides}, 3 launches, board \texttt{jbpi2}.
+Source: \texttt{report\_series1\_jbpi2.md} and \texttt{report\_series2\_jbpi2.md}, section 2. \texttt{row} and 16$\times$6 are not in this loop.}
+
+The packer alone goes two-speed with 4-byte reads: \texttt{row-intr} is 91\% slow at 16$\times$15 and at 16$\times$8 on B3, and \texttt{scalar} is
+84--95\% slow at 16$\times$15. The column readers stay at 0--7\%. The 4--7\% slow reps of \texttt{col-g1} and \texttt{col-g1-m4} at 16$\times$8 are
+isolated reps (for example 0.5598 ms fast against 0.7851 ms slow for \texttt{col-g1-m4} at B3), and they do not show in the GEMM cells.
+
+\section{Results: the controls B2 and Reuse24}
+Mean GOPs; the slow-rep share in brackets when it is not zero. B2 uses kc$=$64; Reuse24 uses the same kc as B3 at each tile (256, 256, 128).
+
+\begin{center}\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & \multicolumn{3}{c}{B2} & \multicolumn{3}{c}{Reuse24} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+variant & 16$\times$6 & 16$\times$8 & 16$\times$15 & 16$\times$6 & 16$\times$8 & 16$\times$15 \\
+\midrule
+\texttt{row} (S1) & 10.24 & 10.26 & 12.64 & 9.21 & 8.95 & \bad{8.48 (17)} \\
+\texttt{row} (S2) & 10.26 & 10.24 & 12.47 & 9.21 & 8.96 & \bad{8.68 (14)} \\
+\texttt{row-intr} & 10.05 & 10.18 & 12.33 & 8.89 & \bad{7.07 (73)} & \bad{7.55 (53)} \\
+\texttt{scalar} & 9.87 & 9.87 & 12.13 & 8.84 & 9.03 & 9.25 \\
+\texttt{col-g1} & 10.13 & 10.19 & 12.43 & 9.28 & 9.17 & 8.86 \\
+\texttt{col-g1-m4} (S1) & 10.15 & 10.17 & 12.57 & 9.29 & 9.15 & 8.87 \\
+\texttt{col-g1-m4} (S2) & 10.24 & 10.24 & 12.46 & 9.27 & 9.15 & 8.88 \\
+\texttt{col-g2} (S2) & 10.17 & 10.13 & 12.49 & 9.17 & 9.09 & 8.71 \\
+\texttt{col-g4} (S2) & 10.24 & 10.15 & 12.40 & 9.16 & 9.13 & 8.93 \\
+\texttt{col-gall} (S1) & 10.19 & 10.17 & 12.38 & 9.10 & 8.99 & 8.74 \\
+\texttt{col-gall} (S2) & 10.22 & 10.21 & 12.43 & 9.08 & 8.99 & 8.73 \\
+\bottomrule
+\end{tabular}
+\end{center}
+{\footnotesize Table 4. Uninstrumented (INSTRUMENTED=0), reference protocol \texttt{-{}-tmin 10}, core 4, \texttt{-{}-no-nc-overrides}, 3 launches, board \texttt{jbpi2}.
+Source: the two reports, section 1 (B2 and R24 blocks).}
+
+On B2 the column readers are within 0.26 GOPs of \texttt{row} (largest gap 12.64 against 12.38, \texttt{col-gall} S1, at 16$\times$15;
+\texttt{col-g1-m4} at most 0.09); \texttt{scalar} is lower
+by 0.37 to 0.51. Reuse24 goes slow only with \texttt{row} (16$\times$15: 17\% in S1, 14\% in S2) and with \texttt{row-intr}
+(16$\times$8: 73\%; 16$\times$15: 53\%). No column reader goes slow on either control.
+
+\section{What it means for the design}
+\label{sec:insight}
+\begin{enumerate}
+  \item \textbf{A read pattern sets off the slow state; the vector unit and the number of streams do not.} What \texttt{row},
+  \texttt{row-intr} and \texttt{scalar} share is that they take 4 B from each of NR columns that lie 1536 B (B3) or 1024 B (B3\_K256) apart, then move to the next k.
+  Scalar loads do it too: pack-only is 84--95\% slow at 16$\times$15, and the full GEMM is 91\% slow at 16$\times$15 on B3\_K256. So the
+  \iss{53} finding that ``scalar is steadier'' depends on the tile.
+  \item \textbf{The B packer alone can set the state off.} In the pack-only loop, with no compute, \texttt{row-intr} is 91\% slow at
+  16$\times$15 and at 16$\times$8 on B3. So the next step lives in the packer, not in the order of pack and compute.
+  \item \textbf{Reading a column 32 B or 128 B at a time removes this trigger.} One column at a time is the only order that is safe on
+  every cell we ran.
+  \item \textbf{Grouping columns brings back bad cells that follow tile and K, not group size.} \texttt{col-g2} is bad at K=256
+  (16$\times$8 and 16$\times$6), \texttt{col-g4} is bad at 16$\times$6 on K=256, and \texttt{col-gall} is bad at 16$\times$6 at both K.
+  This looks like placement (where the active lines land in the cache), which fits \iss{49}, and not a limit on the number of streams.
+  The idea in \iss{44} is right in its effect (one column at a time), but for a different reason.
+  \item \textbf{A third state: steadily slow.} \texttt{col-g2} at 16$\times$8 on B3\_K256 runs at 3.89 GOPs with a launch spread of 0.02
+  (3.88--3.90) and no two-speed split. Its pack alone is a uniform 0.6448 ms (median), against 0.2500 ms for \texttt{col-g1-m4}.
+  A tool that splits reps into fast and slow reports this cell as 0\% slow. Read the GOPs together with the slow share.
+  \item \textbf{Cost.} In a fast rep, a one-column pack costs a little more than \texttt{row-intr}'s: at 16$\times$15 on B3 the pack-only
+  fast mean is 0.8218 ms for \texttt{col-g1-m4} against 0.6443 ms. But it never goes slow, while \texttt{row-intr} spends 91\% of its
+  reps at 1.1994 ms.
+\end{enumerate}
+
+\section{Caveats}
+\begin{itemize}
+  \item The control only partly holds. On the 16$\times$8 and 16$\times$15 cells, \texttt{row-intr} is within 0.35 GOPs of \texttt{row}
+  with the same kind of slow share. But it is lower on 16$\times$6 B3 (6.30 against 6.72, S1), and 16$\times$6 B3\_K256 differs more
+  (4.33 against 4.81, 63\% against 51\% slow). It also goes slow on Reuse24 where \texttt{row} does not (16$\times$8). The C-intrinsics
+  copy is not identical to the xDSL packer. The gains of \texttt{col-g1} hold against both.
+  \item \texttt{col-g1-m4} exists only as C intrinsics. Shipping it needs an xDSL port. That is out of scope here, because the
+  dialect has no fp32 strided store (\iss{44}).
+  \item Only B3-family shapes plus two controls, three pinned tiles and one board model. No counters were read in these runs
+  (uninstrumented), so the prefetcher explanation is inferred from \iss{50}, not measured here.
+  \item \textcolor{red}{RED NOTE, \texttt{jbpi} (cross-check board only).} One GEMM run was discarded for another user's compile, and one pack-only
+  run because overall idle fell to 84.8\%, under the 85\% gate; both were redone. Core 3 was at 72\% during one 16$\times$15 binary of \texttt{run\_2026-10-22\_214815} (\texttt{col-g1-m4}, launch 2),
+  and root \texttt{bluetoothd} used 20--99\% of one core in the live \texttt{top} readings (median 55\%). \texttt{jbpi} numbers are used only as a cross-check; every number in the
+  tables above is from \texttt{jbpi2}.
+  \item The slow share of \texttt{row} moves between nights on some cells (16$\times$6 B3\_K256: 51\% in S1, 34\% in S2).
+\end{itemize}
+
+\section{Next steps}
+\begin{itemize}
+  \item Port \texttt{col-g1-m4} to xDSL (new ticket; it needs a strided fp32 store, or the unit-stride load and strided store pair).
+  \item One counter run (\iss{50} style) of \texttt{row} against \texttt{col-g1-m4} on B3 16$\times$15, to confirm the prefetch story.
+  \item Look at the bad cells of the grouped readers against the addresses of Bc and B (placement). This is cheap desk work.
+  \item Report-script fixes: flag cells that are uniformly slow; a false RED from the lifetime \%CPU in \texttt{ps}; mid-run load taken
+  from the per-core monitor.
+\end{itemize}
+
+\section*{Appendix A: sources}
+\raggedright\emergencystretch=3em
+\begin{itemize}
+  \item Branch \texttt{issue55-pack-b-variants}: \texttt{5338a3b8} (variants), \texttt{c85f7f7d} (switch), \texttt{d0de1b0f} (pack-only loop, series
+  and report scripts), \texttt{383c886c} (series 1 logs), \texttt{bf6f2366} (series 2 logs).
+  \item Logs, under \path{tests/pure_xdsl_blis_rvv/}: \path{logs/issue55_2026-10-22_194043/report_series1_jbpi2.md};
+  \path{logs/issue55_jbpi/issue55_2026-10-22_194043/report_series1_jbpi.md} (cross-check);
+  \path{logs/issue55_2026-10-23_100122/report_series2_jbpi2.md}.
+  \item Issues \iss{54} (question), \iss{55} (spec), \iss{48}, \iss{49}, \iss{50}, \iss{53}, \iss{44}.
+\end{itemize}
+
+\end{document}

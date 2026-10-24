@@ -292,3 +292,7 @@ The B3_K256 rows of §8.3 do not follow the "NR up to 6 is steady" rule (16x6 go
 3. **#51** [[0035-slow-state-m-sweep]]: sweep M at fixed tiles, so the rows and the tile come apart (#47's open point).
 4. **#52** [[0036-reference-16x14-vs-ours-code-read]]: read the reference and ours side by side at 16x14 (desk only).
 5. **#53** [[0037-scalar-vs-vector-packer-on-controls]]: scalar against vector packer on all four shapes, from the committed logs (desk only).
+
+## 10. Follow-up (opened 2026-10-22)
+
+- **#54** [[0038-b3-which-read-property-of-pack-b-sets-off-the-slow-state]]: which property of the B packer's reads (how a read is issued, how many columns at once, bytes per column per touch) sets off B3's slow state; small read-order variants on B3 only. Code in spec **#55** [[0039-pack-b-read-order-variants-spec]], which builds #44's one-column order as one of its variants.
