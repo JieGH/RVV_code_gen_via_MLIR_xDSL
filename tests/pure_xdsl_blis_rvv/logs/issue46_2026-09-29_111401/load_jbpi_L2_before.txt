@@ -1,0 +1,12 @@
+jlei                  600   0       00:00 ps
+root                  9.4   4       00:00 sshd
+root                  0.7   3       48:19 kworker/u16:6-flush-179:0
+root                  0.6   0    01:32:14 kworker/u16:0-writeback
+root                  0.5   7 57-02:01:04 disp_eng_share_thread
+systemd-oom           0.0   7 57-02:01:11 systemd-oomd
+messagebus            0.0   2 57-02:01:11 dbus-daemon
+root                  0.0   6 57-02:01:10 NetworkManager
+root                  0.0   4 57-02:01:20 vq1
+root                  0.0   2 57-02:01:20 vq0
+root                  0.0   1 57-02:01:05 ksdioirqd/mmc1
+root                  0.0   0  1-08:23:48 kworker/0:1H-mmc_complete

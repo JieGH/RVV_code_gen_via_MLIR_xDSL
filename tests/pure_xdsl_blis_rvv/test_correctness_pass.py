@@ -90,8 +90,8 @@ STUB_HEADER = """\
 struct NcOverrideEntry { const char* label; int nc; };
 static const NcOverrideEntry CONFIG_NC_OVERRIDES[] = { {"", 0} };
 static const size_t CONFIG_NC_OVERRIDES_COUNT = 0;
-void stub_gemm(int, int, int, float, float*, int, float*, int, float, float*, int, float*, float*, int, int, int, int, int, double*, double*, uint64_t*, bool, bool, perf_gemm_counters*);
-typedef void (*gemm_blis_fn)(int, int, int, float, float*, int, float*, int, float, float*, int, float*, float*, int, int, int, int, int, double*, double*, uint64_t*, bool, bool, perf_gemm_counters*);
+void stub_gemm(int, int, int, float, float*, int, float*, int, float, float*, int, float*, float*, int, int, int, int, int, double*, double*, uint64_t*, bool, bool, int, perf_gemm_counters*);
+typedef void (*gemm_blis_fn)(int, int, int, float, float*, int, float*, int, float, float*, int, float*, float*, int, int, int, int, int, double*, double*, uint64_t*, bool, bool, int, perf_gemm_counters*);
 struct KernelVariant { const char* name; int mr; int nr; gemm_blis_fn func; };
 static const KernelVariant generated_variants[] = { {"MR4_NR4", 4, 4, stub_gemm} };
 static const int num_variants = 1;
@@ -104,7 +104,7 @@ ORACLE_HARNESS = """\
 #include "driver_benchmark.cpp"
 #undef main
 
-void stub_gemm(int, int, int, float, float*, int, float*, int, float, float*, int, float*, float*, int, int, int, int, int, double*, double*, uint64_t*, bool, bool, perf_gemm_counters*) {}
+void stub_gemm(int, int, int, float, float*, int, float*, int, float, float*, int, float*, float*, int, int, int, int, int, double*, double*, uint64_t*, bool, bool, int, perf_gemm_counters*) {}
 
 // C = alpha*A*B + beta*C, one entry at a time. beta == 0 must not read C at all (the
 // benchmark's C starts as anything), and alpha == 0 must not read A or B.
@@ -167,6 +167,7 @@ def test_gemm_ref_computes_alpha_ab_plus_beta_c_for_any_beta(tmp_path: Path):
     (proj / "harness.cpp").write_text(ORACLE_HARNESS)
     shutil.copy(TEMPLATES_DIR / "driver_benchmark.cpp", proj)
     shutil.copy(TEMPLATES_DIR / "perf_counters.h", proj)
+    shutil.copy(TEMPLATES_DIR / "pack_b_variants.h", proj)  # issue #55: the driver includes it
     shutil.copytree(MODEL_LEVEL_DIR, tmp_path / "modelLevel")
     model_obj = tmp_path / "model_level.o"
     subprocess.run(

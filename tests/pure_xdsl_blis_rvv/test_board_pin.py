@@ -398,3 +398,38 @@ def test_raw_events_are_refused_where_they_cannot_be_counted(flags: list[str], w
     out = proc.stdout + proc.stderr
     assert "--raw-events" in out and why in out
     assert "Run overview" not in out
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-29: another user's job on the board changes its thermal state even when it sits on
+# another core, so every run's provenance says who else was running (and reps_report flags it red).
+# ---------------------------------------------------------------------------
+PS_BUSY = """\
+psiwins        92.0   0 01:21:45 spmv
+jlei           20.0   1 00:00:00 bash
+root            9.5   4 00:00:01 sshd
+psiwins         0.0   0 01:21:53 bash
+alice          25.0   3 00:10:00 python3
+"""
+
+
+def _others(ps_text: str, me: str = "jlei") -> str:
+    got = _bash(f'awk -v me={me} "$OTHER_USERS_AWK" <<\'EOF\'\n{ps_text}EOF')
+    assert got.returncode == 0, got.stderr
+    return got.stdout.strip()
+
+
+def test_another_users_heavy_process_is_named_with_its_core_and_age():
+    out = _others(PS_BUSY)
+    assert "psiwins spmv 92.0% on core 0, up 01:21:45" in out
+    assert "alice python3 25.0% on core 3, up 00:10:00" in out
+
+
+def test_our_own_root_and_idle_processes_are_not_other_users_load():
+    out = _others(PS_BUSY)
+    assert "jlei" not in out and "sshd" not in out and "bash" not in out.replace("psiwins", "")
+    assert _others("jlei 90.0 4 00:01:00 test_gemm.x\nroot 50.0 0 01:00:00 kworker\n") == ""
+
+
+def test_provenance_says_who_else_was_running():
+    assert _field(_provenance("0"), "other users") != ""

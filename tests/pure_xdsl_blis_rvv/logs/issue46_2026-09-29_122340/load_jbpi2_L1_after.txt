@@ -1,0 +1,12 @@
+jlei                  600   7       00:00 ps
+psiwins              99.7   5       00:32 cc1plus
+root                 11.9   3       00:00 sshd
+root                  0.5   6 57-03:10:31 disp_eng_share_thread
+psiwins               0.5   2       00:32 make
+root                  0.1   0    02:20:07 kworker/0:1H-mmc_complete
+psiwins               0.1   7       00:34 make
+root                  0.0   1       10:55 kworker/u16:5-rpciod
+systemd-oom           0.0   3 57-03:10:38 systemd-oomd
+root                  0.0   0       05:47 kworker/u16:3-rpciod
+root                  0.0   7       05:14 kworker/u16:6-rpciod
+root                  0.0   1       05:14 kworker/u16:7-nfsiod

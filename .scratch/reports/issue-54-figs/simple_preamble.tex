@@ -1,0 +1,31 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=1.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{url}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\usepackage{graphicx}
+\setlength{\textfloatsep}{1.6ex plus 0.6ex}
+\setlength{\floatsep}{1.4ex plus 0.6ex}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\textfraction}{0.08}
+\renewcommand{\floatpagefraction}{0.85}
+\newcommand{\figcap}[1]{\caption{\footnotesize #1}}
+\setlist{nosep,leftmargin=1.3em}
+\titlespacing*{\section}{0pt}{1.4ex}{0.6ex}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55ex}
+\renewcommand{\arraystretch}{1.12}
+\newcommand{\iss}[1]{\href{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/#1}{\##1}}
+\newcommand{\good}[1]{\textcolor{green!45!black}{\textbf{#1}}}
+\newcommand{\bad}[1]{\textcolor{red!70!black}{\textbf{#1}}}
+\newcommand{\key}[1]{\textbf{\textcolor{blue!55!black}{#1}}}
+\newcommand{\callout}[1]{\fcolorbox{blue!50!black}{blue!4}{\parbox{0.96\textwidth}{#1}}}
+\titleformat{\section}{\large\bfseries}{\thesection}{0.6em}{}

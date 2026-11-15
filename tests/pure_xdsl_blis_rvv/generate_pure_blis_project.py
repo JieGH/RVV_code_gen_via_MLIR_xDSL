@@ -159,10 +159,10 @@ def generate_header(
         f.write("\n")
 
         f.write(
-            f"void gemm_blis_generic(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf);\n\n"
+            f"void gemm_blis_generic(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, int pack_b_variant, perf_gemm_counters* perf);\n\n"
         )
         f.write(
-            f"typedef void (*gemm_blis_fn)(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf);\n\n"
+            f"typedef void (*gemm_blis_fn)(int m, int n, int k, {c_type_alpha} alpha, {c_type_a}* A, int lda, {c_type_b}* B, int ldb, {c_type_alpha} beta, {c_type_c}* C, int ldc, {c_type_a}* Ac, {c_type_b}* Bc, int mc, int nc, int kc, int mr, int nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, int pack_b_variant, perf_gemm_counters* perf);\n\n"
         )
         f.write("struct KernelVariant {\n")
         f.write("    const char* name;\n")
@@ -476,7 +476,7 @@ def build_project(config: BLISProjectConfig, args):
     with open(headers_path, "w") as f:
         f.write("#ifndef GEMM_HEADERS_H\n#define GEMM_HEADERS_H\n\n")
         f.write(
-            "#include <stddef.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <string>\n#include <algorithm>\n#include <riscv_vector.h>\n#include <chrono>\n#include \"perf_counters.h\"\n#include \"pack_lines.h\"\n\n"
+            "#include <stddef.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <string>\n#include <algorithm>\n#include <riscv_vector.h>\n#include <chrono>\n#include \"perf_counters.h\"\n#include \"pack_lines.h\"\n#include \"pack_b_variants.h\"\n\n"
         )
         f.write(macros)
         f.write(fwd_decls)
@@ -510,8 +510,11 @@ def build_project(config: BLISProjectConfig, args):
 
     dispatch_body += render_scalar_pack_functions(c_type_a, c_type_b)
     dispatch_body += f"""
-void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c_type_a}* A, int32_t lda, {c_type_b}* B, int32_t ldb, {c_type_alpha} beta, {c_type_c}* C, int32_t ldc, {c_type_a}* Ac, {c_type_b}* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, perf_gemm_counters* perf) {{
+void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c_type_a}* A, int32_t lda, {c_type_b}* B, int32_t ldb, {c_type_alpha} beta, {c_type_c}* C, int32_t ldc, {c_type_a}* Ac, {c_type_b}* Bc, int32_t mc, int32_t nc, int32_t kc, int32_t mr, int32_t nr, double* pack_time, double* kernel_time, uint64_t* pack_bytes, bool use_scalar_pack, bool zero_pack_lines, int pack_b_variant, perf_gemm_counters* perf) {{
 """
+    if c_type_b != "float" or "DOT" in config.method:
+        # Issue #55: the B packer variant applies to fp32 AXPY only; elsewhere it is ignored.
+        dispatch_body += "    (void) pack_b_variant;\n"
     if is_pinned:
         # Pinned mode: declare named pack functions directly — no table needed.
         pinned_cb_fn = f"pack_CB_v_if_{config.method}_{config.datatype}_NR{pinned_nr}"
@@ -581,12 +584,22 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
         if is_dot
         else render_zero_lines("Ac", "cur_mc", "mr", c_type_a)
     )
+    cb_vector_call = (
+        "pack_CB_direct(b_ptr, Bc, cur_kc, cur_nc, ldb);"
+        if is_pinned
+        else "pack_CB_funcs[nr](b_ptr, Bc, cur_kc, cur_nc, ldb);"
+    )
+    if c_type_b == "float" and not is_dot:
+        # Issue #55: fp32 AXPY only. Variant 0 is the shipped xDSL packer, today's call
+        # first; any other variant is a C intrinsics packer from pack_b_variants.h.
+        cb_vector_call = (
+            f"if (pack_b_variant == 0) {{ {cb_vector_call} }} "
+            "else { pack_CB_variant(pack_b_variant, b_ptr, Bc, cur_kc, cur_nc, ldb, nr); }"
+        )
     pack_cb_block = render_timed_pack_block(
         " " * 12,
         "pack_CB_scalar(cur_kc, cur_nc, b_ptr, ldb, Bc, nr);",
-        "pack_CB_direct(b_ptr, Bc, cur_kc, cur_nc, ldb);"
-        if is_pinned
-        else "pack_CB_funcs[nr](b_ptr, Bc, cur_kc, cur_nc, ldb);",
+        cb_vector_call,
         pad_zero_cb,
     )
     pack_rb_block = render_timed_pack_block(
@@ -743,6 +756,7 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
     shutil.copy(os.path.join(templates_dir, "driver_benchmark.cpp"), out_dir)
     shutil.copy(os.path.join(templates_dir, "perf_counters.h"), out_dir)
     shutil.copy(os.path.join(templates_dir, "pack_lines.h"), out_dir)
+    shutil.copy(os.path.join(templates_dir, "pack_b_variants.h"), out_dir)
 
     # Process Makefile to optionally restrict datasets
     makefile_path = os.path.join(templates_dir, "Makefile")

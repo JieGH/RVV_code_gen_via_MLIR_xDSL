@@ -6,7 +6,8 @@ For each case (a row label and the nc it ran at) of each launch: GOPs by mean ti
 reference's formula, total ops over total time) and by median rep, the CV of the reps'
 GOPs, the best rep, the share of slow reps, and whether the slow reps come clumped
 together or scattered. Then one line per packer and case across launches (a launch with
---zero-pack-lines, issue #43, counts as its own packer: "vector+zeroline").
+--zero-pack-lines, issue #43, counts as its own packer: "vector+zeroline"; the reference design's
+per-rep files of issue #46, reps_ref_<tile>_<variant>, are "reference <tile>").
 
 Slow reps: the reps' GOPs are cut into two groups at the point that separates them best
 (1-D two-means). If the slower group's mean is under 80% of the faster group's, the case
@@ -54,6 +55,16 @@ TWO_SPEEDS_BELOW = 0.8  # slow group's mean under this fraction of the fast grou
 class Case:
     ops: float
     seconds: list[float] = field(default_factory=list[float])
+    # Issue #47: the shape and blocking the rows carry (the same on every row of a case).
+    m: int = 0
+    n: int = 0
+    k: int = 0
+    mc: int = 0
+    kc: int = 0
+    variant: str = ""
+    # Issue #48: the instrumented build's pack and compute time of each rep, in seconds (nan when not measured).
+    pack_seconds: list[float] = field(default_factory=list[float])
+    compute_seconds: list[float] = field(default_factory=list[float])
     # Issue #42: each counter column's per-rep counts, reps in the order they ran.
     counters: dict[str, list[float]] = field(default_factory=dict[str, list[float]])
 
@@ -105,8 +116,11 @@ def read_reps(path: Path) -> dict[tuple[str, int], Case]:
         for row in reader:
             key = (row["Layer"], int(row["NC"]))
             ops = 2.0 * int(row["M"]) * int(row["N"]) * int(row["K"])
-            case = cases.setdefault(key, Case(ops))
+            case = cases.setdefault(key, Case(ops=ops, m=int(row["M"]), n=int(row["N"]), k=int(row["K"]),
+                                              mc=int(row["MC"]), kc=int(row["KC"]), variant=row["Variant"]))
             case.seconds.append(float(row["Seconds"]))
+            case.pack_seconds.append(float(row.get("Pack_Seconds", "nan")))
+            case.compute_seconds.append(float(row.get("Compute_Seconds", "nan")))
             for c in columns:
                 case.counters.setdefault(c, []).append(float(row[c]))
     return cases
@@ -163,12 +177,21 @@ class LaunchRow:
 
 
 def _packer(f: Path) -> str:
-    """The packer a per-rep log was made with, and whether its pack lines were cleared (#43)."""
+    """The packer a per-rep log was made with, and whether its pack lines were cleared (#43).
+    A reps_ref_<tile>_<variant> file (issue #46) is the reference design's own packing, one
+    row per built tile: "reference 16x14"."""
+    if f.name.startswith("reps_ref_"):
+        return "reference " + f.name.removeprefix("reps_ref_").split("_")[0]
     return ("scalar" if "_scalarpack" in f.name else "vector") + ("+zeroline" if "_zeroline" in f.name else "")
 
 
 def _reps_files(target: Path) -> list[Path]:
     return [target] if target.is_file() else sorted(target.rglob("reps_*.txt*"))
+
+
+# Public names for the survey of issue #47 (slow_state_survey.py).
+packer_of = _packer
+reps_files = _reps_files
 
 
 def launch_table(targets: list[Path]) -> list[LaunchRow]:
@@ -269,6 +292,7 @@ class RunConditions:
     core: str
     raw_events: str = "unknown"
     busy_share: str = "unknown"
+    other_users: str = "unknown"  # who else was running on the board: "none", or a list (2026-09-29)
 
 
 def run_conditions(run_dir: Path) -> RunConditions:
@@ -285,7 +309,28 @@ def run_conditions(run_dir: Path) -> RunConditions:
         return fields.get(key) or "unknown"
 
     return RunConditions(get("board"), get("build"), get("protocol"), get("cpu pin"),
-                         get("raw events"), get("busy share"))
+                         get("raw events"), get("busy share"), get("other users"))
+
+
+def red(text: str) -> str:
+    """Red on a terminal; the marker words carry it into a redirected or pasted report."""
+    return f"\033[31m{text}\033[0m" if sys.stdout.isatty() else text
+
+
+def load_notes(targets: list[Path]) -> list[str]:
+    """One red note per run folder made while another user's job was running on the board: even on
+    another core it moves the chip's thermal state, so the numbers are not clean and want a run in a
+    quiet window (midnight). Runs whose provenance says "none", or has no such line, get none."""
+    out: list[str] = []
+    for target in targets:
+        run_dir = target if target.is_dir() else next(
+            (p for p in target.parents if (p / "provenance.txt").is_file()), target.parent
+        )
+        others = run_conditions(run_dir).other_users
+        if others not in ("none", "unknown", "unavailable"):
+            out.append(red(f"🔴 RED NOTE: {run_dir.name} ran while another user's job was on the board: "
+                           f"{others.rstrip('; ')}. Not a clean run: repeat it in a quiet window (whole CPU idle)."))
+    return out
 
 
 def conditions_lines(targets: list[Path]) -> list[str]:
@@ -326,6 +371,9 @@ def main(argv: list[str]) -> int:
     targets = [Path(a) for a in argv]
     rows = launch_table(targets)
     print("\n".join(conditions_lines(targets)))
+    notes = load_notes(targets)
+    if notes:
+        print("\n".join(notes))
     print()
     print(format_table(rows))
     counters = counter_table(targets)
@@ -337,6 +385,9 @@ def main(argv: list[str]) -> int:
         print(f"\nWARNING: {len(few)} case(s) seen in fewer than {MIN_LAUNCHES} launches: not a result under "
               f"issue #39's house rules (one launch is not a result): {', '.join(few[:8])}"
               + (" ..." if len(few) > 8 else ""))
+    if notes:
+        print("\n" + red(f"🔴 RED NOTE: {len(notes)} of {len(targets)} run folder(s) above were made under another "
+                         "user's load; read their numbers with that in mind."))
     return 0
 
 

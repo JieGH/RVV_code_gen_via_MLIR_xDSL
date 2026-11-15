@@ -1,0 +1,12 @@
+jlei                  500   7       00:00 ps
+jlei                 50.0   5       00:00 bash
+root                 11.9   2       00:00 sshd
+root                  1.0   4       53:58 kworker/u16:3-rpciod
+root                  0.9   3    01:12:15 kworker/u16:2-rpciod
+root                  0.9   5       35:05 kworker/u16:6-rpciod
+root                  0.8   1       49:45 kworker/u16:5-rpciod
+root                  0.7   6       35:17 kworker/u16:1-nfsiod
+root                  0.7   5    01:19:00 kworker/u16:0-rpciod
+root                  0.5   3 57-01:47:51 disp_eng_share_thread
+systemd-oom           0.0   5 57-01:47:58 systemd-oomd
+messagebus            0.0   1 57-01:47:57 dbus-daemon

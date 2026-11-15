@@ -2,6 +2,8 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/41
 
+**Engineering report (#31-#44, all issues together):** [issues-31-43-engineering-report.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-43-engineering-report.pdf) ([LaTeX source](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-43-engineering-report.tex)), 2026-09-28.
+
 **Role / Label:** `needs-triage` — follow-up of #36 (its "Next steps"), and step 2 of the #35 recommendation.
 **Status:** 🟡 Open. 2026-09-27: §3 (generic L2 counters read 0), then plan steps 1-3 done through #42 (§8): the slow state is the L1D prefetcher doing about half its work, not the shared L2. Steps 4-5 open.
 **Brief:** [issues-35-36-39-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-35-36-39-brief.pdf), §2 and §4; results of §8: [issue-42-brief.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-42-brief.pdf).

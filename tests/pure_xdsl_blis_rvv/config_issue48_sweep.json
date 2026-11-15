@@ -1,0 +1,45 @@
+[
+    // Issue #48: the B3 microkernel-dimension sweep (MR x NR), read as speed, slow-rep share and (in the
+    // instrumented build) pack and compute time apart. See .scratch/issues/0032-b3-microkernel-dimension-sweep-pack-and-compute.md.
+    //
+    // One pinned row per tile. Every tile runs the same four shapes (datasets/issue46_ref_b3.dat: B3 64x384x384,
+    // B3_K256, and the steady controls B2 and R24 = Reuse24), so each tile carries its own controls. Run it
+    // through run_issue48.sh with --no-nc-overrides (B3 at nc=384, the reference's nc).
+    //
+    // The tile choice (B3: M=64, N=384), see the table in the issue (pack_dims_table.py prints it):
+    //   - MR=16, NR 6/7/8/12/14/15/16: 16x14 against 16x15 is #46's open question. 16x16 is the one tile over the
+    //     32-register budget (34 live), a known-bad reference. 384 is divisible by 6, 8, 12 and 16 (no fringe
+    //     panel) and not by 7, 14 or 15 (a fringe panel), so a fringe panel and a partial vector are told apart.
+    //   - MR=8, NR up to the register limit of 31: one A vector per k-step, eight 8-row panels.
+    //   - MR=24 (limit NR 9) and MR=32 (limit NR 7): MR=32 is the row count of the steady big shapes (#47).
+    //   - Small and odd tiles, added at the user's request (2026-09-30): 4x4, 4x8, 4x16, 8x4, 16x4 (a side of 4 is a single
+    //     partial vector, vl = 4, on that side) and 12x8 (MR not a multiple of 8: the A packer's chunks are 8+4).
+    // The cache model picks mc/kc from the tile, so kc moves with it: kc = 128 for 16x12..16x16 and MR=32, 256 for
+    // 16x4..16x8, 4x16 and 8x8..8x16, 170 for 8x24, 12x8 and MR=24, 132 for 8x31, 384 (the whole K) for 4x4, 4x8 and 8x4 (pack_dims_table.py prints it per tile). The reps
+    // logs carry the real mc/kc of every tile.
+    ["fp32", "AXPY_FP32_Pack", [16, 6], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 7], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 8], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 12], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 14], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 16], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 8], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 14], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 15], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 16], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 24], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 31], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [24, 6], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [24, 9], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [32, 4], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [4, 4], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [4, 8], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [4, 16], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 4], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 4], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [12, 8], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000]
+]

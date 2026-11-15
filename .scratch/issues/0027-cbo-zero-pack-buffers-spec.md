@@ -2,6 +2,8 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/43
 
+**Engineering report (#31-#44, all issues together):** [issues-31-43-engineering-report.pdf](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-43-engineering-report.pdf) ([LaTeX source](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-43-engineering-report.tex)), 2026-09-28.
+
 **Status:** 🔧 Code done 2026-09-27; 📊 measured over 7 rounds per board on `jbpi` and `jbpi2` (2026-09-27/28; see the #43 comment "all rounds", brief `.scratch/reports/issue-43-brief.pdf`). Uninstrumented, ref protocol, core 4, 21 launches per side per board: B3_nc128 (64×384×384, nc=128) about 6.0 GOPs on vs 5.6 off; Reuse24 (384³) about 8.35 vs 8.0; B2 (384×384×64) about 12.25 vs 12.40; B3 at nc=384 and B3_K256 unchanged. The counters show no saved L2 reads, so why it helps is open. Switch still off by default (user's call); next is a no-`cbo.zero` control. Not yet written into #41.
 `--zero-pack-lines` on `compile_macro_bench.sh` and the driver; helper `templates/pack_lines.h`; comparison config
 `config_issue43_zero_lines.json`. Tests: `test_zero_pack_lines.py`, `test_ref_protocol.py` (flag, logs, script),

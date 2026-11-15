@@ -20,6 +20,18 @@ set -e
 # provenance.txt. For a head-to-head against our side, run_head_to_head.sh runs both back
 # to back; --no-compare skips step 5 for it.
 #
+# --per-rep (issue #46) adds a per-rep record to the reference: a STAGED copy of test_gemm.c
+# (ext/ is never touched) stores the clock after every call and writes it out after the timed
+# loop, and the results come back as reps_ref_<tile>_<variant>.txt.gz, the layout reps_report.py
+# reads. The timed loop is unchanged. --cases FILE runs another case list than cases.tsv (same
+# columns), e.g. cases_issue46.tsv; use --no-compare with it.
+#
+# --pack-b-fix (issue #54) packs B with our one-column packer instead of the reference's own: a STAGED
+# copy of gemm_blis.c (ext/ is never touched) has pack_CB renamed to pack_CB_orig and a new pack_CB
+# that reads a column-major fp32 B one column at a time, 32 numbers per load (ref_pack_fix.py).
+# --check sets TEST=T in the staged run_gemm.sh, so the driver compares C with its plain gemm after the
+# timed loop and prints PASS or ERROR (it does not change the timing; off by default, as upstream).
+#
 # Run from the project root (RVV_code_gen_via_MLIR_xDSL/).
 # ============================================================
 
@@ -45,6 +57,10 @@ CPU_FLAG=false
 NO_PIN=false
 ALLOW_CORE0=false
 COMPARE=true
+PER_REP=false
+PACK_FIX=false
+CHECK=false
+CASES_FILE=""
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -67,7 +83,11 @@ while [[ "$#" -gt 0 ]]; do
         --no-pin)          NO_PIN=true                            ;;
         --allow-core-0)    ALLOW_CORE0=true                       ;;
         --no-compare)      COMPARE=false                          ;;
-        -h|--help)         sed -n '3,24p' "$0"; exit 0            ;;
+        --per-rep)         PER_REP=true                           ;;
+        --pack-b-fix)      PACK_FIX=true                          ;;
+        --check)           CHECK=true                             ;;
+        --cases)           CASES_FILE="$2";          shift        ;;
+        -h|--help)         sed -n '3,30p' "$0"; exit 0            ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
@@ -119,6 +139,18 @@ if [ -n "${PIN_CPU}" ]; then
 else
     echo "  Pinning        : NOT pinned (--no-pin): the scheduler may move the run between cores"
 fi
+if [ "${PER_REP}" = true ]; then
+    echo "  Per-rep record : ON (staged test_gemm.c patched, ref_per_rep.py); one row per call in reps_ref_*.txt.gz"
+fi
+if [ "${PACK_FIX}" = true ]; then
+    echo "  B packer       : one column at a time, 32 numbers per load (staged gemm_blis.c patched, ref_pack_fix.py)"
+fi
+if [ "${CHECK}" = true ]; then
+    echo "  Result check   : ON (TEST=T: the driver compares C with its plain gemm after the timed loop)"
+fi
+if [ -n "${CASES_FILE}" ]; then
+    echo "  Cases          : ${CASES_FILE}"
+fi
 echo "  Results        : ${RESULT_DIR}"
 echo ""
 
@@ -126,7 +158,9 @@ echo ""
 # 1. Generate the per-(MR,NR) datasets + run plan
 # ------------------------------------------------------------
 echo "$SEP"; echo " [1/5] Generating datasets for our case set"; echo "$SEP"
-python3 "${HERE}/gen_ref_datasets.py" \
+CASES_ARGS=()
+if [ -n "${CASES_FILE}" ]; then CASES_ARGS=(--cases "${CASES_FILE}"); fi
+python3 "${HERE}/gen_ref_datasets.py" "${CASES_ARGS[@]}" \
     --opt "${OPT_MODE}" --swap "${SWAP}" --gather "${GATHER_FIRST}" --tmin "${TIMIN}" ${BRACKET}
 
 PLAN="${HERE}/generated/run_plan.tsv"
@@ -150,6 +184,12 @@ if [ "$PREFLIGHT" = true ] && [ -x "${CROSS_CC}" ]; then
     cp -r "${REF_SRC}/kernels/RVV_256_${OPT_MODE}" "${PF_DIR}/kernels/"
     cp -r "${HERE}/blis_shim" "${PF_DIR}/"
     python3 "${HERE}/repair_ref_kernels.py" "${PF_DIR}/kernels" || true
+    if [ "${PER_REP}" = true ]; then
+        python3 "${HERE}/ref_per_rep.py" patch "${PF_DIR}/gemm_blis_family/src/test_gemm.c" || exit 1
+    fi
+    if [ "${PACK_FIX}" = true ]; then
+        python3 "${HERE}/ref_pack_fix.py" patch "${PF_DIR}/gemm_blis_family/src/gemm_blis.c" || exit 1
+    fi
     PF_FAIL=0
     for TAG in ${TAGS}; do
       for GG in ${GATHER_LIST}; do
@@ -203,9 +243,23 @@ echo ""; echo "$SEP"; echo " [2/5] Staging reference tree on ${RISCV_REMOTE_IP}"
 REMOTE_DIR="${RISCV_WORKSPACE}"
 ssh_board "rm -rf ${REMOTE_DIR} && mkdir -p ${REMOTE_DIR}/kernels/RVV_256_${OPT_MODE}/fp32"
 # The Exo kernel tree is large; ship only the fp32 256-bit variant in use.
+GEMM_SRC="${REF_SRC}/gemm_blis_family"
+if [ "${PER_REP}" = true ] || [ "${PACK_FIX}" = true ]; then
+    # Issues #46/#54: patch a local staged copy, never the one in ext/.
+    STAGE_G="$(mktemp -d)"
+    cp -r "${REF_SRC}/gemm_blis_family" "${STAGE_G}/"
+    if [ "${PER_REP}" = true ]; then
+        python3 "${HERE}/ref_per_rep.py" patch "${STAGE_G}/gemm_blis_family/src/test_gemm.c" || exit 1
+    fi
+    if [ "${PACK_FIX}" = true ]; then
+        python3 "${HERE}/ref_pack_fix.py" patch "${STAGE_G}/gemm_blis_family/src/gemm_blis.c" || exit 1
+    fi
+    GEMM_SRC="${STAGE_G}/gemm_blis_family"
+fi
 rsync_board --delete \
     --exclude 'build/' --exclude 'out_models/' --exclude 'output/' \
-    "${REF_SRC}/gemm_blis_family/" "${RSYNC_TARGET}:${REMOTE_DIR}/gemm_blis_family/"
+    "${GEMM_SRC}/" "${RSYNC_TARGET}:${REMOTE_DIR}/gemm_blis_family/"
+if [ -n "${STAGE_G:-}" ]; then rm -rf "${STAGE_G}"; fi
 # Six vendored kernel files (16x14/*/macc) are truncated upstream. Repair a local
 # staging copy — never ext/ itself — so the board gets buildable sources.
 STAGE_K="$(mktemp -d)"
@@ -218,6 +272,8 @@ rm -rf "${STAGE_K}"
 rsync_board "${HERE}/blis_shim/" "${RSYNC_TARGET}:${REMOTE_DIR}/blis_shim/"
 rsync_board "${HERE}/generated/" "${RSYNC_TARGET}:${REMOTE_DIR}/gemm_blis_family/xdsl_cases/"
 echo "  [OK] staged -> ${RSYNC_TARGET}:${REMOTE_DIR}/"
+
+TEST_FLAG="F"; if [ "${CHECK}" = true ]; then TEST_FLAG="T"; fi
 
 # ------------------------------------------------------------
 # 3. Build + run one binary per (MR,NR)
@@ -239,6 +295,7 @@ for TAG in ${TAGS}; do
     echo "  --- ${TAG} / ${VN} ---"
     ssh_board "cd ${REMOTE_DIR}/gemm_blis_family && \
         sed -i 's|^TIMIN=.*|TIMIN=${TIMIN}|' run_gemm.sh && \
+        sed -i 's|^TEST=.*|TEST=${TEST_FLAG}|' run_gemm.sh && \
         make clean >/dev/null 2>&1 ; \
         make MR=${MR} NR=${NR} OPT=${OPT_MODE} GATHER=${GG} SWAP=${SWAP} \
              SIMD_MODE=RVV_EXO RUN_MODE=FAMILY_EXO \
@@ -257,6 +314,11 @@ echo "$SEP"; echo " [4/5] Retrieving results"; echo "$SEP"
 mkdir -p "${RESULT_DIR}"
 rsync_board "${RSYNC_TARGET}:${REMOTE_DIR}/gemm_blis_family/xdsl_cases/" "${RESULT_DIR}/"
 cp "${PLAN}" "${RESULT_DIR}/run_plan.tsv"
+if [ -n "${CASES_FILE}" ]; then cp "${CASES_FILE}" "${RESULT_DIR}/cases.tsv"; fi
+if [ "${PER_REP}" = true ]; then
+    python3 "${HERE}/ref_per_rep.py" convert "${RESULT_DIR}" --cases "${CASES_FILE:-${HERE}/cases.tsv}" \
+        || echo "  [WARN] ref_per_rep.py convert reported a problem: read the lines above before using the per-rep files"
+fi
 cat > "${RESULT_DIR}/provenance.txt" <<EOF
 Reference-design baseline, generated $(date -Is)
   board          : ${RISCV_REMOTE_IP} (user ${RISCV_USER})
@@ -264,6 +326,10 @@ Reference-design baseline, generated $(date -Is)
   variants       : OPT=${OPT_MODE} SWAP=${SWAP} kernel:${VNAMES}
   build          : SIMD_MODE=RVV_EXO RUN_MODE=FAMILY_EXO, blis_shim for blis.h
   tmin           : ${TIMIN} s
+  protocol       : REFERENCE driver (test_gemm.c): no warm-up, reps until tmin, one clock read per call
+  B packer       : $([ "${PACK_FIX}" = true ] && echo "one column at a time, 32 numbers per load (staged gemm_blis.c patched by ref_pack_fix.py, issue #54)" || echo "the reference's own pack_CB (unchanged)")
+  result check   : $([ "${CHECK}" = true ] && echo "on (TEST=T, after the timed loop)" || echo "off (TEST=F, as upstream)")
+  per-rep patch  : $([ "${PER_REP}" = true ] && echo "yes, v3 (staged test_gemm.c stores the clock after every call in a static array and writes it with write(2), no heap, issue #46)" || echo "no (unchanged driver)")
   metric         : GFLOPS = 2*m*n*k / wall time of gemm_blis_B3A2C0()
                    -> PACK TIME IS INCLUDED (src/test_gemm.c:399-400)
   cases          : see run_plan.tsv (pinned MR/NR vs actually-built MR/NR)

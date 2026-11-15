@@ -1,0 +1,11 @@
+Issue #48 series: 3 launches on each of jbpi2,jbpi, boards taking turns, arms vec,scalar,vec-instr,scalar-instr (24 runs)
+  Start     : mié 30 sep 12:46
+  Settings  : --cpu 4 --no-nc-overrides, --tmin 10 on the uninstrumented arms, raw events: none
+  Load      : other users' processes are read before and after every run; a heavy one is flagged red, not a stop
+  Arm vec: config_issue48_sweep.json (25 tiles x 4 shapes)
+  Arm scalar: config_issue48_sweep_scalar.json (7 tiles x 4 shapes)
+  Arm vec-instr: config_issue48_sweep.json (25 tiles x 4 shapes)
+  Arm scalar-instr: config_issue48_sweep_scalar.json (7 tiles x 4 shapes)
+  Launch 1   : vec scalar vec-instr scalar-instr
+  Launch 2   : scalar vec-instr scalar-instr vec
+  Launch 3   : vec-instr scalar-instr vec scalar

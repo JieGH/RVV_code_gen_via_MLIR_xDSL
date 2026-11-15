@@ -1,0 +1,12 @@
+root                 12.1   7       00:00 sshd
+root                  0.5   3 57-12:19:29 disp_eng_share_thread
+systemd-oom           0.0   3 57-12:19:36 systemd-oomd
+root                  0.0   0    08:58:19 kworker/0:1H-mmc_complete
+messagebus            0.0   6 57-12:19:36 dbus-daemon
+root                  0.0   7 57-12:19:35 NetworkManager
+root                  0.0   5 57-12:19:45 vq1
+root                  0.0   0 57-12:19:45 vq0
+root                  0.0   1 57-12:19:30 ksdioirqd/mmc1
+root                  0.0   1 57-12:19:26 bluetoothd
+root                  0.0   2 57-11:53:35 fwupd
+gdm                   0.0   0 57-12:19:23 gsd-sharing

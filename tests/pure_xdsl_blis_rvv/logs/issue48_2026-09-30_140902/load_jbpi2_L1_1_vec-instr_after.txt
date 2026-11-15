@@ -1,0 +1,12 @@
+root                  8.5   6       00:00 sshd
+root                  0.5   7 58-05:37:24 disp_eng_share_thread
+systemd-oom           0.0   5 58-05:37:32 systemd-oomd
+root                  0.0   1 58-05:37:40 vq1
+root                  0.0   0 58-05:37:40 vq0
+root                  0.0   0  1-04:47:00 kworker/0:1H-mmc_complete
+root                  0.0   7       03:14 kworker/u16:6-rpciod
+root                  0.0   0  1-02:07:16 kworker/0:0-mm_percpu_wq
+root                  0.0   4    02:48:24 kworker/4:0-mm_percpu_wq
+root                  0.0   6 58-05:37:25 ksdioirqd/mmc1
+root                  0.0   5  1-04:07:20 kworker/5:0-mm_percpu_wq
+root                  0.0   2 58-05:37:30 NetworkManager

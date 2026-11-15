@@ -38,6 +38,12 @@ pin_prefix() {
     if [ -n "$1" ]; then printf 'taskset -c %s ' "$1"; fi
 }
 
+# OTHER_USERS_AWK -- awk program (run with -v me=<our user>) over `ps -eo user:20,pcpu,psr,etime,comm`
+# lines: names every process of another user (not root) using at least this share of a core, as
+# "<user> <command> <pcpu>% on core <psr>, up <etime>; ". A single busy core of someone else's job
+# still moves the chip's thermal state, so provenance.txt records it and reps_report.py flags it red.
+OTHER_USERS_AWK='$1 != me && $1 != "root" && $2 + 0 >= 20 { printf "%s %s %s%% on core %s, up %s; ", $1, $5, $2, $3, $4 }'
+
 # board_provenance <cpu> -- prints a shell script for the board (pipe it to `sh -s` there):
 # the conditions this run's numbers were taken under. A probe the board cannot answer (no
 # cpufreq node, no compiler on PATH) reads "unavailable" rather than a blank that looks
@@ -55,6 +61,8 @@ probe "compiler (gcc)" "\$(gcc --version 2>/dev/null | head -1)"
 probe "compiler (g++)" "\$(g++ --version 2>/dev/null | head -1)"
 probe "governor" "\$(cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor 2>/dev/null | sort | uniq -c | tr -s ' \\n' ' ')"
 probe "load average" "\$(cat /proc/loadavg)"
+others="\$(ps -eo user:20,pcpu,psr,etime,comm --sort=-pcpu --no-headers 2>/dev/null | awk -v me="\$(id -un)" '${OTHER_USERS_AWK}')"
+probe "other users" "\${others:-none}"
 probe "taken" "\$(date -Is)"
 echo "  /proc/cpuinfo  :"
 cat /proc/cpuinfo

@@ -1,0 +1,14 @@
+# Issue #37: B4 + Square (S1-S5) pinned to MR32_NR6, mirroring issue2_square_bert_32x7.dat's
+# shape set exactly so the two tiles are compared on identical (M, N, K) inputs. Used together
+# with issue2_square_bert_32x7.dat by config_issue37_nr6_vs_nr7.json, which puts both tiles in
+# one launch (two pinned rows -> two pj_gen/ dirs, built and run back to back).
+#
+# skip_ref_run=true, iterations=5 in the config row: same cost-saving knobs as the shipped
+# 32x7 row in config.json (the scalar oracle is O(m*n*k) and Square goes up to 5000^3).
+# layer  M      N    K
+B4       4096   384   1024
+S1       1000   1000  1000
+S2       2000   2000  2000
+S3       3000   3000  3000
+S4       4000   4000  4000
+S5       5000   5000  5000

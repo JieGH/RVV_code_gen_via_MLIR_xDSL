@@ -1,0 +1,12 @@
+jlei                  700   4       00:00 ps
+psiwins              99.7   5       05:14 mixed-precision
+root                 13.0   6       00:00 sshd
+jlei                 12.5   1       00:00 sshd
+psiwins               0.6   0       24:16 sshd
+root                  0.5   2 72-06:30:59 disp_eng_share_thread
+root                  0.0   1       32:22 kworker/u16:3-rpciod
+systemd-oom           0.0   0 72-06:31:06 systemd-oomd
+root                  0.0   2       22:52 kworker/u16:4-rpciod
+psiwins               0.0   2       24:16 wireplumber
+psiwins               0.0   2       24:17 systemd
+root                  0.0   1       15:26 kworker/u16:0-rpciod

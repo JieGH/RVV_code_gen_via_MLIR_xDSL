@@ -1,0 +1,30 @@
+top - 20:18:02 up 80 days, 10:38,  7 users,  load average: 2.36, 2.80, 2.82
+Tasks: 273 total,   1 running, 272 sleeping,   0 stopped,   0 zombie
+%Cpu(s):  3.7 us,  0.5 sy,  0.0 ni, 95.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+MiB Mem :   7833.0 total,   6810.2 free,    665.3 used,    526.1 buff/cache     
+MiB Swap:  16384.0 total,  16082.8 free,    301.2 used.   7167.7 avail Mem 
+
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+   1213 root      20   0   22356  12544   1536 S  19.4   0.2  24:38.82 bluetoo+
+ 530435 jlei      20   0    9420   5120   2944 R   2.9   0.1   0:00.10 top
+   1160 root      20   0       0      0      0 S   1.0   0.0     11,28 disp_en+
+      1 root      20   0   19136   6516   3956 S   0.0   0.1   6:46.51 systemd
+      2 root      20   0       0      0      0 S   0.0   0.0   0:12.40 kthreadd
+      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_wo+
+      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+     12 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+     13 root      20   0       0      0      0 I   0.0   0.0   0:00.00 rcu_tas+
+     14 root      20   0       0      0      0 I   0.0   0.0   0:00.00 rcu_tas+
+     15 root      20   0       0      0      0 S   0.0   0.0   1:57.73 ksoftir+
+     16 root      20   0       0      0      0 I   0.0   0.0   8:56.02 rcu_pre+
+     17 root      rt   0       0      0      0 S   0.0   0.0   0:00.12 migrati+
+     18 root      20   0       0      0      0 S   0.0   0.0   0:00.00 cpuhp/0
+     19 root      20   0       0      0      0 S   0.0   0.0   0:00.00 cpuhp/1
+     20 root      rt   0       0      0      0 S   0.0   0.0   0:00.10 migrati+
+     21 root      20   0       0      0      0 S   0.0   0.0   0:20.24 ksoftir+
+     24 root      20   0       0      0      0 S   0.0   0.0   0:00.00 cpuhp/2
+     25 root      rt   0       0      0      0 S   0.0   0.0   0:00.08 migrati+
+     26 root      20   0       0      0      0 S   0.0   0.0   0:05.91 ksoftir+

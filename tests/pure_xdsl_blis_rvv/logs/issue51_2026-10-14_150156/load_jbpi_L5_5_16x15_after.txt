@@ -1,0 +1,12 @@
+root                 11.9   5       00:00 sshd
+root                  0.5   3 72-07:09:43 disp_eng_share_thread
+psiwins               0.2   0    01:03:00 sshd
+systemd-oom           0.0   4 72-07:09:50 systemd-oomd
+root                  0.0   4    01:11:06 kworker/u16:3-rpciod
+root                  0.0   7    01:01:37 kworker/u16:4-rpciod
+messagebus            0.0   7 72-07:09:50 dbus-daemon
+root                  0.0   6 72-07:09:59 vq1
+root                  0.0   5 72-07:09:59 vq0
+root                  0.0   5 72-07:09:49 NetworkManager
+psiwins               0.0   3    01:03:01 wireplumber
+root                  0.0   1 72-07:09:44 ksdioirqd/mmc1

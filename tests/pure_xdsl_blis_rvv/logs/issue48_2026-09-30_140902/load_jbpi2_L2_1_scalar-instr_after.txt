@@ -1,0 +1,12 @@
+jlei                  100   0       00:00 bash
+root                 13.1   1       00:00 sshd
+root                  0.5   1 58-07:28:12 disp_eng_share_thread
+systemd-oom           0.0   2 58-07:28:19 systemd-oomd
+root                  0.0   1 58-07:28:27 vq1
+root                  0.0   7 58-07:28:27 vq0
+root                  0.0   4       48:41 kworker/4:0-events
+root                  0.0   0  1-06:37:47 kworker/0:1H-kblockd
+root                  0.0   0  1-03:58:04 kworker/0:0-events
+root                  0.0   6 58-07:28:12 ksdioirqd/mmc1
+root                  0.0   0       53:04 kworker/u16:4-rpciod
+root                  0.0   5  1-05:58:07 kworker/5:0-events

@@ -1,0 +1,5 @@
+Issue #50 series: 3 launches on each of jbpi, boards taking turns (3 runs)
+  Start     : mié 14 oct 14:31
+  Settings  : --cpu 4 --no-nc-overrides --instr --raw-events x60-l2
+  Config    : config_issue50_sweep.json (4 tiles x 3 shapes: B3, B3_K256, B2)
+  Load      : other users' processes are read before and after every run; a heavy one is flagged red, not a stop

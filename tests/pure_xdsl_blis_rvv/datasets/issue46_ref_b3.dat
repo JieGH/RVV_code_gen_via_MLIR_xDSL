@@ -1,0 +1,7 @@
+# Issue #46: the same four shapes on both designs (ref_baseline/cases_issue46.tsv for the reference).
+# B3 is the shape under test; B2, B3_K256 and R24 (Reuse24) are the controls of #43.
+# layer     M     N     K
+B3          64    384   384
+B2          384   384   64
+B3_K256     64    384   256
+R24         384   384   384

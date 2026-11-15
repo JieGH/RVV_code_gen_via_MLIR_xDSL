@@ -1,0 +1,16 @@
+[
+    // Issue #37: is 32x6 really faster than the shipped 32x7 for B4 and S1-S5?
+    // (.scratch/issues/0022-32x6-vs-32x7-settle.md). Both tiles as rows in this one config, so
+    // one compile_macro_bench.sh launch builds and runs both back to back (each its own
+    // pj_gen/ dir, per config.py's MR{mr}NR{nr} out-dir suffix). Same B4 + S1-S5 shapes on
+    // both sides (issue2_square_bert_32x7.dat / issue37_b4_square_32x6.dat).
+    //
+    // skip_ref_run=true, iterations=5: same cost-saving knobs as the shipped 32x7 row in
+    // config.json (Square goes up to 5000^3).
+    //
+    // Per issue #39 house rules: no nc override on either row, run with --no-nc-overrides
+    // --cpu 4, and repeat this same config over >= 3 launches -- settle only if one tile
+    // wins in every launch.
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["issue2_square_bert_32x7.dat"], true, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["issue37_b4_square_32x6.dat"], true, 5]
+]

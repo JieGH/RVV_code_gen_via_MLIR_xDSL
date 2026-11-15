@@ -286,6 +286,23 @@ beside slow reps: per case and counter, the mean per rep over the fast and over 
 all the launches given, and slow/fast (issue #42). Each run folder's line also names its raw
 events and every core's busy share over the launch, from `provenance.txt`.
 
+### Per-rep times of the reference design (issue #46) and the survey across shapes (issue #47)
+
+The reference driver keeps only the total of its `while (time <= tmin)` loop, so two speeds inside a run average into one
+number. `run_ref_baseline.sh --per-rep` stages a copy of `test_gemm.c` (never the one in `ext/`) with a pre-sized array
+that takes the clock read the driver already does after each call, and writes it out after the timed loop to
+`result_<tile>_<variant>.csv.reps`; `ref_baseline/ref_per_rep.py convert` turns that into `reps_ref_<tile>_<variant>.txt.gz`
+in the layout above (`Layer` as our label, `Pack_*`/`Compute_*` columns `nan`), and checks each case's total against the
+GFLOPS the driver printed (a mismatch over 2% or a full array is printed and makes `run_issue46.sh` fail the run).
+`reps_report.py` names these files "reference <tile>" (16x14 and 16x16 are different kernels and never pool). Cost inside
+the timed loop: one compare and one store per call. `run_issue46.sh` runs the unchanged driver in the same launches as the
+control.
+
+`slow_state_survey.py` (issue #47) reads every per-rep log under `logs/run_*` and prints the inventory, the slow-rep
+share per case, the reps, seconds and bytes packed before the first slow rep, and the shape features beside the share.
+Bytes packed per rep = `4 * (K*N + M*K*ceil(N/nc))` (fp32), from the loop nest (jc over N by `nc`, pc over K by `kc`, pack
+the B block, ic over M by `mc`, pack the A block).
+
 ### Raw events (`--raw-events`, issue #42)
 
 The generic L2 and prefetch events open on the X60 but read 0 (issue #41); the core's own event

@@ -1,0 +1,8 @@
+Issue #49 series: 3 launches on each of jbpi, boards taking turns, pads 0,8,16,128 (12 runs)
+  Start     : mié 14 oct 13:35
+  Settings  : --cpu 4 --no-nc-overrides --tmin 10, vector packer
+  Config    : config_issue49_sweep.json (2 tiles x 4 shapes: B3, B3_K256, B2, R24)
+  Load      : other users' processes are read before and after every run; a heavy one is flagged red, not a stop
+  Launch 1   : 0 8 16 128
+  Launch 2   : 8 16 128 0
+  Launch 3   : 16 128 0 8

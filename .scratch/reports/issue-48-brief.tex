@@ -1,0 +1,409 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=1.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{url}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+\setlist{nosep,leftmargin=1.3em}
+\titlespacing*{\section}{0pt}{1.1ex}{0.6ex}
+\titlespacing*{\subsection}{0pt}{0.9ex}{0.4ex}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45ex}
+\renewcommand{\arraystretch}{1.08}
+\newcommand{\iss}[1]{\href{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/#1}{\##1}}
+\newcommand{\up}[1]{\textcolor{red!70!black}{#1}}
+\newcommand{\down}[1]{\textcolor{blue!60!black}{#1}}
+\newcommand{\good}[1]{\textcolor{green!45!black}{\textbf{#1}}}
+
+\title{\vspace{-1.2cm}\textbf{B3 and the microkernel tile:\\ the slow state follows the width of the B panel}\\[2pt]
+\large Brief of issue \iss{48} (25 tiles, two packers, two boards), a follow-up of \iss{41}, \iss{44}, \iss{46} and \iss{47}}
+\author{RVV\_code\_gen\_via\_MLIR\_xDSL, \texttt{pure-xdsl}\\ code \texttt{d7ce90e}, \texttt{ac6a43f}, \texttt{8d7562c}; logs \texttt{476d843}}
+\date{1 October 2026}
+
+\begin{document}
+\maketitle
+\vspace{-0.8cm}
+
+\paragraph{Scope.} B3 (64$\times$384$\times$384) has two speeds: in most reps it falls into a slow state
+(\iss{36}, \iss{41}, \iss{42}). Two earlier findings left the cause open. \iss{46} found that the reference design's B3
+on a 16$\times$14 tile is steady while ours on 16$\times$15 is slow in 87--89\% of its reps; \iss{47} found that every
+shape in the slow state had run on the 16$\times$15 tile and every steady large shape on 32$\times$6 or 32$\times$7, so
+the tile and the number of rows could not be told apart. \iss{48} therefore asks one question: \emph{does the
+microkernel tile (MR$\times$NR) decide whether the slow state appears, and does the packing side of B3 depend on it?}
+This brief reports a sweep of 25 tiles (MR from 4 to 32, NR from 4 to 31), each run on four shapes (B3, B3 with
+K=256, B2 and Reuse24), with the vector packer and, on 7 tiles, the scalar packer. Both boards ran at the same time,
+one series each, pinned to core 4. \textbf{Every speed number is from the uninstrumented build}
+(\texttt{INSTRUMENTED=0}), reference protocol, \texttt{-{}-tmin 10}, B3 at the reference's nc=384
+(\texttt{-{}-no-nc-overrides}); speed is in GOPs, by mean time (the reference's formula) and by median rep. The
+instrumented build was used only to split each rep into pack time and compute time. Launches per case:
+\texttt{jbpi2} 4 (vector and scalar) and 3 (instrumented); \texttt{jbpi} 3 throughout. Every log cited is committed
+(Appendix~A).
+
+\section{Findings}
+\begin{enumerate}
+  \item \textbf{The slow state follows NR.} With the vector packer, B3 is \good{steady} (no slow rep in any launch, on
+  either board) on every tile with NR of 4 or 6, and \up{two-speed} (53--94\% slow reps; 16$\times$16, over the register budget, 25--67\%) on every tile with NR of 7 or
+  more. This holds from MR\,=\,4 to MR\,=\,32.
+  \item \textbf{It does not follow MR or kc.} Steady and slow tiles share the same MR values, and the cache model's kc
+  (128, 170, 256 or 384) is present among both.
+  \item \textbf{The scalar packer is far steadier from NR\,=\,8 upwards.} On 16$\times$8 it runs at about 7.0--7.3 GOPs
+  with 2--8\% slow reps; the vector packer runs at 3.6--3.7 GOPs with 89--94\% slow reps. At NR of 6 or less the
+  vector packer is level with or ahead of the scalar one.
+  \item \textbf{In a slow rep both halves slow down:} packing takes 1.6--2.2 times as long and compute 1.2--1.8 times.
+  \item \textbf{Rows and depth matter as well (\iss{47}).} 32$\times$7 is steady on the large shapes but 83--87\% slow
+  on B3; and B3 with K=256 behaves differently from B3 (slow on 16$\times$6, steady on 16$\times$8). ``NR of 6 or less
+  is steady'' is a rule for B3 at K=384, not a general one.
+  \item \textbf{No tile wins every shape.} For B3, 16$\times$6 reaches 6.71 / 6.77 GOPs (\texttt{jbpi2} / \texttt{jbpi})
+  against 4.43 / 4.53 for the shipped 16$\times$15; but B2 is lower on 16$\times$6 (10.27 / 10.25 against
+  12.59 / 12.56).
+\end{enumerate}
+
+\section{Hypothesis}
+\textbf{Working hypothesis (not tested here).} The B packer reads NR columns of B at once, each a separate read stream.
+The L1 prefetcher can follow up to six streams; at seven or more it backs off to about half its normal work (the pattern
+\iss{41} and \iss{42} counted on 16$\times$15), the lines arrive late, and the rep slows. This is the suspicion of \iss{44}.
+
+\emph{What it explains:} the threshold between six and seven at every MR (finding 1); why MR and kc do not matter
+(finding 2); why the scalar packer, which reads the same addresses in the same order but one element at a time, goes
+slow later and less (finding 3).
+
+\emph{What it does not explain yet:} why compute slows as well as packing (finding 4); why 32$\times$7 is steady on shapes with
+many rows and why B3 with K=256 is slow at 16$\times$6 (finding 5). So the stream count is at most one of the conditions.
+
+\emph{How to test it:} \iss{44} (pack B one column at a time) predicts that a 15-column panel then behaves like a
+6-column one. Counting prefetcher events on 16$\times$6 against 16$\times$7 (\texttt{-{}-raw-events x60-l2}) shows whether
+the prefetch hits halve between them. \textbf{Nothing in this sweep counts prefetcher events;} the stream count is read from the
+pattern in the data.
+
+\section{Conclusion and impact}
+\textbf{Conclusion.} Yes: the microkernel tile decides whether B3's slow state appears, and it does so through NR, the
+number of B columns the packer reads at once. Packing also depends on the tile: in fast reps the vector packer needs
+0.97--0.99 ms at 16$\times$6 against 0.66--0.76 ms at NR of 8 to 15, and 1.32 ms at 32$\times$6. The tile does \emph{not} explain
+the reference design (\iss{46}): our 16$\times$14 is as slow as our 16$\times$15 (81--86\% against 89--92\% slow reps),
+while the reference's 16$\times$14 is steady, so the difference between the two designs lies elsewhere (packers, buffer
+placement or kernels).
+
+\textbf{Impact.}
+\begin{itemize}
+  \item For small-M shapes such as B3, the shipped 16$\times$15 tile is the wrong choice: 16$\times$6 gives
+  6.71 / 6.77 GOPs against 4.43 / 4.53 (and Reuse24 about 9.1 against 8.5--8.8).
+  \item The same tile costs B2 (10.27 against 12.59 GOPs), and B3 with K=256 is slow on 16$\times$6. No single tile is best,
+  so the tile has to be chosen per shape; that is the user's decision and out of scope here.
+  \item The vector packer is where the tile matters most: with seven or more B streams it runs at about half the speed of the scalar
+  packer (16$\times$8: 3.6--3.7 against 7.0--7.3 GOPs). If \iss{44} confirms the hypothesis, a change to the packer, not to the tile,
+  could keep wide tiles steady.
+\end{itemize}
+
+
+\section{What the vector packers do for each tile}
+The shipped packers are \texttt{pack\_RB\_v\_if} (A) and \texttt{pack\_CB\_v\_if} (B). The A packer loads MR/8 contiguous
+vectors per k-step. The B packer loads ceil(NR/8) \emph{strided} vectors per k-step, each element from a different
+column of B, so one pack walks \textbf{NR read streams in parallel}; NR is also the width of a row of the packed panel.
+\iss{44} suspects that the prefetcher cannot follow that many streams. The cache model also changes kc with the tile.
+
+\begin{center}\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lcccccccc@{}}
+\toprule
+tile & kc & A vec.\ per k & B vec.\ per k & B streams & Bc row (B) & Bc stores over a line (\%) & live vregs & fringe / all tiles \\
+\midrule
+16$\times$6 & 256 & 2 & 1 & 6 & 24 & 25 & 14 & 0/256 \\
+16$\times$7 & 256 & 2 & 1 & 7 & 28 & 38 & 16 & 4/220 \\
+16$\times$8 & 256 & 2 & 1 & 8 & 32 & 0 & 18 & 0/192 \\
+16$\times$14 & 128 & 2 & 2 & 14 & 56 & 31 & 30 & 4/112 \\
+16$\times$15 & 128 & 2 & 2 & 15 & 60 & 41 & 32 & 4/104 \\
+16$\times$16 & 128 & 2 & 2 & 16 & 64 & 0 & 34 & 0/96 \\
+32$\times$6 & 128 & 4 & 1 & 6 & 24 & 25 & 28 & 0/128 \\
+32$\times$7 & 128 & 4 & 1 & 7 & 28 & 38 & 32 & 2/110 \\
+8$\times$8 & 256 & 1 & 1 & 8 & 32 & 0 & 9 & 0/384 \\
+4$\times$4 & 384 & 1 & 1 & 4 & 16 & 0 & 5 & 0/1536 \\
+\bottomrule
+\end{tabular}
+\end{center}
+A tile of 16$\times$16 needs 34 live vector registers, over the limit of 32; it is the one known-bad reference in the
+sweep. A tile at the edge of the block (a fringe tile) is computed through a temporary buffer, which belongs to compute
+time and moves with the tile.
+
+\section{B3 on every tile, vector packer}
+\label{sec:b3vector}
+GOPs by mean time, GOPs by median rep, and the share of slow reps (\%), averaged over the launches (4 on \texttt{jbpi2},
+3 on \texttt{jbpi}). Green: no slow rep in any launch.
+
+\begin{center}\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lcccccccc@{}}
+\toprule
+ & & \multicolumn{3}{c}{\texttt{jbpi2}} & \multicolumn{3}{c}{\texttt{jbpi}} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+tile & kc & mean time & median rep & slow \% & mean time & median rep & slow \% \\
+\midrule
+4$\times$4 & 384 & \good{3.55} & 3.55 & \good{0} & \good{3.55} & 3.56 & \good{0} \\
+4$\times$8 & 384 & 2.75 & 2.65 & \up{78} & 2.62 & 2.47 & \up{82} \\
+4$\times$16 & 256 & 2.62 & 2.46 & \up{81} & 2.73 & 2.47 & \up{76} \\
+8$\times$4 & 384 & \good{4.91} & 4.91 & \good{0} & \good{4.91} & 4.91 & \good{0} \\
+8$\times$8 & 256 & 3.46 & 3.17 & \up{88} & 3.84 & 3.50 & \up{73} \\
+8$\times$14 & 256 & 3.61 & 3.29 & \up{89} & 3.48 & 3.26 & \up{93} \\
+8$\times$15 & 256 & 3.37 & 3.27 & \up{92} & 3.54 & 3.29 & \up{90} \\
+8$\times$16 & 256 & 3.57 & 3.27 & \up{88} & 3.75 & 3.29 & \up{81} \\
+8$\times$24 & 170 & 4.92 & 5.24 & \up{54} & 5.20 & 5.60 & \up{53} \\
+8$\times$31 & 132 & 4.32 & 4.17 & \up{75} & 4.11 & 3.80 & \up{84} \\
+12$\times$8 & 170 & 2.44 & 2.35 & \up{72} & 2.36 & 2.18 & \up{82} \\
+16$\times$4 & 256 & \good{5.32} & 5.32 & \good{0} & \good{5.30} & 5.30 & \good{0} \\
+16$\times$6 & 256 & \good{6.71} & 6.72 & \good{0} & \good{6.77} & 6.79 & \good{0} \\
+16$\times$7 & 256 & 4.76 & 4.93 & \up{68} & 4.44 & 4.36 & \up{79} \\
+16$\times$8 & 256 & 3.56 & 3.30 & \up{94} & 3.72 & 3.50 & \up{89} \\
+16$\times$12 & 128 & 5.10 & 5.09 & \up{78} & 4.71 & 4.35 & \up{88} \\
+16$\times$14 & 128 & 4.72 & 4.59 & \up{86} & 4.51 & 4.20 & \up{81} \\
+16$\times$15 & 128 & 4.43 & 4.31 & \up{92} & 4.53 & 4.31 & \up{89} \\
+16$\times$16 & 128 & 3.53 & 3.14 & \up{67} & 3.29 & 3.11 & 25 \\
+24$\times$6 & 170 & \good{5.35} & 5.36 & \good{0} & \good{5.38} & 5.38 & \good{0} \\
+24$\times$8 & 170 & 3.30 & 3.05 & \up{89} & 3.33 & 3.06 & \up{87} \\
+24$\times$9 & 170 & 3.69 & 3.54 & \up{83} & 3.55 & 3.26 & \up{89} \\
+32$\times$4 & 128 & \good{5.78} & 5.78 & \good{0} & \good{5.80} & 5.80 & \good{0} \\
+32$\times$6 & 128 & \good{6.33} & 6.34 & \good{0} & \good{6.32} & 6.32 & \good{0} \\
+32$\times$7 & 128 & 5.39 & 5.36 & \up{83} & 5.30 & 5.12 & \up{87} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{How to read it.} The seven green rows are exactly the tiles with NR of 4 or 6. Every row with NR of 7 or
+more is slow in at least half of the reps, except 16$\times$16 on \texttt{jbpi} (25\%); the least slow of the others
+is 8$\times$24 (53--54\%). The fastest tiles are the NR\,=\,6 ones: 16$\times$6 and 32$\times$6.
+
+\section{B3 on the scalar packer}
+Same measures, on the seven tiles of the scalar arm. The vector figures for the same tiles are in the table above.
+
+\begin{center}\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & \multicolumn{3}{c}{\texttt{jbpi2}} & \multicolumn{3}{c}{\texttt{jbpi}} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+tile & mean time & median rep & slow \% & mean time & median rep & slow \% \\
+\midrule
+4$\times$4 & \good{3.39} & 3.39 & \good{0} & \good{3.38} & 3.39 & \good{0} \\
+8$\times$15 & 4.73 & 4.85 & 49 & 4.83 & 5.14 & 46 \\
+16$\times$8 & 7.28 & 7.44 & 2 & 7.03 & 7.40 & 8 \\
+16$\times$14 & 6.98 & 7.78 & 33 & 7.19 & 7.96 & 32 \\
+16$\times$15 & 6.77 & 7.51 & 39 & 6.13 & 5.99 & \up{52} \\
+16$\times$16 & 3.83 & 3.74 & \up{60} & 3.79 & 3.96 & \up{55} \\
+32$\times$6 & \good{5.89} & 5.89 & \good{0} & \good{5.92} & 5.92 & \good{0} \\
+\bottomrule
+\end{tabular}
+\end{center}
+The scalar packer reads the same addresses in the same order, one element at a time. It is not free of the slow
+state (16$\times$14 to 16$\times$16 and 8$\times$15 are 32--60\% slow), but it enters it less often, and the gap to
+the vector packer is largest at NR\,=\,8, where the vector packer runs at about half the speed.
+
+\section{The controls on the same tiles}
+Vector packer, GOPs by mean time (\texttt{jbpi2} then \texttt{jbpi} in each pair); in brackets, the share of slow reps
+when it is not zero. Green: no slow rep.
+
+\begin{center}\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lcccccccc@{}}
+\toprule
+ & \multicolumn{2}{c}{B3} & \multicolumn{2}{c}{B3\_K256} & \multicolumn{2}{c}{B2} & \multicolumn{2}{c}{Reuse24} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+tile & jbpi2 & jbpi & jbpi2 & jbpi & jbpi2 & jbpi & jbpi2 & jbpi \\
+\midrule
+16$\times$6 & \good{6.71} & \good{6.77} & 4.49~(58\%) & 4.96~(48\%) & \good{10.27} & \good{10.25} & \good{9.14} & \good{9.11} \\
+16$\times$7 & 4.76~(68\%) & 4.44~(79\%) & 4.09~(81\%) & 4.09~(79\%) & \good{10.76} & \good{10.73} & \good{9.53} & \good{9.54} \\
+16$\times$8 & 3.56~(94\%) & 3.72~(89\%) & \good{6.74} & \good{6.76} & \good{10.24} & \good{10.33} & \good{8.94} & \good{8.64} \\
+16$\times$14 & 4.72~(86\%) & 4.51~(81\%) & 4.44~(93\%) & 4.52~(93\%) & \good{11.87} & \good{11.84} & \good{8.29} & \good{8.31} \\
+16$\times$15 & 4.43~(92\%) & 4.53~(89\%) & 4.93~(88\%) & 4.76~(94\%) & \good{12.59} & \good{12.56} & 8.45~(17\%) & 8.79~(4\%) \\
+16$\times$16 & 3.53~(67\%) & 3.29~(25\%) & 3.45~(88\%) & 3.73~(77\%) & \good{7.95} & \good{7.95} & \good{4.93} & \good{4.89} \\
+32$\times$6 & \good{6.33} & \good{6.32} & 5.54~(30\%) & 5.54~(19\%) & 10.65~(0\%) & \good{10.62} & \good{9.37} & \good{9.35} \\
+32$\times$7 & 5.39~(83\%) & 5.30~(87\%) & 5.93~(62\%) & 6.01~(59\%) & \good{11.80} & \good{11.70} & \good{9.81} & \good{9.81} \\
+24$\times$6 & \good{5.35} & \good{5.38} & 3.56~(85\%) & 3.57~(81\%) & \good{9.33} & \good{9.30} & 6.36~(14\%) & 6.29~(69\%) \\
+8$\times$8 & 3.46~(88\%) & 3.84~(73\%) & 3.54~(89\%) & 3.39~(95\%) & \good{8.14} & \good{8.14} & \good{7.55} & \good{7.52} \\
+4$\times$4 & \good{3.55} & \good{3.55} & \good{3.93} & \good{3.91} & \good{4.19} & \good{4.20} & \good{4.21} & \good{4.22} \\
+\bottomrule
+\end{tabular}
+\end{center}
+B2 and Reuse24 are steady on almost every tile, so on the very launches where B3 is 90\% slow, the board is not the
+cause. B3 with K=256 follows a different rule: it is steady on 16$\times$8 and slow on 16$\times$6. No tile is best for all four
+shapes: 16$\times$6 is best for B3 and Reuse24 and costs B2 about 2.3 GOPs; 16$\times$15 is best for B2 and costs B3
+about 2.2 GOPs.
+
+\section{Packing and compute apart}
+\label{sec:packvcompute}
+Instrumented build, B3; these are debug numbers, not speed. Mean milliseconds per rep, pooled over the launches: fast
+reps (pack / compute), slow reps (pack / compute), and pack's share of pack plus compute (\%).
+
+\begin{center}\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & \multicolumn{3}{c}{\texttt{jbpi2}} & \multicolumn{3}{c}{\texttt{jbpi}} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+tile, packer & fast reps & slow reps & pack \% & fast reps & slow reps & pack \% \\
+\midrule
+16$\times$6 vector & 0.97 / 1.85 & none & 34 & 0.99 / 1.86 & none & 35 \\
+32$\times$6 vector & 1.32 / 1.73 & none & 43 & 1.32 / 1.74 & none & 43 \\
+8$\times$8 vector & 0.79 / 2.27 & 1.70 / 3.81 & 30 & 0.83 / 2.29 & 1.69 / 3.76 & 31 \\
+16$\times$8 vector & 0.76 / 1.86 & 1.69 / 3.32 & 33 & 0.76 / 1.88 & 1.69 / 3.29 & 33 \\
+16$\times$14 vector & 0.72 / 1.89 & 1.52 / 2.74 & 33 & 0.66 / 1.80 & 1.43 / 2.66 & 32 \\
+16$\times$15 vector & 0.71 / 1.80 & 1.48 / 2.68 & 34 & 0.73 / 1.79 & 1.46 / 2.67 & 34 \\
+16$\times$8 scalar & 0.77 / 1.79 & (2 reps) & 30 & 0.80 / 1.79 & 1.50 / 2.68 & 31 \\
+16$\times$15 scalar & 0.71 / 1.51 & 1.13 / 1.82 & 33 & 0.72 / 1.51 & 1.39 / 2.00 & 35 \\
+32$\times$6 scalar & 1.50 / 1.73 & none & 46 & 1.50 / 1.74 & none & 46 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+  \item In a slow rep \textbf{both halves lengthen}, on every tile that has slow reps. Tiles that never go slow have no
+  slow reps in either half.
+  \item In fast reps the pack time depends on the tile: 0.97--0.99 ms on 16$\times$6 against 0.66--0.76 ms on
+  16$\times$8 to 16$\times$15, and 1.32 ms on 32$\times$6. The data moved is the same for B3 on every tile, so this is
+  cost per vector operation and per panel; the sweep does not say which.
+  \item The instrumented build is not the same experiment as the speed runs. 32$\times$7 has no slow reps on
+  \texttt{jbpi2} and 578 of 2997 on \texttt{jbpi} there, against 83--87\% slow reps in the uninstrumented build on
+  both boards. Only the fast-against-slow split is read from it.
+\end{itemize}
+
+\section{The three follow-ups: \iss{49}, \iss{50}, \iss{51}}
+Opened 2026-10-14 as priority 1--3 of this brief's own next steps (then \S\ref{sec:nextsteps} below);
+run and answered 2026-10-14 on \texttt{jbpi} only (\texttt{jbpi2} was occupied by another user's job the whole time each
+ran, so none of the three has its \texttt{jbpi2} cross-check yet). Full write-ups: \texttt{.scratch/issues/0033}, \texttt{0034},
+\texttt{0035}.
+
+\subsection*{\iss{49}: does the state follow \texttt{ldb}, not NR?}
+The decisive test: pad \texttt{ldb} (B's leading dimension) by 0, 8, 16 or 128 elements, data and the correctness check
+unchanged, at the two tiles that flip in opposite directions between K=384 and K=256 (16$\times$6, 16$\times$8). GOPs by
+mean time (slow-rep \%), 3 launches:
+
+\begin{center}\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+tile & shape (native step) & pad0 & pad8 & pad16 & pad128 \\
+\midrule
+16$\times$6 & B3 (1536\,B) & \good{6.68 (0)} & \good{6.05 (0)} & \good{7.14 (0)} & \good{5.53 (0)} \\
+16$\times$6 & B3\_K256 (1024\,B) & \up{4.35 (61)} & \good{6.95 (0)} & \good{7.90 (0)} & \good{6.47 (0)} \\
+16$\times$6 & B2 (control) & \good{10.31 (0)} & \good{10.10 (0)} & \good{10.15 (0)} & \up{8.25 (47)} \\
+16$\times$6 & R24 (control) & \good{9.16 (0)} & \good{8.94 (0)} & \good{9.30 (0)} & \good{9.12 (0)} \\
+16$\times$8 & B3 (1536\,B) & \up{3.48 (95)} & \good{5.83 (0)} & \up{4.73 (56)} & \good{6.12 (0)} \\
+16$\times$8 & B3\_K256 (1024\,B) & \good{6.84 (0)} & \good{6.79 (0)} & \up{4.57 (76)} & \up{5.48 (56)} \\
+16$\times$8 & B2 (control) & \good{10.24 (0)} & \good{10.21 (0)} & \good{10.30 (0)} & \good{10.16 (0)} \\
+16$\times$8 & R24 (control) & \good{8.86 (0)} & \good{8.79 (0)} & 8.76 (7) & \good{8.81 (0)} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Answer: padding changes the state while NR, K and kc all stay fixed, so stream \emph{count} alone (H1) is
+refuted.} But it is not a simple monotone rule either: at 16$\times$8, pad8 cures both shapes, pad16 makes both worse
+than pad0, and pad128 cures B3 but newly breaks B3\_K256; at 16$\times$6, pad128 newly breaks the B2 control
+(\textbf{0\%$\to$47\% slow}) though every tile tried before had been clean there. This is layout (H2), but tied to the
+exact resulting \texttt{ldb}, not to how far it sits from a power of two. \textbf{For \iss{44}}: its premise (fewer
+streams fixes it) is not what moves the needle here --- a stream-count fix might still help by accident, but padding
+is not a safe blanket fix (it creates a new slow case, B2 at pad128) and a per-tile \texttt{ldb} choice would need the
+real cache geometry, not a fixed offset.
+
+\subsection*{\iss{50}: do the prefetcher counters follow the flip?}
+Instrumented build (warm-up protocol, 1000 reps), \texttt{-{}-raw-events x60-l2}, 3 launches. \textbf{Neither pair this
+issue named actually flips in this build} (16$\times$6/16$\times$7 at K=384: 0\%/0\% slow; 16$\times$8/16$\times$6 at
+K=256: 0\%/1\%) --- the same instrumented-build caveat as \S\ref{sec:packvcompute} above. Where this build \emph{does}
+flip (16$\times$8/B3, and the 16$\times$15 anchor on both B3 and B3\_K256), the slow reps repeat \iss{41}'s pattern
+tightly: Pack\_Cycles 1.9--2.0$\times$, L1D prefetch hit (compute) \textbf{0.51$\times$ in all three cases}, L1D miss
+(compute) 3.0--4.4$\times$. One mechanism, not three. For the two named pairs the counters are silent; the
+uninstrumented wall-time numbers already in \S\ref{sec:b3vector} and \iss{49} above are the only evidence for them.
+
+\subsection*{\iss{51}: at a fixed tile, what M clears the slow state?}
+M $\in$ \{64, 128, 192, 256, 384, 512, 1000\}, N=384, both K=384 and K=256, 5 tiles, 5 launches (B2 control 0\% slow
+throughout). Slow-rep \% by M:
+
+\begin{center}\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}llccccccc@{}}
+\toprule
+tile & K & 64 & 128 & 192 & 256 & 384 & 512 & 1000 \\
+\midrule
+16$\times$6 & 384 & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} \\
+16$\times$6 & 256 & \up{77} & \up{62} & \up{60} & \up{51} & \up{49} & \up{35} & \good{0} \\
+32$\times$6 & 384 & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} \\
+32$\times$6 & 256 & \up{34} & \up{58} & \up{37} & \good{0} & \good{0} & \good{0} & \good{0} \\
+16$\times$8 & 384 & \up{93} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} \\
+16$\times$8 & 256 & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \up{33} \\
+16$\times$15 (shipped) & 384 & \up{84} & \up{58} & \up{65} & \up{45} & \up{23} & \good{0} & \good{0} \\
+16$\times$15 (shipped) & 256 & \up{92} & \up{95} & \up{92} & \up{85} & \up{81} & \up{17} & \good{0} \\
+32$\times$7 & 384 & \up{63} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} & \good{0} \\
+32$\times$7 & 256 & \up{76} & \up{75} & \up{61} & \up{53} & \up{28} & \good{0} & \good{0} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Answer: the threshold M is not one value; it moves with both tile and K.} \texttt{mc} alone does not explain
+it either: 16$\times$6 and 16$\times$8 cap \texttt{mc} at 384 from M=384 on, yet 16$\times$6/K256's slow share keeps
+falling across M=384$\to$512$\to$1000 (49\%$\to$35\%$\to$0\%) at that same, already-saturated \texttt{mc}.
+\textbf{The one case that reverses direction: 16$\times$8/K256 is clean from M=256 through 512, then goes
+\up{33\% slow at M=1000}} --- same saturated \texttt{mc} (384) at M=384, 512 and 1000, only M=1000 slow. This is the
+real-model risk this issue's plan flagged in advance: a tile and K combination that looks safe at moderate M can still
+fall into the slow state at the M of an actual model layer, and 16$\times$8 at K=256 should be weighed against that
+before any tile choice. Only 16$\times$6/K384 and 32$\times$6 (both K) are clean at every M tried here.
+
+\section{Conditions, limits and next steps}
+\label{sec:nextsteps}
+\paragraph{Conditions.} All 26 run folders record \texttt{other users : none} at the start of the run, no series wrote
+a load warning, and the processes read before and after every run list no other user's job, so there is no
+``other users present'' note to attach to these numbers. The seven unpinned cores of each board were at 0--1\% busy
+in every per-tile timing window but two, both in the instrumented build: 14\% on core 7 during the 8$\times$14 tile on
+\texttt{jbpi}, and 2--4\% on cores 3 and 5 during the 8$\times$31 tile on \texttt{jbpi2}. Neither affects a speed
+number, and we do not know whether it came from outside the benchmark. A \texttt{psiwins} job of 1.6--1.8 cores had been on both
+boards at 12:19; it was gone by 14:04, and the short smoke test made while it ran was discarded. The two boards ran
+simultaneously (separate hardware; only the NFS server and the jump host are shared). The runs were made in the
+afternoon and evening, not at midnight; no other user's job appeared, so a quiet-window repeat was not needed.
+
+\paragraph{Limits.}
+\begin{itemize}
+  \item Three or four launches per case. The \texttt{jbpi2} vector arm includes one launch from a series that was
+  stopped and restarted when the work was split across the boards.
+  \item The cause is inferred, not measured: nothing here counts prefetcher events. That the threshold lies between six
+  and seven read streams is the pattern in the data; \iss{44} is the direct test.
+  \item kc moves with the tile. The steady and the slow tiles share kc values, so kc does not explain the split, but
+  the tiles are not a controlled change of NR alone at fixed kc.
+  \item B3 only is analysed in detail. The other shapes are in the full report (Appendix~A).
+\end{itemize}
+
+\paragraph{Next steps.} \iss{49}, \iss{50} and \iss{51} (above) are answered on \texttt{jbpi} as of 2026-10-14. What is
+still open:
+\begin{itemize}
+  \item \textbf{The \texttt{jbpi2} cross-check} for all three --- none of the three has it yet (\texttt{jbpi2} was
+  occupied by another user's job throughout each run).
+  \item \textbf{\iss{44}} (pack B one column at a time) is no longer a clean test of "fewer streams fixes it": \iss{49}
+  shows the state follows the exact landing of the streams, not their count, so \iss{44} should be read as one way to
+  change the landing, not as confirming or refuting a stream-count story on its own.
+  \item \textbf{The tile choice for small-M shapes} (16$\times$6 was the leading candidate, \S\ref{sec:b3vector}) now
+  has to weigh \iss{51}'s finding that 16$\times$8 at K=256 --- clean at M up to 512 --- goes slow again at M=1000; a
+  tile that looks safe at a moderate M sweep is not guaranteed safe at the M of a real model layer.
+  \item \textbf{A fix for \iss{49}'s B2 regression} (padding \texttt{ldb} by 128 broke a previously-clean control):
+  any padding-based fix for B3 needs to be checked against every shape it is applied to, not just the one it targets.
+  \item \iss{52} (reference vs.\ ours at 16$\times$14, desk-only) and \iss{53} (scalar vs.\ vector packer on the
+  controls, desk-only, from these same logs) are answered; see their issue files for the code-level and packer-choice
+  findings, out of scope for this brief's board numbers.
+\end{itemize}
+
+\section*{Appendix A: logs and code}
+\raggedright\emergencystretch=3em
+All paths are under \texttt{tests/pure\_xdsl\_blis\_rvv/}; all are committed (commit \texttt{476d843}).
+\begin{itemize}
+  \item Series: \path{logs/issue48_2026-09-30_124654} (stopped after 2 runs: \path{run_2026-09-30_134329},
+  \path{run_2026-09-30_135936}); \path{logs/issue48_2026-09-30_140902} (\texttt{jbpi2}, 12 runs);
+  \path{logs/issue48_2026-09-30_140902_jbpi} (\texttt{jbpi}, 12 runs). Each series' \texttt{runs.tsv} lists its run folders.
+  \item Full report, every shape and tile: \path{logs/issue48_2026-09-30_report.md}
+  (\texttt{python}~\path{issue48_report.py} on the three series folders).
+  \item Code: \path{pack_dims_table.py} (the per-tile facts, tested against the builders),
+  \path{config_issue48_sweep.json} and \path{config_issue48_sweep_scalar.json} (the tiles),
+  \path{run_issue48.sh} (the series; \texttt{-{}-workspace} for one series per board), \path{issue48_report.py}.
+  \item Write-up and the written answer: \path{.scratch/issues/0032-b3-microkernel-dimension-sweep-pack-and-compute.md}, \S7--\S8.
+  \item \iss{49}: series \path{logs/issue49_2026-10-14_133529} (\texttt{jbpi}, 12 runs); code \path{run_issue49.sh},
+  \path{config_issue49_sweep.json}, the \texttt{-{}-pad-ldb} driver option; write-up
+  \path{.scratch/issues/0033-b-stream-layout-k256-flip.md}, \S8--\S11.
+  \item \iss{50}: series \path{logs/issue50_2026-10-14_143115} (\texttt{jbpi}, 3 runs); code \path{run_issue50.sh},
+  \path{config_issue50_sweep.json}; write-up \path{.scratch/issues/0034-prefetcher-counters-four-corners.md}, \S8.
+  \item \iss{51}: series \path{logs/issue51_2026-10-14_215835} (\texttt{jbpi}, 25 runs, the clean attempt --- two earlier
+  attempts, \path{logs/issue51_2026-10-14_150156} and \path{logs/issue51_2026-10-14_181219}, are discarded for another
+  user's job on \texttt{jbpi} partway through); code \path{run_issue51.sh}, \path{config_issue51_*.json},
+  \path{datasets/issue51_m_sweep.dat}; write-up \path{.scratch/issues/0035-slow-state-m-sweep.md}, \S6, \S9.
+\end{itemize}
+
+\end{document}

@@ -12,6 +12,7 @@
 #include <cstdint>
 
 #include "generated_kernels.h"
+#include "pack_b_variants.h"
 
 #if defined(DTYPE_INT8)
     typedef int8_t A_TYPE;
@@ -428,6 +429,11 @@ struct RunSettings {
     bool scalar_pack;
     string scalar_pack_source;
     bool zero_pack_lines;
+    int pad_ldb;
+    string pad_ldb_source;
+    int pack_b_variant;
+    string pack_b_name;
+    string pack_b_source;
     bool no_nc_overrides;
     string dataset;
     string raw_log, summary_log, perf_log;
@@ -487,6 +493,16 @@ static void print_run_overview(const RunSettings& r) {
                       ? "cleared with cbo.zero before each pack (inside the pack timer)"
                       : "not cleared: each line the packer writes is read from the L2 first",
                   r.zero_pack_lines ? "--zero-pack-lines" : "default");
+    // Issue #49: pads B's leading dimension (ldb = k + pad) to move where the B read
+    // streams land in memory, without changing k, the data or the correctness check.
+    overview_line("Pad ldb", r.pad_ldb > 0
+                      ? ("ldb = k + " + to_string(r.pad_ldb) + " elements")
+                      : "ldb = k (no padding)",
+                  r.pad_ldb_source);
+    // Issue #55: which B packer runs (row = the shipped xDSL vector packer; the rest are
+    // C intrinsics packers from pack_b_variants.h that write the same Bc).
+    overview_line("Pack B", r.pack_b_variant == 0 ? "row (shipped xDSL packer)" : r.pack_b_name,
+                  r.pack_b_source);
     overview_line("Kernel family", string(CONFIG_DATATYPE) + " " + CONFIG_METHOD + " | VLEN " +
                                        to_string(CONFIG_VLEN) + " | arch " + CONFIG_ARCH,
                   "config.json");
@@ -536,6 +552,11 @@ int main(int argc, char** argv) {
     string scalar_pack_source = force_scalar_pack ? "USE_SCALAR_PACK" : "default";
     bool no_nc_overrides = false;
     bool zero_pack_lines = false;  // issue #43
+    int pad_ldb = 0;  // issue #49: elements added to B's leading dimension beyond k
+    string pad_ldb_source = "default";
+    int pack_b_variant = 0;  // issue #55: 0 = the shipped xDSL B packer
+    string pack_b_name = "row";
+    string pack_b_source = "default";
     // Issue #27: the reference design's run protocol (test_gemm.c:339-361) is the default
     // wherever it can run. The instrumented build cannot (its timers make the numbers
     // incomparable, issue #14), so its default is the older warm-up protocol.
@@ -558,6 +579,26 @@ int main(int argc, char** argv) {
             scalar_pack_source = "--scalar-pack";
         } else if (string(argv[i]) == "--zero-pack-lines") {
             zero_pack_lines = true;
+        } else if (string(argv[i]) == "--pad-ldb") {
+            char* end;
+            pad_ldb = (i + 1 < argc) ? (int) std::strtol(argv[i + 1], &end, 10) : -1;
+            if (i + 1 >= argc || end == argv[i + 1] || *end != '\0' || pad_ldb < 0) {
+                cerr << "Error: --pad-ldb needs a non-negative integer number of elements." << endl;
+                return 1;
+            }
+            pad_ldb_source = "--pad-ldb";
+            ++i;
+        } else if (string(argv[i]) == "--pack-b") {
+            pack_b_variant = (i + 1 < argc) ? pack_b_variant_from_name(argv[i + 1]) : -1;
+            if (pack_b_variant < 0) {
+                cerr << "Error: --pack-b needs one of: row, row-intr, col-g1, col-g2, col-g4, col-gall, col-g1-m4"
+                     << (i + 1 < argc ? string(" (got '") + argv[i + 1] + "')." : ".") << endl;
+                cerr << "Usage: " << argv[0] << " <dataset_file.dat> ... [--pack-b <name>]" << endl;
+                return 1;
+            }
+            pack_b_name = argv[i + 1];
+            pack_b_source = "--pack-b";
+            ++i;
         } else if (string(argv[i]) == "--no-nc-overrides") {
             no_nc_overrides = true;
         } else if (string(argv[i]) == "--save-reps") {
@@ -586,7 +627,7 @@ int main(int argc, char** argv) {
     }
 
     if (dataset_file == "") {
-        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack] [--zero-pack-lines] [--no-ref-protocol | --ref-protocol] [--tmin <seconds>] [--no-nc-overrides] [--save-reps] [--raw-events <name=code,...|x60-l2>]" << endl;
+        cerr << "Usage: " << argv[0] << " <dataset_file.dat> [--scalar-pack] [--zero-pack-lines] [--pad-ldb <elements>] [--pack-b <name>] [--no-ref-protocol | --ref-protocol] [--tmin <seconds>] [--no-nc-overrides] [--save-reps] [--raw-events <name=code,...|x60-l2>]" << endl;
         return 1;
     }
     // Issue #43: the DOT dispatch clears no lines (its K pad is zeroed on purpose instead), so a
@@ -595,6 +636,20 @@ int main(int argc, char** argv) {
         cerr << "Error: --zero-pack-lines is for the AXPY kernels only; this is a DOT kernel ("
              << CONFIG_METHOD << "), whose dispatch clears no lines." << endl;
         return 1;
+    }
+    // Issue #55: the B packer variants are C intrinsics for fp32 AXPY. They are not combined with
+    // the scalar packer (one of the two would not run), and the DOT and int8 dispatches ignore them.
+    if (pack_b_variant != 0) {
+        if (force_scalar_pack) {
+            cerr << "Error: --pack-b " << pack_b_name << " cannot be combined with scalar packing ("
+                 << scalar_pack_source << "): the scalar packer would run instead of the variant." << endl;
+            return 1;
+        }
+        if (string(CONFIG_METHOD).find("DOT") != string::npos || string(CONFIG_DATATYPE) != "fp32") {
+            cerr << "Error: --pack-b is for fp32 AXPY kernels only; this is " << CONFIG_DATATYPE << " "
+                 << CONFIG_METHOD << ", whose dispatch has no variant packer." << endl;
+            return 1;
+        }
     }
     vector<RawEvent> raw_events;
     if (raw_events_given) {
@@ -634,6 +689,8 @@ int main(int argc, char** argv) {
     const string log_suffix = string(RVV_LOG_SUFFIX) + (ref_protocol ? "_refproto" : "") +
                               (force_scalar_pack ? "_scalarpack" : "") +
                               (zero_pack_lines ? "_zeroline" : "") +
+                              (pad_ldb > 0 ? ("_padldb" + to_string(pad_ldb)) : "") +
+                              (pack_b_variant != 0 ? ("_packb-" + pack_b_name) : "") +
                               (no_nc_overrides ? "_no_nc_override" : "");
     const string log_stem = string("_") + CONFIG_DATATYPE + "_" + CONFIG_METHOD + log_suffix + ".txt";
     // Ensure logs directory exists (handled by Makefile)
@@ -653,7 +710,7 @@ int main(int argc, char** argv) {
         raw_open = perf_gemm_open_raw(&perf, codes.data(), (int) codes.size()) == 0;
     }
     print_run_overview({ref_protocol, protocol_source, tmin, tmin_source, force_scalar_pack,
-                        scalar_pack_source, zero_pack_lines, no_nc_overrides, dataset_file, raw_log_name, summary_log_name, perf_log_name,
+                        scalar_pack_source, zero_pack_lines, pad_ldb, pad_ldb_source, pack_b_variant, pack_b_name, pack_b_source, no_nc_overrides, dataset_file, raw_log_name, summary_log_name, perf_log_name,
                         save_reps, reps_log_name, raw_events, raw_open});
     bool raw_exists = false;
     {
@@ -749,16 +806,20 @@ int main(int argc, char** argv) {
             continue; 
         }
 
-        int lda = m, ldb = k, ldc = m;
-        
+        // Issue #49: ldb (B's leading dimension, column-major) is k plus an optional pad in
+        // elements (--pad-ldb), to move where the NR read streams land in memory without
+        // changing k, the data or the correctness check below.
+        int lda = m, ldb = k + pad_ldb, ldc = m;
+
         // Over-allocate buffers by 32 in each dimension to prevent segfaults/heap corruption.
         // The simple pure_xdsl macrokernel does not have edge-case handling for un-padded fringes,
         // so it will unconditionally write out of bounds up to the next MR/NR multiple.
         size_t pad_m = m + 32;
         size_t pad_n = n + 32;
         size_t pad_k = k + 32;
+        size_t pad_ldb_rows = (size_t) ldb + 32;  // B's row count follows ldb, not k, once padded
         A_TYPE* A = alloc_aligned<A_TYPE>(pad_m * pad_k);
-        B_TYPE* B = alloc_aligned<B_TYPE>(pad_k * pad_n);
+        B_TYPE* B = alloc_aligned<B_TYPE>(pad_ldb_rows * pad_n);
         C_TYPE* C = alloc_aligned<C_TYPE>(pad_m * pad_n);
         C_TYPE* Cg = alloc_aligned<C_TYPE>(pad_m * pad_n);
         
@@ -877,7 +938,7 @@ int main(int argc, char** argv) {
             if (!ref_protocol) {
                 for (int w = 0; w < 5; ++w) {
                     double dump_pt=0, dump_kt=0; uint64_t dump_pb=0;
-                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &dump_pt, &dump_kt, &dump_pb, force_scalar_pack, zero_pack_lines, nullptr);
+                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &dump_pt, &dump_kt, &dump_pb, force_scalar_pack, zero_pack_lines, pack_b_variant, nullptr);
                 }
             }
 
@@ -974,7 +1035,7 @@ int main(int argc, char** argv) {
                 // Not under --ref-protocol (issue #27): the reference has no such pass.
                 for (int r = 0; !ref_protocol && r < N_REPS; ++r) {
                     double pt = 0.0, kt = 0.0; uint64_t pb = 0;
-                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, true, zero_pack_lines, &perf);
+                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, true, zero_pack_lines, 0, &perf);
                     total_scalar_pack_time += pt;
                     total_pack_bytes += pb;
                 }
@@ -1034,7 +1095,7 @@ int main(int argc, char** argv) {
                     const perf_counts raw_pack_before = perf.pack, raw_compute_before = perf.compute;
                     const uint64_t raw_rejected_before = perf.raw_rejected;
 #endif
-                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, force_scalar_pack, zero_pack_lines, &perf);
+                    variant.func(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, Ac, Bc, mc, nc, kc, variant.mr, variant.nr, &pt, &kt, &pb, force_scalar_pack, zero_pack_lines, pack_b_variant, &perf);
 #if RVV_INSTRUMENTED
                     rep_total.push_back(kt + pt);
                     rep_pack_s.push_back(pt);

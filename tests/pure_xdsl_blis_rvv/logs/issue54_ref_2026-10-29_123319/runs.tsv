@@ -1,0 +1,8 @@
+board	launch	position	arm	result_dir	exit	status
+jbpi2	0	1	ref-fix-check	refbase_2026-10-29_123423	0	ok
+jbpi2	1	1	ref	refbase_2026-10-29_123934	0	ok
+jbpi2	1	2	ref-fix	refbase_2026-10-29_124512	0	ok
+jbpi2	2	1	ref-fix	refbase_2026-10-29_125042	0	ok
+jbpi2	2	2	ref	refbase_2026-10-29_125611	0	ok
+jbpi2	3	1	ref	refbase_2026-10-29_130140	0	ok
+jbpi2	3	2	ref-fix	refbase_2026-10-29_130709	0	ok

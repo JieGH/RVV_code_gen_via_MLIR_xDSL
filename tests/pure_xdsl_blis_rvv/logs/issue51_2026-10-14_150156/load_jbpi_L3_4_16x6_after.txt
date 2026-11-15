@@ -1,0 +1,12 @@
+jlei                  500   0       00:00 ps
+jlei                 50.0   5       00:00 bash
+root                 11.9   2       00:00 sshd
+psiwins               1.0   3       15:23 sshd
+root                  0.5   1 72-06:22:07 disp_eng_share_thread
+root                  0.0   5       14:00 kworker/u16:4-flush-0:59
+root                  0.0   6       23:29 kworker/u16:3-rpciod
+psiwins               0.0   2       15:24 wireplumber
+psiwins               0.0   2       15:25 systemd
+systemd-oom           0.0   2 72-06:22:14 systemd-oomd
+root                  0.0   6       48:55 kworker/u16:5-rpciod
+messagebus            0.0   6 72-06:22:13 dbus-daemon

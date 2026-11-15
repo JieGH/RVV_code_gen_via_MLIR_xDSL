@@ -1,0 +1,5 @@
+[
+    // Issue #51: the M sweep (datasets/issue51_m_sweep.dat) at 32x7, two-speed on B3 but
+    // steady on the large shapes (#47) -- the tile that most needs M and rows told apart.
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["issue51_m_sweep.dat"], true, 1000]
+]

@@ -44,6 +44,17 @@ set -e
 # whole 64-byte line of the Ac/Bc block the packer is about to write, so its stores no longer
 # read those lines from the L2 first. AXPY kernels only. Its logs are named *_zeroline.txt.
 #
+# --pad-ldb <elements> (issue #49, off by default): ldb (B's leading dimension) becomes
+# k + <elements> instead of k, moving where the B read streams land in memory; k, the data
+# and the correctness check are unchanged. Logs get a _padldb<N> suffix (after _zeroline,
+# before _no_nc_override), so a padded run never shares a log with an unpadded one.
+#
+# --pack-b <name> (issue #55, default row): which B packer the fp32 AXPY dispatch runs. row is the
+# shipped xDSL vector packer; row-intr, col-g1, col-g2, col-g4, col-gall and col-g1-m4 are C
+# intrinsics packers (templates/pack_b_variants.h) that write the same Bc. Not with --scalar-pack
+# or USE_SCALAR_PACK, and not for DOT or int8 (the driver refuses those too). A name other than
+# row adds _packb-<name> to the log names, after _zeroline and before _no_nc_override.
+#
 # --raw-events <name=code,...|x60-l2> (issue #42, --instr only, needs the per-rep log): the
 # core's own event codes (the X60's L2 and prefetch events for the preset), counted per rep
 # into a Pack_<name> and a Compute_<name> column of the per-rep log. Every launch also records
@@ -88,6 +99,10 @@ PROTOCOL_FLAG=""
 REF_PROTOCOL=""
 TMIN=""
 DRY_RUN=false
+# Issue #55: the B packer variant names, in one place (the driver's pack_b_variants.h has the same list).
+PACK_B_NAMES="row row-intr col-g1 col-g2 col-g4 col-gall col-g1-m4"
+PACK_B_NAME="row"
+PACK_B_SOURCE="default"
 
 SEP="------------------------------------------------------------"
 
@@ -109,6 +124,15 @@ while [[ "$#" -gt 0 ]]; do
         --config)          CONFIG="$2";              shift      ;;
         --scalar-pack)     TEST_ARGS="${TEST_ARGS} --scalar-pack" ;;
         --zero-pack-lines) TEST_ARGS="${TEST_ARGS} --zero-pack-lines" ;;
+        --pad-ldb)         TEST_ARGS="${TEST_ARGS} --pad-ldb $2";    shift      ;;
+        --pack-b)
+            if [ "$#" -lt 2 ]; then echo "Error: --pack-b needs a name: ${PACK_B_NAMES}"; exit 1; fi
+            case " ${PACK_B_NAMES} " in
+                *" $2 "*) ;;
+                *) echo "Error: unknown --pack-b name '$2'; use one of: ${PACK_B_NAMES}"; exit 1 ;;
+            esac
+            PACK_B_NAME="$2"; PACK_B_SOURCE="--pack-b"
+            TEST_ARGS="${TEST_ARGS} --pack-b $2";    shift      ;;
         --ref-protocol)    PROTOCOL_FLAG="--ref-protocol"       ;;
         --no-ref-protocol) PROTOCOL_FLAG="--no-ref-protocol"    ;;
         --dry-run)         DRY_RUN=true                         ;;
@@ -155,6 +179,17 @@ if [ -n "${FORCE_NC}" ] && [[ "${TEST_ARGS}" == *--no-nc-overrides* ]]; then
     echo "Error: --force-nc cannot be combined with --no-nc-overrides (--force-nc sets nc for every shape)."
     exit 1
 fi
+# Issue #55: a B packer variant replaces the vector packer, so it cannot run beside the scalar one.
+if [ "${PACK_B_NAME}" != "row" ]; then
+    if [[ "${TEST_ARGS}" == *--scalar-pack* ]]; then
+        echo "Error: --pack-b ${PACK_B_NAME} cannot be combined with --scalar-pack (the scalar packer would run instead)."
+        exit 1
+    fi
+    if [ -n "${USE_SCALAR_PACK:-}" ]; then
+        echo "Error: --pack-b ${PACK_B_NAME} cannot be combined with USE_SCALAR_PACK (the scalar packer would run instead)."
+        exit 1
+    fi
+fi
 TEST_ARGS="${TEST_ARGS}${PROTOCOL_FLAG:+ ${PROTOCOL_FLAG}}${TMIN:+ --tmin ${TMIN}}"
 if [ "${SAVE_REPS}" = true ]; then TEST_ARGS="${TEST_ARGS} --save-reps"; fi
 # Issue #42: refuse here what the driver would refuse on the board, before any board time.
@@ -200,6 +235,9 @@ case "${TEST_ARGS}" in
         ZERO_LINES_BANNER="cleared with cbo.zero before each pack (inside the pack timer)"; ZERO_LINES_SOURCE="--zero-pack-lines" ;;
     *)  ZERO_LINES_BANNER="not cleared: each line the packer writes is read from the L2 first"; ZERO_LINES_SOURCE="default" ;;
 esac
+# Issue #55: a B packer variant has its own logs too, in the driver's order (the driver also puts
+# _padldb<N> before it; this script has never added that one).
+if [ "${PACK_B_NAME}" != "row" ]; then BUILD_LOGS="${BUILD_LOGS%.txt}_packb-${PACK_B_NAME}.txt"; fi
 case "${TEST_ARGS}" in *--no-nc-overrides*) NO_NC_OVERRIDES=true; BUILD_LOGS="${BUILD_LOGS%.txt}_no_nc_override.txt" ;; *) NO_NC_OVERRIDES=false ;; esac
 # Issue #27: every number names its protocol as well as its build.
 if [ "${REF_PROTOCOL}" = "1" ]; then
@@ -233,6 +271,7 @@ else
 fi
 ov "Packing" "$(case "${TEST_ARGS}" in *--scalar-pack*) echo "scalar packing forced";; *) echo "RVV vector packing";; esac)" "$(case "${TEST_ARGS}" in *--scalar-pack*) echo "--scalar-pack";; *) echo default;; esac)"
 ov "Pack lines" "${ZERO_LINES_BANNER}" "${ZERO_LINES_SOURCE}"
+ov "Pack B" "$([ "${PACK_B_NAME}" = "row" ] && echo "row (shipped xDSL packer)" || echo "${PACK_B_NAME}")" "${PACK_B_SOURCE}"
 ov "Cache blocking" "analytical model" "default"
 if [ "${NO_NC_OVERRIDES}" = true ]; then
     ov "" "nc overrides: OFF (every shape uses the heuristic's nc; the nc table in ${CONFIG} is ignored)" "--no-nc-overrides"
@@ -392,6 +431,7 @@ mkdir -p "${RUN_DIR}"
     echo "  build          : ${BUILD_BANNER}"
     echo "  protocol       : ${PROTOCOL_BANNER}"
     echo "  pack lines     : ${ZERO_LINES_BANNER}"
+    echo "  pack B         : ${PACK_B_NAME}"
     echo "  logs           : ${BUILD_LOGS}"
     echo "${PROVENANCE}"
 } > "${RUN_DIR}/provenance.txt"

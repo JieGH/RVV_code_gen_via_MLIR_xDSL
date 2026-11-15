@@ -1,0 +1,9 @@
+[
+    // Issues #54 / #55: the B packer read-order variants (--pack-b), each on the three tiles of #54's question:
+    // 16x15 (the shipped tile, slow state on B3), 16x8 (slow at K=384, steady at K=256) and 16x6 (steady at K=384,
+    // slow at K=256). Same dataset as config_issue50_sweep.json (datasets/issue46_ref_b3.dat: B3, B3_K256, B2, R24).
+    // One run_issue55.sh arm = one compile_macro_bench.sh call over this whole config with one packer flag.
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 8], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 6], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000]
+]

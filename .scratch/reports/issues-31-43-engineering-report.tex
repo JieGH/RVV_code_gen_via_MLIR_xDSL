@@ -4,6 +4,7 @@
 \usepackage{lmodern}
 \usepackage{microtype}
 \usepackage{booktabs}
+\usepackage{graphicx}
 \usepackage{tabularx}
 \usepackage{array}
 \usepackage[table]{xcolor}
@@ -16,11 +17,13 @@
 \titlespacing*{\section}{0pt}{2.2ex}{1.0ex}
 \titlespacing*{\subsection}{0pt}{1.6ex}{0.6ex}
 \setlength{\parindent}{0pt}
+\emergencystretch=3em
 \setlength{\parskip}{0.8ex}
 \renewcommand{\arraystretch}{1.12}
 \newcommand{\iss}[1]{\href{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/#1}{\##1}}
 \newcommand{\good}[1]{\textcolor{green!45!black}{\textbf{#1}}}
 \newcommand{\slow}[1]{\textcolor{red!70!black}{#1}}
+\newcommand{\rednote}[1]{\par\smallskip\noindent\textcolor{red!80!black}{\textbf{Red note.} #1}\par\smallskip}
 
 \begin{document}
 
@@ -31,35 +34,87 @@
 {\LARGE\bfseries Where does the speed go?\par}
 \vspace{0.6cm}
 {\Large Performance of our generated GEMM design against the reference design on the
-SpacemiT X60: findings of issues \#31 to \#43\par}
+SpacemiT X60: findings of issues \#31 to \#47\par}
 \vspace{1.2cm}
 {\large Engineering report\par}
 \vspace{0.4cm}
 {\normalsize \texttt{RVV\_code\_gen\_via\_MLIR\_xDSL}, branch \texttt{pure-xdsl}\par}
 \vspace{0.2cm}
-{\normalsize 28 September 2026\par}
+{\normalsize 28 September 2026 (revised the same day to add the result of issue \#37; revised again on
+29 September 2026 to add issues \#46 and \#47 and a review of the new tooling)\par}
 \vfill
 \begin{minipage}{0.88\linewidth}\setlength{\parskip}{0.8ex}
 \textbf{Summary}\par\smallskip
-This report brings together thirteen issues (\#31--\#39, \#41--\#43) that looked into why our design, a matrix
-multiplication (GEMM) whose inner kernels are generated with xDSL, is slower on some test layers than expected
-and than the reference design. The work ran from 24 to 28 September 2026 on two BananaPi M2 Pro boards.
+This report brings together fifteen issues (\#31--\#39, \#41--\#44, \#46, \#47) that looked into why our design, a matrix
+multiplication (GEMM) whose inner kernels are generated with xDSL, is slower on some test layers than expected and than the
+reference design. The work ran from 24 to 29 September 2026 on two BananaPi M2 Pro boards. The key findings are listed on the
+next page; the sections after that give the evidence.
 
-The main finding is that \textbf{our generated code is not the cause}. At the same tile size, our kernels use the
-same number of vector registers as the reference's kernels, spill exactly the same values to memory, and run at
-the same speed when one is swapped for the other. The losses come from three other places: tiles that need more
-than the 32 vector registers the hardware has; the shape of some layers, which forces more packing work per
-operation (layer B4); and a memory ``slow state'' on layer B3, in which the processor's L1 data prefetcher does
-only about half its normal work, so that both packing and computing slow down. A first fix for B3, clearing the
-pack buffers with the \texttt{cbo.zero} instruction, raises B3 from about 5.6 to about 6.0 GOPs on both boards,
-but the reason it helps is not yet understood. The report also shows that measurement noise (between 1 and 5\%
-from one launch to the next, and 5--10\% on core 0) was large enough to make several early claims unsafe, and it
-records the testing rules adopted as a result.
+The main finding is that \textbf{our generated code is not the cause}. At the same tile size, our kernels use the same number of
+vector registers as the reference's kernels, spill exactly the same values to memory, and run at the same speed when one is swapped
+for the other. The losses come from three other places: tiles that need more than the 32 vector registers the hardware has; the shape of
+some layers, which forces more packing work per operation (layer B4); and a memory ``slow state'' on layer B3, in which the processor's
+L1 data prefetcher does only about half its normal work, so that both packing and computing slow down. A controlled test (\#37) settled the
+choice of tile for B4 and the square shapes: 32x7, which uses all 32 registers, beat 32x6 in all 18 comparisons, by 3.7--8.7\%; for B1 and B5,
+which keep 32x6, the gain is 2\% or less. A first fix for B3, clearing the pack buffers with the \texttt{cbo.zero} instruction, raises B3 from
+about 5.6 to about 6.0 GOPs on both boards, but why it helps is not understood.
+
+The 29 September revision widens and narrows the slow-state question. It is not B3's alone (\#47): in the saved logs it appears in every
+shape with at most 384 rows and a K of 256 or more on the 16x15 tile, and in none of the shapes with 1000 rows or more, which all ran on
+other tiles; it does not switch on at a fixed time, repetition count or amount of data packed. The reference design shares it on B3 with K=256
+but not on plain B3 (\#46): in quiet-window repeats on both boards our B3 was 87--89\% slow, the reference's 22\% on \texttt{jbpi} and 0\% on
+\texttt{jbpi2}. The measuring itself needed care: a per-repetition record added to the reference changed one case by 30\% until it was
+rewritten to leave the memory layout alone, and the final version still changes B3 by about 5\%, with opposite signs on the two boards.
+Measurement noise (1--5\% between launches, 5--10\% on core 0) and other users' jobs on the boards made several claims unsafe; the
+testing rules adopted as a result, including the red note for runs made under another user's load, are in Section~\ref{sec:noise}.
 \end{minipage}
 \vspace{1.5cm}
 \end{titlepage}
 
 \tableofcontents
+\newpage
+
+%-------------------------------------------------------------------- key findings
+\section*{Key findings}
+\addcontentsline{toc}{section}{Key findings}
+\label{sec:key}
+{\small
+\begin{tabularx}{\linewidth}{@{}r >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{2.6cm} >{\raggedright\arraybackslash}p{2.9cm}@{}}
+\toprule
+ & \textbf{Finding} & \textbf{Issues, where} & \textbf{Confidence} \\
+\midrule
+1 & \textbf{Our generated code is not the cause.} Same vector registers (32 at 32x7, 34 at 16x16), same spills, same speed when the reference's kernel is
+swapped in, within noise. & \#31, \#33; Table~\ref{tab:swap} & \good{Settled} \\
+2 & \textbf{Speed collapses only above 32 registers}, by about 40\% on both designs (B4 32x7 7.84 to 32x8 4.43 GOPs; B3 16x15 5.28 to 16x16 3.11). &
+\#32; Table~\ref{tab:tiles} & \good{Settled} (ratios; core 0 runs) \\
+3 & \textbf{32x7 beats 32x6 for B4 and S1--S5}: 18 of 18 comparisons, 3.7--8.7\%. B1 (+1.9\%) and B5 (+0.8\%) stay on 32x6, on hold. & \#37, follow-up;
+Tables~\ref{tab:tile37},~\ref{tab:b1b5} & \good{Settled} for B4, S; B1, B5 one board \\
+4 & \textbf{B4 trails the squares because N=384 forces about 2.3 times more packing per operation.} Widening N to 1024 lifts it from 8.10 to 9.02 GOPs. &
+\#34; Section~\ref{sec:b4} & \good{Settled} \\
+5 & \textbf{B3's slowness is a memory slow state}: in slow repetitions the L1 prefetcher does about half its usual work (hit ratio 0.40--0.56) while the L2 is
+accessed as often. Not the shared L2, not another program on the core group, not the packer, not the clock. & \#36, \#41, \#42; Section~\ref{sec:b3} & Settled on \texttt{jbpi} (counter study, one board) \\
+6 & \textbf{The slow state is not B3's alone.} It is in every saved shape with at most 384 rows, a K of 256 or more and the 16x15 tile (share falls from 86--89\% at
+64 rows to 40\% at 384 rows), and in none of the shapes with 1000 rows or more, which ran on other tiles. It does not start at a fixed time, repetition
+count or amount packed. & \#47; Table~\ref{tab:survey} & Partly: tile and row count not separated \\
+7 & \textbf{B3 with K=256 has the same slow state in the reference}: 60--80\% of its repetitions slow, against 88--94\% for ours, on both boards in quiet windows. &
+\#46; Tables~\ref{tab:quiet},~\ref{tab:quiet2} & \good{Settled} (two quiet series) \\
+8 & \textbf{On plain B3 ours is far more affected}: 87--89\% of repetitions slow at 4.4--4.5 GOPs, against 22\% (\texttt{jbpi}) and 0\% (\texttt{jbpi2}) at
+7.1--7.6 GOPs for the reference. & \#46 & \good{Settled} as a difference; cause open \\
+9 & \textbf{Clearing the pack lines (\texttt{cbo.zero})} raises B3 at \texttt{nc}=128 from about 5.6 to 6.0 GOPs and Reuse24 from 8.0 to 8.35, costs B2 about 0.15;
+the counters show it does not work the way intended. Off by default. & \#43; Table~\ref{tab:cbo} & Measured, \slow{unexplained} \\
+10 & \textbf{Where the buffers sit in memory changes the result.} A per-repetition patch that shifted the heap changed B3 with K=256 by --30\%; even the final
+patch moves B3 by about 5\%, slower on \texttt{jbpi}, faster on \texttt{jbpi2}. & \#46; Table~\ref{tab:patch} & Strong hint, \slow{not tested directly} \\
+11 & \textbf{Measurement rules matter.} Core 0 runs 5--10\% slow, launches differ by 1--5\%, other users' jobs share the boards. Rules: core 4, at least three launches,
+committed logs, name the build; from 29 September a red note for runs under another user's load, and a repeat in a quiet window. & \#31, \#34, \#39;
+Section~\ref{sec:noise} & Adopted \\
+\bottomrule
+\end{tabularx}}
+
+\textbf{Open questions.} (a) What makes our B3 fall into the slow state so much more than the reference's; the tile (16x15 against 16x14), the
+packers and kernels, and buffer placement are the candidates. (b) Whether the tile or the number of rows decides where the state appears. (c) Why
+\texttt{cbo.zero} helps. (d) Whether the reference's own B3 has a mild slow state, or the patch adds it (the unchanged driver has no per-repetition record).
+\textbf{Not clean:} a first series of \#46 and every log before 29 September were made without a record of other users' load (red notes in
+Sections~\ref{sec:survey47} and~\ref{sec:ref46}); the two quiet-window series replace the first for the numbers above.
 \newpage
 
 %-------------------------------------------------------------------- 1
@@ -88,12 +143,19 @@ The work set out to answer four questions:
   \item Why does layer B3 run at two very different speeds, and can it be kept at the faster one?
 \end{enumerate}
 A fifth aim grew out of the first four: to find out how much of what was measured was real, and how much was
-noise.
+noise. Two later issues added a sixth: to find out how far B3's slow state reaches, across the other shapes (\#47)
+and into the reference design (\#46).
 
 \subsection{Scope}
 Table~\ref{tab:issues} lists the issues. Number \#40 is a merged pull request, not an investigation, and is not
-covered. Issues \#37, \#38 and \#44 were written as plans and are on hold; they appear only as recommendations.
-The detailed results are in four earlier briefs \cite{b3134,b353639,b42,b43}. This report does not repeat every
+covered. Issues \#38 and \#44 were written as plans and are on hold; they appear only as recommendations.
+Issues \#46 and \#47 were opened from this report's own first version (its first limitation and its fifth
+recommendation) and are answered in Sections~\ref{sec:survey47} and~\ref{sec:ref46}; a review of the tooling they
+needed is in Section~\ref{sec:review}.
+Issue \#37 was also on hold when this report was first written; it was run on 28 September and its result is
+now included (Section~\ref{sec:tile37}), together with a follow-up test on B1 and B5 run the same day
+(Section~\ref{sec:b1b5}; write-up \texttt{.scratch/issues/0029}, no GitHub issue). The detailed results are in five earlier briefs
+\cite{b3134,b353639,b42,b43,b37}. This report does not repeat every
 number from them. It brings their results together, says what they mean as a whole, and states what is still
 unknown.
 
@@ -109,13 +171,16 @@ unknown.
 \iss{34} & Why is B4 slower than the square shapes at the same tile? & closed: answered \\
 \iss{35} & What does a smaller packed-B block (\texttt{nc}) do for B3? & done; decision made \\
 \iss{36} & Why is the vector packer slow on B3? & measured; cause narrowed \\
-\iss{37} & 32x6 or 32x7 for B4? & on hold; keep 32x7 \\
+\iss{37} & 32x6 or 32x7 for B4 and S1--S5, tested inside one launch? & closed: 32x7 \\
+follow-up & 32x6 or 32x7 for B1 and B5 (the \#37 test, extended) & measured; on hold \\
 \iss{38} & Cheaper A packing and matrix padding for B4 & on hold \\
 \iss{39} & Rules for trustworthy benchmark results & adopted \\
 \iss{41} & What is B3's slow state? & open; main cause named \\
 \iss{42} & Tooling to count L2 and prefetch events per repetition & built; first results \\
 \iss{43} & Fix 1: clear pack-buffer lines with \texttt{cbo.zero} & built; measured; off by default \\
 \iss{44} & Fix 2: pack B one column at a time & specified; on hold \\
+\iss{46} & Does the reference design's B3 also have two speeds? & measured; repeated in quiet windows on both boards \\
+\iss{47} & Which shapes enter the slow state, and does it depend on time, reps or bytes? & answered from saved logs \\
 \bottomrule
 \end{tabularx}
 \caption{Issues covered by this report.}
@@ -141,6 +206,12 @@ A few technical terms cannot be avoided. They are used in this report as follows
   cache in advance, so that the program does not have to wait for it.
   \item[Launch, rep] A launch is one run of the benchmark program; inside it, each case is repeated many times
   (reps).
+  \item[Slow state] A stretch of repetitions of one case that run at about half their earlier speed. In \#47 a
+  launch is said to be in a slow state when at least 5\% of its repetitions are slow.
+  \item[Control run] A run that repeats a measurement with one thing unchanged, to show that the thing added
+  for measuring did not itself change the result. In \#46 it is the reference with and without the per-repetition record.
+  \item[Red note] The marker this report puts on a result that was measured while another user's job was running on the
+  same board (Section~\ref{sec:noise}).
   \item[Instrumented build] A build that also reads hardware counters. It is used to see where time goes; its
   speed figures are not compared with the reference.
 \end{description}
@@ -170,7 +241,7 @@ Unless stated otherwise, every speed figure in this report comes from the uninst
 goes. The core each run was fixed to is named where it matters; see Section~\ref{sec:noise} for why.
 
 \subsection{Methods of investigation}
-Four methods were used, often together:
+Six methods were used, often together:
 \begin{enumerate}
   \item \textbf{Static checks} of the generated code and the compiled machine code: counting live registers,
   spills and instructions, for both designs.
@@ -180,6 +251,11 @@ Four methods were used, often together:
   same, ideally inside one launch.
   \item \textbf{Per-rep records}: new tooling (\iss{39}, \iss{42}) saves every repetition's time and, in the
   instrumented build, its hardware counts, so fast and slow repetitions can be compared directly.
+  \item \textbf{A survey of saved logs} (\iss{47}): a script that reads every per-rep log already in the repository
+  and tabulates, per shape, how much of a run is in the slow state and when it starts. No board time.
+  \item \textbf{A per-rep record of the reference, with a control} (\iss{46}): a patched staged copy of the
+  reference driver (never the copy under \texttt{ext/}) stores the clock after every call; the unchanged driver is
+  run in the same launches to show the patch changes nothing.
 \end{enumerate}
 Issues \#31 to \#33 were first written up by earlier model versions. They were later checked line by line
 against their raw logs \cite{b3134}, and the conclusions below use the checked versions.
@@ -220,10 +296,13 @@ A result from \#31 that our kernel was 7\% faster than the reference's on B4 was
 repeat on core 4. It should not be quoted.
 
 \subsection{Tile size and the 32-register limit (\#31, \#32, \#37)}
+\label{sec:tiles}
 Table~\ref{tab:tiles} shows how speed changes with the tile width NR. The rule is simple: \textbf{speed falls
 sharply only when a tile needs more than 32 registers}. Below or at the limit, speed changes smoothly, and there
 is no sign of a hidden cost for using all 32. The tiles we ship (16x15 for B2 and B3, 32x7 for B4 and the square
-shapes) are at or near the best.
+shapes) are at or near the best. B1 and B5 ship with 32x6. That tile was not chosen by a speed test: it was
+fixed by the issue \#2 test plan, which gives every case the same tile as the older xDSL design (prev\_xdsl),
+so that the two can be compared at matched tiles. B1 and B5 were not part of these sweeps.
 
 \begin{table}[h]
 \centering\small
@@ -244,10 +323,88 @@ so the absolute values are a little low; the comparison inside each row is still
 
 One open point was whether 32x6 (28 registers) is better than 32x7 for B4. In \#32 it was ahead in all eight
 pairs (8.05 against 7.84 GOPs, for example), but all of these ran on core 0. In \#34 on core 4, 32x7 was ahead;
-on core 2, 32x6 was ahead by a small amount. The two tiles are therefore level within the noise. \#37 describes a
-fair test inside one launch; it is on hold, and 32x7 stays.
+on core 2, 32x6 was ahead by a small amount. Up to that point the two tiles were level within the noise, and
+\#37 was written to settle the question with a fair test.
+
+\subsection{32x6 against 32x7, settled inside one launch (\#37)}
+\label{sec:tile37}
+\#37 ran both tiles as two rows of the same launch, on B4 and on the square shapes S1--S5, with identical shapes
+for both tiles. The launch was repeated three times on \texttt{jbpi2}, core 4, uninstrumented build, reference
+timing method, \texttt{-{}-tmin 10}, following the \#39 house rules. The board was checked for other users'
+programs before each launch and was idle each time. The rule set in advance was to decide only if one tile won
+in every launch.
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Case} & \textbf{Launch 1} & \textbf{Launch 2} & \textbf{Launch 3} & \textbf{Average} & \textbf{32x7 ahead by} \\
+\midrule
+B4 & 7.71 / \good{8.14} & 7.87 / \good{7.96} & 7.82 / \good{8.16} & 7.80 / \good{8.09} & 3.7\% \\
+S1 & 8.30 / \good{8.89} & 8.31 / \good{8.91} & 8.34 / \good{8.89} & 8.32 / \good{8.90} & 7.0\% \\
+S2 & 8.41 / \good{9.22} & 8.44 / \good{9.23} & 8.54 / \good{9.15} & 8.46 / \good{9.20} & 8.7\% \\
+S3 & 8.73 / \good{9.46} & 8.72 / \good{9.34} & 8.74 / \good{9.38} & 8.73 / \good{9.39} & 7.6\% \\
+S4 & 8.65 / \good{9.28} & 8.61 / \good{9.16} & 8.68 / \good{9.21} & 8.65 / \good{9.22} & 6.6\% \\
+S5 & 8.80 / \good{9.61} & 8.86 / \good{9.45} & 8.82 / \good{9.52} & 8.83 / \good{9.53} & 7.9\% \\
+\bottomrule
+\end{tabular}
+\caption{32x6 / 32x7. \#37, \texttt{jbpi2}, core 4, uninstrumented, GOPs by mean time. The median-rep figures
+match these to within 0.01 GOPs in every cell, so they are not shown separately.}
+\label{tab:tile37}
+\end{table}
+
+Table~\ref{tab:tile37} shows the result. \textbf{32x7 was faster in all 18 comparisons} (six cases, three
+launches). The gap on the three-launch average is 3.7\% for B4 and 6.6--8.7\% for the square shapes, above the
+roughly 3\% that the \#39 rules treat as noise between launches. The decision is to keep 32x7 for B4 and S1--S5;
+the test's config and data files stay in the repository so it can be run again.
+
+Three facts limit this result. All three launches ran on one board (\texttt{jbpi2}). Inside each launch the
+32x7 row always ran first and the 32x6 row second, so the order was not swapped. And the largest square shapes
+at 32x6 fitted only one or two repetitions into the 10 seconds in the first launch; they had more in the other
+two launches, and the ranking did not change. None of these is large enough to explain a gap of 4--9\% that
+points the same way in every cell.
+
+The \#37 result also corrects \#32, which had read 32x6 ahead by 0.5--3.3\%. Those pairs were separate launches
+on core 0, where the same program varies by more than that gap (Section~\ref{sec:noise}). The \#32 reading was
+therefore within its own noise; \#37 does not show exactly why it pointed the other way.
+
+Finally, the result fits the register rule above: below the limit, a tile that uses more of the 32 registers
+is not penalised, and here it is clearly faster. A likely reason is that 32x7 uses each loaded column of A seven
+times instead of six, but \#37 did not measure the reason.
+
+\paragraph{Follow-up: B1 and B5.}
+\label{sec:b1b5}
+B1 and B5 were left out of \#37 because they ship with 32x6 (Section~\ref{sec:tiles}; the tile comes
+from the issue \#2 test plan). The same test was run on them the same day \cite{b1b5}: four launches on \texttt{jbpi2},
+core 4, uninstrumented build, reference timing method, \texttt{-{}-tmin 10}. Unlike \#37, the order of the two
+tiles was swapped between launches (32x7 first, 32x6 first, 32x6 first, 32x7 first). The board had no other
+user's programs at any check. The second board, \texttt{jbpi}, was not used: another user's job was running
+on core 6 and then on core 4 itself.
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+\textbf{Case} & \textbf{Launch 1} & \textbf{Launch 2} & \textbf{Launch 3} & \textbf{Launch 4} & \textbf{Average} &
+\textbf{32x7 ahead by} \\
+\midrule
+B1 & 7.96 / \good{8.12} & 7.95 / \good{8.14} & 8.02 / \good{8.14} & 7.95 / \good{8.09} & 7.97 / \good{8.12} & 1.9\% \\
+B5 & 7.68 / \good{7.83} & \good{7.68} / 7.66 & 7.70 / \good{7.74} & 7.71 / \good{7.78} & 7.69 / 7.75 & 0.8\% \\
+\bottomrule
+\end{tabular}
+\caption{32x6 / 32x7 for B1 (1024$\times$384$\times$1024) and B5 (1024$\times$384$\times$4096).
+\texttt{jbpi2}, core 4, uninstrumented, GOPs by mean time; by median rep matches to within 0.01 GOPs.}
+\label{tab:b1b5}
+\end{table}
+
+For B1, 32x7 was ahead in all four launches, but only by 1.5--2.4\%. For B5 the two tiles are level: 32x7 is
+ahead by 0.8\% on average but lost one launch. Both gaps are much smaller than for B4 (3.7\%) and the square
+shapes (6.6--8.7\%). This fits the fact that 384 columns split evenly into tiles of 6 (64 tiles) but not of 7
+(54 full tiles and one part tile), but the reason was not measured. \textbf{Decision: on hold.} B1 and B5 keep
+32x6, which also keeps their tile the same as prev\_xdsl's.
 
 \subsection{Why B4 is slower than the square shapes (\#34, \#38)}
+\label{sec:b4}
 B4 runs its compute loop within 2\% of the speed of the square shape S1, so the kernel is not the problem. The
 loss is in packing, and it comes from the shape:
 \begin{itemize}
@@ -263,7 +420,9 @@ The reference design packs in the same way and should pay the same cost for this
 changes (a cheaper A pack, and padding the matrix row lengths away from powers of two); it is on hold.
 
 \subsection{B3's two speeds (\#32, \#35, \#36, \#41, \#42)}
-B3 is the least stable case. The investigation moved in four steps.
+\label{sec:b3}
+B3 is the least stable case. The investigation moved in four steps, and two later issues then asked how far the
+result reaches: across other shapes (Section~\ref{sec:survey47}) and into the reference design (Section~\ref{sec:ref46}).
 
 \paragraph{Step 1: it looked like a slow packer.} In \#32 the scalar packer beat the vector packer on B3 in every
 run (for example 8.25 against 5.28 GOPs at 16x15). On every other shape the vector packer was level or slightly
@@ -313,7 +472,11 @@ In other words, in a slow rep the L1 prefetcher does about half its usual work, 
 brings in turns into a wait for memory. The same pattern appears with both packers, for B3 with K=256, and for
 Reuse24's few slow reps. Running on core 2, which belongs to the other group of cores and has its own L2, gives
 the same result, and no other core was busy during the timed runs. So the cause is not the shared L2 and not
-another program. What makes the prefetcher back off is still unknown.
+another program. What makes the prefetcher back off is still unknown. The later work adds two clues: the state is
+not B3's alone but appears in every shape with few rows and several K blocks on the 16x15 tile, and the reference design has it
+too (Sections~\ref{sec:survey47} and~\ref{sec:ref46}); and the control run of \#46 suggests that the placement of the buffers in
+memory can change it. The first observation says the cause is general to the board and this kind of access; the second gives a
+new thing to test.
 
 \paragraph{Decision on \texttt{nc} for B3.} After \#35 the hand-set value \texttt{nc} = 128 for B3 was first
 removed, because the model cannot produce it. After \#41 and \#42 named the prefetcher as the cause, it was put
@@ -323,7 +486,7 @@ back as the baseline by the user's decision. B3 at \texttt{nc} = 128 still has t
 The X60 has no software prefetch instruction, but it does have \texttt{cbo.zero}, which sets a whole 64-byte
 cache line to zero. The idea in \#43 was to clear each pack-buffer line just before packing into it, so that the
 packer's writes would not first have to read the old line from the L2. The switch
-(\texttt{--zero-pack-lines}) is off by default. It was measured over 168 launches: seven rounds on each board,
+(\texttt{-{}-zero-pack-lines}) is off by default. It was measured over 168 launches: seven rounds on each board,
 each round in the order off, on, on, off, off, on (Table~\ref{tab:cbo}).
 
 \begin{table}[h]
@@ -353,6 +516,261 @@ rounds), and does nothing for B3 at \texttt{nc} = 384. However, the hardware cou
 \emph{not} save any L2 reads: the packer's L2 writes rise by about one per cleared line, and its L2 reads do not
 fall. So the idea behind the fix is not what makes it work. The gain is real but not yet explained.
 
+\subsection{How far the slow state reaches: a survey of saved logs (\#47)}
+\label{sec:survey47}
+Until now the slow state had been studied on B3 and, briefly, on Reuse24. \#47 read all 204 per-rep files
+already in the repository (193 run folders, both boards) with a new script, \texttt{slow\_state\_survey.py}, and
+asked three things: which shapes enter the slow state, whether the switch depends on time, on the number of
+repetitions or on the amount of data packed, and what the slow shapes have in common. Only the 104 files from the
+uninstrumented build with the reference timing method count for speed; the 100 instrumented files are listed but not
+used, as the house rules say. No file came from core 0, from an unpinned run or from a folder without provenance, and
+every case in the tables has at least three launches. A launch is said to be in a slow state when at least 5\% of its
+repetitions are slow; one or two slow repetitions in a hundred are an interrupt, not a state.
+
+\begin{table}[h]
+\centering\small
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Shape (M$\times$N$\times$K), tile} & \textbf{Launches} & \textbf{Slow reps} & \textbf{GOPs by mean time} & \textbf{Slow state?} \\
+ & (\texttt{jbpi} + \texttt{jbpi2}) & & (\texttt{jbpi} / \texttt{jbpi2}) & \\
+\midrule
+B3, 64$\times$384$\times$384, 16x15 & 21 + 21 & 87--89\% & \slow{4.49} / \slow{4.64} & every launch \\
+B3 with K=256, 16x15 & 24 + 21 & 95--97\% & \slow{4.72} / \slow{4.68} & every launch (worst) \\
+Reuse8, 128 rows, 16x15 & 3 (\texttt{jbpi}) & 66\% & 6.44 & every launch \\
+Reuse12, 192 rows, 16x15 & 3 (\texttt{jbpi}) & 64\% & 7.29 & every launch \\
+Reuse24, 384 rows, 16x15 & 21 + 21 & 40\% & 8.02 / 7.96 & every launch \\
+B2, 384$\times$384$\times$64, 16x15 & 21 + 21 & 0\% & 12.40 / 12.41 & no \\
+B1, 1024 rows, 32x6 / 32x7 & 4 + 4 (\texttt{jbpi2}) & 0\% & 7.97 / 8.12 & no \\
+B4, 4096 rows, 32x6 / 32x7 & 3 + 3 (\texttt{jbpi2}) & 0\% & 7.80 / 8.09 & no \\
+B5, 1024$\times$384$\times$4096, 32x6 / 32x7 & 4 + 4 (\texttt{jbpi2}) & 0\% & 7.69 / 7.75 & no \\
+S1--S5, 32x6 / 32x7 & 3 + 3 each (\texttt{jbpi2}) & 0\% & 8.32--9.53 & no \\
+\bottomrule
+\end{tabular}}
+\caption{Slow-rep share by shape. \#47, vector packer, uninstrumented, reference timing method, core 4, GOPs by mean time.
+By median rep the B3, K=256 and Reuse24 figures are 4.28, 4.60 and 8.23 GOPs on \texttt{jbpi}; the other rows agree to
+within 0.01. The full table is in \texttt{logs/issue47\_slow\_state\_survey.md}.}
+\label{tab:survey}
+\end{table}
+
+\textbf{Which shapes.} Table~\ref{tab:survey} shows that B3 is the extreme of a wider family, not a lone case. Reuse8,
+Reuse12, Reuse24, the N variants of B3 (N=192 to 320) and B3 with K=256 all fall into the slow state, the share
+falling as the number of rows grows (at K=384 and \texttt{nc}=384: 64 rows 86--89\%, 128 rows 66\%, 192 rows 64\%, 384 rows 40\%).
+B2, which has the same width and tile but K=64, is steady. Every shape with 1000 rows or more is steady, but each of
+them ran on 32x6 or 32x7 and never on 16x15, so in this data the shape and the tile move together and the survey
+cannot say which of the two matters. The scalar packer shows the same pattern later and less (B3 at \texttt{nc}=384: 46\%,
+B3 with K=256: 93\%). The two boards agree.
+
+\textbf{Time, reps or bytes.} The packed bytes per call follow from the loop nest: every element of B is packed once and
+every element of A once per block of \texttt{nc} columns, so \(4\,(K N + M K \lceil N/\texttt{nc} \rceil)\) bytes
+for fp32 (0.66\,MiB for B3 at \texttt{nc}=384, 1.12\,MiB for Reuse24). Table~\ref{tab:switch} gives where the first
+slow repetition sits. The spread across cases is 66--92\% for repetitions, 75--139\% for seconds and 73--107\% for bytes packed
+(per board and packer). \textbf{None of the three is constant.} Repetitions has the smallest spread on every board and packer, but that is not
+constancy, and within one case the first slow repetition varies 8 to 27 times between launches (B3: 3 to 80).
+A spread near 100\% of the mean is what a chance event with a fixed rate looks like, not a threshold; that is a reading of
+the numbers, not something tested.
+
+\begin{table}[h]
+\centering\small
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Case} & \textbf{Launches in a slow state} & \textbf{First slow rep} & \textbf{Seconds} & \textbf{MiB packed} \\
+ & & (min / median / max) & (min / median / max) & (mean) \\
+\midrule
+B3, 16x15 & 21 & 3 / 14 / 80 & 0.007 / 0.036 / 0.244 & 14 \\
+B3 with K=256 & 24 & 5 / 13 / 39 & 0.008 / 0.018 / 0.055 & 7 \\
+Reuse24 & 21 & 20 / 78 / 411 & 0.25 / 0.99 / 4.9 & 103 \\
+B3, scalar packer, \texttt{nc}=384 & 3 & 188 / 209 / 247 & 0.44 / 0.47 / 0.57 & 141 \\
+\bottomrule
+\end{tabular}}
+\caption{Where the first slow repetition sits. \#47, \texttt{jbpi}, vector packer unless stated, uninstrumented, core 4.}
+\label{tab:switch}
+\end{table}
+
+\textbf{What the slow shapes have in common.} All have at most 384 rows, a K of 256 or more, an N of 192 or more and the 16x15
+tile. It is not the block size: B and A blocks are far under the 512\,KiB L2 in every case, and the steady B2 lies inside the
+range of the slow ones. It is not a power-of-two row length: B3 (384) and B3 with K=256 (256) are both slow. It is not the
+packed bytes per operation alone: B2 packs 10.4 bytes per thousand operations, the same as Reuse24, and is steady.
+
+Three limits apply. First, the tile and the number of rows are not separated (above). Second, the same case gives different
+shares in different launches: Reuse24 at \texttt{nc}=384 was 25--64\% in the launches of five shapes, but 18\%, 0\% and 0\% in the
+three launches of the \texttt{nc} sweep (about 55 shape labels each), and Reuse8 in those same three launches was 84\%, 32\% and
+83\%; \#46 saw the same again (Reuse24 at 7\% in a launch of four shapes). The state may depend on what ran before in the
+launch. Third, these older logs carry no record of other users' load on the boards.
+\rednote{The logs before 29 September did not record other users' jobs. Another user's job (\texttt{spmv}, about 92\% of one core)
+was on core 0 of both boards for over an hour on the morning of 29 September, and nothing shows whether one ran during the
+earlier launches. Even on another core such a job can move the chip's thermal state, so these shares may include that.}
+
+\subsection{Does the reference design's B3 have two speeds too? (\#46)}
+\label{sec:ref46}
+The reference driver keeps only the total time of its timing loop, so two speeds inside a run average into one number.
+\#46 patched a \emph{staged copy} of the driver so that the clock read after every call is stored in a fixed array and written out
+after the loop (the copy in \texttt{ext/} is untouched; the loop itself gains one comparison and one store), and ran it
+next to ours and next to the unchanged driver, in launches of three runs on core 4 (\texttt{-{}-tmin 10}). The order changed from launch to launch (ours,
+reference, patched reference; then the reverse; and so on), the boards took turns, and each board had four launches. The reference ships no
+odd tile width, so 16x15 was measured as its two neighbours, 16x14 and 16x16 (which needs 34 registers and spills).
+
+\paragraph{The control run caught the patch changing the result.} Table~\ref{tab:patch} shows three versions. In the first two the
+patched driver ran B3 with K=256 at 16x16 about 30\% slower than the unchanged driver, on both boards. The third, which takes nothing from
+the heap, agrees. The likely reason, consistent with the numbers but not proven, is that the driver aligns its matrices and pack buffers to
+32 bytes only, so where they lie depends on everything allocated before them, and cases with a slow state are sensitive to that.
+If so, \textbf{the slow state depends on where the buffers sit in memory}, which is a result for \#41 in its own right.
+
+\begin{table}[h]
+\centering\small
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}llcc@{}}
+\toprule
+\textbf{Version} & \textbf{What it did} & \textbf{Plain (GOPs)} & \textbf{Patched (GOPs)} \\
+\midrule
+1 & array from \texttt{malloc}, output through \texttt{fopen} & 4.64, 4.65 & \slow{3.32}, \slow{3.22} (--28, --31\%) \\
+2 & array static, output still through \texttt{fopen} & 4.72 & \slow{3.22} (--32\%) \\
+3 & array static, output by \texttt{open}/\texttt{write}: no heap use & 4.60, 4.73, 4.72, 4.72 & 4.52, 4.58, 4.65, 4.63 (--1.5 to --3.2\%) \\
+\bottomrule
+\end{tabular}}
+\caption{The control run, B3 with K=256 on the 16x16 build. \#46, \texttt{jbpi}, core 4, uninstrumented, mean GOPs printed by the driver.}
+\label{tab:patch}
+\end{table}
+
+\paragraph{The control does not pass case by case, even for version 3.} Over the two boards and the 16 board/tile/case rows,
+7 rows agree (3 within 3\% in every launch; 4 only within the unchanged reference's own launch-to-launch spread of 8--26\%),
+8 rows disagree in at least one launch, and 1 has the same sign in every launch (+5.0\%). Averaged over the 60 launch pairs the gap is +0.6\%,
+so there is no overall bias, but single launches differ by 4.3\% on average. The plan said to stop and report if the control failed;
+it is reported here, and the per-repetition numbers are read as showing whether the reference has two speeds, not how large the slow share is.
+
+\begin{table}[h]
+\centering\small
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Case} & \textbf{Ours 16x15} & \textbf{Reference 16x14} & \textbf{Reference 16x16} \\
+ & slow reps; GOPs mean (median) & slow reps; GOPs mean (median) & slow reps; GOPs mean \\
+\midrule
+B3 & \slow{89\% / 88\%}; 4.30 (4.12) / 3.89 (3.71) & 20\% / 14\%; 6.92 (7.46) / 6.96 (7.37) & 0\% / 11\%; 4.41 / 3.98 \\
+B3 with K=256 & \slow{88\% / 90\%}; 4.75 (4.53) / 4.20 (4.00) & \slow{73\% / 76\%}; 4.79 (4.25) / 4.20 (3.78) & 0\% / 0\%; 4.59 / 4.33 \\
+Reuse24 & 7\% / 7\%; 8.35 / 8.25 & 3\% / 6\%; 8.41 / 7.80 & 0\% / 0\%; 5.09 / 4.92 \\
+B2 & 0\% / 0\%; 12.45 / 11.92 & 0\% / 0\%; 9.67 / 9.49 & 0\% / 0\%; 6.54 / 6.50 \\
+\bottomrule
+\end{tabular}}
+\caption{First series, run under another user's load (red note): slow-rep share and speed, average of four launches
+(\texttt{jbpi} / \texttt{jbpi2}). \#46, core 4, uninstrumented, reference timing method, \texttt{nc}=384. Reference figures are from the
+patched (version 3) driver. Tables~\ref{tab:quiet} and~\ref{tab:quiet2} are the quiet-window repeats and are the ones quoted.}
+\label{tab:ref}
+\end{table}
+
+\paragraph{First reading (both boards, under load).} In the first series (Table~\ref{tab:ref}) the reference's B3 at 16x14 was in a slow state in 6 of 8 launches,
+with 13--39\% of repetitions slow, against 88--89\% for ours in every launch, and the first slow repetition came after about 3 seconds on
+average (a launch with no slow repetition counts as the full 10 seconds) against 0.07--0.08 seconds for ours. B3 with K=256 fell into the
+same state in both designs (64--84\% of the reference's repetitions, 88--90\% of ours). Reuse24 and B2 looked alike in both. The 16x16
+build was steady only because it is already as slow as our slow state.
+\rednote{Every launch of this first series ran while a \texttt{psiwins} job was on the board: \texttt{spmv} at 92--99\% of core 0 on \texttt{jbpi} for the whole series, and
+\texttt{cc1plus}, \texttt{ld} and \texttt{mixed-precision} at 48--100\% of a core, moving between cores 0 to 6, on \texttt{jbpi2}; once it was found on core 4 itself.
+These eight launches are not clean.}
+
+\paragraph{Repeat in quiet windows, both boards.} When the boards were free of other users' jobs the whole series was run again on each of
+them: \texttt{jbpi} from 22:00 and \texttt{jbpi2} from 22:55 on the same day (four launches each, same script and patch, twelve runs each). The
+load readings before and after every launch show only system processes, so these two series carry no red note. Tables~\ref{tab:quiet}
+and~\ref{tab:quiet2} give the results.
+
+\begin{table}[h]
+\centering\small
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Case} & \textbf{Ours 16x15} & \textbf{Reference 16x14, patched} & \textbf{Reference 16x16, patched} & \textbf{Reference 16x14, unchanged} \\
+ & slow reps; GOPs mean (median) & slow reps; GOPs mean (median) & slow reps; GOPs mean & GOPs mean, per launch \\
+\midrule
+B3 & \slow{87\%}; 4.53 (4.29) & 22\% (12--29\%); 7.12 (7.69) & 0\%; 4.47 & 7.56 / 7.52 / 7.61 / 7.53 \\
+B3 with K=256 & \slow{94\%}; 4.71 (4.56) & \slow{80\%} (77--82\%); 4.89 (4.43) & 0\%; 4.68 & 5.06 / 5.29 / 6.50 / 5.24 \\
+Reuse24 & 10\%; 8.48 (8.85) & 3\% (0--9\%); 8.46 (8.62) & 0\%; 5.17 & 7.94 / 8.36 / 7.87 / 8.15 \\
+B2 & 0\%; 12.56 & 0\%; 9.89 & 0\%; 6.64 & 9.81 / 9.93 / 9.96 / 9.80 \\
+\bottomrule
+\end{tabular}}
+\caption{Quiet-window repeat on \texttt{jbpi}: slow-rep share and speed, average of four launches. \#46, core 4, uninstrumented,
+reference timing method, \texttt{nc}=384. The last column is the unchanged reference, which has no per-repetition record, so only its mean is known.}
+\label{tab:quiet}
+\end{table}
+
+\begin{table}[h]
+\centering\small
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Case} & \textbf{Ours 16x15} & \textbf{Reference 16x14, patched} & \textbf{Reference 16x16, patched} & \textbf{Reference 16x14, unchanged} \\
+ & slow reps; GOPs mean (median) & slow reps; GOPs mean (median) & slow reps; GOPs mean & GOPs mean, per launch \\
+\midrule
+B3 & \slow{89\%}; 4.40 (4.25) & \good{0\%} (every launch); 7.44 (7.74) & 2\%; 4.45 & 7.06 / 7.33 / 7.23 / 6.93 \\
+B3 with K=256 & \slow{88\%}; 4.90 (4.59) & \slow{60\%} (37--82\%); 5.50 (6.13) & 0\%; 4.68 & 5.28 / 5.77 / 5.32 / 5.07 \\
+Reuse24 & 12\%; 8.62 (9.16) & 4\% (0--12\%); 8.33 (8.61) & 0\%; 5.19 & 8.35 / 8.61 / 7.81 / 8.10 \\
+B2 & 0\%; 12.65 & 0\%; 9.96 & 0\%; 6.85 & 9.95 / 9.95 / 9.96 / 9.98 \\
+\bottomrule
+\end{tabular}}
+\caption{Quiet-window repeat on \texttt{jbpi2}, same layout as Table~\ref{tab:quiet}.}
+\label{tab:quiet2}
+\end{table}
+
+The control in the two quiet series (eight rows each): on \texttt{jbpi}, three rows agree, one agrees inside its own spread, one disagrees, and three
+have the same sign in every launch; on \texttt{jbpi2}, three agree, one agrees inside its spread, three disagree and one has the same sign
+every time. The clearest case is B3 at 16x14, where the sign of the difference \emph{changes with the board}: the patched driver is
+5.7\% slower than the unchanged one on \texttt{jbpi} (6.81--7.49 against 7.52--7.61) and on average 4.3\% faster on \texttt{jbpi2}
+(7.29--7.55 against 6.93--7.33). A fixed cost of the patch would have the same sign on both boards; this looks like the patch moving
+buffers in memory and B3 reacting differently on each board, which is consistent with the alignment reading given above.
+
+\paragraph{Answer.} Three things hold in both quiet series and in the first one.
+\begin{itemize}
+  \item \textbf{B3 with K=256 is the same slow state in both designs on both boards.} The reference's repetitions are 80\% slow on \texttt{jbpi} and 60\% on
+  \texttt{jbpi2} (37--82\% by launch), ours 94\% and 88\%; the unchanged reference's mean moves between 5.07 and 6.50 from launch to launch, which is
+  what two speeds look like from outside.
+  \item \textbf{On plain B3 the reference is far steadier than ours.} Ours is 87--89\% slow at 4.4--4.5 GOPs. The reference's B3 at 16x14 is 0\% slow on
+  \texttt{jbpi2} in every launch (7.3--7.55 GOPs) and 12--29\% slow on \texttt{jbpi} (7.1 GOPs), and the unchanged driver's totals are steady
+  (7.52--7.61 on \texttt{jbpi}, 6.93--7.33 on \texttt{jbpi2}). The mild slow state seen in the first, loaded series (13--39\% in 6 of 8 launches) is
+  therefore partly board-dependent and partly the effect of other users' load.
+  \item \textbf{Reuse24 and B2 look alike in both designs} (few or no slow repetitions), and the reference's 16x16 build, which spills, is steady because it is already
+  as slow as our slow state.
+\end{itemize}
+What is not settled is why. The slow state is a property of the board and of the access pattern the designs share (so the chain of \#41, \#43 and \#44 applies to both), and
+the difference on B3 is one of degree. The candidates are the tile (16x14 against 16x15, not tested), the reference's own packers and kernels, buffer placement (the
+control's board-dependent sign points at it) and the order of calls inside a repetition. Speeds are shown side by side for context only, as the tiles differ.
+Whether the mild slow share on \texttt{jbpi} belongs to the reference itself or is added by the patch cannot be told, because the unchanged driver has no per-repetition record:
+that is the limit of the method.
+\rednote{Only the first series (both boards) ran under another user's load; it is kept as the record of the patch attempts and the first reading. The two quiet series
+replace it for the numbers above.}
+
+\subsection{Checking the new tooling (\#46, \#47)}
+\label{sec:review}
+The scripts, the patch and the write-ups for \#46 and \#47 were reviewed after they were built, by two independent reviewers: one
+against the repository's documented standards and a list of common code smells, one against the two issue texts. Nothing was
+run against the boards by the reviewers. Their findings and what was done are below.
+\begin{itemize}
+  \item \textbf{A real bug, fixed.} The series script chose the result folder of each reference run as the alphabetically last
+  \texttt{refbase\_*} folder, and an old folder named \texttt{refbase\_issue33\_2026-09-25} sorts after every dated one. The live
+  series was recording every reference run as failed and pointing it at that old folder. The series was stopped, the script now
+  accepts only dated folder names, and a test with such a stale folder in place was added. The stub tests had missed it because their
+  folders never contained a stale one.
+  \item \textbf{A missing check, added.} The plan asked for the patched and unchanged reference to be compared and to stop if they
+  disagreed; the script only said so in a comment. \texttt{issue46\_report.py} now computes it, launch by launch, with a second
+  yardstick (the unchanged reference's own launch-to-launch spread) because a two-speed case moves 8--26\% between launches with no patch at all.
+  \item \textbf{Numbers that could not be checked, fixed.} The switch-point table gave only means, so the minimum, median and maximum in the
+  write-up could not be verified; the survey now prints them. One results table of \#47 showed two means under a ``mean / median'' header;
+  it now shows both metrics.
+  \item \textbf{Scope, disclosed.} The plan for \#47 said nothing else in the repository changes; two small additions were needed (the per-rep
+  reader also keeps the shape and blocking of each case, and two public names for the survey) and the survey log and documentation were added.
+  Files the dry runs rewrote in \texttt{ref\_baseline/generated/} are restored and not committed.
+  \item \textbf{Deviations from the plan, disclosed.} A balanced three-way rotation instead of the plan's A-B-B-A (there are three runs, not two);
+  the boards alternate launch by launch instead of one after the other; four launches per board instead of three.
+  \item \textbf{Style suggestions taken.} The eight-part case key became a named tuple, a function returning ``yes'' was renamed, and a
+  constructor with a bare list and six positional numbers now uses names. \textbf{Not taken:} the two copies of the process-listing command
+  (the awk program depends on its column order) are documented rather than merged; the temporary staged copy of the driver is not
+  removed by a trap if the copy step fails, which matches the existing idiom of the script.
+  \item \textbf{Not done, said so.} The survey gives the lowest and highest launch for speed and slow share but only averages for fast start, clumping and CV.
+  The instrumented files are inventoried but no counts are tabulated from them.
+\end{itemize}
+Testing found more than review did. The first two versions of the reference patch passed all their unit tests and a compile check, and only the control run on the
+boards showed a 30\% change. Section~\ref{sec:ref46} gives the details. Separately, a test run of mine rewrote the reference's shared case files while
+the series was running, so one plain reference run lost two of its four cases (B3 with K=256 and Reuse24 on \texttt{jbpi2}, launch 2); those two
+cases have three launches on that board. The rule is now written down: no test suite while a series is running.
+
 \subsection{How reliable the measurements are (\#31, \#34, \#39)}
 \label{sec:noise}
 Several early findings turned out to be smaller than the noise in the measurements:
@@ -360,16 +778,28 @@ Several early findings turned out to be smaller than the noise in the measuremen
   \item \textbf{Core 0 is slower.} It handles the board's device interrupts and runs the same program 5--10\%
   slower than core 4. All 32 launches of \#32 ran on core 0.
   \item \textbf{Launches differ.} The same program on the same core within the same hour varied by up to 1.7\%
-  (\#33). Two cores in \#34 differed by up to 4\%, enough to reverse which tile won.
+  (\#33). Two cores in \#34 differed by up to 4\%, enough to reverse which tile won. When the tile question was
+tested fairly in \#37, the \#32 result (32x6 ahead, all on core 0) turned out to point the wrong way.
   \item \textbf{B3 is noisy inside a launch.} Its spread from rep to rep was 14--43\%, against about 1\% for the
   large shapes.
   \item \textbf{Some logs were not kept.} The core-0 swap runs of \#31 and the reference-side runs of \#33 left no
   logs, so their numbers cannot be checked again.
+  \item \textbf{Other users share the boards.} A job on another core still changes the chip's thermal state. On
+  29 September another user's \texttt{spmv} ran on core 0 of both boards for hours and a second job moved across the cores of
+  \texttt{jbpi2}, once onto core 4. From then on every run records the other users' processes in its provenance file and the report
+  script prints a red note for each run made under one; such a run still goes ahead, and the numbers that decide something are repeated in a
+  quiet window. Runs before that day have no such record.
+  \item \textbf{The way of measuring can change the result.} A per-repetition record added to the reference driver changed one case
+  by 30\% until it was rewritten to take nothing from the heap (Section~\ref{sec:ref46}). Even then single launches differed from the
+  unchanged driver by 4.3\% on average. Any addition to a timed program needs a control run.
+  \item \textbf{Running tests during a series damages it.} Starting the test suite while a series was running rewrote files the
+  series staged from and cost one run two of its four cases (Section~\ref{sec:review}).
 \end{itemize}
 In response, \#39 set four house rules, now written in \texttt{docs/agents/execution.md}: never fix a benchmark
 to core 0; treat one launch as no result, and compare small gaps inside one launch, repeated over at least three
 launches in A-B-B-A order; quote only numbers from committed logs; and always name the build, timing method and
-core. Issues \#35 onwards follow these rules.
+core. Issues \#35 onwards follow these rules. A fifth rule was added on 29 September: check who else is on the board,
+run anyway, and mark the result with a red note (\texttt{docs/agents/execution.md}).
 
 %-------------------------------------------------------------------- 4
 \section{Discussion}
@@ -380,29 +810,46 @@ causes. The code generator was the first suspect, but every direct test (registe
 shows our kernels to be equal to the reference's. What does limit speed is:
 \begin{enumerate}
   \item \textbf{Register budget.} Tiles that need more than 32 registers lose about 40\% of their speed on both
-  designs. This is a property of the tile, not of the tool, and our shipped tiles stay within the budget.
+  designs. This is a property of the tile, not of the tool, and our shipped tiles stay within the budget. Inside
+  the budget, using all of it pays: 32x7 (32 registers) is 4--9\% faster than 32x6 (28 registers) on B4 and the
+  square shapes (\#37).
   \item \textbf{Layer shape.} A narrow N (384) means more packing per operation. This explains why B4 trails the
   square shapes. The reference packs in the same way, so this is not a difference between the designs.
-  \item \textbf{A memory slow state on small-M layers.} B3 has only 64 rows, so each packed block of B is used
+  \item \textbf{A memory slow state on layers with few rows.} B3 has only 64 rows, so each packed block of B is used
   for little work, and memory behaviour dominates. In that situation the X60's L1 prefetcher can fall back to
   about half its work, and B3's speed halves with it.
 \end{enumerate}
 The third cause is the only one still open, and it is also the largest: B3 moves between roughly 4.5 and 7.5
-GOPs depending on the packer, \texttt{nc} and time.
+GOPs depending on the packer, \texttt{nc} and time. \#47 and \#46 widen and narrow it. It is wider than B3: every
+shape with at most 384 rows and a K of 256 or more in the saved logs has it, so it is not a quirk of one layer. And
+it is shared: the reference has it as well, fully on B3 with K=256 (60--80\% of repetitions slow in the quiet windows), but on plain B3
+only mildly or not at all (22\% on \texttt{jbpi}, 0\% on \texttt{jbpi2}, against 87--89\% for ours). So the board can produce the state in both designs, and what our
+design does on B3 to fall into it so much more is the open question; buffer placement in memory is one candidate the control run brought up.
 
 \subsection{Limitations}
 \begin{itemize}
-  \item These issues did not measure whether the \emph{reference} design's B3 also has two speeds. Since the
-  cause lies in the processor's prefetcher and in the access pattern that both designs share, it probably does,
-  but this has not been tested.
+  \item The reference design's B3 was measured only in \#46, at the tiles 16x14 and 16x16 (the reference ships no
+  16x15), with one kernel set and one \texttt{nc}. Its control run does not pass case by case even in the quiet windows, and the patched driver's B3 differs from the unchanged one by
+  about 5\% with opposite signs on the two boards (Section~\ref{sec:ref46}); the first series ran under another user's load (red note) and both boards were then
+  repeated in quiet windows. ``B3 with K=256 has the slow state in both designs'' and ``ours is much more affected on plain B3 than the reference'' hold in both
+  quiet series; ``the reference's B3 has a mild slow state of its own'' does not (0\% on \texttt{jbpi2}, 22\% on \texttt{jbpi}, and the patch may add it).
   \item The \#32 tile sweep ran entirely on core 0, and several numbers in \#31 and \#33 come from a single launch
   or have no saved log. The conclusions drawn from them hold because later, better-controlled runs agree, not
   because of those runs alone.
   \item The hardware-counter study of \#42 ran only on \texttt{jbpi}. The \#43 speed results cover both boards.
+  The \#37 tile test ran only on \texttt{jbpi2}, always in the order 32x7 then 32x6, and did not run the
+  reference.
+  \item \#37 covered B4 and S1--S5 only. B1 and B5, which ship with 32x6 (set by the issue \#2 test plan to
+  match prev\_xdsl), were tested afterwards on one board only (\texttt{jbpi2}); the second board was busy with
+  another user's job.
   \item The instrumented build changes timing slightly. Its counts explain behaviour, but its speed figures must
   not be compared with the reference.
   \item Why \texttt{cbo.zero} helps is not known. Turning it on by default without that knowledge risks keeping a
   gain that depends on timing by chance.
+  \item The survey of \#47 cannot separate the tile from the number of rows: all shapes with 1000 rows or more ran on
+  32x6 or 32x7, all smaller ones on 16x15. B1, B4, B5 and S1--S5 have three or four launches on \texttt{jbpi2} only, so ``no slow state
+  seen'' means in three or four launches. The same case gave very different shares in launches of different length.
+  \item The logs before 29 September carry no record of other users' load on the boards.
 \end{itemize}
 
 %-------------------------------------------------------------------- 5
@@ -411,29 +858,53 @@ GOPs depending on the packer, \texttt{nc} and time.
   \item Our xDSL-generated microkernels are as good as the reference's Exo kernels: same registers, same spills,
   same speed within noise.
   \item Speed drops sharply only for tiles that need more than 32 vector registers. The shipped tiles (16x15 and
-  32x7) are at or near the best; 32x6 and 32x7 are level for B4.
+  32x7) are at or near the best.
+  \item 32x7 is faster than 32x6 for B4 and S1--S5: it won all 18 comparisons in \#37, by 3.7\% for B4 (8.09
+  against 7.80 GOPs) and 6.6--8.7\% for the square shapes. The earlier core-0 result from \#32, which pointed
+  the other way, was within its own noise. 32x7 stays. For B1 and B5 the gain is small (1.9\%) or absent
+  (0.8\%, not in every launch); they keep 32x6 for now.
   \item B4 is slower than the square shapes because its narrow N forces about 2.3 times more packing per
   operation. Widening N to 1024 raises it from 8.10 to 9.02 GOPs.
   \item B3's instability is a memory slow state in which the L1 data prefetcher does about half its work. It is
-  not the shared L2, not another program, and not the packer's own speed.
+  not the shared L2, not another program running on the same core group (the counter study), and not the packer's own speed. It is
+  general (every shape in the saved logs with at most 384 rows and a K of 256 or more, Section~\ref{sec:survey47}) and it is shared with
+  the reference design (Section~\ref{sec:ref46}).
   \item Clearing the pack lines with \texttt{cbo.zero} raises B3 (\texttt{nc} = 128) from about 5.6 to about 6.0
   GOPs and Reuse24 from about 8.0 to 8.35 GOPs, lowers B2 from 12.40 to about 12.25 GOPs, and its reason is
   unknown.
   \item Differences of less than about 3\% between separate launches, and any figure measured on core 0, are not
   reliable. The \#39 house rules address this.
+  \item The slow state is not B3's alone (\#47). It is in every shape in the saved logs with at most 384 rows, a K of
+  256 or more and the 16x15 tile, with a share that falls as the number of rows grows, and in none of the shapes with 1000
+  rows or more, which ran on other tiles. It does not switch on at a fixed time, repetition count or amount of data
+  packed; the switch point looks like a chance event.
+  \item The reference design shares the slow state on B3 with K=256 (60--80\% of its repetitions slow in the quiet windows, 88--94\% of ours), but not on plain B3
+  (\#46): there ours is 87--89\% slow at 4.4--4.5 GOPs, the reference 22\% on \texttt{jbpi} and 0\% on \texttt{jbpi2} at 7.1--7.6 GOPs. B3's instability is therefore
+  mainly a property of our design and blocking, on a board whose prefetcher can produce it in both; the tile, the packers and the placement of buffers in
+  memory are untested candidates for what makes the difference. The first series was under another user's load; both boards were repeated in quiet windows and
+  those numbers are the ones quoted.
+  \item Adding a measurement to a timed program can change what it measures: a per-repetition record in the reference changed one case by 30\%
+  until it was rewritten to leave the heap alone. A control run is part of the method, and the new tooling was reviewed (Section~\ref{sec:review}).
 \end{enumerate}
 
 %-------------------------------------------------------------------- 6
 \section{Recommendations}
 \begin{enumerate}
-  \item \textbf{Keep the shipped tiles}, including 32x7 for B4, and keep \texttt{nc} = 128 as B3's baseline,
-  always labelled as a hand-set value.
+  \item \textbf{Keep the shipped tiles}, including 32x7 for B4 and S1--S5 (now confirmed by \#37), and keep
+  \texttt{nc} = 128 as B3's baseline, always labelled as a hand-set value.
+  \item \textbf{B1 and B5: on hold, no tile change.} If this is picked up again, repeat the Section~\ref{sec:b1b5}
+  test on \texttt{jbpi} once that board is free; the configs and data file are in the repository.
   \item \textbf{Run a control for \#43} with the same extra loop but without \texttt{cbo.zero}, before deciding
   whether to turn the switch on by default.
-  \item \textbf{Measure the reference's B3 with the per-rep records}, to find out whether it also has two speeds.
-  This decides whether B3's instability is a difference between the designs at all.
+  \item \textbf{Find out what makes our B3 slow where the reference's is not} (\#46 showed that it is: 87--89\% of repetitions slow against 0--22\%). Find a way to watch the
+  reference's B3 without a patch that changes it (for example a hardware counter read from outside the process). Then run our generator at 16x14 against the reference at 16x14, to take the tile out of
+  the comparison, and test buffer placement (give both designs the same offsets modulo 4096). The reference's own B3 was
+  measured in \#46 (Section~\ref{sec:ref46}): steady or mildly slow, far less than ours.
   \item \textbf{Continue \#41}: record the counters in short windows around the moment of the switch to the slow
-  state, test padding the B row length away from 384, and repeat the counter study on \texttt{jbpi2}.
+  state, test padding the B row length away from 384, and repeat the counter study on \texttt{jbpi2}. From \#47: run B3 on the 32x6
+  tile and Reuse24 or B1 on the 16x15 tile (tile against rows), a sweep of M at K=N=384 on one tile (M = 64 to 1024) to find where the
+  state stops, and Reuse24 alone in a short launch against Reuse24 last in a long one (does the launch's history matter).
+  Run all of these in a quiet window.
   \item \textbf{When the above is settled, consider \#44} (packing B one column at a time, so the prefetcher
   follows one stream instead of fifteen) and \#38 (the B4 packing costs).
   \item \textbf{Keep following the \#39 house rules} for every number that is quoted.
@@ -449,7 +920,20 @@ GOPs depending on the packer, \texttt{nc} and time.
 \texttt{.scratch/reports/issue-42-brief.pdf}, 27 September 2026.
 \bibitem{b43} \emph{Clearing the pack lines with \texttt{cbo.zero}: speed over 14 rounds on two boards. Brief of
 issue \#43}, \texttt{.scratch/reports/issue-43-brief.pdf}, 28 September 2026.
-\bibitem{issues} Issue files \texttt{.scratch/issues/0016}--\texttt{0028} and GitHub issues \#31--\#44,
+\bibitem{b37} \emph{32x6 vs 32x7, settled inside one launch. Brief of issue \#37},
+\texttt{.scratch/reports/issue-37-brief.pdf}, 28 September 2026.\\
+Logs in \texttt{tests/pure\_xdsl\_blis\_rvv/logs/}: \texttt{run\_2026-09-28\_113634}, \texttt{\_114331} and
+\texttt{\_115034} (commit \texttt{d810e5b}).
+\bibitem{b1b5} \emph{B1 and B5: 32x6 vs 32x7, inside one launch}, \texttt{.scratch/issues/0029-b1b5-32x6-vs-32x7.md},
+28 September 2026.\\ Logs in \texttt{tests/pure\_xdsl\_blis\_rvv/logs/}: \texttt{run\_2026-09-28\_121056}, \texttt{\_121503},
+\texttt{\_121903} and \texttt{\_122304}.
+\bibitem{b46} \emph{Does the reference design's B3 also have two speeds?}, \url{.scratch/issues/0030-reference-b3-per-rep.md}
+(GitHub \#46), 29 September 2026.\\ Series \texttt{issue46\_2026-09-29\_122340} (four launches on each board, under load), the quiet-window repeats
+\texttt{issue46\_2026-09-29\_215925} (\texttt{jbpi}) and \texttt{issue46\_2026-09-29\_225532} (\texttt{jbpi2}), and the failed
+patch versions \texttt{issue46\_2026-09-29\_111401} and \texttt{\_115638} in \url{tests/pure_xdsl_blis_rvv/logs/}.
+\bibitem{b47} \emph{The slow state across every shape}, \url{.scratch/issues/0031-slow-state-survey-all-shapes.md} (GitHub \#47),
+29 September 2026.\\ Output: \url{tests/pure_xdsl_blis_rvv/logs/issue47_slow_state_survey.md}.
+\bibitem{issues} Issue files \texttt{.scratch/issues/0016}--\texttt{0031} and GitHub issues \#31--\#47,
 \url{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues}.
 \end{thebibliography}
 
@@ -465,7 +949,7 @@ issue \#43}, \texttt{.scratch/reports/issue-43-brief.pdf}, 28 September 2026.
 \#31 & The 32x7 tile is not B4's problem; our kernel and the reference's run level on core 4. & Conclusion holds; its
 first evidence was indirect, and a claim about the k-loop was wrong (every case uses the same \texttt{kc}). \\
 \#32 & Speed falls only above 32 registers; scalar packer wins on B3 only. & Holds; all runs on core 0; ``32x6 is
-faster'' not proven. \\
+faster'' not proven, and reversed by \#37. \\
 \#33 & Same registers, identical spills, same speed as the reference at 16x16 and 24x10. & Holds; small
 percentages were over-read; some logs not kept. \\
 \#34 & B4's loss is packing per operation, caused by N=384; M a power of two adds a little. & Summarised, not
@@ -474,7 +958,10 @@ audited. \\
 per packer, house rules followed. \\
 \#36 & B3's slowness is a memory slow state affecting packing and compute alike. & Instrumented build; one board.
 \\
-\#37 & (Plan) settle 32x6 against 32x7 inside one launch. & On hold. \\
+\#37 & 32x7 beats 32x6 on B4 and S1--S5 in all 18 comparisons (3.7--8.7\%); 32x7 stays. & Three launches,
+core 4, one board; fixed run order. \\
+follow-up & B1: 32x7 ahead by 1.9\% in every launch; B5 level. On hold, 32x6 kept. & Four launches A-B-B-A,
+core 4, one board. \\
 \#38 & (Plan) cheaper A pack; pad row lengths off powers of two. & On hold. \\
 \#39 & House rules for benchmarks; per-rep records. & Adopted. \\
 \#41 & The L1 prefetcher does about half its work in slow reps; not the L2, not a neighbour. & Nine launches, one
@@ -483,6 +970,12 @@ board. \\
 \#43 & \texttt{cbo.zero} raises B3 (\texttt{nc}=128) and Reuse24, lowers B2 slightly; reason unknown. & 168
 launches, two boards. \\
 \#44 & (Plan) pack B one column at a time. & On hold. \\
+\#46 & B3 with K=256 has the slow state in both designs; on plain B3 ours is 87--89\% slow, the reference 22\% (\texttt{jbpi}) and 0\% (\texttt{jbpi2}). & Four launches per
+board, core 4, in three series; first series under another user's load (red note); both boards repeated in quiet windows; control run does not pass case by case (patched B3
+about 5\% off, opposite sign on the two boards). \\
+\#47 & The slow state is in every shape with at most 384 rows, K of 256 or more, on 16x15; none in shapes of 1000 rows or more (other tiles);
+no constant time, reps or bytes. & Saved logs, three or more launches per case; tile and rows not separated; older logs have no record of
+other users' load. \\
 \bottomrule
 \end{tabularx}}
 
