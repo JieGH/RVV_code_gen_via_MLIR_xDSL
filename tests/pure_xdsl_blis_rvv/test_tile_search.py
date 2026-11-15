@@ -86,8 +86,8 @@ def test_the_report_names_the_fastest_tile_per_shape_by_both_metrics_with_the_co
 
     y00, y01 = table_row(out.stdout, "Y00"), table_row(out.stdout, "Y01")
     # shape, m, n, k, launches, best by mean time, its GOPs, best by median rep, its GOPs, compare tile, its GOPs
-    assert y00 == ["Y00", "300", "16", "27", "3", "16x8", "6.00 (6.00-6.00)", "16x8", "6.00", "16x8", "6.00"]
-    assert y01 == ["Y01", "300", "4", "9", "3", "16x4", "3.00 (3.00-3.00)", "16x4", "3.00", "16x4", "3.00"]
+    assert y00 == ["Y00", "300", "16", "27", "3", "16x8", "6.00 (6.00-6.00)", "16x8", "6.00 (6.00-6.00)", "16x8", "6.00"]
+    assert y01 == ["Y01", "300", "4", "9", "3", "16x4", "3.00 (3.00-3.00)", "16x4", "3.00 (3.00-3.00)", "16x4", "3.00"]
     assert "WARNING" not in out.stdout and "core 4" in out.stdout
 
 
@@ -111,6 +111,17 @@ def test_a_tile_missing_from_one_launch_warns_that_the_shape_is_not_compared_lik
     runs.append(run_folder(tmp_path, "run_3", {k: v for k, v in SPEEDS.items() if k[0] == "16x8"}))
     out = run_report(*map(str, runs)).stdout
     assert "different number of launches" in out and "Y00, Y01" in out
+
+
+def test_one_label_with_two_shapes_is_an_error(tmp_path: Path):
+    first = run_folder(tmp_path, "run_0", SPEEDS)
+    SHAPES["Y00"] = (300, 16, 99)  # the same label, another dataset
+    try:
+        second = run_folder(tmp_path, "run_1", SPEEDS)
+    finally:
+        SHAPES["Y00"] = (300, 16, 27)
+    out = run_report(str(first), str(second))
+    assert out.returncode != 0 and "Y00" in out.stderr and "one dataset" in out.stderr
 
 
 def test_a_run_folder_without_per_rep_logs_is_an_error(tmp_path: Path):

@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/60
 
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Spec + build in **our design** (Project Generator), no board until the correctness check.
-**Status:** 🔨 Built 2026-11-15 (decisions §3). Waiting on the correctness pass on a board.
+**Status:** ✅ Done 2026-11-15. Built (decisions §3); correctness pass on `jbpi`: 76 of 76 rows PASS (§4b).
 **Blocked by:** #59 (S1, dataset and tile list).
 **Primary sources:**
 - `tests/pure_xdsl_blis_rvv/config.py:54` (8th field present = pinned, absent = search)
@@ -48,6 +48,12 @@ This is built **in our design**. Héctor's code plays no part in it.
 - `tests/pure_xdsl_blis_rvv/test_tile_search.py`: both configs, and the report on hand-made run folders (best tile per shape by both metrics, compare tile, summary arithmetic, the WARNING under 3 launches, the missing-reps error).
 - Docs: `README.md` ("Finding the best microkernel size"), `docs/agents/execution.md` (entry point), `CONTEXT.md` (Tile Search).
 
+## 4b. Correctness pass (2026-11-15)
+
+`compile_macro_bench.sh --jump --riscv-ip jbpi --no-nc-overrides --cpu 4 --config config_yolo_correctness.json --tmin 0.2`: uninstrumented, reference protocol (`tmin` 0.2 s), core 4, other users none. All 19 tiles x 4 shapes: **76 of 76 PASS** against the scalar oracle. Logs: `tests/pure_xdsl_blis_rvv/logs/run_2026-11-15_203822/`. About 2-3 min per tile, most of it compiling on the board.
+
+Review fixes after the first review (2026-11-15): the per-shape table gives the launch spread for both metrics; a shape label that maps to two shapes is an error; a WARNING when tiles on a shape ran a different number of launches; `report()` split into one function per table.
+
 ## 5. Later, not in this issue
 
 - Let the search pick its candidates from the register budget instead of a hand list.
@@ -59,5 +65,5 @@ This is built **in our design**. Héctor's code plays no part in it.
 - [x] ~~Search built in `config.py` / the generator~~ Not needed (§3.1): plain pinned rows.
 - [x] `search_report.py` and its test committed.
 - [x] `config_yolo_search.json` and `config_yolo_correctness.json` committed.
-- [ ] The correctness config passes on one board (all 19 x 4 rows PASS).
+- [x] The correctness config passes on one board: 76 of 76 PASS on `jbpi` (§4b).
 - [x] Docs updated. Tests pass.
