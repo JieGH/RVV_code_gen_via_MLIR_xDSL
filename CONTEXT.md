@@ -48,6 +48,10 @@ _Avoid_: model (the network itself), dataset (the file, not the shapes)
 An $MR \times NR$ size entered into a search for the fastest Microkernel on a Workload. "Microkernel size" means the same when a search is meant.
 _Avoid_: variant (the driver's word for any compiled tile)
 
+**Tile Search**:
+Timing each Candidate Tile on every shape of a Workload, each tile the same way it times alone, and picking the fastest tile per shape.
+_Avoid_: sweep (the old mode that builds every tile from 1x1 up to the largest MR x NR)
+
 ### Register Allocation
 
 **Register Pressure**:

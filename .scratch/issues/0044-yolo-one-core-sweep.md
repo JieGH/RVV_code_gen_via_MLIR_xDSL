@@ -18,12 +18,16 @@ This is the baseline for the 8-thread run (S6). It also answers part of Héctor'
 
 ## 2. Run
 
-- **Our design's size search** (S2 #60): `compile_macro_bench.sh --config config_yolo_search.json --no-nc-overrides --cpu 4 --tmin <S2 decision>`
+- **Our design's size search** (S2 #60): `compile_macro_bench.sh --config config_yolo_search.json --no-nc-overrides --cpu 4 --tmin <decision below>`
 - uninstrumented build, reference protocol
 - 3 launches; check for other users before each launch
 - idle board for the numbers we quote (house rules #39; check other users)
 - Wrap it in `run_yolo_sweep.sh` only if the series runs unattended (like `run_issue48.sh`: lock, idle check, `--start-at`, `--workspace`). Otherwise run it by hand.
 - No tests and no `--dry-run` while the series runs (they rewrite `pj_gen/`).
+
+## 2b. Open point: `--tmin` (moved here from #60 on 2026-11-15)
+
+Héctor uses `TIMIN=2.0`. Our default for decisions is 10 s. With 50 shapes x 19 tiles, `--tmin 10` costs about 2.6 h per launch (about 8 h for 3 launches), against about 32 min per launch at `--tmin 2`. A third way: one pass at `--tmin 2`, then `--tmin 10` on the top few tiles per shape. Decide before the first launch.
 
 ## 3. Output
 
@@ -39,6 +43,7 @@ This is the baseline for the 8-thread run (S6). It also answers part of Héctor'
 
 ## 5. Closure criteria
 
+- [ ] `--tmin` decided (§2b).
 - [ ] 3 launches, idle board, logs committed.
 - [ ] Report table committed and linked here and in the parent.
 - [ ] Short answer written here: best tile per n group, and the gap to 16x8/16x4.

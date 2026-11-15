@@ -2,7 +2,7 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/62
 
-**Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Code read, no board.
+**Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Code read, plus board runs of his C code on `jbpi`/`jbpi2` (X60, the K1's chip). Changed 2026-11-15 (user): C code runs on the RISC-V board, not only read (parent rule).
 **Status:** 📝 Open. A first read was done on 2026-11-15 (§2). The side-by-side with our code is not done.
 **Primary sources:**
 - https://github.com/martineh/GEMMLib_yolo @ `b292c92`:
@@ -19,7 +19,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/62
 
 ## 1. Goal
 
-This is reading only: we learn from his code, we do not run our kernels in it or copy it into our design.
+We learn from his code. We do not run our kernels in it or copy it into our design. His code is C, so we also build it with his `Makefile` and run his `gemm.bin` on the RISC-V board, to see how his thread split performs on the X60, not only how it reads. Board runs follow the house rules (#39): check other users first; a thread count that uses core 0 follows #63's core-0 decision.
 
 Write down exactly how Héctor splits the GEMM over threads, so S5 (#56) can copy what works and avoid what does not.
 
@@ -42,16 +42,17 @@ Write down exactly how Héctor splits the GEMM over threads, so S5 (#56) can cop
 
 1. Where in our generated macrokernel does the same `ir` split go? Our Ac/Bc are allocated by the driver: does each thread need its own Ac slice?
 2. With MC = 256 and 8 threads, each thread gets only 32 rows per block, and there is a barrier per block. Is MC = 256 a deliberate choice for 8 threads, or left over from one-thread tuning? Our cache model picks mc for one core.
-3. The K1 has two clusters of 4 cores, each with its own L2 (to confirm from `cache_config.py` / `/sys`). His split ignores that. Does a split by `jr` or by `ic`, or 4 + 4 threads per cluster, do better?
+3. The K1 has two clusters of 4 cores, each with its own L2 (to confirm on the board from `/sys`). His split ignores that. Does a split by `jr` or by `ic`, or 4 + 4 threads per cluster, do better?
 4. His B pack splits by `its_nc * NR` columns. With small n (16, 32), several threads get no columns. Does that leave threads idle at the barrier?
 5. What do we need from his timing harness (`gemm.bin`, `driver_gemm.c`) to compare fairly in S6: thread pinning (`OMP_PROC_BIND`?), first-touch of buffers, `TIMIN`?
 
 ## 4. Output
 
-A short note in this issue: the table above checked against our loop nest, the answers to §3, and a list of "copy / change / skip" items handed to S5 (#56).
+A short note in this issue: the table above checked against our loop nest, his `gemm.bin` numbers from the board, the answers to §3, and a list of "copy / change / skip" items handed to S5 (#56).
 
 ## 5. Closure criteria
 
 - [ ] Side-by-side with our macrokernel written, with `file:line` on both sides.
-- [ ] §3 answered, or each item marked as needing a board run.
+- [ ] His `gemm.bin` built and run on the board (1 and 8 threads at least), with board, build, `TIMIN`, threads and cores named; logs committed.
+- [ ] §3 answered, with a board measurement where a question is about speed or idle threads (§3.2-3.4).
 - [ ] Copy / change / skip list posted on #56.

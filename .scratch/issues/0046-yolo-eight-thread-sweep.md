@@ -42,6 +42,7 @@ This is Héctor's request: **with 8 threads, which tile is fastest on each YOLO 
 
 - His fast path takes A pre-packed from im2col (`gemm_prepack_B3A2C0`). `gemm.bin` times the plain path, so check which one it runs (S4 §3.5).
 - n = 1 shapes are left out (his GEMV).
+- Blocking differs: ours from the cache model, his fixed at MC=256, KC=256, NC=n. Our `nc` overrides set `nc` only, so his blocking is not reproduced on our side (decided in #60, 2026-11-15).
 - Any core-0 run carries the house-rule note.
 
 ## 6. Closure criteria

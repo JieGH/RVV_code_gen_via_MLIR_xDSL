@@ -5,6 +5,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/58
 **Role / Label:** `needs-triage`. Parent issue, opened 2026-11-15 for review.
 **Status:** 📝 Open. Nothing built or measured.
 **Target:** SpacemiT X60, 8 cores, VLEN 256. That is the K1 chip in Héctor's OrangePi, and the same chip as our `jbpi`/`jbpi2` (`model name: Spacemit(R) X60`, 8 cores, in every `provenance.txt`).
+**Where code runs (user, 2026-11-15):** C code is built and run on the RISC-V board (`jbpi`/`jbpi2`), never only read or run on the host. That covers our generated kernels and Héctor's GEMMLib alike: we want to see how it performs on the RISC-V machine. Only Python tools (generator, reports, tests) run on the host. Board runs follow the house rules (#39) and the check for other users.
 **Shapes:** the 53 YOLO26 GEMM shapes from Héctor (m, n, k after im2col): `HectorYolo/yolo26_k1_matrix_sizes.csv`. They match `gemm_study/yolo.dat` in his repo row for row.
 **Primary sources:**
 - `HectorYolo/Re: Optimizaciones Yolo sobre RISC-V.pdf`: the email thread, 10-13 Nov 2026
@@ -61,7 +62,7 @@ We do not run our kernels inside his GEMM, and we do not copy his GEMM into our 
 | S1 #59 | YOLO shape set: dataset file and candidate tile list ([[0042-yolo-shape-set]]) | task | no | none |
 | S2 #60 | **Our design:** add microkernel size search (list of tiles → best tile per shape) + report ([[0043-yolo-size-search-tooling]]) | spec + build | for the correctness check | S1 |
 | S3 #61 | One-core sweep of the candidate tiles on the YOLO shapes ([[0044-yolo-one-core-sweep]]) | board run | yes | S1, S2 |
-| S4 #62 | Read Héctor's parallel `gemm_B3A2C0` beside our macrokernel ([[0045-read-hector-parallel-gemm]]) | code read | no | none |
+| S4 #62 | Read Héctor's parallel `gemm_B3A2C0` beside our macrokernel, and run his `gemm.bin` on the board ([[0045-read-hector-parallel-gemm]]) | code read + board run | yes, his C code | none |
 | S5 #56 | **Our design:** make the generated GEMM parallel, opt-in `--threads N`, default 1 ([[0040-parallel-gemm-design]]) | spec + build | yes, for the check | S4 |
 | S6 #63 | 8-thread sweep, and our GEMM against Héctor's GEMMLib on his shapes ([[0046-yolo-eight-thread-sweep]]) | board run | yes | S3, S5 |
 

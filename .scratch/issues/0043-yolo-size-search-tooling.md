@@ -3,11 +3,12 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/60
 
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Spec + build in **our design** (Project Generator), no board until the correctness check.
-**Status:** 📝 Open. Not built. Updated 2026-11-15: the search is a feature of our design, not a set of side scripts.
+**Status:** 🔨 Built 2026-11-15 (decisions §3). Waiting on the correctness pass on a board.
 **Blocked by:** #59 (S1, dataset and tile list).
 **Primary sources:**
 - `tests/pure_xdsl_blis_rvv/config.py:54` (8th field present = pinned, absent = search)
 - `generate_pure_blis_project.py:330-445` (search mode builds every tile 1x1 .. max MR x max NR)
+- `config_issue55_tiles.json` + `test_run_issue55.py` (several pinned rows in one config already run in one `compile_macro_bench.sh` call, one `pj_gen/..._MR<m>NR<n>` folder each)
 - `templates/driver_benchmark.cpp:1335-1350` (prints the best tile per shape, ranked by `ker_gflops`)
 - `config_issue48_sweep.json`, `run_issue48.sh`, `issue48_report.py`, `reps_report.py` (the pinned-row sweep we use today)
 
@@ -29,44 +30,34 @@ This is built **in our design**. Héctor's code plays no part in it.
 
 **Pinned rows** (what #32, #48 and #51 used): one config row per tile, each in its own `pj_gen/..._MR<m>NR<n>` directory. Each row runs every shape in its datasets. Per-rep logs and `reps_report.py` already work with this, and so do the house rules (#39).
 
-## 3. Rule: nothing that runs today changes
+## 3. Decisions (grilling, 2026-11-15)
 
-- A pinned row with one tile builds and times exactly as today: same generated code, same driver path, same log names. Every result since #39 stays valid.
-- The old search mode (a row without `iterations`) stays as it is.
-- The new search is a new kind of row. It is turned on only by that row.
-- **Test:** the generated project for an existing pinned row is byte-identical before and after this change (e.g. `config_issue48_sweep.json`, `config.json`).
+1. **No new row kind, no generator change.** A config with several pinned rows already runs today: one `compile_macro_bench.sh --config` call builds and runs every row, each in its own `pj_gen/..._MR<m>NR<n>` folder (`config_issue55_tiles.json`). So the search config is one pinned row per Candidate Tile. Each tile times exactly as it does alone. The "list of tiles on a pinned row" feature and its byte-identical test are dropped: nothing that runs today changes.
+2. **The old search mode stays as it is.** Out of scope. Retiring it would be its own issue.
+3. **`--tmin` moved to #61** (§2b there). It is a run flag, not part of what this issue builds.
+4. **Blocking: our cache model only.** Our `nc` overrides set `nc` only, so Héctor's MC=256/KC=256 cannot be reproduced without new code. Noted as a limit in #63.
+5. **`search_report.py` builds on `reps_report.py`** and needs the per-rep logs (on by default). A run folder without them is an error naming `--no-save-reps`.
+6. **Glossary:** "Tile Search" added to `CONTEXT.md` (avoid "sweep", the old mode).
+7. **Report content** as proposed: per shape the best tile by GOPs by mean time and by median rep (whole call, packing included), the launch spread, an optional compare tile, a WARNING under 3 launches; then the best single tile over the dataset and the best tile per n, by total measured time with each shape counted once.
 
-## 4. Design (proposal for review)
+## 4. What was built (2026-11-15)
 
-1. **Config: a list of tiles on a pinned row.** Today a row with 8 fields and a list of tiles silently keeps only the first tile (`config.py:115`, `mr_nr_family[0]`). Change it so that such a row means "search over exactly these tiles". Each tile uses the same pinned fringe path as today (full tile into the temporary C buffer), so a tile times the same whether it runs alone or in a search.
-   - **Option (a):** one project directory per tile, run one after another (the generator loops over today's pinned path). The least new code.
-   - **Option (b):** one project holding all listed tiles as variants of one binary. The driver already loops over variants and prints a "best variant". One build, but the generated code differs from a single-tile project.
-   - Proposed: **(a)**. It reuses the pinned path unchanged and keeps rule §3 easy to prove.
-2. **Ranking:** by GOPs by mean time of the whole call (packing included), with GOPs by median rep beside it. Not by kernel GFLOPS.
-3. **Report `search_report.py`** (general, not YOLO-only). It reads the run folder(s) of a search and prints, per shape:
-   - the best tile by both metrics
-   - the spread over launches, and a WARNING under 3 launches (reuse `reps_report.py`)
-   - an optional "compare with" tile (for YOLO: Héctor's 16x8, or 16x4 when n = 4)
-   - a summary: the best single tile for the whole dataset (FLOP-weighted), and the best tile per group of shapes (e.g. per n)
+- `tests/pure_xdsl_blis_rvv/config_yolo_search.json`: 19 pinned rows (the #59 tiles) on `yolo26_k1.dat`, `skip_ref_run: true`.
+- `tests/pure_xdsl_blis_rvv/config_yolo_correctness.json` + `datasets/yolo_correctness_small.dat`: the same 19 tiles, oracle on, on 4 shapes (m = 300; n = 4, 16; k = 9, 27). Added to the B2-limit test in `test_correctness_pass.py`.
+- `tests/pure_xdsl_blis_rvv/search_report.py`: usage `search_report.py <run folder> [...] --compare 16x8 --compare n=4:16x4`. Checked on a real run folder (`logs/run_2026-10-23_125339`, 3 tiles x 4 shapes).
+- `tests/pure_xdsl_blis_rvv/test_tile_search.py`: both configs, and the report on hand-made run folders (best tile per shape by both metrics, compare tile, summary arithmetic, the WARNING under 3 launches, the missing-reps error).
+- Docs: `README.md` ("Finding the best microkernel size"), `docs/agents/execution.md` (entry point), `CONTEXT.md` (Tile Search).
 
-   Add a test with a fake log folder.
-4. **Entry point:** `compile_macro_bench.sh --config <search config>` runs it with no new flag. Document it in `README.md` and `docs/agents/execution.md`.
-5. **Configs for YOLO:**
-   - `config_yolo_search.json`: one row, the 19 S1 tiles, `yolo26_k1.dat`, `skip_ref_run: true`
-   - `config_yolo_correctness.json`: the same tiles on 3-4 small YOLO-like shapes (n = 4 and 16, m = 300, k = 9 and 27), every shape under the B2 limit of the scalar check (`test_correctness_pass.py`)
-6. **Later, not in this issue:** let the search pick its candidates from the register budget instead of a hand list, and rank with 8 threads once #56 exists.
+## 5. Later, not in this issue
 
-## 5. Open points for the user
-
-- Option (a) or (b) in §4.1?
-- `--tmin`: Héctor uses `TIMIN=2.0`. Our default for decisions is 10 s. With 50 small shapes x 19 tiles, `--tmin 10` costs about 19 x 50 x 10 s = 2.6 h per launch, against about 32 min at `--tmin 2`.
-- Blocking: keep our cache-model `mc/nc/kc` (proposed), or also time with Héctor's fixed MC=256, KC=256, NC=n through `nc` overrides?
-- The old search mode: keep it, or retire it once the new one works?
+- Let the search pick its candidates from the register budget instead of a hand list.
+- Rank with 8 threads once #56 exists.
 
 ## 6. Closure criteria
 
-- [ ] Decisions on §5 recorded here.
-- [ ] Search built in `config.py` / the generator, with the byte-identical test for existing pinned rows (§3).
-- [ ] `search_report.py` and its test committed.
-- [ ] `config_yolo_search.json` and `config_yolo_correctness.json` committed. The correctness config passes on one board (all tiles PASS).
-- [ ] Docs updated. Tests pass. Run them before or after a board series, never during one.
+- [x] Decisions recorded here (§3).
+- [x] ~~Search built in `config.py` / the generator~~ Not needed (§3.1): plain pinned rows.
+- [x] `search_report.py` and its test committed.
+- [x] `config_yolo_search.json` and `config_yolo_correctness.json` committed.
+- [ ] The correctness config passes on one board (all 19 x 4 rows PASS).
+- [x] Docs updated. Tests pass.
