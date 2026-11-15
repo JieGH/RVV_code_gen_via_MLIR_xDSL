@@ -68,6 +68,8 @@ We do not run our kernels inside his GEMM, and we do not copy his GEMM into our 
 
 S1, S2 and S4 can start now and do not depend on each other except S2 on S1.
 
+**Status 2026-11-16:** S1 #59 and S2 #60 closed. S3 #61 run on `jbpi` (uninstrumented, reference protocol, `--tmin 2`, core 4, 3 launches): best single tile **24x8**, 4.26 GOPs by mean time / 4.25 by median rep over the 50 shapes, against 3.79 / 3.79 for 16x8 and 3.44 / 3.44 for 16x4. Per n and the report: [[0044-yolo-one-core-sweep]] §5a, `tests/pure_xdsl_blis_rvv/logs/yolo_sweep_2026-11-15_205445/tile_search_report.md`.
+
 ## 5. Out of scope for now (open questions)
 
 1. **fp16.** Héctor is moving the product to fp16 (MR=32). Our generator is fp32/int8 only. Should fp16 tiles be a follow-up issue?
