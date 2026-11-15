@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/59
 
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Desk work, no board.
-**Status:** 📝 Open. Dataset committed 2026-11-15 (`ad43e255`, branch `yolo26-k1-best-microkernel-size-per-gemm-shape`). Candidate tile list agreed 2026-11-15.
+**Status:** ✅ Done 2026-11-15. Dataset committed (`ad43e255`, branch `yolo26-k1-best-microkernel-size-per-gemm-shape`); candidate tile list (19 tiles) and shape counting agreed 2026-11-15.
 **Shapes:** 53 shapes, `HectorYolo/yolo26_k1_matrix_sizes.csv` (same as `gemm_study/yolo.dat` in Héctor's repo).
 **Primary sources:** the CSV; `tests/pure_xdsl_blis_rvv/datasets/*.dat` (format); `generate_pure_blis_project.py` (register budget, issue #32 plan).
 
