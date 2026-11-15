@@ -1,0 +1,5 @@
+# Issue #54: B3 only, the reference as it is and with our one-column B packer (--pack-b-fix).
+# Same row as cases_issue46.tsv; with --bracket the reference builds its neighbours 16x14 and 16x16.
+# Used with: run_ref_baseline.sh --cases ref_baseline/cases_issue54_b3.tsv --bracket --per-rep --no-compare
+# case	numid	M	N	K	MR	NR
+B3	3	64	384	384	16	15

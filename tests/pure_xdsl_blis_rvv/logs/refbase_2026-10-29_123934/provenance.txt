@@ -1,0 +1,102 @@
+Reference-design baseline, generated 2026-10-29T12:44:06+01:00
+  board          : jbpi2 (user jlei)
+  reference tree : /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/ext/RVV_ukernels_benchmark/gemm_blis_family
+  variants       : OPT=LDX SWAP=0 kernel: macc
+  build          : SIMD_MODE=RVV_EXO RUN_MODE=FAMILY_EXO, blis_shim for blis.h
+  tmin           : 10 s
+  protocol       : REFERENCE driver (test_gemm.c): no warm-up, reps until tmin, one clock read per call
+  B packer       : the reference's own pack_CB (unchanged)
+  result check   : off (TEST=F, as upstream)
+  per-rep patch  : yes, v3 (staged test_gemm.c stores the clock after every call in a static array and writes it with write(2), no heap, issue #46)
+  metric         : GFLOPS = 2*m*n*k / wall time of gemm_blis_B3A2C0()
+                   -> PACK TIME IS INCLUDED (src/test_gemm.c:399-400)
+  cases          : see run_plan.tsv (pinned MR/NR vs actually-built MR/NR)
+  cpu pin        : 4
+  affinity       : pid 471702's current affinity list: 4
+  host           : jbpi2 (Linux 6.6.63 riscv64)
+  compiler (gcc) : gcc (Bianbu 13.2.0-23ubuntu4bb3) 13.2.0
+  compiler (g++) : g++ (Bianbu 13.2.0-23ubuntu4bb3) 13.2.0
+  governor       :  8 performance 
+  load average   : 2.39 2.44 2.23 1/466 471717
+  other users    : none
+  taken          : 2026-10-29T12:41:31+01:00
+  /proc/cpuinfo  :
+processor	: 0
+hart		: 0
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt_ime
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 1
+hart		: 1
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt_ime
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 2
+hart		: 2
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt_ime
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 3
+hart		: 3
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt_ime
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 4
+hart		: 4
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 5
+hart		: 5
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 6
+hart		: 6
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 7
+hart		: 7
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
