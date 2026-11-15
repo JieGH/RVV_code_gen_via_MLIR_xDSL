@@ -38,6 +38,16 @@ Packing routine implemented with scalar loads and stores, executing without vect
 **RVV Packing**:
 Packing routine accelerated with RISC-V Vector unit-stride or strided load/store instructions (`vlse32`/`vse32`).
 
+### Workloads & Search
+
+**Workload**:
+The set of GEMM shapes $(m, n, k)$ that one model runs, e.g. YOLO26 on the K1 after im2col. One dataset file holds one Workload.
+_Avoid_: model (the network itself), dataset (the file, not the shapes)
+
+**Candidate Tile**:
+An $MR \times NR$ size entered into a search for the fastest Microkernel on a Workload. "Microkernel size" means the same when a search is meant.
+_Avoid_: variant (the driver's word for any compiled tile)
+
 ### Register Allocation
 
 **Register Pressure**:

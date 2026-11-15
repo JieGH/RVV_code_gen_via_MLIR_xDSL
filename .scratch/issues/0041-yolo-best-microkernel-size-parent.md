@@ -58,7 +58,7 @@ We do not run our kernels inside his GEMM, and we do not copy his GEMM into our 
 
 | # | Sub-issue | Kind | Needs the board | Blocked by |
 |---|---|---|---|---|
-| S1 #59 | YOLO shape set: dataset file, weight of each shape, tile fit table ([[0042-yolo-shape-set]]) | task | no | none |
+| S1 #59 | YOLO shape set: dataset file and candidate tile list ([[0042-yolo-shape-set]]) | task | no | none |
 | S2 #60 | **Our design:** add microkernel size search (list of tiles → best tile per shape) + report ([[0043-yolo-size-search-tooling]]) | spec + build | for the correctness check | S1 |
 | S3 #61 | One-core sweep of the candidate tiles on the YOLO shapes ([[0044-yolo-one-core-sweep]]) | board run | yes | S1, S2 |
 | S4 #62 | Read Héctor's parallel `gemm_B3A2C0` beside our macrokernel ([[0045-read-hector-parallel-gemm]]) | code read | no | none |
