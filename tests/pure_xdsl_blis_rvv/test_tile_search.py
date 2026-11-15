@@ -128,3 +128,19 @@ def test_a_run_folder_without_per_rep_logs_is_an_error(tmp_path: Path):
     (tmp_path / "run_0").mkdir()
     out = run_report(str(tmp_path / "run_0"))
     assert out.returncode != 0 and "--no-save-reps" in out.stderr
+
+
+def test_the_grid_shows_every_tile_per_shape_sorted_by_n_with_the_best_in_bold(tmp_path: Path):
+    out = run_report(*(str(run_folder(tmp_path, f"run_{i}", SPEEDS)) for i in range(3))).stdout
+    grid = out.split("## GOPs grid")[1].split("##")[0]
+    assert "| shape | m | n | k | 16x4 | 16x8 |" in grid
+    assert grid.index("| Y01 |") < grid.index("| Y00 |")  # n = 4 before n = 16
+    assert table_row(grid, "Y00")[4:] == ["4.00", "**6.00**"]
+
+
+def test_heatmap_writes_a_png(tmp_path: Path):
+    runs = [str(run_folder(tmp_path, f"run_{i}", SPEEDS)) for i in range(3)]
+    png = tmp_path / "heat.png"
+    out = run_report(*runs, "--heatmap", str(png))
+    assert out.returncode == 0, out.stderr
+    assert png.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
