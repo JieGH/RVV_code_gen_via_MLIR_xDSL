@@ -67,7 +67,7 @@ GOPs over one pass of that n's shapes, whole call, packing included, as **by mea
 
 Short answer: one tile for the whole network is **24x8** (698.6 ms per pass by mean time, against 785.3 ms for 16x8). Per n: 24x9 for n = 8-32, 24x8 for n = 64 and 256, 32x7 for n = 80 and 128. For n = 4, 24x4 and Héctor's 16x4 tie (2.50 by mean time). 16x8 is the best tile on 1 of 50 shapes (Y44). MR = 8 tiles are the slowest (2.97-3.43 over the dataset).
 
-**Report:** [`.scratch/reports/issue-61-report.md`](../reports/issue-61-report.md) (engineering report: method, changes, verification, results, limitations; copy in `HectorYolo/sweep_final_2026-11-15/`).
+**Report:** [`.scratch/reports/issue-61-report.md`](../reports/issue-61-report.md) (engineering report: method, changes, verification, results, limitations; copy in `HectorYolo/issue-61/sweep_final_2026-11-15/`).
 
 ## 5b. Open question: Y14 with MR = 32
 

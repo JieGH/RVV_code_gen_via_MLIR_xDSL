@@ -1,0 +1,12 @@
+root                 12.8   2       00:00 sshd
+root                  0.6   6 105-02:45:35 disp_eng_share_thread
+systemd-oom           0.0   6 105-02:45:42 systemd-oomd
+root                  0.0   5 105-02:45:50 vq1
+root                  0.0   5 105-02:45:50 vq0
+root                  0.0   6 105-02:45:36 ksdioirqd/mmc1
+root                  0.0   6 105-02:04:35 fwupd
+root                  0.0   3 105-02:45:41 NetworkManager
+messagebus            0.0   5 105-02:45:41 dbus-daemon
+root                  0.0   0    16:33:26 kworker/0:1-events
+root                  0.0   5  3-11:52:15 kworker/5:0-events
+avahi                 0.0   2 105-02:45:41 avahi-daemon
