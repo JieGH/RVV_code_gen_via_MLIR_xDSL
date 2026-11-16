@@ -1,0 +1,7 @@
+36.00s call     tests/pure_xdsl_blis_rvv/test_run_issue49.py::test_a_workspace_is_passed_on_to_every_run_and_left_out_by_default
+22.43s call     tests/pure_xdsl_blis_rvv/test_run_issue51.py::test_a_run_that_leaves_the_project_out_is_failed_though_it_exited_zero
+18.19s call     tests/pure_xdsl_blis_rvv/test_run_issue48.py::test_a_workspace_is_passed_on_to_every_run_and_left_out_by_default
+18.00s call     tests/pure_xdsl_blis_rvv/test_run_issue49.py::test_a_run_that_leaves_a_tile_out_is_failed_though_it_exited_zero
+604 passed in 942.91s (0:15:42)
+
+[exited with code 0]

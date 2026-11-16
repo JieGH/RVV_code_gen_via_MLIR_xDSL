@@ -1,0 +1,12 @@
+jlei                  500   6       00:00 ps
+root                  133   5       00:00 check-new-relea
+jlei                 50.0   3       00:00 bash
+root                 14.2   4       00:00 sshd
+jlei                 14.2   0       00:00 sshd
+root                  0.6   1 105-10:51:37 disp_eng_share_thread
+systemd-oom           0.0   4 105-10:51:44 systemd-oomd
+root                  0.0   3 105-10:51:52 vq1
+root                  0.0   0 105-10:51:52 vq0
+messagebus            0.0   7 105-10:51:44 dbus-daemon
+root                  0.0   1 105-10:51:34 bluetoothd
+root                  0.0   4 105-10:51:43 NetworkManager

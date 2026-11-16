@@ -1,0 +1,7 @@
+[
+    // Issue #56: the parallel GEMM's test program. YOLO26 on the K1 (datasets/yolo26_k1.dat), tile 24x8 (#61's best
+    // single tile), every row checked against the scalar oracle (skip_ref_run false). Run by run_parallel_gemm.sh at
+    // 1 thread (--cpu 4) and 8 threads (--threads 8). Format: [datatype, method, [MR, NR], vlen, arch, [datasets],
+    // skip_ref_run, iterations].
+    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["yolo26_k1.dat"], false, 1000]
+]

@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/56
 
 **Role / Label:** `needs-triage` — opened 2026-11-12 at the user's request. A general new direction, not a spec yet.
-**Status:** 📝 Open. Nothing built or measured.
+**Status:** ✅ Done 2026-11-16. Built (§6), board run on `jbpi`: 6 of 6 launches ok, every row PASS (§7). Report: `HectorYolo/issue-56/`.
 **Target:** to be decided (board, core count and which program).
 
 ---
@@ -52,3 +52,46 @@ Small `n` scales worst: 2.9-3.8x for n ≤ 32, 4.3-5.6x for n ≥ 64. Report and
   - his GEMV path for n = 1;
   - 1 thread on core 0.
 - **Test on the board:** pin threads (`OMP_PROC_BIND`/`OMP_PLACES`; he sets none) and try 4 + 4 threads per L2 cluster (cores 0-3 and 4-7 each share an L2).
+
+---
+
+## 5. Decisions (grilling, 2026-11-16; agent's recommended answers, accepted by the user's standing prompt)
+
+1. **Opt-in.** `--threads N` (default 1) on `generate_pure_blis_project.py` and `compile_macro_bench.sh`. With 1 thread the generated code is byte-identical to today (test).
+2. **OpenMP.** One `omp parallel` region per GEMM call; `-fopenmp` only when N > 1.
+3. **Split.** Every thread runs the `jc`/`pc` loops. The B pack is split over (panel x k-chunk) units, so small `n` still feeds all threads; one barrier after it. Each thread packs and computes its own `mr` panels of every `mc` block (the `ir` split) in one shared Ac/Bc; no barrier per full `ic` block. One extra barrier before a short last `ic` block, whose panel split differs (else a thread overwrites Ac rows another thread still reads; the host test fails without it). One barrier before the next `pc` repacks Bc.
+4. **Blocking.** The one-core cache model's `mc/nc/kc`, unchanged. On YOLO26 it gives `mc` = 300-4096 (#61 run folders), at least 12 panels of 24 rows. A per-thread `mc` is left for later.
+5. **Refused with N > 1:** `--instr` (its counters are not thread-safe), `--scalar-pack`, `--pack-b` other than `row`, `--zero-pack-lines`.
+6. **Cores.** N > 1 runs on cores 0..N-1 with `OMP_PROC_BIND=close OMP_PLACES=cores`, the cores of Héctor's #62 runs. The user's core-0 exception (#62) is extended to these runs; `provenance.txt` records threads and cores. The 4 + 4 per-cluster test goes to S6 (#63).
+7. **Test program.** YOLO26 (`datasets/yolo26_k1.dat`), tile 24x8 (#61's best single tile). 1 thread on core 4 and 8 threads on cores 0-7, order 1T 8T 8T 1T 1T 8T (3 launches each), `--tmin 2`, idle `jbpi`, uninstrumented, reference protocol, `--no-nc-overrides`, every row checked for correctness. Both GOPs metrics, beside Héctor's #62 jbpi numbers.
+8. **Output.** `HectorYolo/issue-56/`, laid out like `HectorYolo/issue-62/`.
+
+## 6. Built (2026-11-16)
+
+- `generate_pure_blis_project.py --threads N` (`render_parallel_nest`), `compile_macro_bench.sh --threads N` (also refuses `--no-ref-protocol`: its warm-up scalar-pack pass would get the vector packers), `run_parallel_gemm.sh`, `config_parallel_gemm.json`, `parallel_gemm_report.py`.
+- Tests: `test_parallel_gemm.py` (byte-identical 1-thread output; 3- and 8-thread dispatch on the host with OpenMP, 20 reps per case; removing either barrier fails it), `test_parallel_gemm_report.py`. Full suite: 604 passed.
+- Board run: §7.
+
+## 7. Board run (2026-11-16, jbpi)
+
+Series `logs/parallel_gemm_2026-11-16_193132/`. Tile 24x8 on `datasets/yolo26_k1.dat` (50 shapes), uninstrumented, reference protocol, `--tmin 2`, `--no-nc-overrides`. 1 thread on core 4, 8 threads on cores 0-7. Order 1T 8T 8T 1T 1T 8T (run folders `run_2026-11-16_193618`, `run_2026-11-16_194037`, `run_2026-11-16_194504`, `run_2026-11-16_194944`, `run_2026-11-16_195424`, `run_2026-11-16_195855`). 50 of 50 PASS in every launch; no other user on the board.
+
+One pass over the 50 shapes:
+
+| | 1 thread | 8 threads | speedup |
+|---|---|---|---|
+| ours, by mean time | 698.6 ms · 4.26 GOPs | 152.1 ms · 19.55 GOPs | 4.59x |
+| ours, by median rep | 698.2 ms · 4.26 GOPs | 148.3 ms · 20.05 GOPs | 4.71x |
+| Héctor (#62 jbpi, not interleaved), by mean time | 583.3 ms · 5.10 GOPs | 135.7 ms · 21.91 GOPs | 4.30x |
+
+- We scale better at n ≤ 32 (3.6-4.6x against 2.9-3.7x; the k-split B pack), but our 1 thread is 1.4-2.2x slower there.
+- n ≥ 64 is mixed: level at 80, behind at 64 and 128, ahead at 256. Our 8 threads match or beat his on 25 of 50 shapes.
+- At 8 threads the median rep runs well above the mean on the m = 300/1200, n ≥ 64 shapes (e.g. Y34 49.81 against 37.11): some slow reps. Not looked into.
+
+Report: `HectorYolo/issue-56/README.md`, engineering report `HectorYolo/issue-56/report/issue-56-report.md`. Next: S6 #63 is unblocked.
+
+## Closure criteria
+
+- [x] `--threads N`, opt-in, 1 thread byte-identical (test).
+- [x] Tested on one program (YOLO26), correct on every shape, logs committed.
+- [x] Report in `HectorYolo/issue-56/`.
