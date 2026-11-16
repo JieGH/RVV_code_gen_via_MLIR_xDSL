@@ -1,0 +1,15 @@
+Issue #61 Tile Search: 3 launches on the first idle board of jbpi,jbpi2, 19 tiles x datasets/yolo26_k1.dat
+  Settings  : --cpu 4 --no-nc-overrides --tmin 2, uninstrumented, reference protocol, vector packer
+  Load      : the board's processes are read before every launch; another user's busy job means wait 10 min and read again
+  Launch 1  : starts at 8x4
+  Launch 2  : starts at 16x8
+  Launch 3  : starts at 24x8
+[20:54] board: jbpi
+[20:54] launch 1/3 on jbpi, starting at 8x4: log /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/yolo_sweep_2026-11-15_205445/jbpi_L1.log
+    ok: run_2026-11-15_220501
+[22:05] launch 2/3 on jbpi, starting at 16x8: log /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/yolo_sweep_2026-11-15_205445/jbpi_L2.log
+    ok: run_2026-11-15_231549
+[23:16] launch 3/3 on jbpi, starting at 24x8: log /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/yolo_sweep_2026-11-15_205445/jbpi_L3.log
+    ok: run_2026-11-16_002638
+
+Series finished: 3 of 3 launches ok on jbpi. Run folders: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/yolo_sweep_2026-11-15_205445/runs.tsv

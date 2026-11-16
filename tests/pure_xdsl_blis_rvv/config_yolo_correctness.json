@@ -1,0 +1,26 @@
+[
+    // Issue #60: the correctness pass for the Tile Search: the same 19 tiles as config_yolo_search.json, with
+    // skip_ref_run OFF so the scalar oracle runs, on small YOLO-like shapes (datasets/yolo_correctness_small.dat,
+    // every shape under the B2 limit). Run as the correctness pass (docs/agents/execution.md) with
+    // --config config_yolo_correctness.json --tmin 0.2. Every row must log Status=PASS.
+    // Format: [datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run, iterations].
+    ["fp32", "AXPY_FP32_Pack", [8, 4], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [8, 8], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [8, 12], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [8, 16], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [8, 24], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 4], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 6], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 8], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 10], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 12], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 14], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [24, 4], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [24, 6], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [24, 9], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 4], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5]
+]

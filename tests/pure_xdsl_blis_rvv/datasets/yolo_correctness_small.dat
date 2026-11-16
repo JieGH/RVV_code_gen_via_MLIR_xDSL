@@ -1,0 +1,8 @@
+# Issue #60: small YOLO-like shapes for the Tile Search correctness pass (config_yolo_correctness.json).
+# m = 300 (YOLO26's smallest m, not a multiple of 16 or 32: fringe rows), n = 4 and 16, k = 9 and 27
+# (YOLO26's shortest k loops). All under the scalar oracle's B2 limit (384 x 384 x 64).
+# layer   M     N    K
+YC_m300_n4_k9     300   4    9
+YC_m300_n4_k27    300   4    27
+YC_m300_n16_k9    300   16   9
+YC_m300_n16_k27   300   16   27
