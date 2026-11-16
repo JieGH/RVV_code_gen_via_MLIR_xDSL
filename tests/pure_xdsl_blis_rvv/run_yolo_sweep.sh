@@ -36,7 +36,11 @@
 #   --workspace NAME  the board-side directory (compile_macro_bench.sh --riscv-workspace)
 #   --direct          reach the boards directly instead of through the jump host
 #   --riscv-user U --riscv-port P    (defaults jlei, 22)
+#   --issue N         HectorYolo/issue-<N>/ folder for the report and logs (default 61)
 #   --dry-run         print the plan and the launch configs, then stop
+# After every finished launch: search_report.py over the launches so far (--compare 16x8 --compare n=4:16x4,
+# heatmap) into the series folder as tile_search_report.md / tile_search_heatmap.png, then the series folder
+# is copied to HectorYolo/issue-<N>/<series>/ (user, 2026-11-16).
 #
 # Jump-host settings come from the environment: REMOTE_PASS (default empty), REMOTE_HOST (default
 # fej), REMOTE_PORT (default 3322). Do not run tests, --dry-run of a wrapper or another benchmark
@@ -51,9 +55,12 @@ BENCH_RUN="${YOLO_SWEEP_RUN:-${HERE}/compile_macro_bench.sh}"
 CONFIG="${HERE}/config_yolo_search.json"
 LOCK="${LOGS}/.cron_bench.lock"
 source "${HERE}/board_pin.sh"
+source "${HERE}/hector_yolo_dump.sh"
+PY="${HERE}/../../.venv/bin/python"; [ -x "${PY}" ] || PY=python3
+REPORT_CMD=("${PY}" "${HERE}/search_report.py"); [ -n "${YOLO_SWEEP_REPORT:-}" ] && REPORT_CMD=("${YOLO_SWEEP_REPORT}")
 
 BOARDS="jbpi,jbpi2"; LAUNCHES=3; TMIN=10; CPU_ARGS=(--cpu 4); CPU_FLAG=false; CPU=""; WAIT_MIN=10
-WORKSPACE=""; MODE_ARG="--jump"; RISCV_USER="jlei"; RISCV_PORT="22"; DRY_RUN=false
+WORKSPACE=""; MODE_ARG="--jump"; RISCV_USER="jlei"; RISCV_PORT="22"; DRY_RUN=false; ISSUE=61
 
 die() { echo "Error: $*" >&2; exit 1; }
 
@@ -69,6 +76,7 @@ while [[ "$#" -gt 0 ]]; do
         --direct)        MODE_ARG="--direct" ;;
         --riscv-user)    RISCV_USER="$2"; shift ;;
         --riscv-port)    RISCV_PORT="$2"; shift ;;
+        --issue)         ISSUE="$2"; shift ;;
         --dry-run)       DRY_RUN=true ;;
         -h|--help)       sed -n '3,/^# ====*$/p' "$0" | sed '$d'; exit 0 ;;
         *) die "unknown parameter: $1" ;;
@@ -171,6 +179,17 @@ newest_since() {
     echo "${d}"
 }
 
+# report_and_dump -- the report over the launches that finished so far, then the copy to HectorYolo/
+report_and_dump() {
+    local dirs=()
+    mapfile -t dirs < <(awk -F'\t' -v L="${LOGS}" 'NR > 1 && $5 == "0" { print L "/" $4 }' "${SERIES}/runs.tsv")
+    if [ "${#dirs[@]}" -gt 0 ]; then
+        "${REPORT_CMD[@]}" "${dirs[@]}" --compare 16x8 --compare n=4:16x4 --heatmap "${SERIES}/tile_search_heatmap.png" \
+            > "${SERIES}/tile_search_report.md" 2>&1 || echo "    report failed: ${SERIES}/tile_search_report.md"
+    fi
+    hector_yolo_dump "${ISSUE}" "${SERIES}"
+}
+
 OK=0; FAILED=()
 for ((l = 1; l <= LAUNCHES; l++)); do
     cfg="${SERIES}/config_L${l}.json"
@@ -211,9 +230,11 @@ for ((l = 1; l <= LAUNCHES; l++)); do
     OK=$((OK + 1))
     printf '%s\t%s\t%s\t%s\t%s\n' "${BOARD}" "${l}" "${first}" "$(basename "${dir}")" 0 >> "${SERIES}/runs.tsv"
     echo "    ok: $(basename "${dir}")"
+    report_and_dump
 done
 
 echo ""; echo "Series finished: ${OK} of ${LAUNCHES} launches ok on ${BOARD}. Run folders: ${SERIES}/runs.tsv"
+report_and_dump
 [ "${#FAILED[@]}" -gt 0 ] && printf '  failed: %s\n' "${FAILED[@]}"
 [ -s "${SERIES}/load_warnings.txt" ] && { echo "RED NOTE: load seen after a launch (${SERIES}/load_warnings.txt):"; sed 's/^/  /' "${SERIES}/load_warnings.txt"; }
 [ "${#FAILED[@]}" -eq 0 ]
