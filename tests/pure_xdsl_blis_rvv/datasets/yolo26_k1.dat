@@ -1,0 +1,57 @@
+# YOLO26 on the K1: the GEMM shapes of one inference after im2col (Héctor Martínez, 13 Nov 2026).
+# Source: HectorYolo/yolo26_k1_matrix_sizes.csv, identical row for row to gemm_study/yolo.dat in
+# https://github.com/martineh/GEMMLib_yolo at b292c92. Label Y<l> = row <l> of the CSV.
+# A is m x k (im2col rows = output pixels), B is k x n (weights), C is m x n; MR runs along m.
+# Left out: rows 6, 21, 35 (n = 1), which Héctor runs as a GEMV, not a GEMM (issue #59).
+# These are the distinct shapes; how often each runs per image is not known yet (#58 §5.4).
+# layer   M       N     K
+Y00     76800   16    27
+Y01     19200   16    72
+Y02     19200   32    144
+Y03     19200   32    32
+Y04     19200   64    48
+Y05     19200   8     144
+Y07     4800    128   96
+Y08     4800    16    144
+Y09     4800    16    288
+Y10     4800    16    32
+Y11     4800    16    576
+Y12     4800    32    144
+Y13     4800    32    32
+Y14     4800    4     16
+Y15     4800    64    256
+Y16     4800    64    576
+Y17     4800    64    64
+Y18     4800    64    96
+Y19     4800    80    64
+Y20     4800    80    80
+Y22     1200    128   1152
+Y23     1200    128   128
+Y24     1200    128   192
+Y25     1200    128   384
+Y26     1200    16    1152
+Y27     1200    16    144
+Y28     1200    32    288
+Y29     1200    32    64
+Y30     1200    4     16
+Y31     1200    64    576
+Y32     1200    64    64
+Y33     1200    80    128
+Y34     1200    80    80
+Y36     300     128   1152
+Y37     300     128   128
+Y38     300     128   256
+Y39     300     128   576
+Y40     300     16    144
+Y41     300     16    2304
+Y42     300     256   1152
+Y43     300     256   128
+Y44     300     256   256
+Y45     300     256   384
+Y46     300     256   512
+Y47     300     4     16
+Y48     300     64    1152
+Y49     300     64    128
+Y50     300     64    576
+Y51     300     80    256
+Y52     300     80    80

@@ -1,0 +1,27 @@
+[
+    // Issue #60: the Tile Search for YOLO26 on the K1 (#58). One pinned row per Candidate Tile: the 19 tiles of
+    // issue #59 §3.2, each timed exactly as it times alone, on every shape of datasets/yolo26_k1.dat.
+    // Run: compile_macro_bench.sh --config config_yolo_search.json (house rules: core 4, 3 launches; --tmin is #61's call).
+    // Per-rep logs are on by default; do not pass --no-save-reps. Read the run folders with search_report.py.
+    // Like any --config run it regenerates pj_gen/.
+    // Format: [datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run, iterations].
+    ["fp32", "AXPY_FP32_Pack", [8, 4], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 8], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 12], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 16], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 24], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 4], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 6], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 8], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 10], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 12], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 14], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [24, 4], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [24, 6], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [24, 9], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [32, 4], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["yolo26_k1.dat"], true, 1000]
+]

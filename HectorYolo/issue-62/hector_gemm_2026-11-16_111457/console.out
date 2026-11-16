@@ -1,0 +1,14 @@
+Issue #62: Héctor's GEMMLib @ b292c92, unedited, built and run on an idle board of jbpi,jbpi2
+  Build    : his Makefile + Makefile.inc (gcc-14 -O3 -fopenmp, NQ_FP32, K1), make clean && make && make install (serial, his README), in ~/hector_gemmlib_b292c92
+  Run      : his gemm.bin command line, TIMIN=2.0, TEST=T, gemm_study/yolo.dat; no OMP_PROC_BIND (as his)
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7 (core 0: user's exception, 8-thread run only)
+  Order    : 1 8 8 1 1 8 (threads per launch)
+  Load     : both boards read before every launch; busy -> side note; none idle -> wait 10 min
+[11:14] copying /tmp/claude-1001/-home-jlei-Documents-ws-MLIR-repo-xdsl-microkernels-RVV-code-gen-via-MLIR-xDSL/15535a90-c266-403a-a120-258b4caa6a15/scratchpad/ext_src/GEMMLib_yolo to jbpi:~/hector_gemmlib_b292c92 and building (his Makefile)
+[11:15] launch 1/6: 1 thread(s) on cores 4 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-16_111457/L1_T1_jbpi.log
+[11:18] launch 2/6: 8 thread(s) on cores 0-7 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-16_111457/L2_T8_jbpi.log
+[11:20] launch 3/6: 8 thread(s) on cores 0-7 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-16_111457/L3_T8_jbpi.log
+[11:23] launch 4/6: 1 thread(s) on cores 4 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-16_111457/L4_T1_jbpi.log
+[11:25] launch 5/6: 1 thread(s) on cores 4 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-16_111457/L5_T1_jbpi.log
+[11:28] launch 6/6: 8 thread(s) on cores 0-7 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-16_111457/L6_T8_jbpi.log
+Series finished: 6 of 6 launches ok. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-16_111457

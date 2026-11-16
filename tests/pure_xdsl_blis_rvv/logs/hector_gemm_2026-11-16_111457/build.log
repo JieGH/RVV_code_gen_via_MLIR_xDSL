@@ -1,0 +1,58 @@
+gcc-14 (Bianbu 14.2.0-4ubuntu2~24.04bb1) 14.2.0
+rm -rf build/*.o
+rm -rf build/GEMM
+gcc-14 -I./src -I./src/GEMM -I./src/GEMM/modelLevel -I./src/GEMM/intrinsic_generator/ukernels -I./src/GEMM/asm_generator/ukernels -O3 -fopenmp -fPIC -march=rv64gcv_zfh_zvfh -DRISCV -DCHECK -DNQ_FP32 -DK1 -DNONE -DGEMMLIB_ON -c src/GEMM/gemm_blis.c -o build/GEMM/gemm_blis.o
+src/GEMM/gemm_blis.c: In function ‘gemm_B3A2C0’:
+src/GEMM/gemm_blis.c:897:15: warning: passing argument 5 of ‘pack_generic_B’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  897 |               Bptr, ldB, Bc + kc * its_nc * NR * th_id, NR);
+      |               ^~~~
+src/GEMM/gemm_blis.c:89:74: note: expected ‘float *’ but argument is of type ‘const float *’
+   89 | void pack_generic_B ( char orderM, char transM, int mc, int nc, IN_TYPE *M, int ldM, PACK_TYPE *Mc, int RR );
+src/GEMM/gemm_blis.c:920:14: warning: passing argument 5 of ‘pack’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  920 |              Aptr, ldA, Ac + kc * its_mc * MR * th_id, MR);
+      |              ^~~~
+src/GEMM/gemm_blis.c:920:14: note: expected ‘float *’ but argument is of type ‘const float *’
+src/GEMM/gemm_blis.c: In function ‘gemm_prepack_B3A2C0’:
+src/GEMM/gemm_blis.c:1006:15: warning: passing argument 5 of ‘pack_generic_B’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 1006 |               Bptr, ldB, Bc + kc * its_nc * NR * th_id, NR);
+      |               ^~~~
+src/GEMM/gemm_blis.c:89:74: note: expected ‘float *’ but argument is of type ‘const float *’
+   89 | void pack_generic_B ( char orderM, char transM, int mc, int nc, IN_TYPE *M, int ldM, PACK_TYPE *Mc, int RR );
+src/GEMM/gemm_blis.c: In function ‘im2col_pack_rvv’:
+src/GEMM/gemm_blis.c:224:26: warning: ignoring return value of ‘posix_memalign’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+  224 |     if (_im2col == NULL) posix_memalign((void **)&_im2col, 64, IM2COL_SIZE);
+      |                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+gcc-14 -I./src -I./src/GEMM -I./src/GEMM/modelLevel -I./src/GEMM/intrinsic_generator/ukernels -I./src/GEMM/asm_generator/ukernels -O3 -fopenmp -fPIC -march=rv64gcv_zfh_zvfh -DRISCV -DCHECK -DNQ_FP32 -DK1 -DNONE -DGEMMLIB_ON -c src/GEMM/im2col.c -o build/GEMM/im2col.o
+gcc-14 -I./src -I./src/GEMM -I./src/GEMM/modelLevel -I./src/GEMM/intrinsic_generator/ukernels -I./src/GEMM/asm_generator/ukernels -O3 -fopenmp -fPIC -march=rv64gcv_zfh_zvfh -DRISCV -DCHECK -DNQ_FP32 -DK1 -DNONE -DGEMMLIB_ON -c src/GEMM/im2row.c -o build/GEMM/im2row.o
+gcc-14 -I./src -I./src/GEMM -I./src/GEMM/modelLevel -I./src/GEMM/intrinsic_generator/ukernels -I./src/GEMM/asm_generator/ukernels -O3 -fopenmp -fPIC -march=rv64gcv_zfh_zvfh -DRISCV -DCHECK -DNQ_FP32 -DK1 -DNONE -DGEMMLIB_ON -c src/GEMM/uk.c -o build/GEMM/uk.o
+src/GEMM/uk.c:6:9: warning: "min" redefined
+    6 | #define min(a,b) a >= b ? a : b
+      |         ^~~
+In file included from src/GEMM/gemm_blis.h:8,
+                 from src/GEMM/uk.h:4,
+                 from src/GEMM/uk.c:1:
+src/GEMM/modelLevel/model_level.h:26:11: note: this is the location of the previous definition
+   26 |   #define min(a,b)     ( (a) > (b) ? (b) : (a) )
+      |           ^~~
+gcc-14 -I./src -I./src/GEMM -I./src/GEMM/modelLevel -I./src/GEMM/intrinsic_generator/ukernels -I./src/GEMM/asm_generator/ukernels -O3 -fopenmp -fPIC -march=rv64gcv_zfh_zvfh -DRISCV -DCHECK -DNQ_FP32 -DK1 -DNONE -DGEMMLIB_ON -c src/GEMM/modelLevel/model_level.c -o build/GEMM/modelLevel/model_level.o
+ar rcs build/libGEMM.a build/GEMM/gemm_blis.o build/GEMM/im2col.o build/GEMM/im2row.o build/GEMM/uk.o build/GEMM/modelLevel/model_level.o
+gcc-14 -shared -o build/libGEMM.so build/GEMM/gemm_blis.o build/GEMM/im2col.o build/GEMM/im2row.o build/GEMM/uk.o build/GEMM/modelLevel/model_level.o -lm -fopenmp
+gcc-14 -I./src -I./src/GEMM -I./src/GEMM/modelLevel -I./src/GEMM/intrinsic_generator/ukernels -I./src/GEMM/asm_generator/ukernels -O3 -fopenmp -fPIC -march=rv64gcv_zfh_zvfh -DRISCV -DCHECK -DNQ_FP32 -DK1 -DNONE -DGEMMLIB_ON -c src/inutils.c -o build/inutils.o
+gcc-14 -I./src -I./src/GEMM -I./src/GEMM/modelLevel -I./src/GEMM/intrinsic_generator/ukernels -I./src/GEMM/asm_generator/ukernels -O3 -fopenmp -fPIC -march=rv64gcv_zfh_zvfh -DRISCV -DCHECK -DNQ_FP32 -DK1 -DNONE -DGEMMLIB_ON -c src/sutils.c -o build/sutils.o
+gcc-14 -I./src -I./src/GEMM -I./src/GEMM/modelLevel -I./src/GEMM/intrinsic_generator/ukernels -I./src/GEMM/asm_generator/ukernels -O3 -fopenmp -fPIC -march=rv64gcv_zfh_zvfh -DRISCV -DCHECK -DNQ_FP32 -DK1 -DNONE -DGEMMLIB_ON -c src/im2row.c -o build/im2row.o
+gcc-14 -I./src -I./src/GEMM -I./src/GEMM/modelLevel -I./src/GEMM/intrinsic_generator/ukernels -I./src/GEMM/asm_generator/ukernels -O3 -fopenmp -fPIC -march=rv64gcv_zfh_zvfh -DRISCV -DCHECK -DNQ_FP32 -DK1 -DNONE -DGEMMLIB_ON -c src/cnn_layer.c -o build/cnn_layer.o
+gcc-14 -I./src -I./src/GEMM -I./src/GEMM/modelLevel -I./src/GEMM/intrinsic_generator/ukernels -I./src/GEMM/asm_generator/ukernels -O3 -fopenmp -fPIC -march=rv64gcv_zfh_zvfh -DRISCV -DCHECK -DNQ_FP32 -DK1 -DNONE -DGEMMLIB_ON -c src/driver_gemm.c -o build/driver_gemm.o
+gcc-14 -O3 -fopenmp -fPIC -march=rv64gcv_zfh_zvfh -DRISCV -DCHECK -DNQ_FP32 -DK1 -DNONE -DGEMMLIB_ON -o build/gemm.x \
+	build/inutils.o build/sutils.o build/im2row.o build/cnn_layer.o \
+	build/driver_gemm.o \
+	-Lbuild -lGEMM \
+	-lm -fopenmp
+install -m 644 build/libGEMM.a install/lib/
+install -m 755 build/libGEMM.so install/lib/
+install -m 644 src/GEMM/gemm_blis.h install/include/
+
+GEMMLib installed in install
+Libraries:
+  install/lib/libGEMM.a
+  install/lib/libGEMM.so
+
