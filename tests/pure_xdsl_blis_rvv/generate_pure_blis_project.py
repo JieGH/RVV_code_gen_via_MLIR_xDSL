@@ -275,6 +275,77 @@ def render_timed_pack_block(
     )
 
 
+def render_parallel_nest(
+    threads: int, pack_cb: str, pack_rb: str, kernel_call_block: str,
+    c_type_a: str, c_type_b: str, c_type_c: str, c_type_alpha: str,
+) -> str:
+    """Issue #56 (decisions §5 of 0040-parallel-gemm-design.md): the macrokernel for `threads` > 1.
+
+    One OpenMP region per call. Every thread walks the jc/pc loops. The B pack is split over
+    (panel x k-chunk) units, so a narrow n still feeds every thread; one barrier follows it. Each
+    thread packs and computes its own mr panels of every mc block (the ir split), so the A pack needs
+    no barrier, except before a short last block, whose split differs from the full ones'. One
+    barrier ends each pc, before Bc is packed again. fp32 AXPY only (kc_pad == cur_kc), vector
+    packers only, no timers or counters: the caller refuses the rest.
+    """
+    return f"""
+    (void) pack_time; (void) kernel_time; (void) perf; (void) use_scalar_pack; (void) zero_pack_lines; (void) pack_b_variant;
+    #pragma omp parallel num_threads({threads})
+    {{
+    const int32_t nth = omp_get_num_threads();
+    const int32_t tid = omp_get_thread_num();
+    for (int32_t jc = 0; jc < n; jc += nc) {{
+        int32_t cur_nc = std::min(n - jc, nc);
+        for (int32_t pc = 0; pc < k; pc += kc) {{
+            int32_t cur_kc = std::min(k - pc, kc);
+            int32_t kc_pad = cur_kc;
+            {c_type_b}* b_ptr = GET_PTR(B, jc * ldb + pc);
+
+            // B pack: unit u = (panel u / k_chunks, k-chunk u % k_chunks), dealt round robin.
+            int32_t n_panels = (cur_nc + nr - 1) / nr;
+            int32_t k_chunks = std::min((nth + n_panels - 1) / n_panels, cur_kc);
+            for (int32_t u = tid; u < n_panels * k_chunks; u += nth) {{
+                int32_t j0 = (u / k_chunks) * nr, q = u % k_chunks;
+                int32_t k0 = cur_kc * q / k_chunks, k1 = cur_kc * (q + 1) / k_chunks;
+                {pack_cb}(b_ptr + j0 * ldb + k0, Bc + j0 * kc_pad + k0 * nr, k1 - k0, std::min(nr, cur_nc - j0), ldb);
+            }}
+            if (tid == 0) *pack_bytes += cur_kc * cur_nc * sizeof({c_type_b});
+            #pragma omp barrier
+
+            {c_type_alpha} beta_actual = GET_BETA(pc, beta);
+            for (int32_t ic = 0; ic < m; ic += mc) {{
+                int32_t cur_mc = std::min(m - ic, mc);
+                // A short last block splits its panels differently: wait until every thread is done
+                // reading the Ac rows it is about to overwrite.
+                if (cur_mc < mc && ic > 0) {{
+                    #pragma omp barrier
+                }}
+                int32_t m_panels = (cur_mc + mr - 1) / mr;
+                int32_t ir0 = (m_panels * tid / nth) * mr;
+                int32_t ir1 = std::min((m_panels * (tid + 1) / nth) * mr, cur_mc);
+                if (tid == 0) *pack_bytes += cur_mc * cur_kc * sizeof({c_type_a});
+                if (ir0 >= ir1) continue;
+                {pack_rb}(GET_PTR(A, pc * lda + ic + ir0), Ac + ir0 * kc_pad, ir1 - ir0, cur_kc, lda);
+                for (int32_t jr = 0; jr < cur_nc; jr += nr) {{
+                    int32_t cur_nr = std::min(cur_nc - jr, nr);
+                    for (int32_t ir = ir0; ir < ir1; ir += mr) {{
+                        int32_t cur_mr = std::min(ir1 - ir, mr);
+                        {c_type_c}* c_ptr = GET_PTR(C, (jc + jr) * ldc + ic + ir);
+                        {c_type_a}* a_packed = GET_PTR(Ac, ir * kc_pad);
+                        {c_type_b}* b_packed = GET_PTR(Bc, jr * kc_pad);
+{kernel_call_block}
+                    }}
+                }}
+            }}
+            // Every thread is done with Bc (and Ac) before the next pc packs them again.
+            #pragma omp barrier
+        }}
+    }}
+    }}
+}}
+"""
+
+
 def build_project(config: BLISProjectConfig, args):
     # Create project directory
     out_dir = config.out_dir()
@@ -548,7 +619,8 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
             )
         dispatch_body += """    };"""
 
-    dispatch_body += f"""
+    threads = args.threads
+    loop_head = f"""
 
     for (int32_t jc = 0; jc < n; jc += nc) {{
         int32_t nc_remain = n - jc;
@@ -560,6 +632,8 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
             {c_type_b}* b_ptr = GET_PTR(B, offset_B);
             int32_t kc_pad = cur_kc;
 """
+    if threads == 1:
+        dispatch_body += loop_head
     is_dot = "DOT" in config.method
     if is_dot:
         dispatch_body += """
@@ -637,7 +711,16 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
     else:
         kernel_call_block = "                        gemm_microkernel_v_dispatch_generic(cur_mr, cur_nr, kc_pad, alpha, a_packed, b_packed, beta_actual, c_ptr, ldc, mr, nr);"
 
-    dispatch_body += f"""
+    if threads > 1:
+        dispatch_body += render_parallel_nest(
+            threads,
+            "pack_CB_direct" if is_pinned else "pack_CB_funcs[nr]",
+            "pack_RB_direct" if is_pinned else "pack_RB_funcs[mr]",
+            kernel_call_block,
+            c_type_a, c_type_b, c_type_c, c_type_alpha,
+        )
+    else:
+        dispatch_body += f"""
             int32_t mc_pad = (mc + mr - 1) / mr * mr;
             int32_t nc_pad = (nc + nr - 1) / nr * nr;
 
@@ -690,7 +773,9 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
     dispatch_path = os.path.join(out_dir, "gemm_dispatch_xdsl.cpp")
     with open(dispatch_path, "w") as f:
         f.write(
-            f'// CONFIG METHOD: {config.method}\n// DATATYPE: {config.datatype}\n#include "gemm_headers.h"\n\nextern "C" {{\n'
+            f'// CONFIG METHOD: {config.method}\n// DATATYPE: {config.datatype}\n#include "gemm_headers.h"\n'
+            + ("#include <omp.h>\n" if threads > 1 else "")
+            + '\nextern "C" {\n'
         )
         f.write(dispatch_body)
         f.write("\n}\n")
@@ -782,6 +867,12 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
             f"[+] Configured Makefile to run specific datasets: {', '.join(config.datasets)}"
         )
 
+    if args.threads > 1:
+        # Issue #56: only an N-thread build links OpenMP, so a one-thread Makefile stays byte-identical.
+        makefile_content = makefile_content.replace(
+            "CXXFLAGS = -O2 -std=c++17", "CXXFLAGS = -O2 -std=c++17 -fopenmp"
+        )
+
     with open(os.path.join(out_dir, "Makefile"), "w") as f:
         f.write(makefile_content)
 
@@ -796,9 +887,19 @@ def main():
         type=str,
         default="/home/jlei/Documents/ws_MLIR/llvm_pj_dir_06092025/llvm-project/build/bin/mlir-translate",
     )
+    parser.add_argument(
+        "--threads", type=int, default=1,
+        help="Issue #56: threads per GEMM call (OpenMP); 1 emits today's code byte for byte",
+    )
     args = parser.parse_args()
+    if args.threads < 1:
+        parser.error("--threads must be at least 1")
 
     configs = BLISProjectConfig.from_json(args.config)
+    if args.threads > 1:
+        for c in configs:
+            if c.datatype != "fp32" or "DOT" in c.method or "AXPY" not in c.method:
+                parser.error(f"--threads {args.threads} supports fp32 AXPY only, not {c.datatype} {c.method}")
     print(f"Loaded config: {args.config} with {len(configs)} designs")
 
     # Clear old generated projects to avoid running stale configs

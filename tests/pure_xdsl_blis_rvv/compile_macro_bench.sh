@@ -66,6 +66,12 @@ set -e
 # <run dir>/provenance.txt. --no-pin runs unpinned, to reproduce the old numbers. For a
 # head-to-head, run_head_to_head.sh runs both sides back to back instead of a day apart.
 #
+# --threads N (issue #56, default 1): the GEMM call runs on N threads (OpenMP; fp32 AXPY only). With 1
+# the generated code is byte-identical to before. N > 1 runs on cores 0..N-1 under
+# OMP_PROC_BIND=close OMP_PLACES=cores, core 0 included by the user's exception for these runs (#56 §5);
+# it refuses --cpu, --no-pin, --instr, --no-ref-protocol, --scalar-pack, --pack-b other than row and --zero-pack-lines.
+# provenance.txt gets a `threads` line.
+#
 # Every run starts by printing an overview of the settings in effect, defaults included.
 # --dry-run prints that overview and stops, without touching the board.
 #
@@ -112,6 +118,8 @@ PIN_SOURCE="default"
 CPU_FLAG=false
 NO_PIN=false
 ALLOW_CORE0=false
+THREADS=1
+THREADS_SOURCE="default"
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -145,6 +153,7 @@ while [[ "$#" -gt 0 ]]; do
         --cpu)             PIN_CPU="$2"; CPU_FLAG=true; shift   ;;
         --no-pin)          NO_PIN=true                          ;;
         --allow-core-0)    ALLOW_CORE0=true                     ;;
+        --threads)         THREADS="$2"; THREADS_SOURCE="--threads"; shift ;;
         --no-instr)        INSTRUMENTED="0"; BUILD_SOURCE="--no-instr" ;;
         --instr)           INSTRUMENTED="1"; BUILD_SOURCE="--instr"    ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
@@ -203,6 +212,24 @@ if [ -n "${RAW_EVENTS}" ]; then
     TEST_ARGS="${TEST_ARGS} --raw-events ${RAW_EVENTS}"
 fi
 
+# Issue #56: N threads; refuse what the parallel dispatch does not do, before any board time.
+if ! [[ "${THREADS}" =~ ^[1-8]$ ]]; then
+    echo "Error: --threads takes 1 to 8 (the board has 8 cores; got '${THREADS}')."; exit 1
+fi
+if [ "${THREADS}" -gt 1 ]; then
+    for f in --scalar-pack --zero-pack-lines; do
+        if [[ "${TEST_ARGS}" == *"${f}"* ]]; then echo "Error: --threads ${THREADS} cannot run ${f} (one-thread only)."; exit 1; fi
+    done
+    if [ "${PACK_B_NAME}" != "row" ]; then echo "Error: --threads ${THREADS} runs the shipped packer only, not --pack-b ${PACK_B_NAME}."; exit 1; fi
+    if [ "${INSTRUMENTED}" != "0" ]; then echo "Error: --threads ${THREADS} needs the uninstrumented build (drop --instr): its timers are not thread-safe."; exit 1; fi
+    if [ -n "${USE_SCALAR_PACK:-}" ]; then echo "Error: --threads ${THREADS} cannot run with USE_SCALAR_PACK set."; exit 1; fi
+    # The warm-up protocol's scalar-pack pass would run the vector packers in the N-thread dispatch.
+    if [ "${REF_PROTOCOL}" != "1" ]; then echo "Error: --threads ${THREADS} needs the reference protocol (drop --no-ref-protocol)."; exit 1; fi
+    if [ "${CPU_FLAG}" = true ] || [ "${NO_PIN}" = true ]; then
+        echo "Error: --threads ${THREADS} fixes the cores (0-$((THREADS - 1))): drop --cpu / --no-pin."; exit 1
+    fi
+fi
+
 # Issue #21: refuse a bad core, and --cpu with --no-pin, rather than let the later flag win.
 pin_check "${CPU_FLAG}" "${NO_PIN}" "${PIN_CPU}" "${ALLOW_CORE0}" || exit 1
 if [ "${CPU_FLAG}" = true ]; then
@@ -210,7 +237,13 @@ if [ "${CPU_FLAG}" = true ]; then
 elif [ "${NO_PIN}" = true ]; then
     PIN_CPU=""; PIN_SOURCE="--no-pin"
 fi
+if [ "${THREADS}" -gt 1 ]; then
+    PIN_CPU="0-$((THREADS - 1))"; PIN_SOURCE="--threads"
+fi
 PIN_PREFIX="$(pin_prefix "${PIN_CPU}")"
+if [ "${THREADS}" -gt 1 ]; then
+    PIN_PREFIX="OMP_NUM_THREADS=${THREADS} OMP_PROC_BIND=close OMP_PLACES=cores ${PIN_PREFIX}"
+fi
 
 # Issue #14: say which build this is, loudly, at both ends of the run. Quoting an
 # instrumented number against the reference understates us by 11-17%, and the only
@@ -272,6 +305,11 @@ fi
 ov "Packing" "$(case "${TEST_ARGS}" in *--scalar-pack*) echo "scalar packing forced";; *) echo "RVV vector packing";; esac)" "$(case "${TEST_ARGS}" in *--scalar-pack*) echo "--scalar-pack";; *) echo default;; esac)"
 ov "Pack lines" "${ZERO_LINES_BANNER}" "${ZERO_LINES_SOURCE}"
 ov "Pack B" "$([ "${PACK_B_NAME}" = "row" ] && echo "row (shipped xDSL packer)" || echo "${PACK_B_NAME}")" "${PACK_B_SOURCE}"
+if [ "${THREADS}" -gt 1 ]; then
+    ov "Threads" "${THREADS} (OpenMP, cores 0-$((THREADS - 1)); core 0 by the user's #56 exception to house rule 1)" "${THREADS_SOURCE}"
+else
+    ov "Threads" "1 (one core)" "${THREADS_SOURCE}"
+fi
 ov "Cache blocking" "analytical model" "default"
 if [ "${NO_NC_OVERRIDES}" = true ]; then
     ov "" "nc overrides: OFF (every shape uses the heuristic's nc; the nc table in ${CONFIG} is ignored)" "--no-nc-overrides"
@@ -368,7 +406,7 @@ echo ""; echo "$SEP"; echo " [1/3] Generate C Code Locally"; echo "$SEP"
 rm -rf tests/pure_xdsl_blis_rvv/pj_gen
 
 cd tests/pure_xdsl_blis_rvv
-python3 generate_pure_blis_project.py --config "$CONFIG"
+python3 generate_pure_blis_project.py --config "$CONFIG" --threads "${THREADS}"
 cd ../..
 echo "  [OK] Generated project locally."
 
@@ -432,6 +470,7 @@ mkdir -p "${RUN_DIR}"
     echo "  protocol       : ${PROTOCOL_BANNER}"
     echo "  pack lines     : ${ZERO_LINES_BANNER}"
     echo "  pack B         : ${PACK_B_NAME}"
+    echo "  threads        : ${THREADS:-1} on cores ${PIN_CPU:-unpinned}"
     echo "  logs           : ${BUILD_LOGS}"
     echo "${PROVENANCE}"
 } > "${RUN_DIR}/provenance.txt"
