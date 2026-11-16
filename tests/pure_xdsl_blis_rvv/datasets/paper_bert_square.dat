@@ -1,0 +1,13 @@
+# The paper's GEMM shapes (arXiv 2603.17800v1, Table 1): BERT B1-B5 and Square S1-S5.
+# Used by the 1- and 8-thread Tile Search of the user's published design on the K1 (jbpi).
+# layer  M      N     K
+B1       1024   384   1024
+B2       384    384   64
+B3       64     384   384
+B4       4096   384   1024
+B5       1024   384   4096
+S1       1000   1000  1000
+S2       2000   2000  2000
+S3       3000   3000  3000
+S4       4000   4000  4000
+S5       5000   5000  5000
