@@ -36,7 +36,7 @@ Source: [[0045-read-hector-parallel-gemm]] §6. Héctor's `gemm_B3A2C0` (unedite
 - **jbpi:** 5.10 GOPs at 1 thread (core 4), 21.87 at 8 (cores 0-7), 4.29x.
 - **jbpi2:** 5.26 and 23.56, 4.48x.
 
-Small `n` scales worst: 2.9-3.8x for n ≤ 32, 4.3-5.6x for n ≥ 64. Report and figures: `HectorYolo/issue-62/`.
+Small `n` scales worst: 2.9-3.8x for n ≤ 32, 4.3-5.6x for n ≥ 64. Report and figures: `HectorYolo/issue-62/`; full engineering report: [`.scratch/reports/issue-62-report.md`](../reports/issue-62-report.md).
 
 - **Copy:**
   - the `ir` split: each thread packs its own A rows, with no barrier between that pack and its compute;

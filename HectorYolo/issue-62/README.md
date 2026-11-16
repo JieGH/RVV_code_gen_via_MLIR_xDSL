@@ -1,6 +1,6 @@
 # Issue #62: Héctor's parallel GEMM on the board (2026-11-16)
 
-GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/62 · full write-up: `.scratch/issues/0045-read-hector-parallel-gemm.md` §6.
+GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/62 · **engineering report: [`report/issue-62-report.md`](report/issue-62-report.md)** · issue write-up: `.scratch/issues/0045-read-hector-parallel-gemm.md` §6.
 
 **What ran:** Héctor's GEMMLib_yolo at commit `b292c92`, **unedited**, built on the board with his `Makefile` (`gcc-14 -O3 -fopenmp`, `NQ_FP32`, `K1`). His `gemm.bin` command line: `TIMIN=2.0`, `TEST=T`, `gemm_study/yolo.dat` (53 YOLO26 shapes). 1 thread on **core 4**; 8 threads on **cores 0-7** (core 0 included: the user's exception for 8-thread runs only). No `OMP_PROC_BIND`, as he runs it. Order 1T 8T 8T 1T 1T 8T: 3 launches per thread count, one series per board. His check printed `OK` on every row of every launch. Neither board had another user's job before or after any launch.
 

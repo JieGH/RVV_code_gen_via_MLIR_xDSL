@@ -4,6 +4,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/62
 
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Code read, plus board runs of his C code on `jbpi`/`jbpi2` (X60, the K1's chip). Changed 2026-11-15 (user): his C code can run on the board, so we run it there directly rather than guess, simulate or emulate (parent rule).
 **Status:** ✅ Done 2026-11-16, waiting for the user to close. His `gemm.bin` ran on `jbpi` and `jbpi2`, 3 launches per thread count on each board (§6.1). The side-by-side and the §3 answers are in §6.3-6.4. The copy / change / skip list (§6.6) is posted on #56. Report and figures: `HectorYolo/issue-62/`.
+**Report:** [`.scratch/reports/issue-62-report.md`](../reports/issue-62-report.md) (engineering report: method, changes, verification, results, discussion, per-shape appendix; audited by a second agent, findings fixed; copy in `HectorYolo/issue-62/report/`).
 **Primary sources:**
 - https://github.com/martineh/GEMMLib_yolo @ `b292c92`:
   - `src/GEMM/gemm_blis.c:831-950` (`gemm_B3A2C0`)
@@ -127,7 +128,7 @@ His: `src/GEMM/gemm_blis.c` @ `b292c92`. Ours: `tests/pure_xdsl_blis_rvv/generat
 | `ic` | `:904`, MC = 256 | `:648`, `mc` from the cache model (384 for 16x8) |
 | A pack | every thread packs its own `its_mc * MR` rows, `:907`, `:919`; no barrier after it | one call packs all of `cur_mc`, `:654` |
 | `jr` / `ir` | `:924` / `:926`, split on `ir` (`LOOP_IR`) from `ir_init = th_id * its_mc * MR` | `:664` / `:667`, all tiles |
-| fringe | per-thread `Ctmp_th` (`MR*NR`), `UKERNEL` macro `:191-203`, plain C add-back | stack `tmp_C` per tile (pinned mode), `:623`, copy back |
+| fringe | per-thread `Ctmp_th` (`MR*NR`), `UKERNEL` macro `:191-201`, plain C add-back | stack `tmp_C` per tile (pinned mode), `:623`, copy back |
 | barrier per `ic` | `:937` | - |
 | buffers | one `malloc` of `BUFFER_SIZE` floats on first call, Bc = Ac + MC*KC, `:783`, `:789` | driver allocates Ac, Bc per shape, zeroed, `driver_benchmark.cpp:928-929` |
 | counters | - | `pack_time`, `kernel_time`, `*pack_bytes` accumulate through shared pointers, `:645`, `:655` |
@@ -139,7 +140,7 @@ His: `src/GEMM/gemm_blis.c` @ `b292c92`. Ours: `tests/pure_xdsl_blis_rvv/generat
 2. **MC = 256 with 8 threads.** It is a fixed `#define` (`gemm_blis.h:23`), not tied to the thread count: with MR = 16 each thread gets 2 microtiles (32 rows) per block, and there is a barrier per block (`:937`). Where blocks are many and the work per block is small, 8 threads barely help: 76800x16x27 (300 blocks, k = 27) gets 1.07x on jbpi and 2.17x on jbpi2. The runs do not separate the barrier from the other costs. A partial last block also idles threads: m = 300 leaves 44 rows, so 3 of 8 threads work. The barrier at `:937` is not needed for correctness of Ac (each thread reads only what it packed); only one barrier per `pc` is needed before Bc is packed again. Our cache model's `mc` (384 for 16x8) is for one core and does not know the thread count.
 3. **Two L2 clusters.** Confirmed on both boards: L2 shared by cores 0-3 and 4-7 (`/sys/devices/system/cpu/cpu*/cache/index2/shared_cpu_list`). His split ignores them, and no `OMP_PROC_BIND` is set. Not measured here: a `jr` split, an `ic` split or 4 + 4 threads per cluster need his `#define`s changed or 4-thread runs (§2b decision 6); listed as optional follow-ups.
 4. **Idle threads at the B pack.** Yes for small `n`: `its_nc = ceil(n / NR / 8)`, so n = 4, 8 give one thread a B slice, n = 16 two, n = 32 four, n = 80 five. The speedup by `n` (§6.2) follows on both boards: 2.9-3.8x for n ≤ 32, 4.3-5.6x for n ≥ 64. Part of that is also the A side and the per-block barrier, which the runs do not separate.
-5. **His harness, for a fair S6 comparison.** Mean time per call over a `TIMIN` loop (`driver_gemm.c:186-199`), no warm-up, check outside the timed loop: the same shape as our reference protocol. No thread pinning (`OMP_PROC_BIND` unset; `taskset` only limits the set); his `gemm.bin` puts 1 thread on core 0. Buffers: one `malloc` on the first call, reused (`gemm_blis.c:783`), so they are warm after the first rep. GOPs from `2mnk`, the same as ours.
+5. **His harness, for a fair S6 comparison.** Mean time per call over a `TIMIN` loop (`driver_gemm.c:186-199`), no warm-up, check outside the timed loop (`:201-202`): the same shape as our reference protocol. No thread pinning (`OMP_PROC_BIND` unset; `taskset` only limits the set); his `gemm.bin` puts 1 thread on core 0. Buffers: one `malloc` on the first call, reused (`gemm_blis.c:783`), so they are warm after the first rep. GOPs from `2mnk`, the same as ours.
 
 ### 6.5 Tests
 
