@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/62
 
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Code read, plus board runs of his C code on `jbpi`/`jbpi2` (X60, the K1's chip). Changed 2026-11-15 (user): his C code can run on the board, so we run it there directly rather than guess, simulate or emulate (parent rule).
-**Status:** ✅ Done 2026-11-16, waiting for the user to close. His `gemm.bin` ran on `jbpi` and `jbpi2`, 3 launches per thread count on each board (§6.1). The side-by-side and the §3 answers are in §6.3-6.4. The copy / change / skip list (§6.6) is posted on #56. Report and figures: `HectorYolo/issue-62/`.
+**Status:** ✅ Closed 2026-11-16 (merged in PR #66, with #65). His `gemm.bin` ran on `jbpi` and `jbpi2`, 3 launches per thread count on each board (§6.1). The side-by-side and the §3 answers are in §6.3-6.4. The copy / change / skip list (§6.6) is posted on #56. Report and figures: `HectorYolo/issue-62/`.
 **Report:** [`.scratch/reports/issue-62-report.md`](../reports/issue-62-report.md) (engineering report: method, changes, verification, results, discussion, per-shape appendix; audited by a second agent, findings fixed; copy in `HectorYolo/issue-62/report/`).
 **Primary sources:**
 - https://github.com/martineh/GEMMLib_yolo @ `b292c92`:
