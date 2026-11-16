@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/62
 
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Code read, plus board runs of his C code on `jbpi`/`jbpi2` (X60, the K1's chip). Changed 2026-11-15 (user): his C code can run on the board, so we run it there directly rather than guess, simulate or emulate (parent rule).
-**Status:** ✅ Done 2026-11-16, waiting for the user to close. His `gemm.bin` ran on `jbpi` and `jbpi2`, 3 launches per thread count on each board (§6.1). The side-by-side and the §3 answers are in §6.3-6.4. The copy / change / skip list (§6.5) is posted on #56. Report and figures: `HectorYolo/issue-62/`.
+**Status:** ✅ Done 2026-11-16, waiting for the user to close. His `gemm.bin` ran on `jbpi` and `jbpi2`, 3 launches per thread count on each board (§6.1). The side-by-side and the §3 answers are in §6.3-6.4. The copy / change / skip list (§6.6) is posted on #56. Report and figures: `HectorYolo/issue-62/`.
 **Primary sources:**
 - https://github.com/martineh/GEMMLib_yolo @ `b292c92`:
   - `src/GEMM/gemm_blis.c:831-950` (`gemm_B3A2C0`)
@@ -67,7 +67,7 @@ A short note in this issue: the table above checked against our loop nest, his `
 - [x] Side-by-side with our macrokernel written, with `file:line` on both sides (§6.3).
 - [x] His `gemm.bin` built and run on the board (1 and 8 threads at least), with board, build, `TIMIN`, threads and cores named; logs committed (§6.1).
 - [x] §3 answered, with a board measurement where a question is about speed or idle threads (§3.2-3.4) (§6.4). §3.3's split alternatives are not measured (§2b decision 6).
-- [x] Copy / change / skip list posted on #56 (§6.5).
+- [x] Copy / change / skip list posted on #56 (§6.6).
 
 ---
 
@@ -141,7 +141,11 @@ His: `src/GEMM/gemm_blis.c` @ `b292c92`. Ours: `tests/pure_xdsl_blis_rvv/generat
 4. **Idle threads at the B pack.** Yes for small `n`: `its_nc = ceil(n / NR / 8)`, so n = 4, 8 give one thread a B slice, n = 16 two, n = 32 four, n = 80 five. The speedup by `n` (§6.2) follows on both boards: 2.9-3.8x for n ≤ 32, 4.3-5.6x for n ≥ 64. Part of that is also the A side and the per-block barrier, which the runs do not separate.
 5. **His harness, for a fair S6 comparison.** Mean time per call over a `TIMIN` loop (`driver_gemm.c:186-199`), no warm-up, check outside the timed loop: the same shape as our reference protocol. No thread pinning (`OMP_PROC_BIND` unset; `taskset` only limits the set); his `gemm.bin` puts 1 thread on core 0. Buffers: one `malloc` on the first call, reused (`gemm_blis.c:783`), so they are warm after the first rep. GOPs from `2mnk`, the same as ours.
 
-### 6.5 Copy / change / skip for S5 (#56)
+### 6.5 Tests
+
+Full test suite on this branch (`dc984ccb`): **583 passed, 0 failed, 0 skipped**, 15 min 38 s; the two board-side test files ran on the board. Report: `HectorYolo/issue-62/full_test_suite_2026-11-16.md`.
+
+### 6.6 Copy / change / skip for S5 (#56)
 
 - **Copy:** the `ir` split with each thread packing its own A rows and no barrier between its A pack and its compute; the column-sliced B pack with one barrier after it; one shared Ac/Bc buffer, sliced by thread.
 - **Change:** drop the barrier per `ic` block (keep one per `pc`, before Bc is packed again); split B so small `n` (4-32) does not leave most threads idle at the B pack; give `mc` a thread-aware choice instead of a fixed 256; make the pack/kernel counters per-thread.

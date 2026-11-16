@@ -55,4 +55,8 @@ Each panel's x axis is the 53 shapes, sorted by `n`, `m`, `k`. Top: GOPs at 1 an
 
 `hector_gemm_report.md` (per-shape table), `hector_gemm_fig.png`, `plan.txt`, `runs.tsv`, `L<n>_T<threads>_<board>.{log,csv}` (his console table and CSV per launch), `build.log`, `load_*.txt` (both boards' processes before and after every launch), `side_notes.txt` (busy boards: none), `console.out`.
 
+## Tests
+
+Full test suite on the #62 branch: **583 passed, 0 failed, 0 skipped** (the two board-side test files ran on the board). Report: [`full_test_suite_2026-11-16.md`](full_test_suite_2026-11-16.md).
+
 Rebuild a report: `python tests/pure_xdsl_blis_rvv/hector_gemm_report.py <series folder> -o report.md --plot fig.png`.

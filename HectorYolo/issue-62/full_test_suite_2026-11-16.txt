@@ -1,0 +1,31 @@
+........................................................................ [ 12%]
+........................................................................ [ 24%]
+........................................................................ [ 37%]
+........................................................................ [ 49%]
+........................................................................ [ 61%]
+........................................................................ [ 74%]
+........................................................................ [ 86%]
+........................................................................ [ 98%]
+.......                                                                  [100%]
+============================= slowest 20 durations =============================
+56.09s call     tests/pure_xdsl_blis_rvv/test_run_issue51.py::test_the_default_five_launches_put_every_tile_first_and_last_once
+44.88s call     tests/pure_xdsl_blis_rvv/test_run_issue51.py::test_a_workspace_is_passed_on_to_every_run_and_left_out_by_default
+35.99s call     tests/pure_xdsl_blis_rvv/test_run_issue49.py::test_a_workspace_is_passed_on_to_every_run_and_left_out_by_default
+22.47s call     tests/pure_xdsl_blis_rvv/test_run_issue51.py::test_another_users_heavy_job_is_a_red_note_and_does_not_stop_the_series
+22.44s call     tests/pure_xdsl_blis_rvv/test_run_issue51.py::test_a_run_that_leaves_the_project_out_is_failed_though_it_exited_zero
+22.44s call     tests/pure_xdsl_blis_rvv/test_run_issue51.py::test_the_boards_take_turns_and_the_tiles_rotate_between_launches
+22.43s call     tests/pure_xdsl_blis_rvv/test_run_issue51.py::test_each_tile_gets_its_own_config
+21.33s call     tests/pure_xdsl_blis_rvv/test_run_issue51.py::test_a_run_that_exits_non_zero_is_named_and_the_series_goes_on
+20.25s call     tests/pure_xdsl_blis_rvv/test_run_issue49.py::test_three_pads_rotate_so_each_is_first_once_in_three_launches
+20.20s call     tests/pure_xdsl_blis_rvv/test_run_issue51.py::test_three_tiles_rotate_so_each_is_first_once_in_three_launches
+18.75s call     tests/pure_xdsl_blis_rvv/test_board_pin.py::test_every_script_takes_core_0_when_told_it_is_on_purpose[run_head_to_head.sh]
+18.73s call     tests/pure_xdsl_blis_rvv/test_board_pin.py::test_a_wrapper_passes_allow_core_0_on_to_the_scripts_it_runs[run_head_to_head.sh]
+18.18s call     tests/pure_xdsl_blis_rvv/test_run_issue48.py::test_a_workspace_is_passed_on_to_every_run_and_left_out_by_default
+18.17s call     tests/pure_xdsl_blis_rvv/test_run_issue48.py::test_every_arm_gets_its_config_its_packer_its_build_and_the_same_pin
+18.14s call     tests/pure_xdsl_blis_rvv/test_board_pin.py::test_every_script_takes_core_0_when_told_it_is_on_purpose[run_ref_sweep.sh]
+18.02s call     tests/pure_xdsl_blis_rvv/test_run_issue49.py::test_another_users_heavy_job_is_a_red_note_and_does_not_stop_the_series
+18.00s call     tests/pure_xdsl_blis_rvv/test_run_issue49.py::test_pad_ldb_is_given_for_every_pad_but_zero
+18.00s call     tests/pure_xdsl_blis_rvv/test_run_issue49.py::test_a_run_that_leaves_a_tile_out_is_failed_though_it_exited_zero
+17.99s call     tests/pure_xdsl_blis_rvv/test_run_issue49.py::test_the_boards_take_turns_and_the_pads_rotate_between_launches
+16.89s call     tests/pure_xdsl_blis_rvv/test_run_issue49.py::test_a_run_that_exits_non_zero_is_named_and_the_series_goes_on
+583 passed in 937.72s (0:15:37)
