@@ -31,6 +31,8 @@
 #   --src DIR        his source tree (required; must be at commit b292c92)
 #   --boards a,b     boards to pick from (default jbpi,jbpi2)
 #   --launches N     launches per thread count (default 3)
+#   --threads 1|8    run only that thread count, --launches of it (issue #63); default both, in the order above
+#   --no-build       skip the copy and build: reuse ~/<--dir> from an earlier series (shared NFS home; #63)
 #   --timin S        his TIMIN (default 2.0, as in gemm.bin)
 #   --wait-min M     minutes between reads when no board is idle (default 10)
 #   --dir NAME       board-side directory under ~ (default hector_gemmlib_b292c92)
@@ -51,7 +53,7 @@ source "${HERE}/board_pin.sh"                    # OTHER_USERS_AWK
 source "${HERE}/hector_yolo_dump.sh"
 PY="${HERE}/../../.venv/bin/python"; [ -x "${PY}" ] || PY=python3
 
-SRC=""; BOARDS="jbpi,jbpi2"; LAUNCHES=3; TIMIN="2.0"; WAIT_MIN=10; DIR="hector_gemmlib_b292c92"; DRY_RUN=false; ISSUE=62
+SRC=""; BOARDS="jbpi,jbpi2"; LAUNCHES=3; TIMIN="2.0"; WAIT_MIN=10; DIR="hector_gemmlib_b292c92"; DRY_RUN=false; ISSUE=62; THREADS=""; BUILT=false
 USER_ON_BOARD="jlei"
 
 die() { echo "Error: $*" >&2; exit 1; }
@@ -65,6 +67,8 @@ while [[ "$#" -gt 0 ]]; do
         --wait-min)  WAIT_MIN="$2"; shift ;;
         --dir)       DIR="$2"; shift ;;
         --issue)     ISSUE="$2"; shift ;;
+        --threads)   THREADS="$2"; shift ;;
+        --no-build)  BUILT=true ;;
         --dry-run)   DRY_RUN=true ;;
         -h|--help)   sed -n '3,/^# ====*$/p' "$0" | sed '$d'; exit 0 ;;
         *) die "unknown parameter: $1" ;;
@@ -77,6 +81,7 @@ COMMIT="${HECTOR_GEMM_COMMIT:-$(git -C "${SRC}" rev-parse --short=7 HEAD 2>/dev/
 [ "${COMMIT}" = "${WANT_COMMIT}" ] || die "--src is at '${COMMIT}', not ${WANT_COMMIT}"
 [[ "${LAUNCHES}" =~ ^[1-9][0-9]*$ ]] || die "--launches takes a whole number of at least 1"
 [[ "${WAIT_MIN}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || die "--wait-min takes minutes"
+[[ -z "${THREADS}" || "${THREADS}" =~ ^[18]$ ]] || die "--threads takes 1 or 8 (got '${THREADS}')"
 IFS=',' read -ra BOARD_LIST <<< "${BOARDS}"
 REMOTE_HOST="${REMOTE_HOST:-fej}"; REMOTE_PORT="${REMOTE_PORT:-3322}"
 
@@ -100,11 +105,12 @@ ORDER=()
 for ((i = 0; i < 2 * LAUNCHES; i++)); do
     case $(( i % 4 )) in 0|3) ORDER+=(1) ;; *) ORDER+=(8) ;; esac
 done
+if [ -n "${THREADS}" ]; then ORDER=(); for ((i = 0; i < LAUNCHES; i++)); do ORDER+=("${THREADS}"); done; fi
 cpus_of() { [ "$1" = 1 ] && echo 4 || echo 0-7; }
 
 print_plan() {
-    echo "Issue #62: Héctor's GEMMLib @ ${WANT_COMMIT}, unedited, built and run on an idle board of ${BOARDS}"
-    echo "  Build    : his Makefile + Makefile.inc (gcc-14 -O3 -fopenmp, NQ_FP32, K1), make clean && make && make install (serial, his README), in ~/${DIR}"
+    echo "Issue #${ISSUE}: Héctor's GEMMLib @ ${WANT_COMMIT}, unedited, built and run on an idle board of ${BOARDS}"
+    echo "  Build    : his Makefile + Makefile.inc (gcc-14 -O3 -fopenmp, NQ_FP32, K1), make clean && make && make install (serial, his README), in ~/${DIR}$([ "${BUILT}" = true ] && echo " -- skipped (--no-build), the existing build is used")"
     echo "  Run      : his gemm.bin command line, TIMIN=${TIMIN}, TEST=T, gemm_study/yolo.dat; no OMP_PROC_BIND (as his)"
     echo "  Cores    : 1 thread on core 4; 8 threads on cores 0-7 (core 0: user's exception, 8-thread run only)"
     echo "  Order    : ${ORDER[*]} (threads per launch)"
@@ -150,7 +156,6 @@ report_and_dump() {
     hector_yolo_dump "${ISSUE}" "${SERIES}"
 }
 
-BUILT=false
 OK=0; TOTAL=${#ORDER[@]}
 for ((l = 1; l <= TOTAL; l++)); do
     th="${ORDER[$((l - 1))]}"; cpus="$(cpus_of "${th}")"

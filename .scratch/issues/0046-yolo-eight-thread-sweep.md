@@ -24,6 +24,21 @@ This is Héctor's request: **with 8 threads, which tile is fastest on each YOLO 
 - **(b)** Also run 7 threads (cores 1-7) and 4 threads (cores 4-7, one cluster) as clean points beside the 8-thread one.
 - Proposed: (a) + (b), so the 8-thread number answers Héctor and the 4- and 7-thread numbers show what core 0 costs.
 
+**Decided 2026-11-16 (grilling, defaults accepted): (a) only.** Fact: `--threads N` pins cores `0-(N-1)` (`compile_macro_bench.sh:241`), so 7 or 4 threads would still use core 0; (b) needs a new core-list option. #56 and #62 already ran 8 threads on cores 0-7 under the same exception. (b) stays an optional follow-up, not part of this issue.
+
+## 2a. Decisions (grilling, 2026-11-16, defaults accepted)
+
+| # | Question | Decision |
+|---|---|---|
+| Q1 | Core 0 | (a) only: 8 threads on cores 0-7, `OMP_PROC_BIND=close OMP_PLACES=cores`, note in `provenance.txt` and every table. No 4-/7-thread runs. |
+| Q2 | Our runner | Add `--threads N` to `run_yolo_sweep.sh` (passed to `compile_macro_bench.sh`, replaces `--cpu`). No new sweep script. |
+| Q3 | Tiles | All 19 Candidate Tiles of `config_yolo_search.json` (#61), rotated per launch as in #61. |
+| Q4 | Settings | Board `jbpi` (`jbpi2` if busy, one board for the whole series), uninstrumented, reference protocol, `--tmin 2`, `--no-nc-overrides`, vector packer: as #56 and #61. |
+| Q5 | Héctor's side | Rerun, not reuse #62: his `gemm.x` at commit `b292c92`, 8 threads on cores 0-7, `TIMIN=2.0`, via `run_hector_gemm.sh`. Add an 8-thread-only mode to it. |
+| Q6 | Alternation | One thin series script runs launches ours, his, his, ours, ours, his (3 each, A-B-B-A) on one board, with the usual idle check before each launch. |
+| Q7 | §3 step 3 (patched GEMMLib with our tiles) | Skip. Optional follow-up only. |
+| Q8 | Output | `HectorYolo/issue-63/` with series folders, `README.md` and `report/` in the issue-62 style; 1-core column from #61's committed logs; both GOPs metrics for ours, mean time only for his. |
+
 ## 3. Run
 
 1. Our side: **our design's size search** (S2 #60) with **our design's** `--threads 8` (#56), 3 launches, idle board, both GOPs metrics.
