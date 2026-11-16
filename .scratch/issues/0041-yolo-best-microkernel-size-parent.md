@@ -63,7 +63,7 @@ We do not run our kernels inside his GEMM, and we do not copy his GEMM into our 
 | S2 #60 | **Our design:** add microkernel size search (list of tiles → best tile per shape) + report ([[0043-yolo-size-search-tooling]]) | spec + build | for the correctness check | S1 |
 | S3 #61 | One-core sweep of the candidate tiles on the YOLO shapes ([[0044-yolo-one-core-sweep]]) | board run | yes | S1, S2 |
 | S4 #62 | Read Héctor's parallel `gemm_B3A2C0` beside our macrokernel, and run his `gemm.bin` on the board ([[0045-read-hector-parallel-gemm]]) | code read + board run | yes, his C code | none |
-| S5 #56 | **Our design:** make the generated GEMM parallel, opt-in `--threads N`, default 1 ([[0040-parallel-gemm-design]]) | spec + build | yes, for the check | S4 |
+| S5 #56 | **Our design:** make the generated GEMM parallel, opt-in `--threads N`, default 1 ([[0040-parallel-gemm-design]]) | spec + build | yes, for the check | S4 · ✅ done 2026-11-16: 8 threads 152.1 ms per pass (4.59x), Héctor 135.7 ms; `HectorYolo/issue-56/` |
 | S6 #63 | 8-thread sweep, and our GEMM against Héctor's GEMMLib on his shapes ([[0046-yolo-eight-thread-sweep]]) | board run | yes | S3, S5 |
 
 S1, S2 and S4 can start now and do not depend on each other except S2 on S1.
