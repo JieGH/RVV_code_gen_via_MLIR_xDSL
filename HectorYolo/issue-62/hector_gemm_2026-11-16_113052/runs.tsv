@@ -1,0 +1,7 @@
+launch	threads	cpus	board	exit
+1	1	4	jbpi2	0
+2	8	0-7	jbpi2	0
+3	8	0-7	jbpi2	0
+4	1	4	jbpi2	0
+5	1	4	jbpi2	0
+6	8	0-7	jbpi2	0

@@ -1,0 +1,12 @@
+jlei                  500   6       00:00 ps
+root                 12.1   4       00:00 sshd
+root                  0.6   1 105-02:40:38 disp_eng_share_thread
+systemd-oom           0.0   3 105-02:40:45 systemd-oomd
+root                  0.0   2 105-02:40:54 vq1
+root                  0.0   5 105-02:40:54 vq0
+root                  0.0   6 105-02:40:39 ksdioirqd/mmc1
+root                  0.0   6 105-01:59:38 fwupd
+root                  0.0   1 105-02:40:44 NetworkManager
+messagebus            0.0   2 105-02:40:45 dbus-daemon
+root                  0.0   0    16:28:29 kworker/0:1-mm_percpu_wq
+root                  0.0   5  3-11:47:18 kworker/5:0-events_power_efficient

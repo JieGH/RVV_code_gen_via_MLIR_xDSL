@@ -1,0 +1,12 @@
+root                 12.5   2       00:00 sshd
+root                  0.6   5 105-02:35:02 disp_eng_share_thread
+root                  0.1   6       03:47 kworker/u16:1-rpciod
+systemd-oom           0.0   1 105-02:35:09 systemd-oomd
+root                  0.0   7       02:38 kworker/u16:6-rpciod
+root                  0.0   3       02:38 kworker/u16:7-rpciod
+root                  0.0   1       03:47 kworker/u16:2-xprtiod
+root                  0.0   0 105-02:35:17 vq1
+root                  0.0   6 105-02:35:17 vq0
+messagebus            0.0   1 105-02:35:08 dbus-daemon
+root                  0.0   3 105-02:35:08 NetworkManager
+root                  0.0   3 105-02:34:59 bluetoothd
