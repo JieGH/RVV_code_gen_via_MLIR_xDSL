@@ -49,7 +49,7 @@ Board time measured on #60's correctness pass: about 3 min per tile to build, so
 
 ## 5a. Result (`jbpi`, uninstrumented, reference protocol, `--tmin 2`, core 4, `--no-nc-overrides`, 3 launches)
 
-Series `logs/yolo_sweep_2026-11-15_205445/` (20:54-00:27); run folders `logs/run_2026-11-15_220501`, `logs/run_2026-11-15_231549`, `logs/run_2026-11-16_002638` (rotation starts 8x4, 16x8, 24x8). No other user's load before or after any launch. Full report and heatmap: `logs/yolo_sweep_2026-11-15_205445/tile_search_report.md`, `tile_search_heatmap.png` (copy in `HectorYolo/sweep_final_2026-11-15/`).
+Series `logs/yolo_sweep_2026-11-15_205445/` (20:54-00:27); run folders `logs/run_2026-11-15_220501`, `logs/run_2026-11-15_231549`, `logs/run_2026-11-16_002638` (rotation starts 8x4, 16x8, 24x8). No other user's load before or after any launch. Full report and heatmap: `logs/yolo_sweep_2026-11-15_205445/tile_search_report.md`, `tile_search_heatmap.png` (copy in `HectorYolo/issue-61/sweep_final_2026-11-15/`).
 
 GOPs over one pass of that n's shapes, whole call, packing included, as **by mean time / by median rep**:
 
