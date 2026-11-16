@@ -41,17 +41,24 @@ fi
 echo "jlei                 50.0   3       00:00 bash"
 """
 
+# Stands in for search_report.py: prints its arguments as the report, touches the heatmap it is asked for.
+STUB_REPORT = r"""#!/bin/bash
+echo "REPORT $*"
+while [ "$#" -gt 0 ]; do [ "$1" = --heatmap ] && touch "$2"; shift; done
+"""
+
 
 def run_series(tmp_path: Path, *extra: str, behaviour: str = "ok,ok,ok", **env_extra: str
                ) -> tuple[subprocess.CompletedProcess[str], Path]:
-    for name, text in (("run.sh", STUB_RUN), ("ps.sh", STUB_PS)):
+    for name, text in (("run.sh", STUB_RUN), ("ps.sh", STUB_PS), ("report.sh", STUB_REPORT)):
         (tmp_path / name).write_text(text)
         (tmp_path / name).chmod(0o755)
     (tmp_path / "dataset.dat").write_text((HERE / "datasets/yolo26_k1.dat").read_text())
     logs = tmp_path / "logs"
     logs.mkdir(exist_ok=True)
     env = {**os.environ, "YOLO_SWEEP_LOGS": str(logs), "YOLO_SWEEP_RUN": str(tmp_path / "run.sh"),
-           "YOLO_SWEEP_PS_CMD": str(tmp_path / "ps.sh"), "STUB_BEHAVIOUR": behaviour, **env_extra}
+           "YOLO_SWEEP_PS_CMD": str(tmp_path / "ps.sh"), "STUB_BEHAVIOUR": behaviour,
+           "YOLO_SWEEP_REPORT": str(tmp_path / "report.sh"), "HECTOR_YOLO_DIR": str(tmp_path / "HectorYolo"), **env_extra}
     done = subprocess.run([str(SERIES), "--boards", "a,b", "--wait-min", "0", *extra],
                           env=env, capture_output=True, text=True, timeout=180, check=False)
     return done, logs
@@ -112,7 +119,8 @@ def test_a_board_that_cannot_be_read_counts_as_busy(tmp_path: Path):
     (tmp_path / "fail.sh").chmod(0o755)
     (tmp_path / "logs").mkdir()
     env = {**os.environ, "YOLO_SWEEP_LOGS": str(tmp_path / "logs"), "YOLO_SWEEP_RUN": "/bin/false",
-           "YOLO_SWEEP_PS_CMD": str(tmp_path / "fail.sh")}
+           "YOLO_SWEEP_PS_CMD": str(tmp_path / "fail.sh"), "HECTOR_YOLO_DIR": str(tmp_path / "HectorYolo"),
+           "YOLO_SWEEP_REPORT": "/bin/true"}
     done = subprocess.run([str(SERIES), "--boards", "a", "--launches", "1", "--wait-min", "0"],
                           env=env, capture_output=True, text=True, timeout=60, check=False)
     assert "a is busy: cannot read the board's processes" in done.stdout
@@ -144,3 +152,21 @@ def test_dry_run_prints_the_plan_and_starts_nothing(tmp_path: Path):
     assert done.returncode == 0 and "nothing was started" in done.stdout
     assert "Launch 2  : starts at 16x8" in done.stdout
     assert not (logs / "calls.txt").exists()
+
+
+def test_the_report_and_logs_land_in_hector_yolo_per_issue_after_every_launch(tmp_path: Path):
+    done, logs = run_series(tmp_path, "--issue", "63", behaviour="ok,ok,exit1")
+    sd = series_dir(logs)
+    dest = tmp_path / "HectorYolo" / "issue-63" / sd.name
+    report = (dest / "tile_search_report.md").read_text()
+    # the report covers the two launches that finished, with Héctor's tiles to compare against
+    assert report.count("run_") == 2 and "--compare 16x8 --compare n=4:16x4" in report
+    assert (dest / "tile_search_heatmap.png").exists()
+    assert (dest / "runs.tsv").read_text() == (sd / "runs.tsv").read_text()
+    assert f"HectorYolo copy: {dest}" in done.stdout
+
+
+def test_the_issue_folder_defaults_to_61(tmp_path: Path):
+    done, _ = run_series(tmp_path, "--launches", "1", behaviour="ok")
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert list((tmp_path / "HectorYolo" / "issue-61").glob("yolo_sweep_*/tile_search_report.md"))
