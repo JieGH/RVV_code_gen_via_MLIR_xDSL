@@ -55,6 +55,10 @@ Each panel's x axis is the 53 shapes, sorted by `n`, `m`, `k`. Top: GOPs at 1 an
 
 `hector_gemm_report.md` (per-shape table), `hector_gemm_fig.png`, `plan.txt`, `runs.tsv`, `L<n>_T<threads>_<board>.{log,csv}` (his console table and CSV per launch), `build.log`, `load_*.txt` (both boards' processes before and after every launch), `side_notes.txt` (busy boards: none), `console.out`.
 
+## Against Héctor's PDF
+
+His PDF times whole-image inference (≈ 1.0 s per image for his parallel GEMMLib); ours times his GEMM alone (≈ 0.13 s for one pass at 8 threads). They cannot be matched directly; nothing conflicts. Details and his two charts: [`pdf_comparison/`](pdf_comparison/README.md).
+
 ## Tests
 
 Full test suite on the #62 branch: **583 passed, 0 failed, 0 skipped** (the two board-side test files ran on the board). Report: [`full_test_suite_2026-11-16.md`](full_test_suite_2026-11-16.md).
