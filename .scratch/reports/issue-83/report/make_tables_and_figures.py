@@ -229,3 +229,24 @@ if T4:
             (vp, vc, _), (sp, sc, _) = t4[l]
             v, s = data["yolo1" if l[0] == "Y" else "paper1"]
             f.write(f"{(vp + vc) / (sp + sc):.4f},{s[l][1] / v[l][1]:.4f},{l}\n")
+
+# 4. 1 thread against 8 threads, per shape (user 2026-11-17): GOPs by mean time / by median rep for vector and scalar
+#    packing at each thread count, each on its own best tile, mean of 3 launches; then 8T/1T per packer.
+#    Bold = the faster packer at that thread count (by mean time); a ~ marks a gap smaller than the wider of the two
+#    launch ranges (min-max over 3 launches), i.e. not a real difference.
+for grp, k1, k8 in [("yolo", "yolo1", "yolo8"), ("paper", "paper1", "paper8")]:
+    with open(f"{OUT}/data/threads_{grp}.tex", "w") as f:
+        for k in sorted(data[k1][0], key=order):
+            cells, best_ = [], {}
+            for key in (k1, k8):
+                v, s = data[key][0][k], data[key][1][k]
+                gap = abs(v[1] - s[1])
+                noise = max(max(v[4]) - min(v[4]), max(s[4]) - min(s[4]))
+                for side, other in ((v, s), (s, v)):
+                    txt = f"{side[1]:.2f} / {side[2]:.2f}"
+                    if side[1] > other[1]:
+                        txt = f"\\textbf{{{txt}}}" + ("$^{\\sim}$" if gap < noise else "")
+                    cells.append(txt)
+                best_[key] = (v[1], s[1])
+            cells += [f"{best_[k8][0] / best_[k1][0]:.2f}", f"{best_[k8][1] / best_[k1][1]:.2f}"]
+            f.write(f"{k} & {'$\\times$'.join(map(str, dims[k]))} & " + " & ".join(cells) + " \\\\\n")

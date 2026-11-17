@@ -9,6 +9,7 @@
 \usepackage[table]{xcolor}
 \usepackage{pgfplots}
 \usepackage{pdflscape}
+\usepackage{longtable}
 \pgfplotsset{compat=1.18, table/col sep=comma}
 \usepgfplotslibrary{fillbetween}
 \definecolor{vec}{HTML}{2A78D6}
@@ -210,6 +211,37 @@ GOPs by mean time / by median rep, best tile, mean of 3 launches. B3 at 1T is no
 \barpage{data/gops_yolo8_2.csv}{13.0cm}{\xmaxYoloEight}{YOLO layers, 8 threads (cores 0--7): vector vs scalar packing, layers Y14--Y27}{\texttt{jbpi}; vector from \iss{63}. Same GOPs scale on every page of this test.}
 \barpage{data/gops_yolo8_3.csv}{13.0cm}{\xmaxYoloEight}{YOLO layers, 8 threads (cores 0--7): vector vs scalar packing, layers Y28--Y41}{\texttt{jbpi}; vector from \iss{63}. Same GOPs scale on every page of this test.}
 \barpage{data/gops_yolo8_4.csv}{11.0cm}{\xmaxYoloEight}{YOLO layers, 8 threads (cores 0--7): vector vs scalar packing, layers Y42--Y52}{\texttt{jbpi}; vector from \iss{63}. Same GOPs scale on every page of this test.}
+
+% \threadtable{data file}{title}: one row per shape, 1 thread against 8 threads, vector and scalar packing.
+\newcommand{\threadtable}[2]{%
+{\scriptsize\setlength{\tabcolsep}{4pt}\setlength{\LTcapwidth}{\textwidth}
+\begin{longtable}{@{}llrrrrrr@{}}
+\caption*{\normalsize\textbf{#2}}\\
+\toprule
+& & \multicolumn{2}{c}{1 thread (core 4)} & \multicolumn{2}{c}{8 threads (cores 0--7)} & \multicolumn{2}{c}{8T / 1T} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(l){7-8}
+shape & $m\times n\times k$ & \textcolor{vec}{vector} & \textcolor{scal}{scalar} & \textcolor{vec}{vector} & \textcolor{scal}{scalar} & \textcolor{vec}{vector} & \textcolor{scal}{scalar} \\
+\midrule\endhead
+\csname @@input\endcsname #1 % primitive \input: LaTeX's \input breaks \bottomrule inside a table
+\bottomrule
+\end{longtable}}}
+
+\section*{Part 1b: 1 thread against 8 threads, per shape}
+GOPs by mean time / by median rep (uninstrumented build, reference protocol, \texttt{-{}-tmin 2}), each packer and thread
+count on its own best tile, mean of 3 launches; the same runs as the charts above. \textbf{Bold} = the faster packer at that
+thread count (by mean time). $^{\sim}$ = the gap is smaller than the wider of the two launch ranges (min--max over 3
+launches): not a real difference. 8T/1T = 8-thread GOPs over 1-thread GOPs (by mean time), per packer.
+Boards: YOLO, both packers on \texttt{jbpi}; BERT/Square, vector on \texttt{jbpi} (\iss{71}) and scalar on \texttt{jbpi2}.
+
+\threadtable{data/threads_paper.tex}{BERT B1--B5 and Square S1--S5: 1 thread against 8 threads}
+\threadtable{data/threads_yolo.tex}{YOLO layers (50): 1 thread against 8 threads}
+
+\begin{itemize}
+  \item \textbf{Faster packer:} vector on 48 of 50 YOLO layers at 1T and 50 of 50 at 8T (real gap: 47 and 42); BERT/Square 9 of 10
+        at 1T and 8 of 10 at 8T (real gap: 7 and 1). Scalar is never faster by more than the launch jitter.
+  \item \textbf{8T / 1T}, median (range): YOLO vector 5.34 (1.81--12.93), scalar 5.48 (2.54--11.98); BERT/Square vector 5.42
+        (3.89--6.76), scalar 5.34 (3.20--6.81). Scalar scales a little better on YOLO only because its 1T base is lower.
+\end{itemize}
 
 \section*{Part 2: why the shape and the reuse decide}
 A packed block of A ($m_c\times k_c$) is used against all $n_c$ columns of the current B block, then packed again for
