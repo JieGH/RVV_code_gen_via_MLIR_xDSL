@@ -163,8 +163,8 @@ for f in glob.glob(f"{OUT}/data/*"):
     os.remove(f)
 
 
-def label(key, k):  # short y-tick label: layer and its reuse nc
-    return f"{k}  nc={nc_of(key, k)}"
+def label(key, k):  # y-tick label, two lines: shape and m x n x k, then its reuse nc (LaTeX line break)
+    return f"{k} {'x'.join(map(str, dims[k]))}\\\\nc={nc_of(key, k)}"
 
 
 # 1. Bar charts (Part 1): one row per shape, GOPs along x, whisker = launch min-max. Landscape pages of

@@ -25,7 +25,7 @@
 \newcommand{\gopsbars}[4]{%
 \begin{tikzpicture}
 \begin{axis}[house, scale only axis, width=18.6cm, height=#2, y dir=reverse,
-  ytick=data, yticklabels from table={#1}{label}, enlarge y limits={abs=0.6}, xmin=0, xmax=#3,
+  yticklabel style={align=right}, ytick=data, yticklabels from table={#1}{label}, enlarge y limits={abs=0.6}, xmin=0, xmax=#3,
   xlabel={GOPs by mean time (best tile)}, title={#4}, title style={at={(0,1)}, anchor=south west, xshift=-4.2cm, yshift=12pt},
   legend style={at={(1,1)}, anchor=south east, legend columns=1},
   axis y line*=left, axis x line*=bottom, max space between ticks=40,
@@ -302,7 +302,7 @@ S1 & $1000^3$ & 9\% / 9\% & 1.07 & 0.996 & 0.995 \\
 \begin{center}
 \begin{tikzpicture}
 \begin{axis}[house, width=0.55\textwidth, height=14cm, y dir=reverse, bar width=0.3,
-  ytick=data, yticklabels from table={data/t4_time.csv}{label}, enlarge y limits={abs=0.6}, xmin=0, xmax=175,
+  yticklabel style={align=right}, ytick=data, yticklabels from table={data/t4_time.csv}{label}, enlarge y limits={abs=0.6}, xmin=0, xmax=175,
   xlabel={time per call, \% of the vector packer's total}, axis y line*=left, axis x line*=bottom,
   title={Where the time goes (T4): pack + compute, vector (top) and scalar (bottom) packer},
   title style={at={(0,1)}, anchor=south west, xshift=-4.2cm, yshift=12pt},
