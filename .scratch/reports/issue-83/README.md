@@ -10,7 +10,7 @@ The YOLO, BERT and Square sweeps (#61, #63, #71) were run again with one change:
 
 - **BERT and Square:** the packer makes no measurable difference. At 8 threads, scalar reaches 0.987 of vector GOPs (median over 10 shapes). No shape moves by more than 3.2%, and every shape keeps its best tile.
 - **YOLO:** scalar is slower on almost every layer. It reaches 0.930 of vector at 1 thread and 0.946 at 8 threads (median over 50 layers).
-  - **Worst where n is small:** at n = 4 it reaches 0.59-0.71 at 1 thread and 0.67-0.83 at 8 threads.
+  - **Worst where nc is small:** at nc = 4 it reaches 0.59-0.71 at 1 thread and 0.67-0.83 at 8 threads.
   - **Best tile:** it changes on 14 layers at 1 thread and 17 at 8 threads.
 - **Why:** each packed element of A is used n times, so the pack cost is spread over n uses.
   - **Small n:** packing takes 50-83% of the time (T4, below), and the scalar packer's extra pack time shows directly.
@@ -28,7 +28,8 @@ The YOLO, BERT and Square sweeps (#61, #63, #71) were run again with one change:
 | **tile MRxNR** | The microkernel's block of C: MR rows by NR columns. 19 Candidate Tiles are tried per shape. |
 | **best tile** | For one shape, the tile with the highest GOPs by mean time, averaged over the launches. |
 | **m x n x k** | GEMM size: C (m x n) += A (m x k) · B (k x n). |
-| **reuse n** | How many times each packed element of A is used: once per column of C, so n times. Packing A costs about m·k copies against 2·m·n·k flops, i.e. 1/(2n) of the flops. |
+| **mc, nc, kc** | Cache blocking from the analytical model (`get_optim_mc_nc_kc`, per shape and tile): A is packed in mc x kc blocks, B in kc x nc blocks. nc = min(n, model value). n itself is the problem size, not a cache parameter. |
+| **reuse nc** | How many times each packed element of A is used: the packed A block meets all nc columns of the current B block, then A is packed again for the next one. Packing A costs about 1/(2·nc) of the flops. nc = n for every YOLO and BERT shape; Square has nc = 1000-1536, below its n = 1000-5000. |
 | **GOPs by mean time** | 2·m·n·k / mean time per call. The main metric. |
 | **GOPs by median rep** | The median over all reps of each rep's GOPs. Less sensitive to a few slow reps. |
 | **launch** | One full run of the test: every tile on every shape. A series has 3 launches ("launch 1/2/3"). They are the same test; only the starting tile of the rotation and the time slot differ. |
@@ -106,22 +107,23 @@ Charts (vector graphics, drawn by LaTeX/pgfplots from [`report/data/`](report/da
 
 ### The argument
 
-A GEMM packs a block of A (m x k) once, then each packed element is multiplied by n columns of B. Packing costs about m·k copies; compute costs 2·m·n·k flops. So the pack cost, relative to the work, falls as 1/n.
+A GEMM packs a block of A (mc x kc), then multiplies each packed element by the nc columns of the current B block. Packing costs one copy per element; compute costs 2·nc flops per element. So the pack cost, relative to the work, falls as 1/nc.
 
-- **BERT (n = 384) and Square (n = 1000-5000):** each packed element is used hundreds of times. The packer's speed hardly reaches the total.
-- **YOLO:** most layers have n = 16-128, and three have n = 4 (Y14, Y30, Y47). Each packed element is used only a few times, so packing is a large share of the time, and a slower packer shows almost one to one.
-- **Small k makes it worse:** with k = 16 (the n = 4 layers), each call is short (microseconds), so fixed pack overheads weigh more.
+- **What "n" means here:** the reuse is **nc**, the cache-blocking width of B (nc = min(n, model)), not the problem size n. For every YOLO and BERT shape, nc = n. For Square, nc = 1000-1536 while n = 1000-5000. B is packed once per kc x nc block and used by all m rows, so its weight falls as 1/m, which is small here (m ≥ 64).
+- **BERT (nc = 384) and Square (nc = 1000-1536):** each packed element is used hundreds of times. The packer's speed hardly reaches the total.
+- **YOLO:** most layers have nc = 16-128, and three have nc = 4 (Y14, Y30, Y47). Each packed element is used only a few times, so packing is a large share of the time, and a slower packer shows almost one to one.
+- **Small k makes it worse:** with k = 16 (the nc = 4 layers), each call is short (microseconds), so fixed pack overheads weigh more.
 
-### Measured: scalar/vector by n (median per n group, shapes in brackets)
+### Measured: scalar/vector by nc (median per nc group, shapes in brackets)
 
-| test | n=4 | 8 | 16 | 32 | 64 | 80 | 128 | 256 | 384 | 1000-5000 |
+| test | nc=4 | 8 | 16 | 32 | 64 | 80 | 128 | 256 | 384 | 1000-1536 |
 |---|---|---|---|---|---|---|---|---|---|---|
 | YOLO 1T | 0.601 (3) | 0.894 (1) | 0.906 (10) | 0.928 (6) | 0.941 (10) | 0.933 (6) | 0.945 (9) | 0.968 (5) | | |
 | YOLO 8T | 0.699 (3) | 0.939 (1) | 0.939 (10) | 0.947 (6) | 0.954 (10) | 0.925 (6) | 0.951 (9) | 0.966 (5) | | |
 | BERT/Square 1T | | | | | | | | | 0.982 (5) | 0.976-0.995 (5) |
 | BERT/Square 8T | | | | | | | | | 0.983 (5) | 0.971-1.012 (5) |
 
-The ratio climbs steadily with n. YOLO at n = 256 (0.97) reaches what BERT shows at n = 384 (0.98). At 8 threads, the n = 4 gap is smaller (0.70 against 0.60). Each thread packs only its own rows of A, so the pack work per thread is smaller.
+The ratio climbs steadily with nc. YOLO at nc = 256 (0.97) reaches what BERT shows at nc = 384 (0.98). At 8 threads, the nc = 4 gap is smaller (0.70 against 0.60). Each thread packs only its own rows of A, so the pack work per thread is smaller.
 
 Chart: scalar/vector against n, 1T and 8T, in the [brief](report/issue83_brief.pdf), Part 2.
 
@@ -162,11 +164,11 @@ Instrumented build, warm-up protocol, 200 reps, 1T core 4, jbpi2, 4 launches (ve
 
 What T4 shows:
 
-- **Pack share follows n.** Packing takes 49-83% of the time at n = 4-80 (vector packer) and 7-23% at n = 256-1000. The share is far above the 1/(2n) flop ratio because packing is memory-bound and the microkernel is not. The order still follows n.
+- **Pack share follows nc.** Packing takes 49-83% of the time at nc = 4-80 (vector packer) and 7-23% at nc = 256-1000. The share is far above the 1/(2·nc) flop ratio because packing is memory-bound and the microkernel is not. The order still follows n.
 - **The scalar packer costs 1.07-1.16x the vector pack time** on large, memory-bound packs (Y10, Y19, Y29, Y42, B1, S1). It costs **1.55-1.94x** on small packs that stay in cache (Y14, Y30, Y47, Y40, B2). There, the copy instructions are the limit, and the vector packer moves 8 floats per instruction.
-- **Total effect = pack share x extra pack cost.** BERT/Square: a 7-19% share times 1.07-1.13 gives about 1-2%. That is inside the noise, which is why the packer "doesn't matter" there. YOLO n = 4: a 51-75% share times 1.6-1.9 gives 26-40%.
-- **The prediction holds within 1% on 9 of 11 shapes.** The two misses are n = 4 shapes (Y14, Y47), where the measured loss is larger than predicted. Their calls take 16-540 µs, so the timers (11-17%) distort the split most, and at 1T the best tile changes for both.
-- **This explains** why YOLO at n = 128-256 still loses 3-5% while BERT loses about 1-2%. Y42 (n = 256) spends 23% of its time packing, against 9-17% for S1 and B1.
+- **Total effect = pack share x extra pack cost.** BERT/Square: a 7-19% share times 1.07-1.13 gives about 1-2%. That is inside the noise, which is why the packer "doesn't matter" there. YOLO nc = 4: a 51-75% share times 1.6-1.9 gives 26-40%.
+- **The prediction holds within 1% on 9 of 11 shapes.** The two misses are nc = 4 shapes (Y14, Y47), where the measured loss is larger than predicted. Their calls take 16-540 µs, so the timers (11-17%) distort the split most, and at 1T the best tile changes for both.
+- **This explains** why YOLO at nc = 128-256 still loses 3-5% while BERT loses about 1-2%. Y42 (nc = 256) spends 23% of its time packing, against 9-17% for S1 and B1.
 
 Charts in the [brief](report/issue83_brief.pdf), Part 2:
 - **"Where the time goes":** pack + compute time per shape, both packers, as % of the vector packer's total. Only the pack segment grows.
@@ -174,7 +176,7 @@ Charts in the [brief](report/issue83_brief.pdf), Part 2:
 
 ### Threads
 
-At 8 threads the YOLO gap is a little smaller (median 0.946 against 0.930). The n = 4 layers move most: Y14 goes from 0.60 to 0.70, Y47 from 0.59 to 0.83. Each thread packs its own part of A in parallel, so pack time per thread falls about 8x, while the B pack is split by panels. The 8-thread path has no timers (#56), so this part is inferred, not measured.
+At 8 threads the YOLO gap is a little smaller (median 0.946 against 0.930). The nc = 4 layers move most: Y14 goes from 0.60 to 0.70, Y47 from 0.59 to 0.83. Each thread packs its own part of A in parallel, so pack time per thread falls about 8x, while the B pack is split by panels. The 8-thread path has no timers (#56), so this part is inferred, not measured.
 
 ## Limits
 

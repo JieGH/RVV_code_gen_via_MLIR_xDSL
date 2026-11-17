@@ -147,14 +147,14 @@ Shapes 10. scalar/vector by mean time: median 0.983 (min 0.961, max 1.194); by m
 
 Shapes 10. scalar/vector by mean time: median 0.987 (min 0.968, max 1.012); by median rep: median 0.993 (min 0.952, max 1.012). Best tile changed (*): 0. Median launch spread: vector 1.8%, scalar 3.5%.
 
-### scalar/vector (mean) by reuse n
+### scalar/vector (mean) by reuse nc
 
-| test | n=4 | n=8 | n=16 | n=32 | n=64 | n=80 | n=128 | n=256 | n=384 | n=1000 | n=2000 | n=3000 | n=4000 | n=5000 |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| YOLO, 1 thread (core 4) | 0.601 (3) | 0.894 (1) | 0.906 (10) | 0.928 (6) | 0.941 (10) | 0.933 (6) | 0.945 (9) | 0.968 (5) |  |  |  |  |  |  |
-| YOLO, 8 threads (cores 0-7) | 0.699 (3) | 0.939 (1) | 0.939 (10) | 0.947 (6) | 0.954 (10) | 0.925 (6) | 0.951 (9) | 0.966 (5) |  |  |  |  |  |  |
-| BERT and Square, 1 thread (core 4) |  |  |  |  |  |  |  |  | 0.982 (5) | 0.995 (1) | 0.976 (1) | 0.990 (1) | 0.980 (1) | 0.987 (1) |
-| BERT and Square, 8 threads (cores 0-7) |  |  |  |  |  |  |  |  | 0.983 (5) | 0.971 (1) | 0.995 (1) | 0.994 (1) | 0.972 (1) | 1.012 (1) |
+| test | nc=4 | nc=8 | nc=16 | nc=32 | nc=64 | nc=80 | nc=128 | nc=256 | nc=384 | nc=1000 | nc=1024 | nc=1536 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| YOLO, 1 thread (core 4) | 0.601 (3) | 0.894 (1) | 0.906 (10) | 0.928 (6) | 0.941 (10) | 0.933 (6) | 0.945 (9) | 0.968 (5) |  |  |  |  |
+| YOLO, 8 threads (cores 0-7) | 0.699 (3) | 0.939 (1) | 0.939 (10) | 0.947 (6) | 0.954 (10) | 0.925 (6) | 0.951 (9) | 0.966 (5) |  |  |  |  |
+| BERT and Square, 1 thread (core 4) |  |  |  |  |  |  |  |  | 0.982 (5) | 0.995 (1) | 0.984 (4) |  |
+| BERT and Square, 8 threads (cores 0-7) |  |  |  |  |  |  |  |  | 0.983 (5) | 0.971 (1) |  | 0.994 (4) |
 
 Héctor gemm.x (unchanged), 17 Nov / 16 Nov per layer, mean of 3 launches: median 0.991 (min 0.828, max 1.158); sum GFLOPS 1223.5 -> 1195.9
 

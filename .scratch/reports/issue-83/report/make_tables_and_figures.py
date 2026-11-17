@@ -45,11 +45,43 @@ def best(acc, nl):
     return b
 
 
+def model_level(is_l3, NL, CL, WL, ds, m, n):
+    """Port of modelLevel/model_level.c (the blocking model the driver calls), same int/float steps."""
+    import math
+    import numpy as np
+    car = int(math.floor(np.float32(WL - 1.0) / (np.float32(1.0) + np.float32(n) / np.float32(m))))
+    if car == 0:
+        cbr = WL - 2
+        return int(cbr * NL * CL / ((m if is_l3 else n) * ds))
+    cbr = int(math.ceil(np.float32(n) / np.float32(m) * np.float32(car)))
+    return int(cbr * NL * CL / (n * ds)) if is_l3 else int(car * NL * CL / (m * ds))
+
+
+def blocking(m, n, k, mr, nr):
+    """(mc, nc, kc) from get_optim_mc_nc_kc with the jbpi cache constants (archs/bananapi.h), fp32."""
+    kc = min(k, model_level(0, 128, 64, 4, 4, mr, nr))
+    mc = min(m, model_level(0, 1024, 64, 8, 4, kc, nr))
+    nc = min(n, model_level(1, 4096, 64, 16, 4, kc, mc))
+    return mc, nc, kc
+
+
+def tile_mr_nr(t):
+    a, b = t.split("x")
+    return int(a), int(b)
+
+
 def order(l):
     return (l[0], int(re.sub(r"\D", "", l)))
 
 
 data = {k: (best(load(v), len(v)), best(load(s), len(s))) for k, (v, s) in RUNS.items()}
+
+
+def nc_of(key, k):
+    """nc the driver used for shape k on test key's vector best tile: the uses of each packed A element."""
+    return blocking(*dims[k], *tile_mr_nr(data[key][0][k][0]))[1]
+
+
 
 # ---------- tables ----------
 for k in RUNS:
@@ -68,16 +100,17 @@ for k in RUNS:
           f"by median rep: median {st.median(rd):.3f} (min {min(rd):.3f}, max {max(rd):.3f}). Best tile changed (*): {ch}. "
           f"Median launch spread: vector {100*st.median(x[3] for x in v.values()):.1f}%, scalar {100*st.median(x[3] for x in s.values()):.1f}%.")
 
-# ---------- by reuse n ----------
-print("\n### scalar/vector (mean) by reuse n\n")
-print("| test | " + " | ".join(f"n={n}" for n in sorted({d[1] for d in dims.values()})) + " |")
-ns_all = sorted({d[1] for d in dims.values()})
+# ---------- by reuse nc (uses of each packed A element: nc = min(n, model nc); = n for YOLO and BERT) ----------
+print("\n### scalar/vector (mean) by reuse nc\n")
+ncs = {k: {l: nc_of(k, l) for l in data[k][0]} for k in RUNS}
+ns_all = sorted({x for g in ncs.values() for x in g.values()})
+print("| test | " + " | ".join(f"nc={n}" for n in ns_all) + " |")
 print("|---|" + "---|" * len(ns_all))
 for k in RUNS:
     v, s = data[k]
     groups = {}
     for l in v:
-        groups.setdefault(dims[l][1], []).append(s[l][1] / v[l][1])
+        groups.setdefault(ncs[k][l], []).append(s[l][1] / v[l][1])
     print(f"| {TITLE[k]} | " + " | ".join(f"{st.median(groups[n]):.3f} ({len(groups[n])})" if n in groups else "" for n in ns_all) + " |")
 
 # ---------- Héctor day drift ----------
@@ -130,8 +163,8 @@ for f in glob.glob(f"{OUT}/data/*"):
     os.remove(f)
 
 
-def label(k):
-    return f"{k} {'x'.join(map(str, dims[k]))} (n={dims[k][1]})"
+def label(key, k):  # short y-tick label: layer and its reuse nc
+    return f"{k}  nc={nc_of(key, k)}"
 
 
 # 1. Bar charts (Part 1): one row per shape, GOPs along x, whisker = launch min-max. Landscape pages of
@@ -152,7 +185,7 @@ with open(f"{OUT}/data/xmax.tex", "w") as fx:
                 f.write("idx,label,vec,vlo,vhi,scal,slo,shi\n")
                 for i, k in enumerate(ks[pi:pi + ROWS_PER_PAGE]):
                     a_, b_ = v[k], s[k]
-                    f.write(f"{i},{label(k)},{a_[1]:.2f},{a_[1]-min(a_[4]):.3f},{max(a_[4])-a_[1]:.3f},"
+                    f.write(f"{i},{label(key, k)},{a_[1]:.2f},{a_[1]-min(a_[4]):.3f},{max(a_[4])-a_[1]:.3f},"
                             f"{b_[1]:.2f},{b_[1]-min(b_[4]):.3f},{max(b_[4])-b_[1]:.3f}\n")
 
 # 2. Gap against noise: x = |vector - scalar| mean GOPs, y = the wider launch range of the two sides (GOPs), log-log.
@@ -176,19 +209,19 @@ for th in ("1", "8"):
                             ("square", f"paper{th}", lambda l: l[0] == "S")]:
         v, s = data[key]
         with open(f"{OUT}/data/ratio_{th}t_{name}.csv", "w") as f:
-            f.write("n,ratio,shape\n")
+            f.write("nc,ratio,shape\n")
             for k in sorted((k for k in v if pick(k)), key=order):
-                f.write(f"{dims[k][1]},{s[k][1] / v[k][1]:.4f},{k}\n")
+                f.write(f"{nc_of(key, k)},{s[k][1] / v[k][1]:.4f},{k}\n")
 
 # 4. T4: pack + compute time, as % of the vector packer's total (B), and predicted against measured (C).
 if T4:
-    ls = sorted({l for l in t4 if isinstance(l, str)}, key=lambda l: dims[l][1])
+    ls = sorted({l for l in t4 if isinstance(l, str)}, key=lambda l: nc_of("yolo1" if l[0] == "Y" else "paper1", l))
     with open(f"{OUT}/data/t4_time.csv", "w") as f:
         f.write("idx,label,vpack,vcomp,spack,scomp,vshare,sshare\n")
         for i, l in enumerate(ls):
             (vp, vc, _), (sp, sc, _) = t4[l]
             tot = vp + vc
-            f.write(f"{i},{label(l)},{100*vp/tot:.2f},{100*vc/tot:.2f},{100*sp/tot:.2f},{100*sc/tot:.2f},"
+            f.write(f"{i},{label('yolo1' if l[0] == 'Y' else 'paper1', l)},{100*vp/tot:.2f},{100*vc/tot:.2f},{100*sp/tot:.2f},{100*sc/tot:.2f},"
                     f"{100*vp/tot:.0f},{100*sp/(sp+sc):.0f}\n")
     with open(f"{OUT}/data/t4_predicted.csv", "w") as f:
         f.write("pred,meas,shape\n")

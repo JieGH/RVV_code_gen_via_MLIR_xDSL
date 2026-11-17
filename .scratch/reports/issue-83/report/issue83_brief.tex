@@ -27,7 +27,7 @@
 \begin{axis}[house, scale only axis, width=18.6cm, height=#2, y dir=reverse,
   ytick=data, yticklabels from table={#1}{label}, enlarge y limits={abs=0.6}, xmin=0, xmax=#3,
   xlabel={GOPs by mean time (best tile)}, title={#4}, title style={at={(0,1)}, anchor=south west, xshift=-4.2cm, yshift=12pt},
-  legend style={at={(1,1)}, anchor=south east, legend columns=2, /tikz/every even column/.append style={column sep=6pt}},
+  legend style={at={(1,1)}, anchor=south east, legend columns=1},
   axis y line*=left, axis x line*=bottom, max space between ticks=40,
   every node near coord/.append style={font=\scriptsize, anchor=west, xshift=1pt, /pgf/number format/.cd, fixed, fixed zerofill, precision=2}]
 \addplot[xbar, area legend, bar width=0.3, bar shift=-0.155, fill=vec, draw=none] table[y=idx, x=vec]{#1};
@@ -60,7 +60,7 @@ launches, whisker = launch min--max; value = GOPs by mean time. #5}
 \begin{axis}[house, width=0.62\textwidth, height=7cm, xmode=log, ymode=log, xmin=0.01, xmax=12, ymin=0.002, ymax=6,
   ymajorgrids, title={#2}, log ticks with fixed point,
   xlabel={packer gap $|$vector $-$ scalar$|$ GOPs (mean of 3 launches), log}, ylabel={launch jitter (GOPs), log},
-  legend style={at={(0,1)}, anchor=north west}, legend columns=3, unbounded coords=discard]
+  legend style={at={(0,1)}, anchor=north west}, legend columns=1, unbounded coords=discard]
 \fill[gridc, opacity=0.6] (axis cs:0.01,0.01) -- (axis cs:6,6) -- (axis cs:0.01,6) -- cycle;
 \addplot[muted, domain=0.01:6, samples=2, forget plot] {x};
 \addplot[only marks, mark=*, mark size=1.9pt, color=vec, mark options={draw=white}] table[x=gap, y=noise]{data/gapnoise_#1t_yolo_pos.csv};
@@ -74,18 +74,18 @@ launches, whisker = launch min--max; value = GOPs by mean time. #5}
 \legend{YOLO, BERT, Square}
 \end{axis}
 \end{tikzpicture}}
-% \ratioplot{1|8}{title}: scalar/vector GOPs against reuse n, one dot per shape
+% \ratioplot{1|8}{title}: scalar/vector GOPs against reuse nc, one dot per shape
 \newcommand{\ratioplot}[2]{%
 \begin{tikzpicture}
-\begin{axis}[house, width=0.9\textwidth, height=6.2cm, xmode=log, log basis x=2, xmin=3, xmax=7000, ymin=0.55, ymax=1.23,
-  xtick={4,16,64,256,1000,5000}, xticklabels={4,16,64,256,1000,5000}, ymajorgrids,
-  xlabel={$n$ = uses of each packed A element (reuse), log scale}, ylabel={scalar / vector GOPs},
+\begin{axis}[house, width=0.9\textwidth, height=6.2cm, xmode=log, log basis x=2, xmin=3, xmax=2500, ymin=0.55, ymax=1.23,
+  xtick={4,16,64,256,1024}, xticklabels={4,16,64,256,1024}, ymajorgrids,
+  xlabel={reuse $n_c$ = uses of each packed A element, log scale}, ylabel={scalar / vector GOPs},
   title={#2}, legend style={at={(1,0)}, anchor=south east}]
 \fill[gridc, opacity=0.7] (axis cs:3,0.97) rectangle (axis cs:7000,1.03);
 \draw[muted] (axis cs:3,1) -- (axis cs:7000,1);
-\addplot[only marks, mark=*, mark size=2pt, color=vec, mark options={draw=white}] table[x=n, y=ratio]{data/ratio_#1t_yolo.csv};
-\addplot[only marks, mark=square*, mark size=2pt, color=scal, mark options={draw=white}] table[x=n, y=ratio]{data/ratio_#1t_bert.csv};
-\addplot[only marks, mark=triangle*, mark size=2.4pt, color=sq, mark options={draw=white}] table[x=n, y=ratio]{data/ratio_#1t_square.csv};
+\addplot[only marks, mark=*, mark size=2pt, color=vec, mark options={draw=white}] table[x=nc, y=ratio]{data/ratio_#1t_yolo.csv};
+\addplot[only marks, mark=square*, mark size=2pt, color=scal, mark options={draw=white}] table[x=nc, y=ratio]{data/ratio_#1t_bert.csv};
+\addplot[only marks, mark=triangle*, mark size=2.4pt, color=sq, mark options={draw=white}] table[x=nc, y=ratio]{data/ratio_#1t_square.csv};
 \legend{YOLO, BERT, Square}
 \end{axis}
 \end{tikzpicture}}
@@ -120,10 +120,10 @@ Full tables, logs and figures are in\\ \texttt{.scratch/reports/issue-83/} (\tex
   \item \textbf{BERT and Square:} the packer makes no measurable difference. At 8 threads, scalar reaches 0.987 of
         vector GOPs (median of 10 shapes), with no shape off by more than 3.2\% and no best-tile change.
   \item \textbf{YOLO:} scalar is slower on almost every layer: 0.930 of vector at 1 thread, 0.946 at 8 threads
-        (median of 50 layers). It is worst at reuse $n=4$: 0.59--0.71 (1T) and 0.67--0.83 (8T). The best tile
+        (median of 50 layers). It is worst at reuse $n_c=4$: 0.59--0.71 (1T) and 0.67--0.83 (8T). The best tile
         changes on 14 (1T) and 17 (8T) layers.
-  \item \textbf{Why:} each packed element of A is used $n$ times. At small $n$, packing takes 50--83\% of the time and
-        the slower packer shows directly; at large $n$, packing takes 7--19\% and the scalar packer costs only
+  \item \textbf{Why:} each packed element of A is used $n_c$ times. At small $n_c$, packing takes 50--83\% of the time and
+        the slower packer shows directly; at large $n_c$, packing takes 7--19\% and the scalar packer costs only
         7--13\% more there, so the total moves 1--2\%. The measured pack/compute split (T4) predicts the 1-thread
         GOPs ratio within 1\% on 9 of 11 shapes.
   \item This compares two packers. It does not test running with no packing at all.
@@ -137,8 +137,11 @@ vector / scalar packer & Copies a block of A or B into a contiguous buffer befor
   Vector: RVV loads and stores, 8 fp32 per instruction (VLEN 256). Scalar: one float per load/store. Same layout. \\
 tile MR$\times$NR & The microkernel's block of C (MR rows, NR columns); 19 Candidate Tiles are tried per shape. \\
 best tile & The tile with the highest GOPs by mean time for a shape, averaged over the launches. \\
-reuse $n$ & Uses of each packed element of A ($m\times n\times k$ GEMM: once per column of C). Packing A is
-  about $1/(2n)$ of the flops. \\
+$m\times n\times k$ & GEMM size: C ($m\times n$) += A ($m\times k$) $\cdot$ B ($k\times n$). $n$ is the problem size, not a cache parameter. \\
+$m_c, n_c, k_c$ & Cache blocking from the analytical model (\texttt{get\_optim\_mc\_nc\_kc}, per shape and tile): A is
+  packed in $m_c\times k_c$ blocks, B in $k_c\times n_c$ blocks, $n_c=\min(n, \mathrm{model})$. \\
+reuse $n_c$ & Uses of each packed element of A: the packed A block meets all $n_c$ columns of the current B block. Packing A
+  is about $1/(2n_c)$ of the flops. $n_c=n$ for every YOLO and BERT shape; Square has $n_c=1000$--1536 $<n$. \\
 GOPs by mean time / by median rep & $2mnk$ / mean time per call; or the median over reps of each rep's GOPs. \\
 launch & One full run of the test (every tile, every shape). 3 per side. Launches differ only in the starting tile
   of the rotation (8x4, 16x8, 24x8) and the time slot. ``Launch 1'' is not a cache level. \\
@@ -209,15 +212,18 @@ GOPs by mean time / by median rep, best tile, mean of 3 launches. B3 at 1T is no
 \barpage{data/gops_yolo8_4.csv}{11.0cm}{\xmaxYoloEight}{YOLO layers, 8 threads (cores 0--7): vector vs scalar packing, layers Y42--Y52}{\texttt{jbpi}; vector from \iss{63}. Same GOPs scale on every page of this test.}
 
 \section*{Part 2: why the shape and the reuse decide}
-A GEMM packs a block of A ($m\times k$) once; each packed element then meets $n$ columns of B. Packing is about $mk$
-copies against $2mnk$ flops, so its weight falls as $1/n$. BERT ($n=384$) and Square ($n\ge1000$) use each packed
-element hundreds of times; YOLO layers mostly have $n=16$--$128$, three have $n=4$ (and $k=16$: calls of
+A packed block of A ($m_c\times k_c$) is used against all $n_c$ columns of the current B block, then packed again for
+the next one: each packed element of A is used $n_c$ times, so packing A weighs about $1/(2n_c)$ of the flops. B is packed
+once per $k_c\times n_c$ block and used by all $m$ rows, so its weight falls as $1/m$ (small: $m\ge64$ here). $n_c$ is
+the cache-blocking width of B, $\min(n,\mathrm{model})$: it equals $n$ for every YOLO and BERT shape (YOLO $n\le256$, BERT
+$n=384$), and is 1000--1536 for Square ($n=1000$--5000). BERT and Square use each packed element hundreds of times;
+YOLO layers mostly have $n_c=16$--$128$, three have $n_c=4$ (and $k=16$: calls of
 microseconds).
 
 \small
 \begin{tabular}{@{}lcccccccccc@{}}
 \toprule
-scalar/vector (median) & $n=4$ & 8 & 16 & 32 & 64 & 80 & 128 & 256 & 384 & 1000--5000 \\
+scalar/vector (median) & $n_c=4$ & 8 & 16 & 32 & 64 & 80 & 128 & 256 & 384 & 1000--1536 \\
 \midrule
 YOLO 1T & 0.601 & 0.894 & 0.906 & 0.928 & 0.941 & 0.933 & 0.945 & 0.968 & & \\
 YOLO 8T & 0.699 & 0.939 & 0.939 & 0.947 & 0.954 & 0.925 & 0.951 & 0.966 & & \\
@@ -228,8 +234,8 @@ BERT/Square 8T & & & & & & & & & 0.983 & 0.971--1.012 \\
 \normalsize
 
 \begin{center}
-\ratioplot{1}{The packer matters only when reuse $n$ is small: 1 thread}\\
-\ratioplot{8}{The packer matters only when reuse $n$ is small: 8 threads}\\
+\ratioplot{1}{The packer matters only when reuse $n_c$ is small: 1 thread}\\
+\ratioplot{8}{The packer matters only when reuse $n_c$ is small: 8 threads}\\
 {\footnotesize\color{muted} Grey band: $\pm$3\%, inside the day/board gap. One dot per shape. The 1T BERT dot at 1.19 is B3 (vector launches 5.3--8.4 GOPs).}
 \end{center}
 
@@ -279,17 +285,17 @@ S1 & $1000^3$ & 9\% / 9\% & 1.07 & 0.996 & 0.995 \\
 \normalsize
 
 \begin{itemize}
-  \item \textbf{Pack share follows $n$}: 49--83\% at $n=4$--80, 7--23\% at $n=256$--1000. It is far above $1/(2n)$
+  \item \textbf{Pack share follows $n_c$}: 49--83\% at $n_c=4$--80, 7--23\% at $n_c=256$--1000. It is far above $1/(2n_c)$
         because packing is memory-bound and the microkernel is not.
   \item \textbf{Scalar pack costs 1.07--1.16$\times$} on large, memory-bound packs, and \textbf{1.55--1.94$\times$} on small
         packs that stay in cache, where the vector packer's 8 floats per instruction win.
   \item \textbf{Total effect = pack share $\times$ extra pack cost.} BERT/Square: 7--19\% $\times$ 1.07--1.13 gives
-        1--2\%, inside the noise. YOLO $n=4$: 51--75\% $\times$ 1.6--1.9 gives 26--40\%.
-  \item The prediction matches within 1\% on 9 of 11 shapes. The misses are $n=4$ shapes (Y14, Y47), where calls of
+        1--2\%, inside the noise. YOLO $n_c=4$: 51--75\% $\times$ 1.6--1.9 gives 26--40\%.
+  \item The prediction matches within 1\% on 9 of 11 shapes. The misses are $n_c=4$ shapes (Y14, Y47), where calls of
         16--540\,$\mu$s make the 11--17\% timer cost distort the split most.
-  \item It also explains why YOLO at $n=128$--256 still loses 3--5\% while BERT loses 1--2\%: Y42 spends 23\% of its
+  \item It also explains why YOLO at $n_c=128$--256 still loses 3--5\% while BERT loses 1--2\%: Y42 spends 23\% of its
         time packing, B1 17\%, S1 9\%.
-  \item \textbf{Threads:} at 8T the $n=4$ gap shrinks (Y14 0.60$\to$0.70, Y47 0.59$\to$0.83): each thread packs only
+  \item \textbf{Threads:} at 8T the $n_c=4$ gap shrinks (Y14 0.60$\to$0.70, Y47 0.59$\to$0.83): each thread packs only
         its own rows of A. The 8-thread path has no timers (\iss{56}), so this is inferred, not measured.
 \end{itemize}
 
@@ -300,7 +306,7 @@ S1 & $1000^3$ & 9\% / 9\% & 1.07 & 0.996 & 0.995 \\
   xlabel={time per call, \% of the vector packer's total}, axis y line*=left, axis x line*=bottom,
   title={Where the time goes (T4): pack + compute, vector (top) and scalar (bottom) packer},
   title style={at={(0,1)}, anchor=south west, xshift=-4.2cm, yshift=12pt},
-  legend style={at={(1,1)}, anchor=south east, legend columns=4, /tikz/every even column/.append style={column sep=4pt}}]
+  legend style={at={(1,1)}, anchor=south east, legend columns=1}]
 % total bar (light) first, pack bar (dark) drawn over it from 0: the light part is compute
 \addplot[xbar, area legend, fill=vec!30, draw=none, bar shift=-0.155] table[y=idx, x expr=\thisrow{vpack}+\thisrow{vcomp}]{data/t4_time.csv};
 \addplot[xbar, area legend, fill=vec, draw=none, bar shift=-0.155] table[y=idx, x=vpack]{data/t4_time.csv};
@@ -316,7 +322,7 @@ S1 & $1000^3$ & 9\% / 9\% & 1.07 & 0.996 & 0.995 \\
 \end{axis}
 \end{tikzpicture}\\
 {\footnotesize\color{muted} Instrumented build (timers cost 11--17\%), warm-up protocol, 200 reps, 1T core 4, \texttt{jbpi2},
-mean of 2 launches per packer; each shape on its 1T best tile; sorted by reuse $n$. Dark = pack, light = compute.
+mean of 2 launches per packer; each shape on its 1T best tile; sorted by reuse $n_c$. Dark = pack, light = compute.
 Compute is the same for both packers; only the pack segment grows.}
 \end{center}
 
@@ -331,7 +337,7 @@ Compute is the same for both packers; only the pack segment grows.}
 \end{axis}
 \end{tikzpicture}\\
 {\footnotesize\color{muted} Predicted from T4 (instrumented); measured from T1/T3 (uninstrumented, reference protocol, 3 launches).
-Grey line: prediction = measurement. 9 of 11 shapes within 1\%; Y14 and Y47 ($n=4$, calls of 16--540\,$\mu$s) fall below it.}
+Grey line: prediction = measurement. 9 of 11 shapes within 1\%; Y14 and Y47 ($n_c=4$, calls of 16--540\,$\mu$s) fall below it.}
 \end{center}
 
 \section*{Limits}
