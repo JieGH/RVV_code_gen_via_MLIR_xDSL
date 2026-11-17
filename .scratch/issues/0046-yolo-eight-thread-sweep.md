@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/63
 
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Board run.
-**Status:** 📝 Open. Not run.
+**Status:** 📝 Open. Run done 2026-11-17 on jbpi (6 of 6 steps ok); report: `HectorYolo/issue-63/report/issue-63-report.md`. Not closed.
 **Blocked by:** nothing. #61 (S3) done; #56 (S5, parallel GEMM) done 2026-11-16: `--threads 8`, report `HectorYolo/issue-56/`.
 **Target:** `jbpi` or `jbpi2`, all 8 cores.
 **Shapes:** `datasets/yolo26_k1.dat`.
@@ -65,3 +65,13 @@ This is Héctor's request: **with 8 threads, which tile is fastest on each YOLO 
 - [ ] Core-0 decision recorded.
 - [ ] 3 launches per side, alternating, idle board, logs committed.
 - [ ] Table and short answer committed and linked from the parent.
+
+## 7. Result (2026-11-17)
+
+Run on `jbpi`, 21:18 → 01:00, ours L1, his, his, ours L2, ours L3, his; all 6 steps ok, no other user's job. Report: [`HectorYolo/issue-63/report/issue-63-report.md`](../../HectorYolo/issue-63/report/issue-63-report.md), README `HectorYolo/issue-63/README.md`.
+
+- One pass over 50 shapes, GOPs by mean time: ours 8T best single tile 16x12 145.6 ms (20.43 GOPs); ours 8T best per shape 134.1 ms (22.17); his 8T 183.7 ms (16.18).
+- His Y00 (76800x16x27) swung 12.9 → 62.6 → 105.5 ms between launches. Without Y00: ours 127.9 ms (22.74), his 123.4 ms (23.56).
+- Best tile per n at 8T: 32x4 (n = 4, 8), 32x7 (16, 32), 32x6 (64), 16x15 (80, 128), 16x14 (256). At 1T (#61): MR = 24 mostly.
+- At 8T our median rep is far above our mean on mid-size shapes (Y32: 61.09 against 38.19 GOPs); not studied.
+- Run folders: ours `run_2026-11-16_222551`, `run_2026-11-16_234245`, `run_2026-11-17_005337`; his `hector_gemm_2026-11-16_222943`, `hector_gemm_2026-11-16_223301`, `hector_gemm_2026-11-17_005723`.
