@@ -39,6 +39,7 @@
 #   --direct          reach the boards directly instead of through the jump host
 #   --riscv-user U --riscv-port P    (defaults jlei, 22)
 #   --issue N         HectorYolo/issue-<N>/ folder for the report and logs (default 61)
+#   --config FILE     the search config (default config_yolo_search.json); every row runs the same one dataset
 #   --dry-run         print the plan and the launch configs, then stop
 # After every finished launch: search_report.py over the launches so far (--compare 16x8 --compare n=4:16x4,
 # heatmap) into the series folder as tile_search_report.md / tile_search_heatmap.png, then the series folder
@@ -82,6 +83,7 @@ while [[ "$#" -gt 0 ]]; do
         --riscv-user)    RISCV_USER="$2"; shift ;;
         --riscv-port)    RISCV_PORT="$2"; shift ;;
         --issue)         ISSUE="$2"; shift ;;
+        --config)        CONFIG="$2"; shift ;;
         --dry-run)       DRY_RUN=true ;;
         -h|--help)       sed -n '3,/^# ====*$/p' "$0" | sed '$d'; exit 0 ;;
         *) die "unknown parameter: $1" ;;
@@ -114,7 +116,9 @@ N=${#ROWS[@]}
 STEP=$(( (N + LAUNCHES - 1) / LAUNCHES ))
 
 tile_of() { echo "$1" | sed -E 's/.*"AXPY_FP32_Pack", \[([0-9]+), ([0-9]+)\].*/\1x\2/'; }
-SHAPES="$(grep -c '^[A-Za-z0-9_]' "${HERE}/datasets/yolo26_k1.dat")"  # the dataset every row runs
+DATASET="$(echo "${ROWS[0]}" | grep -oE "\"[^\"]+\.dat\"" | tr -d "\"")"  # one dataset, shared by every row
+for r in "${ROWS[@]}"; do [[ "${r}" == *"\"${DATASET}\""* ]] || die "every row of ${CONFIG} must run ${DATASET}: ${r}"; done
+SHAPES="$(grep -c "^[A-Za-z0-9_]" "${HERE}/datasets/${DATASET}")"
 for r in "${ROWS[@]}"; do [[ "$(tile_of "${r}")" =~ ^[0-9]+x[0-9]+$ ]] || die "cannot read a tile from row: ${r}"; done
 
 # write_config <launch> <file> -- the search config with its rows rotated left by (launch-1) x STEP
@@ -122,7 +126,7 @@ write_config() {
     local l="$1" i out=() first
     for ((i = 0; i < N; i++)); do out+=("${ROWS[$(( (i + (l - 1) * STEP) % N ))]}"); done
     { echo "["
-      echo "    // run_yolo_sweep.sh launch $l: config_yolo_search.json with the rows rotated (issue #61)"
+      echo "    // run_yolo_sweep.sh launch $l: $(basename "${CONFIG}") with the rows rotated (issue #61)"
       first=true
       for r in "${out[@]}"; do ${first} || printf ',\n'; printf '%s' "${r}"; first=false; done
       printf '\n]\n'; } > "$2"
@@ -148,7 +152,7 @@ busy() {
 }
 
 print_plan() {
-    echo "Issue #${ISSUE} Tile Search: ${LAUNCHES} launches on the first idle board of ${BOARDS}, ${N} tiles x datasets/yolo26_k1.dat"
+    echo "Issue #${ISSUE} Tile Search: ${LAUNCHES} launches on the first idle board of ${BOARDS}, ${N} tiles x datasets/${DATASET}"
     echo "  Threads   : ${THREADS} on ${CORES}"
     echo "  Settings  : ${CPU_ARGS[*]} --no-nc-overrides --tmin ${TMIN}, uninstrumented, reference protocol, vector packer"
     echo "  Load      : the board's processes are read before every launch; another user's busy job means wait ${WAIT_MIN} min and read again"

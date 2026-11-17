@@ -48,12 +48,12 @@ while [ "$#" -gt 0 ]; do [ "$1" = --heatmap ] && touch "$2"; shift; done
 """
 
 
-def run_series(tmp_path: Path, *extra: str, behaviour: str = "ok,ok,ok", **env_extra: str
-               ) -> tuple[subprocess.CompletedProcess[str], Path]:
+def run_series(tmp_path: Path, *extra: str, behaviour: str = "ok,ok,ok", dataset: str = "yolo26_k1.dat",
+               **env_extra: str) -> tuple[subprocess.CompletedProcess[str], Path]:
     for name, text in (("run.sh", STUB_RUN), ("ps.sh", STUB_PS), ("report.sh", STUB_REPORT)):
         (tmp_path / name).write_text(text)
         (tmp_path / name).chmod(0o755)
-    (tmp_path / "dataset.dat").write_text((HERE / "datasets/yolo26_k1.dat").read_text())
+    (tmp_path / "dataset.dat").write_text((HERE / "datasets" / dataset).read_text())
     logs = tmp_path / "logs"
     logs.mkdir(exist_ok=True)
     env = {**os.environ, "YOLO_SWEEP_LOGS": str(logs), "YOLO_SWEEP_RUN": str(tmp_path / "run.sh"),
@@ -204,3 +204,21 @@ def test_launch_beyond_launches_is_refused(tmp_path: Path):
 def test_threads_other_than_1_or_8_is_refused(tmp_path: Path):
     done, _ = run_series(tmp_path, "--threads", "4")
     assert done.returncode != 0 and "--threads takes 1 or 8" in done.stderr
+
+
+# The paper's BERT and square shapes go through the same sweep with their own config.
+def test_config_runs_the_paper_shapes_on_the_19_tiles(tmp_path: Path):
+    done, logs = run_series(tmp_path, "--config", str(HERE / "config_paper_search.json"), "--launches", "1",
+                            behaviour="ok", dataset="paper_bert_square.dat")
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "19 tiles x datasets/paper_bert_square.dat" in done.stdout
+    cfg = series_dir(logs) / "config_L1.json"
+    assert len(tiles(cfg)) == 19 and "yolo26_k1.dat" not in cfg.read_text()
+
+
+def test_a_config_mixing_datasets_is_refused(tmp_path: Path):
+    mixed = tmp_path / "mixed.json"
+    rows = [r for r in (HERE / "config_paper_search.json").read_text().splitlines() if r.lstrip().startswith('["')]
+    mixed.write_text("[\n" + rows[0] + "\n" + rows[1].replace("paper_bert_square.dat", "yolo26_k1.dat") + "\n]\n")
+    done, _ = run_series(tmp_path, "--config", str(mixed))
+    assert done.returncode != 0 and "must run paper_bert_square.dat" in done.stderr
