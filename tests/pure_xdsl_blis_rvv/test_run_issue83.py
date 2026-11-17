@@ -30,3 +30,13 @@ def test_refusals():
     assert "--board is required" in run("--part", "paper").stderr
     assert "needs --src" in run("--part", "yolo", "--board", "a").stderr
     assert "--workspace is for the paper part" in run("--part", "yolo", "--board", "a", "--src", "/s", "--workspace", "w").stderr
+
+
+def test_pack_split_runs_vector_scalar_scalar_vector_instrumented():
+    split = HERE / "run_issue83_pack_split.sh"
+    done = subprocess.run(["bash", str(split), "--board", "jbpi2", "--dry-run"], capture_output=True, text=True, timeout=30)
+    assert done.returncode == 0, done.stderr
+    launches = [ln.split(": ")[1].split(" packer")[0] for ln in done.stdout.splitlines() if "launch " in ln]
+    assert launches == ["vector", "scalar", "scalar", "vector"]
+    assert "--instr --cpu 4" in done.stdout
+    assert "--board is required" in subprocess.run(["bash", str(split)], capture_output=True, text=True, timeout=30).stderr

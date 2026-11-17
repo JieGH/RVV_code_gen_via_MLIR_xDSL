@@ -163,7 +163,7 @@ def test_the_report_and_logs_land_in_hector_yolo_per_issue_after_every_launch(tm
     assert report.count("run_") == 2 and "--compare 16x8 --compare n=4:16x4" in report
     assert (dest / "tile_search_heatmap.png").exists()
     assert (dest / "runs.tsv").read_text() == (sd / "runs.tsv").read_text()
-    assert f"HectorYolo copy: {dest}" in done.stdout
+    assert f"Report copy: {dest}" in done.stdout
 
 
 def test_the_issue_folder_defaults_to_61(tmp_path: Path):

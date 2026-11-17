@@ -1,0 +1,12 @@
+jlei                  400   4       00:00 ps
+jlei                 50.0   7       00:00 bash
+root                 10.4   6       00:00 sshd
+root                  0.6   6 106-06:20:18 disp_eng_share_thread
+systemd-oom           0.0   7 106-06:20:26 systemd-oomd
+root                  0.0   4 106-06:20:34 vq1
+root                  0.0   5 106-06:20:34 vq0
+root                  0.0   5       31:05 kworker/5:2-events
+root                  0.0   0  1-20:08:09 kworker/0:1-events
+root                  0.0   6       14:26 kworker/u16:4-flush-179:0
+root                  0.0   6 106-06:20:19 ksdioirqd/mmc1
+root                  0.0   5 106-05:39:18 fwupd

@@ -36,10 +36,10 @@
 #   --timin S        his TIMIN (default 2.0, as in gemm.bin)
 #   --wait-min M     minutes between reads when no board is idle (default 10)
 #   --dir NAME       board-side directory under ~ (default hector_gemmlib_b292c92)
-#   --issue N        HectorYolo/issue-<N>/ folder for the report and logs (default 62)
+#   --issue N        .scratch/reports/issue-<N>/ folder for the report and logs (default 62)
 #   --dry-run        print the plan, then stop
 # After every launch (and when the series stops): hector_gemm_report.py writes hector_gemm_report.md and
-# hector_gemm_fig.png into the series folder, which is then copied to HectorYolo/issue-<N>/<series>/
+# hector_gemm_fig.png into the series folder, which is then copied to .scratch/reports/issue-<N>/<series>/
 # (user, 2026-11-16).
 # Jump host from the environment: REMOTE_HOST (default fej), REMOTE_PORT (default 3322), user jlei.
 # ============================================================
@@ -149,7 +149,7 @@ pick_board() {
     done
 }
 
-# report_and_dump -- the report and figure over the launches so far, then the copy to HectorYolo/
+# report_and_dump -- the report and figure over the launches so far, then the copy to .scratch/reports/
 report_and_dump() {
     "${PY}" "${HERE}/hector_gemm_report.py" "${SERIES}" -o "${SERIES}/hector_gemm_report.md" \
         --plot "${SERIES}/hector_gemm_fig.png" || echo "report failed: ${SERIES}"

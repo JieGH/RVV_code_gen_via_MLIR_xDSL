@@ -38,13 +38,13 @@
 #   --workspace NAME  the board-side directory (compile_macro_bench.sh --riscv-workspace)
 #   --direct          reach the boards directly instead of through the jump host
 #   --riscv-user U --riscv-port P    (defaults jlei, 22)
-#   --issue N         HectorYolo/issue-<N>/ folder for the report and logs (default 61)
+#   --issue N         .scratch/reports/issue-<N>/ folder for the report and logs (default 61)
 #   --config FILE     the search config (default config_yolo_search.json); every row runs the same one dataset
 #   --scalar-pack     the scalar packer instead of the vector one (compile_macro_bench.sh --scalar-pack; issue #83)
 #   --dry-run         print the plan and the launch configs, then stop
 # After every finished launch: search_report.py over the launches so far (--compare 16x8 --compare n=4:16x4,
 # heatmap) into the series folder as tile_search_report.md / tile_search_heatmap.png, then the series folder
-# is copied to HectorYolo/issue-<N>/<series>/ (user, 2026-11-16).
+# is copied to .scratch/reports/issue-<N>/<series>/ (user, 2026-11-16).
 #
 # Jump-host settings come from the environment: REMOTE_PASS (default empty), REMOTE_HOST (default
 # fej), REMOTE_PORT (default 3322). Do not run tests, --dry-run of a wrapper or another benchmark
@@ -202,7 +202,7 @@ newest_since() {
     echo "${d}"
 }
 
-# report_and_dump -- the report over the launches that finished so far, then the copy to HectorYolo/
+# report_and_dump -- the report over the launches that finished so far, then the copy to .scratch/reports/
 report_and_dump() {
     local dirs=()
     mapfile -t dirs < <(awk -F'\t' -v L="${LOGS}" 'NR > 1 && $5 == "0" { print L "/" $4 }' "${SERIES}/runs.tsv")

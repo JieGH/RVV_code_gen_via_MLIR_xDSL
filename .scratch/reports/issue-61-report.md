@@ -95,7 +95,7 @@ The 50 shapes have m from 300 to 76 800 (output pixels), n ∈ {4, 8, 16, 32, 64
 
 ### 3.1 Workload
 
-`tests/pure_xdsl_blis_rvv/datasets/yolo26_k1.dat`: Héctor's CSV of one YOLO26 inference (`HectorYolo/yolo26_k1_matrix_sizes.csv`, identical to `gemm_study/yolo.dat` at GEMMLib commit `b292c92`), rows 6, 21 and 35 (n = 1) removed. Shape label `Y<l>` is row *l* of the CSV. Each distinct shape is counted once; the CSV carries no call counts (§7.4).
+`tests/pure_xdsl_blis_rvv/datasets/yolo26_k1.dat`: Héctor's CSV of one YOLO26 inference (`.scratch/reports/yolo26_k1_matrix_sizes.csv`, identical to `gemm_study/yolo.dat` at GEMMLib commit `b292c92`), rows 6, 21 and 35 (n = 1) removed. Shape label `Y<l>` is row *l* of the CSV. Each distinct shape is counted once; the CSV carries no call counts (§7.4).
 
 ### 3.2 Candidate tiles
 
@@ -395,6 +395,6 @@ Committed logs: `logs/run_2026-11-15_203822` (correctness), `logs/run_2026-11-15
 | `tests/pure_xdsl_blis_rvv/test_tile_search.py` | new, 10 tests |
 | `tests/pure_xdsl_blis_rvv/test_run_yolo_sweep.py` | new, 9 tests |
 | `tests/pure_xdsl_blis_rvv/test_correctness_pass.py` | one parametrize entry |
-| `HectorYolo/yolo26_k1_matrix_sizes.csv` | Héctor's shape list |
+| `.scratch/reports/yolo26_k1_matrix_sizes.csv` | Héctor's shape list |
 | `CONTEXT.md`, `README.md`, `docs/agents/execution.md` | glossary terms and usage |
 | `.scratch/issues/0041`–`0046` | decisions, results, closure |

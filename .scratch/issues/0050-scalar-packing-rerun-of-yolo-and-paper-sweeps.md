@@ -2,7 +2,9 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/83
 **Role / Label:** `needs-triage`. Board runs.
-**Status:** code done 2026-11-17 (host: 627/627 full suite, then 72/72 on the changed files after the review fixes); board runs started on `jbpi` (YOLO) and `jbpi2` (paper).
+**Status:** ✅ runs and report done 2026-11-17. C1-C4 all PASS; T1-T4 done (idle boards, every launch ok). Brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/report/issue83_brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/report/issue83_brief.tex), report [`.scratch/reports/issue-83/README.md`](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/README.md). Open: close and merge, on the user's word.
+
+**Result:** BERT/Square: no measurable difference (scalar/vector median 0.983 at 1T, 0.987 at 8T). YOLO: scalar slower, median 0.930 (1T) / 0.946 (8T), 0.59-0.83 on the n = 4 layers; best tile changes on 14 / 17 of 50 layers. T4: packing takes 49-83% of the time at n = 4-80 and 7-23% at n ≥ 256; scalar pack costs 1.07-1.94x the vector pack, and pack share x extra cost predicts the 1T ratio within 1% on 9 of 11 shapes.
 **Branch:** `scalar-packing-rerun-of-yolo-and-paper-sweeps`, cut from `pure-xdsl`.
 **Reruns:** #61 (YOLO, 1 thread), #63 (YOLO, 8 threads, against Héctor's GEMMLib), #71 (paper shapes BERT B1-B5, Square S1-S5, 1 and 8 threads).
 
@@ -52,13 +54,23 @@ All runs: uninstrumented, reference protocol, `--tmin 2`, `--no-nc-overrides`, 1
 
 **Boards (user, 2026-11-17: use both boards, idle only):** `jbpi` runs the YOLO part (C1, C2, T2, T1), the board of #61 and #63. `jbpi2` runs the paper part (C3, C4, T3) at the same time, from its own checkout and board workspace. Driver: `run_issue83.sh --part yolo|paper`.
 
+**T4, pack/compute split (user, 2026-11-17, added for Part 2 of the report):** the instrumented build (`--instr`, DEBUG, warm-up protocol, 200 reps) at 1 thread, core 4, on `jbpi2` after the paper part, from its own checkout and board workspace. 11 shapes spanning reuse n (Y14, Y30, Y47 n = 4; Y10, Y40 n = 16; Y29 n = 32; Y19 n = 80; Y42 n = 256; B1, B2 n = 384; S1 n = 1000) on each shape's 1-thread best tile (24x4, 32x4, 16x4, 24x8, 32x7, 16x15). 4 launches: vector, scalar, scalar, vector. Gives pack and compute time per shape for each packer: the share of time spent packing. Used for that share only; its GOPs are not quoted (timers cost 11-17%). The 8-thread path has no timers (#56). Driver: `run_issue83_pack_split.sh`, config `config_issue83_pack_split.json`, shapes `datasets/issue83_pack_split.dat`.
+
 ## 5. Output
+
+**Subject (user, 2026-11-17):** the report is about the difference between vector and scalar packing on these tests, shape by shape. It has two parts:
+
+- **Part 1, head to head:** vector against scalar packing, per shape, for YOLO (1T, 8T) and paper (BERT, Square; 1T, 8T): best tile, GOPs by mean time and by median rep, tile changes.
+- **Part 2, case study, the broader picture:** why shape and reuse decide whether the packer matters, across models (BERT, Square, YOLO), thread counts (1T, 8T, from #61, #63, #71) and packers (#83).
+  - Finding so far (partial logs, 17 Nov): on BERT and Square the packer choice makes no measurable difference (8T median scalar/vector 0.988); on YOLO at 8T scalar is slower on every layer (median 0.947), worst where n is smallest (n = 4: 0.67-0.82).
+  - Reason to show in detail: a packed A element is used n times (packing per flop about 1/(2n)), so small-n layers spend a large share of their time packing; large-n shapes hide the packer. Also the role of small k and of thread count.
+  - Note: this compares two packers; it does not test no packing at all.
+- **Glossary (user, 2026-11-17):** the report starts with a glossary of every run-setup term it uses (launch, starting tile, A-B-B-A, tile MRxNR, best tile, GOPs by mean time / by median rep, launch spread, reference protocol, uninstrumented build, scalar / vector packer, 1T / 8T, core 4, reuse n). It says "launch 1/2/3", never "L1/L2/L3" (reads as a cache level).
 
 - Per shape: best tile and GOPs, scalar against vector, at 1 and 8 threads. Both metrics: by mean time and by median rep.
 - The vector numbers come from the committed #61, #63 and #71 logs.
 - Copies:
-  - YOLO: `HectorYolo/issue-83/`, with a README and `report/`;
-  - paper: `PaperSweep/issue-83/`.
+  - all of #83 in one folder, `.scratch/reports/issue-83/`: `yolo/` (T1, T2 series), `paper/` (T3 series), `preliminary/` (17 Nov figures), then the README and `report/` (user, 2026-11-17: one place for all reports and logs; #56, #61, #62, #63, #71 and Héctor's email (`issue-58/`) moved there the same day). The links `HectorYolo/issue-83` and `PaperSweep/issue-83` used during the series are gone; the dump default (`hector_yolo_dump.sh`) is now `.scratch/reports/`.
 - Brief: PDF + LaTeX, linked from this issue and #58, #61, #63 and #71.
 
 ## 6. Limits to state with the numbers
@@ -69,7 +81,7 @@ All runs: uninstrumented, reference protocol, `--tmin 2`, `--no-nc-overrides`, 1
 
 ## 7. Closure
 
-- [ ] §2 fix, with host tests passing
-- [ ] C1-C4 all PASS
-- [ ] T1-T3 done, logs committed
-- [ ] Scalar-vs-vector tables, README and brief written and linked
+- [x] §2 fix, with host tests passing
+- [x] C1-C4 all PASS (76/76, 76/76, 57/57, 57/57)
+- [x] T1-T4 done, logs committed
+- [x] Scalar-vs-vector tables, README and brief written and linked (#58, #61, #63, #71)

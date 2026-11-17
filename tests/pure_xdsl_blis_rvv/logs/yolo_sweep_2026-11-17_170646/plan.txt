@@ -1,0 +1,6 @@
+Issue #83 Tile Search: 3 launches on the first idle board of jbpi2, 19 tiles x datasets/paper_bert_square.dat
+  Threads   : 8 on cores 0-7 (core 0: user's exception, #63 §2)
+  Settings  : --threads 8 --no-nc-overrides --tmin 2, uninstrumented, reference protocol, scalar packer
+  Load      : the board's processes are read before every launch; another user's busy job means wait 10 min and read again
+  Launch 3  : starts at 24x8
+[17:06] board: jbpi2

@@ -80,7 +80,6 @@ else
     correctness C3 --cpu 4
     correctness C4 --threads 8
     echo "[$(date +%H:%M)] T3: run_paper_sweep.sh --scalar-pack --issue 83"
-    # The paper results go to PaperSweep/issue-83/, beside #71 (the sweep copies to $HECTOR_YOLO_DIR/issue-<N>/).
-    [ "${DRY}" = true ] || HECTOR_YOLO_DIR="${HECTOR_YOLO_DIR:-$(cd "${HERE}/../.." && pwd)/PaperSweep}" "${HERE}/run_paper_sweep.sh" --board "${BOARD}" --scalar-pack --issue 83 "${SWS[@]}" || exit 1
+    [ "${DRY}" = true ] || "${HERE}/run_paper_sweep.sh" --board "${BOARD}" --scalar-pack --issue 83 "${SWS[@]}" || exit 1
 fi
 echo "[$(date +%H:%M)] issue #83 ${PART} part finished."

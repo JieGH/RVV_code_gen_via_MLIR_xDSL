@@ -8,7 +8,7 @@
 #   his : run_hector_gemm.sh --threads 8 --launches 1 (his gemm.x at b292c92, cores 0-7); built once, by his
 #         first launch, then reused (--no-build; jbpi and jbpi2 share one NFS home)
 # Each runner reads the board before its launch and waits while another user's job is busy; each writes its own
-# series folder and copies it to HectorYolo/issue-63/. The first failed step stops the series.
+# series folder and copies it to .scratch/reports/issue-63/. The first failed step stops the series.
 # Core 0 is used: the user's exception for 8-thread runs (#63 §2, decided 2026-11-16).
 #
 # Usage (from the project root; detach it so it survives the terminal):
@@ -21,7 +21,7 @@
 #   --launches N    launches per side (default 3)
 #   --tmin S        our --tmin and his TIMIN (default 2)
 #   --scalar-pack   our side uses the scalar packer; his gemm.x is unchanged (issue #83)
-#   --issue N       HectorYolo/issue-<N>/ for both sides (default 63)
+#   --issue N       .scratch/reports/issue-<N>/ for both sides (default 63)
 #   --dry-run       print the order, then stop
 # ============================================================
 

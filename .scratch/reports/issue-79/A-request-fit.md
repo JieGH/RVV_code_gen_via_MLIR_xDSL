@@ -1,9 +1,9 @@
 # Issue #79, Part A: did #58/#63 answer the question Héctor asked?
 
 Audit date 2026-11-17. Desk check only, no board. Sources:
-- the email thread `HectorYolo/Re: Optimizaciones Yolo sobre RISC-V.pdf` (10-13 Nov 2026);
+- the email thread `.scratch/reports/issue-58/Re: Optimizaciones Yolo sobre RISC-V.pdf` (10-13 Nov 2026);
 - Héctor's code, `github.com/martineh/GEMMLib_yolo` at `b292c92` (cloned fresh for this audit, read only): `src/GEMM/gemm_blis.c`, `gemm_blis.h`, `uk.c`, `src/driver_gemm.c`, `gemm.bin`;
-- `.scratch/issues/0041` (#58), `0046` (#63), `0040` (#56); `HectorYolo/issue-63/`.
+- `.scratch/issues/0041` (#58), `0046` (#63), `0040` (#56); `.scratch/reports/issue-63/`.
 
 **Verdict: GAP.** #63 answers a nearby question ("which tile is fastest in *our* parallel GEMM on his shapes"), not the most likely reading of his ("which tile would make *his* parallel GEMM faster"). The step that would bridge the two (#63 §3 step 3, decision Q7) was skipped. The tile list #63 reports also can't be dropped into his library as it stands (A2). Nothing in #63 is wrong; the answer is indirect, and the issue text and README don't say so.
 
@@ -48,11 +48,11 @@ Each row is a difference, read from his code at `b292c92`, between the GEMM #63 
 
 ## A4. Was the answer sent?
 
-Not visible from this checkout. The Gmail account connected here has no copy of the thread (searched `subject:Optimizaciones Yolo`, last 30 days). `HectorYolo/issue-63/README.md` is the only answer text. It gives the per-n winners without saying that (a) they come from our GEMM, (b) his library has none of those tiles, (c) most per-n winners are inside launch noise (Part B4).
+Not visible from this checkout. The Gmail account connected here has no copy of the thread (searched `subject:Optimizaciones Yolo`, last 30 days). `.scratch/reports/issue-63/README.md` is the only answer text. It gives the per-n winners without saying that (a) they come from our GEMM, (b) his library has none of those tiles, (c) most per-n winners are inside launch noise (Part B4).
 
 ## A5. Fixes made on this branch
 
-- `HectorYolo/issue-63/README.md`: a "Read this before using the tile list" block: R1/R2, the kernels that exist in his library, the MR coupling with im2col, and the noise in the per-n winners. Numbers unchanged.
+- `.scratch/reports/issue-63/README.md`: a "Read this before using the tile list" block: R1/R2, the kernels that exist in his library, the MR coupling with im2col, and the noise in the per-n winners. Numbers unchanged.
 - `.scratch/issues/0041` (#58) and `0046` (#63): a line linking this audit.
 
 ## A6. Left open (needs the user)

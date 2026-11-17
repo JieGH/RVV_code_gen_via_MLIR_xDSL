@@ -1,0 +1,12 @@
+jlei                  500   6       00:00 ps
+root                 13.1   7       00:00 sshd
+root                  0.6   4 106-08:26:40 disp_eng_share_thread
+systemd-oom           0.0   0 106-08:26:47 systemd-oomd
+root                  0.0   7 106-08:26:55 vq1
+root                  0.0   2 106-08:26:55 vq0
+root                  0.0   0  1-22:14:30 kworker/0:1-pm
+root                  0.0   5    02:37:26 kworker/5:2-mm_percpu_wq
+root                  0.0   6 106-08:26:40 ksdioirqd/mmc1
+root                  0.0   5 106-07:45:39 fwupd
+root                  0.0   4    03:27:36 kworker/4:2-mm_percpu_wq
+root                  0.0   2 106-08:26:45 NetworkManager

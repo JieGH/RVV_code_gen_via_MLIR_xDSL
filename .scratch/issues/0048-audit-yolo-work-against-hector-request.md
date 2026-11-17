@@ -8,9 +8,9 @@ Reports: [A: fit to the request](https://github.com/JieGH/RVV_code_gen_via_MLIR_
 **Branch:** `audit-did-the-yolo-work-answer-hectors-request`, cut from `pure-xdsl`.
 **Scope:** the parent #58 and its result sub-issue #63 (S6, 8-thread tile sweep), plus #56 (S5, the parallel engine #63 runs on) where #63 relies on it.
 **Primary sources:**
-- `HectorYolo/Re: Optimizaciones Yolo sobre RISC-V.pdf`: the email thread, 10-13 Nov 2026
-- `HectorYolo/yolo26_k1_matrix_sizes.csv` (53 shapes)
-- `HectorYolo/issue-63/`, `HectorYolo/issue-56/` (reports, raw logs, provenance)
+- `.scratch/reports/issue-58/Re: Optimizaciones Yolo sobre RISC-V.pdf`: the email thread, 10-13 Nov 2026
+- `.scratch/reports/yolo26_k1_matrix_sizes.csv` (53 shapes)
+- `.scratch/reports/issue-63/`, `.scratch/reports/issue-56/` (reports, raw logs, provenance)
 - `.scratch/issues/0041`, `0040`, `0046` (#58, #56, #63)
 - https://github.com/martineh/GEMMLib_yolo at `b292c92`, routine `gemm_B3A2C0`
 
@@ -103,7 +103,7 @@ Build his GEMMLib with our best tile per n group (local patch, never pushed) and
 ### 6.2 Fixes on this branch
 
 - `tests/pure_xdsl_blis_rvv/config_yolo_correctness_8t.json` and the board pass C3 (fixes B1).
-- `HectorYolo/issue-63/README.md`: "Read this before using the tile list": whose GEMM, family not exact winners, tile-for-tile numbers, correctness (A1, A2, B4, B5).
+- `.scratch/reports/issue-63/README.md`: "Read this before using the tile list": whose GEMM, family not exact winners, tile-for-tile numbers, correctness (A1, A2, B4, B5).
 - Audit links in #56, #58, #63 (`.scratch/issues/0040`, `0041`, `0046` and their GitHub bodies).
 - `.scratch/reports/issue-79/`: the three reports, `recompute_63.py`, `rep_tails.py`, the brief (PDF + LaTeX).
 
