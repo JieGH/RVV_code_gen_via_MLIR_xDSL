@@ -1,9 +1,6 @@
 """Issue #83 final tables + figures: vector vs scalar packing. Run from tests/pure_xdsl_blis_rvv/logs.
 argv[1] = output dir. Prints markdown tables to stdout."""
 import csv, glob, re, statistics as st, sys
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 
 OUT = sys.argv[1]
 RUNS = {  # test: (vector run dirs (launch 1-3), scalar run dirs (launch 1-3))
@@ -20,11 +17,6 @@ TITLE = {"yolo1": "YOLO, 1 thread (core 4)", "yolo8": "YOLO, 8 threads (cores 0-
 HECTOR = (["hector_gemm_2026-11-16_222943", "hector_gemm_2026-11-16_223301", "hector_gemm_2026-11-17_005723"],
           ["hector_gemm_2026-11-17_133951", "hector_gemm_2026-11-17_134308", "hector_gemm_2026-11-17_160610"])
 T4 = sys.argv[3].split(",") if len(sys.argv) > 3 and sys.argv[3] else []  # instr run dirs, order vector, scalar, scalar, vector
-BLUE, ORANGE, AQUA, VIOLET = "#2a78d6", "#eb6834", "#1baf7a", "#8a5cd6"
-INK, MUTED, GRID = "#1f1f1e", "#6b6a64", "#e4e3de"
-plt.rcParams.update({"font.size": 9, "axes.edgecolor": MUTED, "axes.labelcolor": INK, "xtick.color": MUTED,
-                     "ytick.color": MUTED, "axes.spines.top": False, "axes.spines.right": False,
-                     "axes.grid": True, "grid.color": GRID, "grid.linewidth": 0.6, "axes.axisbelow": True})
 dims = {}
 
 
@@ -131,79 +123,36 @@ if T4:
         tl = (data["yolo1"] if l[0] == "Y" else data["paper1"])[0][l][0]
         print(f"| {l} | {'x'.join(map(str, dims[l]))} | {tl} | {vp:.3f} / {vc:.3f} | {100*vs:.1f}% | {sp:.3f} / {sc:.3f} | {100*ss:.1f}% | {sp/vp:.2f} |")
 
-# ---------- figures ----------
-def bars(ax, v, s, shapes):
-    """Horizontal bars: one row per shape (top to bottom), GOPs along x."""
-    y = range(len(shapes))
-    for off, src, col, lab in [(-0.2, v, BLUE, "vector packer"), (0.2, s, ORANGE, "scalar packer")]:
-        xs = [src[k][1] for k in shapes]
-        lo = [src[k][1] - min(src[k][4]) for k in shapes]
-        hi = [max(src[k][4]) - src[k][1] for k in shapes]
-        ax.barh([i + off for i in y], xs, 0.38, color=col, label=lab)
-        ax.errorbar(xs, [i + off for i in y], xerr=[lo, hi], fmt="none", ecolor=INK, elinewidth=0.7, capsize=1.5)
-    ax.set_yticks(list(y), [f"{k}  n={dims[k][1]}" for k in shapes], fontsize=7 if len(shapes) > 20 else 9)
-    ax.set_ylim(len(shapes) - 0.3, -0.7)  # first shape on top
-    ax.set_xlabel("GOPs by mean time (best tile)")
-    ax.grid(axis="y", visible=False)
-
-
-NOTE = "Uninstrumented build, reference protocol, 3 launches per side; bar = mean of launches, whisker = launch min-max."
-fig, axes = plt.subplots(1, 2, figsize=(10, 4.6))
-for ax, k in [(axes[0], "paper1"), (axes[1], "paper8")]:
-    v, s = data[k]
-    bars(ax, v, s, sorted(v, key=order))
-    ax.set_title(TITLE[k].split(", ")[1], color=INK, loc="left")
-axes[1].legend(frameon=False, loc="lower right")
-fig.suptitle("BERT (B1-B5) and Square (S1-S5): vector vs scalar packing", x=0.01, ha="left", color=INK)
-fig.text(0.01, 0.005, NOTE + " Vector on jbpi (#71), scalar on jbpi2 (#83).", fontsize=7, color=MUTED)
-fig.tight_layout(rect=(0, 0.04, 1, 0.97))
-fig.savefig(f"{OUT}/fig1_paper_vector_vs_scalar.png", dpi=150)
-
-fig, axes = plt.subplots(1, 2, figsize=(11, 12))
-for ax, k in [(axes[0], "yolo1"), (axes[1], "yolo8")]:
-    v, s = data[k]
-    bars(ax, v, s, sorted(v, key=order))
-    ax.set_title(TITLE[k], color=INK, loc="left")
-axes[1].legend(frameon=False, loc="lower right")
-fig.text(0.01, 0.005, NOTE + " jbpi. Vector from #61 (1T) and #63 (8T).", fontsize=7, color=MUTED)
-fig.tight_layout(rect=(0, 0.015, 1, 1))
-fig.savefig(f"{OUT}/fig2_yolo_per_layer.png", dpi=150)
-
-fig, axes = plt.subplots(1, 2, figsize=(11, 4.2), sharey=True)
-for ax, th in [(axes[0], "1"), (axes[1], "8")]:
-    for key, pick, col, mk, lab in [(f"yolo{th}", lambda l: True, BLUE, "o", "YOLO"),
-                                    (f"paper{th}", lambda l: l.startswith("B"), ORANGE, "s", "BERT"),
-                                    (f"paper{th}", lambda l: l.startswith("S"), AQUA, "^", "Square")]:
+# ---------- chart data: the brief draws every chart in LaTeX (pgfplots, vector), user 2026-11-17 ----------
+import os
+os.makedirs(f"{OUT}/data", exist_ok=True)
+XMAX = {}
+for key in RUNS:
+    v, s = data[key]
+    ks = sorted(v, key=order)
+    XMAX[key] = 1.15 * max(max(src[k][4]) for src in (v, s) for k in ks)
+    parts = {"": ks} if len(ks) <= 25 else {"_a": ks[:25], "_b": ks[25:]}  # 50 layers: two pages, same x scale
+    for suffix, part in parts.items():
+      with open(f"{OUT}/data/gops_{key}{suffix}.csv", "w") as f:
+        f.write("idx,label,vec,vlo,vhi,scal,slo,shi\n")
+        for i, k in enumerate(part):
+            a, b = v[k], s[k]
+            f.write(f"{i},{k} {'x'.join(map(str, dims[k]))} (n={dims[k][1]}),{a[1]:.2f},{a[1]-min(a[4]):.3f},{max(a[4])-a[1]:.3f},"
+                    f"{b[1]:.2f},{b[1]-min(b[4]):.3f},{max(b[4])-b[1]:.3f}\n")
+with open(f"{OUT}/data/xmax.tex", "w") as f:  # shared GOPs axis length per test, read by the brief
+    for key, name in [("yolo1", "YoloOne"), ("yolo8", "YoloEight"), ("paper1", "PaperOne"), ("paper8", "PaperEight")]:
+        f.write(f"\\newcommand{{\\xmax{name}}}{{{XMAX[key]:.1f}}}\n")
+for th in ("1", "8"):
+    for name, key, pick in [("yolo", f"yolo{th}", lambda l: True), ("bert", f"paper{th}", lambda l: l[0] == "B"),
+                            ("square", f"paper{th}", lambda l: l[0] == "S")]:
         v, s = data[key]
-        ks = [k for k in v if pick(k)]
-        ax.scatter([dims[k][1] for k in ks], [s[k][1] / v[k][1] for k in ks], s=34, color=col, marker=mk, label=lab,
-                   edgecolor="white", linewidth=1, zorder=3)
-    ax.axhline(1.0, color=MUTED, linewidth=1)
-    ax.axhspan(0.97, 1.03, color=GRID, alpha=0.6, zorder=0)
-    ax.set_xscale("log", base=2)
-    ax.set_xticks([4, 16, 64, 256, 1000, 5000], ["4", "16", "64", "256", "1000", "5000"])
-    ax.set_xlabel("n = uses of each packed A element (reuse), log scale")
-    ax.set_title(f"{th} thread{'s' if th == '8' else ''}", color=INK, loc="left")
-axes[0].set_ylabel("scalar / vector GOPs (best tile, by mean time)")
-axes[1].legend(frameon=False, loc="lower right")
-fig.suptitle("The packer matters only when reuse n is small", x=0.01, ha="left", color=INK)
-fig.text(0.01, 0.005, "Grey band: ±3%, inside the day/board gap, not called a difference. One dot per shape; "
-         "uninstrumented build, reference protocol, 3 launches per side. 1T BERT outlier at 1.19 is B3 (vector launches 5.3-8.4 GOPs).", fontsize=7, color=MUTED)
-fig.tight_layout(rect=(0, 0.03, 1, 0.95))
-fig.savefig(f"{OUT}/fig3_ratio_vs_reuse_n.png", dpi=150)
-
+        with open(f"{OUT}/data/ratio_{th}t_{name}.csv", "w") as f:
+            f.write("n,ratio,shape\n")
+            for k in sorted((k for k in v if pick(k)), key=order):
+                f.write(f"{dims[k][1]},{s[k][1] / v[k][1]:.4f},{k}\n")
 if T4:
     ls = sorted({l for l in t4 if isinstance(l, str)}, key=lambda l: dims[l][1])
-    fig, ax = plt.subplots(figsize=(9, 3.8))
-    x = range(len(ls))
-    ax.bar([i - 0.2 for i in x], [100 * t4[l][0][2] for l in ls], 0.38, color=BLUE, label="vector packer")
-    ax.bar([i + 0.2 for i in x], [100 * t4[l][1][2] for l in ls], 0.38, color=ORANGE, label="scalar packer")
-    ax.set_xticks(list(x), [f"{l}\nn={dims[l][1]}" for l in ls], fontsize=8)
-    ax.set_ylabel("pack time / (pack + compute), %")
-    ax.grid(axis="x", visible=False)
-    ax.legend(frameon=False, loc="upper right")
-    ax.set_title("Share of time spent packing, by shape (sorted by reuse n)", color=INK, loc="left")
-    fig.text(0.01, 0.005, "T4: instrumented build (timers cost 11-17%), warm-up protocol, 200 reps, 1T core 4, jbpi2; "
-             "4 launches vector, scalar, scalar, vector; each shape on its 1T best tile.", fontsize=7, color=MUTED)
-    fig.tight_layout(rect=(0, 0.03, 1, 1))
-    fig.savefig(f"{OUT}/fig4_pack_share_t4.png", dpi=150)
+    with open(f"{OUT}/data/t4_pack_share.csv", "w") as f:
+        f.write("idx,label,vshare,sshare\n")
+        for i, l in enumerate(ls):
+            f.write(f"{i},{l} {'x'.join(map(str, dims[l]))} (n={dims[l][1]}),{100*t4[l][0][2]:.1f},{100*t4[l][1][2]:.1f}\n")

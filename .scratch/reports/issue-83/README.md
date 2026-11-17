@@ -4,7 +4,7 @@ The YOLO, BERT and Square sweeps (#61, #63, #71) were run again with one change:
 
 - **Brief (PDF):** [`report/issue83_brief.pdf`](report/issue83_brief.pdf) ([LaTeX](report/issue83_brief.tex))
 - **All tables:** [`report/tables.md`](report/tables.md)
-- **Script:** [`report/make_tables_and_figures.py`](report/make_tables_and_figures.py), run from `tests/pure_xdsl_blis_rvv/logs`.
+- **Script:** [`report/make_tables_and_figures.py`](report/make_tables_and_figures.py), run from `tests/pure_xdsl_blis_rvv/logs`. It writes `tables.md` and the chart data (`report/data/*.csv`); the brief draws the charts in LaTeX.
 
 ## Answer
 
@@ -100,8 +100,7 @@ YOLO, the layers with the largest gap (GOPs by mean time; all 50 in [`report/tab
 
 Y10 at 8T: the vector launches spread 20%, so its gap is uncertain.
 
-![BERT and Square](report/fig1_paper_vector_vs_scalar.png)
-![YOLO per layer](report/fig2_yolo_per_layer.png)
+Charts (vector graphics, drawn by LaTeX/pgfplots from [`report/data/`](report/data/)): one per test in the [brief](report/issue83_brief.pdf), pages 2-7. Each layer is one row, with GOPs along x, the value printed on each bar, and whiskers showing launch min-max.
 
 ## Part 2: why the shape and the reuse decide
 
@@ -124,7 +123,7 @@ A GEMM packs a block of A (m x k) once, then each packed element is multiplied b
 
 The ratio climbs steadily with n. YOLO at n = 256 (0.97) reaches what BERT shows at n = 384 (0.98). At 8 threads, the n = 4 gap is smaller (0.70 against 0.60). Each thread packs only its own rows of A, so the pack work per thread is smaller.
 
-![ratio against reuse n](report/fig3_ratio_vs_reuse_n.png)
+Chart: scalar/vector against n, 1T and 8T, in the [brief](report/issue83_brief.pdf), page 8.
 
 ### T4: how much of the time is packing
 
@@ -154,7 +153,7 @@ What T4 shows:
 - **The prediction holds within 1% on 9 of 11 shapes.** The two misses are n = 4 shapes (Y14, Y47), where the measured loss is larger than predicted. Their calls take 16-540 µs, so the timers (11-17%) distort the split most, and at 1T the best tile changes for both.
 - **This explains** why YOLO at n = 128-256 still loses 3-5% while BERT loses about 1-2%. Y42 (n = 256) spends 23% of its time packing, against 9-17% for S1 and B1.
 
-![pack share](report/fig4_pack_share_t4.png)
+Chart: pack share per shape, in the [brief](report/issue83_brief.pdf), page 9.
 
 ### Threads
 
