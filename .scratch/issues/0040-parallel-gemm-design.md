@@ -4,7 +4,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/56
 **Audit #79 (2026-11-17):** brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/issue-79-audit-brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/issue-79-audit-brief.tex), reports in `.scratch/reports/issue-79/`. Engine (#56): host tests and code read PASS; all 19 tiles at 8 threads PASS on the board (950/950).
 
 **Role / Label:** `needs-triage` — opened 2026-11-12 at the user's request. A general new direction, not a spec yet.
-**Status:** ✅ Done 2026-11-16. Built (§6), board run on `jbpi`: 6 of 6 launches ok, every row PASS (§7). Report: `HectorYolo/issue-56/`.
+**Status:** ✅ Done 2026-11-16. Built (§6), board run on `jbpi`: 6 of 6 launches ok, every row PASS (§7). Report: `.scratch/reports/issue-56/`.
 **Target:** to be decided (board, core count and which program).
 
 ---
@@ -37,7 +37,7 @@ Source: [[0045-read-hector-parallel-gemm]] §6. Héctor's `gemm_B3A2C0` (unedite
 - **jbpi:** 5.10 GOPs at 1 thread (core 4), 21.87 at 8 (cores 0-7), 4.29x.
 - **jbpi2:** 5.26 and 23.56, 4.48x.
 
-Small `n` scales worst: 2.9-3.8x for n ≤ 32, 4.3-5.6x for n ≥ 64. Report and figures: `HectorYolo/issue-62/`; full engineering report: [`.scratch/reports/issue-62-report.md`](../reports/issue-62-report.md).
+Small `n` scales worst: 2.9-3.8x for n ≤ 32, 4.3-5.6x for n ≥ 64. Report and figures: `.scratch/reports/issue-62/`; full engineering report: [`.scratch/reports/issue-62-report.md`](../reports/issue-62-report.md).
 
 - **Copy:**
   - the `ir` split: each thread packs its own A rows, with no barrier between that pack and its compute;
@@ -65,7 +65,7 @@ Small `n` scales worst: 2.9-3.8x for n ≤ 32, 4.3-5.6x for n ≥ 64. Report and
 5. **Refused with N > 1:** `--instr` (its counters are not thread-safe), `--scalar-pack`, `--pack-b` other than `row`, `--zero-pack-lines`.
 6. **Cores.** N > 1 runs on cores 0..N-1 with `OMP_PROC_BIND=close OMP_PLACES=cores`, the cores of Héctor's #62 runs. The user's core-0 exception (#62) is extended to these runs; `provenance.txt` records threads and cores. The 4 + 4 per-cluster test goes to S6 (#63).
 7. **Test program.** YOLO26 (`datasets/yolo26_k1.dat`), tile 24x8 (#61's best single tile). 1 thread on core 4 and 8 threads on cores 0-7, order 1T 8T 8T 1T 1T 8T (3 launches each), `--tmin 2`, idle `jbpi`, uninstrumented, reference protocol, `--no-nc-overrides`, every row checked for correctness. Both GOPs metrics, beside Héctor's #62 jbpi numbers.
-8. **Output.** `HectorYolo/issue-56/`, laid out like `HectorYolo/issue-62/`.
+8. **Output.** `.scratch/reports/issue-56/`, laid out like `.scratch/reports/issue-62/`.
 
 ## 6. Built (2026-11-16)
 
@@ -89,10 +89,10 @@ One pass over the 50 shapes:
 - n ≥ 64 is mixed: level at 80, behind at 64 and 128, ahead at 256. Our 8 threads match or beat his on 25 of 50 shapes.
 - At 8 threads the median rep runs well above the mean on the m = 300/1200, n ≥ 64 shapes (e.g. Y34 49.81 against 37.11): some slow reps. Not looked into.
 
-Report: `HectorYolo/issue-56/README.md`, engineering report `HectorYolo/issue-56/report/issue-56-report.md`. Next: S6 #63 is unblocked.
+Report: `.scratch/reports/issue-56/README.md`, engineering report `.scratch/reports/issue-56/report/issue-56-report.md`. Next: S6 #63 is unblocked.
 
 ## Closure criteria
 
 - [x] `--threads N`, opt-in, 1 thread byte-identical (test).
 - [x] Tested on one program (YOLO26), correct on every shape, logs committed.
-- [x] Report in `HectorYolo/issue-56/`.
+- [x] Report in `.scratch/reports/issue-56/`.

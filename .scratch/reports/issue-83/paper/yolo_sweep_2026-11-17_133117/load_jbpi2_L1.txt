@@ -1,0 +1,12 @@
+jlei                  400   7       00:00 ps
+root                 12.8   1       00:00 sshd
+jlei                 12.5   5       00:00 sshd
+root                  0.5   3 106-04:51:11 disp_eng_share_thread
+systemd-oom           0.0   4 106-04:51:18 systemd-oomd
+root                  0.0   4 106-04:51:26 vq1
+root                  0.0   7 106-04:51:26 vq0
+root                  0.0   3       02:10 kworker/u16:6-events_unbound
+root                  0.0   4       20:40 kworker/4:1-events
+root                  0.0   6 106-04:51:11 ksdioirqd/mmc1
+root                  0.0   4 106-04:10:10 fwupd
+root                  0.0   1 106-04:51:16 NetworkManager

@@ -1,0 +1,12 @@
+jlei                 50.0   6       00:00 bash
+root                 11.6   0       00:00 sshd
+root                  0.6   1 106-07:23:31 disp_eng_share_thread
+systemd-oom           0.0   4 106-07:23:38 systemd-oomd
+root                  0.0   0 106-07:23:46 vq1
+root                  0.0   2 106-07:23:46 vq0
+root                  0.0   0  1-21:11:21 kworker/0:1-cgroup_destroy
+root                  0.0   5    01:34:17 kworker/5:2-events
+root                  0.0   6 106-07:23:31 ksdioirqd/mmc1
+root                  0.0   1 106-06:42:30 fwupd
+root                  0.0   5 106-07:23:37 NetworkManager
+messagebus            0.0   3 106-07:23:37 dbus-daemon

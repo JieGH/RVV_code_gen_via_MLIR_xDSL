@@ -2,8 +2,10 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/71
 
+**Scalar-packing rerun #83 (2026-11-17):** brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/report/issue83_brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/report/issue83_brief.tex), report [`.scratch/reports/issue-83/`](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/README.md). Rerun with the scalar packer: no measurable difference on BERT/Square (median 0.983 at 1T, 0.987 at 8T; best tile unchanged except B3 at 1T, which is noise).
+
 **Role / Label:** `needs-triage`. Board run. Independent of the YOLO work (#58, #63).
-**Status:** ✅ Closed 2026-11-17 (merged in PR #73, then #74 into main). Run done on jbpi (6 of 6 steps ok); results: `PaperSweep/issue-71/README.md`.
+**Status:** ✅ Closed 2026-11-17 (merged in PR #73, then #74 into main). Run done on jbpi (6 of 6 steps ok); results: `.scratch/reports/issue-71/README.md`.
 **Target:** `jbpi`, one board for the whole series.
 **Shapes:** `datasets/paper_bert_square.dat`, the paper's Table 1 (arXiv 2603.17800v1).
 
@@ -23,7 +25,7 @@ The paper (the user's published design) picks its tile from a 1-core microkernel
 
 ## 3. Output
 
-- Series folders under `tests/pure_xdsl_blis_rvv/logs/yolo_sweep_<stamp>/`, each with `tile_search_report.md` and a heatmap, copied to `PaperSweep/issue-71/`.
+- Series folders under `tests/pure_xdsl_blis_rvv/logs/yolo_sweep_<stamp>/`, each with `tile_search_report.md` and a heatmap, copied to `.scratch/reports/issue-71/` (moved from `PaperSweep/`, 2026-11-17).
 - Then: one table per shape, best tile at 1T and at 8T, GOPs by mean time and by median rep, beside the paper's pick.
 
 ## 4. Limits to state with the numbers
@@ -38,7 +40,7 @@ The paper (the user's published design) picks its tile from a 1-core microkernel
 
 ## 6. Result (2026-11-17)
 
-Run on `jbpi`, 01:00 → 06:26, 1T 8T 8T 1T 1T 8T, all 6 steps ok, no other user's job. **This repo's current design** on the paper's shapes; the paper's GFLOPS (BPI-F3, its own xDSL code) are not compared. Results: [`PaperSweep/issue-71/README.md`](../../PaperSweep/issue-71/README.md).
+Run on `jbpi`, 01:00 → 06:26, 1T 8T 8T 1T 1T 8T, all 6 steps ok, no other user's job. **This repo's current design** on the paper's shapes; the paper's GFLOPS (BPI-F3, its own xDSL code) are not compared. Results: [`.scratch/reports/issue-71/README.md`](../reports/issue-71/README.md).
 
 - 1 thread (core 4): best single tile **32x7** (9.53 GOPs over the pass); 32x7 best on 9 shapes, 16x15 on B2. The paper's picks hold.
 - 8 threads (cores 0-7): best single tile **16x8** (48.27 GOPs); 16x8 best on 8 shapes, 16x12 on B2, 8x24 on B3. The paper's 32x7 gives 44.07 GOPs over the pass, 16x15 44.96.

@@ -1,0 +1,8 @@
+# Issue #83: small paper-like shapes for the scalar-packing correctness pass (config_paper_correctness.json).
+# The full paper set (B1-B5, S1-S5) is too big for the scalar oracle (O(m*n*k); B2 limit, docs/agents/execution.md
+# "Correctness pass"). B2 and B3 are the paper's own shapes at the limit; Sq200 is a square one with fringe rows and
+# columns at every tile of the 19 (200 is not a multiple of 16, 24 or 32, nor of most NR).
+# layer  M     N     K
+B2       384   384   64
+B3       64    384   384
+Sq200    200   200   200

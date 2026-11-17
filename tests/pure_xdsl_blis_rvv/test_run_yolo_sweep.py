@@ -163,7 +163,7 @@ def test_the_report_and_logs_land_in_hector_yolo_per_issue_after_every_launch(tm
     assert report.count("run_") == 2 and "--compare 16x8 --compare n=4:16x4" in report
     assert (dest / "tile_search_heatmap.png").exists()
     assert (dest / "runs.tsv").read_text() == (sd / "runs.tsv").read_text()
-    assert f"HectorYolo copy: {dest}" in done.stdout
+    assert f"Report copy: {dest}" in done.stdout
 
 
 def test_the_issue_folder_defaults_to_61(tmp_path: Path):
@@ -222,3 +222,11 @@ def test_a_config_mixing_datasets_is_refused(tmp_path: Path):
     mixed.write_text("[\n" + rows[0] + "\n" + rows[1].replace("paper_bert_square.dat", "yolo26_k1.dat") + "\n]\n")
     done, _ = run_series(tmp_path, "--config", str(mixed))
     assert done.returncode != 0 and "must run paper_bert_square.dat" in done.stderr
+
+
+def test_scalar_pack_reaches_every_launch_and_the_plan(tmp_path: Path):
+    """Issue #83: --scalar-pack is passed to compile_macro_bench.sh and named in plan.txt."""
+    done, logs = run_series(tmp_path, "--threads", "8", "--launches", "1", "--scalar-pack", behaviour="ok")
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "--scalar-pack" in (logs / "calls.txt").read_text()
+    assert "scalar packer" in (series_dir(logs) / "plan.txt").read_text()

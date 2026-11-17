@@ -1,0 +1,12 @@
+jlei                  500   4       00:00 ps
+root                 10.0   0       00:00 sshd
+root                  0.5   0 106-03:47:59 disp_eng_share_thread
+systemd-oom           0.0   5 106-03:48:06 systemd-oomd
+root                  0.0   4 106-03:48:14 vq1
+root                  0.0   3 106-03:48:14 vq0
+root                  0.0   7       06:14 kworker/u16:3-rpciod
+root                  0.0   6 106-03:47:59 ksdioirqd/mmc1
+root                  0.0   1       57:30 kworker/u16:0-rpciod
+root                  0.0   3 106-03:06:58 fwupd
+root                  0.0   6       11:40 kworker/u16:2-writeback
+root                  0.0   5 106-03:48:04 NetworkManager

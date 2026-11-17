@@ -15,7 +15,7 @@
 # Logs: logs/parallel_gemm_<stamp>/ : plan.txt, runs.tsv (launch, threads, cores, board, run folder, exit), one
 # log per launch, load_*.txt. After every launch parallel_gemm_report.py writes parallel_gemm_report.md and
 # parallel_gemm_fig.png there (beside Héctor's #62 series given by --hector), and the folder is copied to
-# HectorYolo/issue-<N>/ (--issue, default 56).
+# .scratch/reports/issue-<N>/ (--issue, default 56).
 #
 # Usage (from anywhere; detach it):
 #   setsid nohup ./tests/pure_xdsl_blis_rvv/run_parallel_gemm.sh \
@@ -38,7 +38,7 @@ PY="${HERE}/../../.venv/bin/python"; [ -x "${PY}" ] || PY=python3
 
 BOARDS="jbpi"; LAUNCHES=3; TMIN=2; WAIT_MIN=10; WORKSPACE=""; MODE_ARG="--jump"; RISCV_USER="jlei"
 RISCV_PORT="22"; DRY_RUN=false; ISSUE=56
-HECTOR="${HERE}/../../HectorYolo/issue-62/hector_gemm_2026-11-16_111457"   # his jbpi series
+HECTOR="${HERE}/../../.scratch/reports/issue-62/hector_gemm_2026-11-16_111457"   # his jbpi series
 
 die() { echo "Error: $*" >&2; exit 1; }
 

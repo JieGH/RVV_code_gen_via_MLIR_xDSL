@@ -1,0 +1,12 @@
+jlei                  500   4       00:00 ps
+root                 12.1   0       00:00 sshd
+psiwins               0.7   2       00:53 ssh
+root                  0.6   1 106-03:49:17 disp_eng_share_thread
+psiwins               0.5   0       03:20 sshd
+psiwins               0.4   3       02:48 ssh
+psiwins               0.3   7       03:21 systemd
+psiwins               0.3   4       03:21 wireplumber
+systemd-oom           0.0   0 106-03:49:24 systemd-oomd
+psiwins               0.0   3       02:21 sshd
+psiwins               0.0   0       03:21 pipewire
+psiwins               0.0   3       03:21 pipewire-pulse

@@ -83,7 +83,7 @@ The K1 has 8 X60 cores in two clusters of 4. Each cluster has its own L2: cores 
 
 ### 3.1 Workload
 
-His `gemm_study/yolo.dat`: 53 rows (m, n, k) from one YOLO26 inference, 3 of them with n = 1 (his GEMV). Identical to `HectorYolo/yolo26_k1_matrix_sizes.csv`.
+His `gemm_study/yolo.dat`: 53 rows (m, n, k) from one YOLO26 inference, 3 of them with n = 1 (his GEMV). Identical to `.scratch/reports/yolo26_k1_matrix_sizes.csv`.
 
 ### 3.2 Apparatus
 
@@ -140,7 +140,7 @@ A two-axis review (standards, spec) found no missing or wrong requirement. From 
 
 - **His check:** `TEST=T` compares every row against his reference GEMM. It printed `OK` on all 53 rows of all 12 launches (no `ERROR` in any launch log).
 - **Runner and report tests:** `test_run_hector_gemm.py` (6 tests) runs the runner against a stand-in board; `test_hector_gemm_report.py` (3) tests the report and figure; `test_run_yolo_sweep.py` (11) covers the dump. No test writes into the real `HectorYolo/`.
-- **Full test suite:** 583 passed, 0 failed, 0 skipped (15 min 38 s). The two board-side test files ran on the board. Report: `HectorYolo/issue-62/full_test_suite_2026-11-16.md`.
+- **Full test suite:** 583 passed, 0 failed, 0 skipped (15 min 38 s). The two board-side test files ran on the board. Report: `.scratch/reports/issue-62/full_test_suite_2026-11-16.md`.
 - **Board load:** no other user's job on either board before or after any launch (`side_notes.txt` empty in both series).
 - **Smoke test** before the series: 2 shapes at `TIMIN=0.1` on jbpi core 4 ran and passed his check.
 
@@ -348,7 +348,7 @@ GOPs by mean time, average over 3 launches per thread count. 1 thread on core 4,
 # clone his code at the measured commit (read-only)
 git clone https://github.com/martineh/GEMMLib_yolo <clone> && git -C <clone> checkout b292c92
 
-# one series per board: build, then 1T 8T 8T 1T 1T 8T; report and figure; copy to HectorYolo/issue-62/
+# one series per board: build, then 1T 8T 8T 1T 1T 8T; report and figure; copy to .scratch/reports/issue-62/
 setsid nohup ./tests/pure_xdsl_blis_rvv/run_hector_gemm.sh --src <clone> --boards jbpi \
     > tests/pure_xdsl_blis_rvv/logs/hector_gemm.out 2>&1 < /dev/null &
 setsid nohup ./tests/pure_xdsl_blis_rvv/run_hector_gemm.sh --src <clone> --boards jbpi2 \
@@ -359,7 +359,7 @@ python tests/pure_xdsl_blis_rvv/hector_gemm_report.py <series folder> -o report.
 python .scratch/reports/issue-62-figs/make_figs.py
 ```
 
-Committed logs: `tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-16_111457/` (jbpi) and `hector_gemm_2026-11-16_113052/` (jbpi2): plan, runs, his console table and CSV per launch, build log, board reads, side notes, console output, report and figure. Copies: `HectorYolo/issue-62/`.
+Committed logs: `tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-16_111457/` (jbpi) and `hector_gemm_2026-11-16_113052/` (jbpi2): plan, runs, his console table and CSV per launch, build log, board reads, side notes, console output, report and figure. Copies: `.scratch/reports/issue-62/`.
 
 ## Appendix C — Files added or changed
 
@@ -374,4 +374,4 @@ Committed logs: `tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-16_111457/` (
 | `docs/agents/execution.md` | the runner's entry, with the core-0 exception; the sweep's dump |
 | `.scratch/issues/0045` (#62), `0040` (#56), `0044` (#61) | results and closure; copy / change / skip list; moved-copy path |
 | `.scratch/reports/issue-62-report.md`, `issue-62-figs/` | this report, its figures and their script |
-| `HectorYolo/issue-62/` | README, both series, test report, this report |
+| `.scratch/reports/issue-62/` | README, both series, test report, this report |

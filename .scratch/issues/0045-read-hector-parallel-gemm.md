@@ -3,8 +3,8 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/62
 
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Code read, plus board runs of his C code on `jbpi`/`jbpi2` (X60, the K1's chip). Changed 2026-11-15 (user): his C code can run on the board, so we run it there directly rather than guess, simulate or emulate (parent rule).
-**Status:** ✅ Closed 2026-11-16 (merged in PR #66, with #65). His `gemm.bin` ran on `jbpi` and `jbpi2`, 3 launches per thread count on each board (§6.1). The side-by-side and the §3 answers are in §6.3-6.4. The copy / change / skip list (§6.6) is posted on #56. Report and figures: `HectorYolo/issue-62/`.
-**Report:** [`.scratch/reports/issue-62-report.md`](../reports/issue-62-report.md) (engineering report: method, changes, verification, results, discussion, per-shape appendix; audited by a second agent, findings fixed; copy in `HectorYolo/issue-62/report/`).
+**Status:** ✅ Closed 2026-11-16 (merged in PR #66, with #65). His `gemm.bin` ran on `jbpi` and `jbpi2`, 3 launches per thread count on each board (§6.1). The side-by-side and the §3 answers are in §6.3-6.4. The copy / change / skip list (§6.6) is posted on #56. Report and figures: `.scratch/reports/issue-62/`.
+**Report:** [`.scratch/reports/issue-62-report.md`](../reports/issue-62-report.md) (engineering report: method, changes, verification, results, discussion, per-shape appendix; audited by a second agent, findings fixed; copy in `.scratch/reports/issue-62/report/`).
 **Primary sources:**
 - https://github.com/martineh/GEMMLib_yolo @ `b292c92`:
   - `src/GEMM/gemm_blis.c:831-950` (`gemm_B3A2C0`)
@@ -89,7 +89,7 @@ One pass over the dataset (each row once, mean time per call averaged over the 3
 | jbpi | `logs/hector_gemm_2026-11-16_111457/` | 583.5 ms, 5.10 GOPs | 136.0 ms, 21.87 GOPs | 4.29x | none |
 | jbpi2 | `logs/hector_gemm_2026-11-16_113052/` | 565.2 ms, 5.26 GOPs | 126.2 ms, 23.56 GOPs | 4.48x | none |
 
-Per shape, both boards: `HectorYolo/issue-62/` (`README.md`, and a report `.md` and figure per series). The two boards are reported side by side, never averaged.
+Per shape, both boards: `.scratch/reports/issue-62/` (`README.md`, and a report `.md` and figure per series). The two boards are reported side by side, never averaged.
 
 ### 6.2 Speedup by `n` (one pass over the rows with that `n`, GOPs)
 
@@ -144,7 +144,7 @@ His: `src/GEMM/gemm_blis.c` @ `b292c92`. Ours: `tests/pure_xdsl_blis_rvv/generat
 
 ### 6.5 Tests
 
-Full test suite on this branch (`dc984ccb`): **583 passed, 0 failed, 0 skipped**, 15 min 38 s; the two board-side test files ran on the board. Report: `HectorYolo/issue-62/full_test_suite_2026-11-16.md`.
+Full test suite on this branch (`dc984ccb`): **583 passed, 0 failed, 0 skipped**, 15 min 38 s; the two board-side test files ran on the board. Report: `.scratch/reports/issue-62/full_test_suite_2026-11-16.md`.
 
 ### 6.6 Copy / change / skip for S5 (#56)
 

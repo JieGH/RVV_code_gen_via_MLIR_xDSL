@@ -3,9 +3,11 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/63
 **Audit #79 (2026-11-17):** brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/issue-79-audit-brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/issue-79-audit-brief.tex), reports in `.scratch/reports/issue-79/`. The sweep ran with the oracle off (now checked: 950/950 PASS); 5 of 8 per-n winners are inside launch noise; "ours faster" depends on his Y00.
 
+**Scalar-packing rerun #83 (2026-11-17):** brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/report/issue83_brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/report/issue83_brief.tex), report [`.scratch/reports/issue-83/`](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/README.md). Rerun of our side with the scalar packer (Héctor's side unchanged): median 0.946 of vector GOPs (0.671-0.985), worst on n = 4; best tile changes on 17 of 50 layers.
+
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Board run.
-**Status:** ✅ Closed 2026-11-17 (merged in PR #72, then #74 into main). Run done on jbpi (6 of 6 steps ok); report: `HectorYolo/issue-63/report/issue-63-report.md`.
-**Blocked by:** nothing. #61 (S3) done; #56 (S5, parallel GEMM) done 2026-11-16: `--threads 8`, report `HectorYolo/issue-56/`.
+**Status:** ✅ Closed 2026-11-17 (merged in PR #72, then #74 into main). Run done on jbpi (6 of 6 steps ok); report: `.scratch/reports/issue-63/report/issue-63-report.md`.
+**Blocked by:** nothing. #61 (S3) done; #56 (S5, parallel GEMM) done 2026-11-16: `--threads 8`, report `.scratch/reports/issue-56/`.
 **Target:** `jbpi` or `jbpi2`, all 8 cores.
 **Shapes:** `datasets/yolo26_k1.dat`.
 
@@ -38,7 +40,7 @@ This is Héctor's request: **with 8 threads, which tile is fastest on each YOLO 
 | Q5 | Héctor's side | Rerun, not reuse #62: his `gemm.x` at commit `b292c92`, 8 threads on cores 0-7, `TIMIN=2.0`, via `run_hector_gemm.sh`. Add an 8-thread-only mode to it. |
 | Q6 | Alternation | One thin series script runs launches ours, his, his, ours, ours, his (3 each, A-B-B-A) on one board, with the usual idle check before each launch. |
 | Q7 | §3 step 3 (patched GEMMLib with our tiles) | Skip. Optional follow-up only. |
-| Q8 | Output | `HectorYolo/issue-63/` with series folders, `README.md` and `report/` in the issue-62 style; 1-core column from #61's committed logs; both GOPs metrics for ours, mean time only for his. |
+| Q8 | Output | `.scratch/reports/issue-63/` with series folders, `README.md` and `report/` in the issue-62 style; 1-core column from #61's committed logs; both GOPs metrics for ours, mean time only for his. |
 
 ## 3. Run
 
@@ -69,7 +71,7 @@ This is Héctor's request: **with 8 threads, which tile is fastest on each YOLO 
 
 ## 7. Result (2026-11-17)
 
-Run on `jbpi`, 21:18 → 01:00, ours L1, his, his, ours L2, ours L3, his; all 6 steps ok, no other user's job. Report: [`HectorYolo/issue-63/report/issue-63-report.md`](../../HectorYolo/issue-63/report/issue-63-report.md), README `HectorYolo/issue-63/README.md`.
+Run on `jbpi`, 21:18 → 01:00, ours L1, his, his, ours L2, ours L3, his; all 6 steps ok, no other user's job. Report: [`.scratch/reports/issue-63/report/issue-63-report.md`](../reports/issue-63/report/issue-63-report.md), README `.scratch/reports/issue-63/README.md`.
 
 - One pass over 50 shapes, GOPs by mean time: ours 8T best single tile 16x12 145.6 ms (20.43 GOPs); ours 8T best per shape 134.1 ms (22.17); his 8T 183.7 ms (16.18).
 - His Y00 (76800x16x27) swung 12.9 → 62.6 → 105.5 ms between launches. Without Y00: ours 127.9 ms (22.74), his 123.4 ms (23.56).

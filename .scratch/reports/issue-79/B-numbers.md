@@ -5,7 +5,7 @@ Audit date 2026-11-17. Host only, committed logs only. I recomputed everything w
 **Inputs** (all committed):
 - ours 8T, #63: `tests/pure_xdsl_blis_rvv/logs/run_2026-11-16_222551`, `run_2026-11-16_234245`, `run_2026-11-17_005337`;
 - ours 1T, #61: `run_2026-11-15_220501`, `run_2026-11-15_231549`, `run_2026-11-16_002638`;
-- his 8T: `HectorYolo/issue-63/hector_gemm_2026-11-16_222943`, `_223301`, `hector_gemm_2026-11-17_005723` (`L1_T8_jbpi.csv`).
+- his 8T: `.scratch/reports/issue-63/hector_gemm_2026-11-16_222943`, `_223301`, `hector_gemm_2026-11-17_005723` (`L1_T8_jbpi.csv`).
 
 **Run conditions:**
 - ours: `jbpi`, uninstrumented, reference protocol, `--tmin 2`, `--no-nc-overrides`, vector packer, 8 threads on cores 0-7 (`OMP_PROC_BIND=close`);
@@ -106,7 +106,7 @@ Effect on the tile answer:
 
 ## B7. Fixes made on this branch
 
-- `HectorYolo/issue-63/README.md`: the headline table gains the "ours at 16x8" rows and a note on Y00, and the per-n tile list is marked as a family with the noise stated (see A5).
+- `.scratch/reports/issue-63/README.md`: the headline table gains the "ours at 16x8" rows and a note on Y00, and the per-n tile list is marked as a family with the noise stated (see A5).
 - Board correctness pass at 8 threads for all 19 tiles: Part C3.
 
 ## B8. Left open (needs the user; each is a board run)
