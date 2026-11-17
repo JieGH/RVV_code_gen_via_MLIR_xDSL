@@ -1,0 +1,87 @@
+Sun Nov 15 09:54:08 PM CET 2026
+ 21:54:08 up 104 days, 13:14,  7 users,  load average: 3.00, 3.00, 3.00
+
+== per-core utilization, 1 s sample ==
+cpu    12.6% busy
+cpu0    1.0% busy
+cpu1    0.0% busy
+cpu2  100.0% busy
+cpu3    0.0% busy
+cpu4    0.0% busy
+cpu5    0.0% busy
+cpu6    0.0% busy
+cpu7    0.0% busy
+
+== top ==
+top - 21:54:09 up 104 days, 13:14,  7 users,  load average: 3.00, 3.00, 3.00
+Tasks: 274 total,   3 running, 271 sleeping,   0 stopped,   0 zombie
+%Cpu(s): 13.3 us,  2.1 sy,  0.0 ni, 83.9 id,  0.7 wa,  0.0 hi,  0.0 si,  0.0 st 
+MiB Mem :   7833.0 total,   4789.9 free,    730.7 used,   2496.3 buff/cache     
+MiB Swap:  16384.0 total,  16099.0 free,    285.0 used.   7102.3 avail Mem 
+
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+ 700218 jlei      20   0   93864  66000  17920 R  92.9   0.8   0:11.97 cc1plus
+ 700312 jlei      20   0   18108   5504   3328 R  14.3   0.1   0:00.06 top
+      1 root      20   0   19136   6388   3444 S   0.0   0.1   8:36.07 systemd
+      2 root      20   0       0      0      0 S   0.0   0.0   0:19.03 kthreadd
+      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_wo+
+      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+     12 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+     13 root      20   0       0      0      0 I   0.0   0.0   0:00.00 rcu_tas+
+     14 root      20   0       0      0      0 I   0.0   0.0   0:00.00 rcu_tas+
+     15 root      20   0       0      0      0 S   0.0   0.0   3:10.17 ksoftir+
+     16 root      20   0       0      0      0 R   0.0   0.0  13:06.56 rcu_pre+
+     17 root      rt   0       0      0      0 S   0.0   0.0   0:00.14 migrati+
+     18 root      20   0       0      0      0 S   0.0   0.0   0:00.00 cpuhp/0
+     19 root      20   0       0      0      0 S   0.0   0.0   0:00.00 cpuhp/1
+     20 root      rt   0       0      0      0 S   0.0   0.0   0:00.12 migrati+
+     21 root      20   0       0      0      0 S   0.0   0.0   0:31.06 ksoftir+
+     24 root      20   0       0      0      0 S   0.0   0.0   0:00.00 cpuhp/2
+     25 root      rt   0       0      0      0 S   0.0   0.0   0:00.10 migrati+
+     26 root      20   0       0      0      0 S   0.0   0.0   0:07.18 ksoftir+
+     29 root      20   0       0      0      0 S   0.0   0.0   0:00.00 cpuhp/3
+
+== processes, with the core each runs on ==
+USER                     PID PSR %CPU %MEM     ELAPSED COMMAND
+jlei                  700218   2  100  0.8       00:12 /usr/libexec/gcc/riscv64-linux-gnu/13/cc1plus -quiet -imultilib . -imultiarch riscv64-linux-gnu -D_GNU_SOURCE -D RVV_INSTRUMENTED=0 driver_benchmark.cpp -D_FORTIFY_SOURCE=3 -quiet -dumpdir build_instr0/ -dumpbase driver_benchmark.cpp -dumpbase-ext .cpp -march=rv64gcv -mabi=lp64d -mtune=spacemit-x60 -misa-spec=20191213 -march=rv64imafdcv_zicsr_zifencei_zve32f_zve32x_zve64d_zve64f_zve64x_zvl128b_zvl32b_zvl64b -O2 -std=c++17 -fno-strict-aliasing -fno-var-tracking-assignments --param=ggc-min-expand=1 --param=ggc-min-heapsize=32768 -fstack-protector-strong -Wformat -Wformat-security -o /tmp/cceac4Ak.s
+root                  700219   7  2.6  0.0       00:01 sshd: jlei [priv]
+jlei                  700304   4  0.7  0.0       00:01 bash -c date; uptime; echo; echo == per-core utilization, 1 s sample ==; head -9 /proc/stat > /tmp/s1; sleep 1; head -9 /proc/stat > /tmp/s2; paste /tmp/s1 /tmp/s2 | awk "NR>1 || 1 {n=NF/2; t=0; i=0; for(j=2;j<=n;j++){d=\$(j+n)-\$j; t+=d; if(j==5||j==6) i+=d}; printf \"%-5s %5.1f%% busy\n\", \$1, 100*(t-i)/t}"; echo; echo == top ==; top -b -n1 | head -30; echo; echo == processes, with the core each runs on ==; ps -eo user:20,pid,psr,pcpu,pmem,etime,args --sort=-pcpu | head -40
+root                    1160   0  0.6  0.0 104-13:14:13 [disp_eng_share_thread]
+systemd-oom              701   7  0.0  0.0 104-13:14:20 /usr/lib/systemd/systemd-oomd
+root                     156   1  0.0  0.0 104-13:14:28 [vq1]
+root                     155   3  0.0  0.0 104-13:14:28 [vq0]
+messagebus               717   0  0.0  0.0 104-13:14:19 @dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation --syslog-only
+root                     811   0  0.0  0.0 104-13:14:19 /usr/sbin/NetworkManager --no-daemon
+root                    1213   1  0.0  0.1 104-13:14:10 /usr/libexec/bluetooth/bluetoothd
+root                    1137   1  0.0  0.0 104-13:14:13 [ksdioirqd/mmc1]
+root                  700122   0  0.0  0.0       07:44 [kworker/u16:3-nfsiod]
+jlei                  699362   7  0.0  0.0       59:04 sshd: jlei@notty
+root                  699377   1  0.0  0.0       58:02 [kworker/u16:2-nfsiod]
+root                    1944   3  0.0  0.2 104-12:48:19 /usr/libexec/fwupd/fwupd
+root                  699414   1  0.0  0.0       55:33 [kworker/u16:9-nfsiod]
+root                  699415   1  0.0  0.0       55:33 [kworker/u16:10-nfsiod]
+gdm                     1292   3  0.0  0.0 104-13:14:07 /usr/libexec/gsd-sharing
+root                  699641   4  0.0  0.0       37:11 [kworker/u16:0-rpciod]
+root                      83   0  0.0  0.0 104-13:14:32 [kswapd0]
+root                      16   7  0.0  0.0 104-13:14:33 [rcu_preempt]
+root                  691197   7  0.0  0.0  1-06:35:30 [kworker/7:1-events_power_efficient]
+root                  699429   0  0.0  0.0       54:21 [kworker/0:2-events]
+root                     336   0  0.0  0.2 104-13:14:23 /usr/lib/systemd/systemd-journald
+root                  692760   5  0.0  0.0    22:04:00 [kworker/5:1-events]
+root                      62   0  0.0  0.0 104-13:14:33 [kcompactd0]
+root                  699643   1  0.0  0.0       37:11 [kworker/u16:8-events_unbound]
+gdm                     1100   1  0.0  0.3 104-13:14:14 /usr/bin/gnome-shell
+root                     817   0  0.0  0.0 104-13:14:19 /usr/sbin/wpa_supplicant -u -s -O DIR=/run/wpa_supplicant GROUP=netdev
+root                  700123   7  0.0  0.0       07:44 [kworker/u16:6-rpciod]
+avahi                    715   1  0.0  0.0 104-13:14:19 avahi-daemon: running [jbpi.local]
+root                    1162   1  0.0  0.0 104-13:14:13 [RTW_RX_CB_THREAD]
+root                       1   7  0.0  0.0 104-13:14:33 /sbin/init
+root                  699642   3  0.0  0.0       37:11 [kworker/u16:5-rpciod]
+root                  698866   1  0.0  0.0    01:13:16 [kworker/1:0-events]
+polkitd                  742   6  0.0  0.2 104-13:14:19 /usr/lib/polkit-1/polkitd --no-debug
+gdm                     1357   5  0.0  0.0 104-13:14:06 /usr/libexec/gsd-housekeeping
+root                  695951   2  0.0  0.0    02:28:52 [kworker/2:1-events]
+root                  698172   3  0.0  0.0    01:15:46 [kworker/3:0-mm_percpu_wq]
