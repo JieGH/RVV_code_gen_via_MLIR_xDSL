@@ -4,7 +4,7 @@
 #
 #   1. Correctness: config_issue85_correctness.json, oracle on, vector then scalar packer, --tmin 0.2.
 #      Any row not PASS stops the series before timing.
-#   2. M1 (GOPs): config_issue85_sweep.json, uninstrumented, reference protocol, --tmin 2,
+#   2. M1 (GOPs): config_issue85_sweep.json, uninstrumented, reference protocol, --tmin 3,
 #      6 launches in the order vector, scalar, scalar, vector, vector, scalar (3 per packer).
 #   3. M2 (1T) / M3 (8T) (pack/compute split): the same config, --instr, warm-up protocol, 200 reps,
 #      4 launches vector, scalar, scalar, vector.
@@ -87,7 +87,7 @@ done
 
 n=0
 for packer in vector scalar scalar vector vector scalar; do
-    n=$((n + 1)); launch "M1-launch${n}" "${packer}" config_issue85_sweep.json --tmin 2 >/dev/null || exit 1
+    n=$((n + 1)); launch "M1-launch${n}" "${packer}" config_issue85_sweep.json --tmin 3 >/dev/null || exit 1
 done
 step=M2; [ "${THREADS}" = 8 ] && step=M3
 n=0

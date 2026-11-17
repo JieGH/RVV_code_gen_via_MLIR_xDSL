@@ -26,7 +26,7 @@ def test_one_thread_series_checks_correctness_then_m1_abba_then_m2(tmp_path: Pat
         ("M1-launch1", v), ("M1-launch2", s), ("M1-launch3", s), ("M1-launch4", v), ("M1-launch5", v), ("M1-launch6", s),
         ("M2-launch1", v), ("M2-launch2", s), ("M2-launch3", s), ("M2-launch4", v),
     ]
-    assert "1t, --tmin 0.2" in done.stderr and "1t, --tmin 2 " in done.stderr and "1t, --instr" in done.stderr
+    assert "1t, --tmin 0.2" in done.stderr and "1t, --tmin 3 " in done.stderr and "1t, --instr" in done.stderr
 
 
 def test_eight_thread_series_names_its_split_m3(tmp_path: Path):

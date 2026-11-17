@@ -50,7 +50,7 @@ Same design as #83; the only switch is `--scalar-pack`. Each sweep runs at **1T 
 - **Correctness on small shapes, not every sweep shape.** The scalar oracle is O(m·n·k) and capped at B2 (384×384×64) by the repo rule (`test_correctness_pass.py`). `datasets/issue85_correctness_small.dat` covers n = 4 and 1000, k = 16 and 1152, m = 4800, and fringe rows/columns on all five tiles.
 - **Pack time is A + B together** at 1T and 8T: the 1T build has one pack sink, and splitting it changes the GEMM signature, the driver and every log parser. The sweeps separate the two instead: P-n changes only how often A is repacked ($1/n_c$), P-m only how far B's pack is amortised ($1/m$).
 - **M3 = mean over threads** of each thread's pack and compute time. Barrier waits are in neither. Wait share = 1 − (pack + compute) / wall (wall from the same instrumented run), so load imbalance shows without a max-over-threads column.
-- **M1 = 6 launches, 3 per packer**, order V S S V V S (house rule 2: ≥ 3 launches, alternating).
+- **M1 = 6 launches, 3 per packer**, order V S S V V S (house rule 2: ≥ 3 launches, alternating), `--tmin 3` (user, 2026-11-17; #61 and #83 used 2).
 - **Boards:** jbpi runs the 1T series (M1 + M2), jbpi2 the 8T series (M1 + M3), in parallel from separate checkouts. 1T/8T comparisons are ratios within one board.
 - Host test: pack + compute ≤ 1.05 × wall (upper bound only; the tiny test shapes are dominated by OpenMP start-up, so no lower bound).
 
