@@ -1,6 +1,7 @@
 # S6: 8-thread sweep: best tile per YOLO shape with 8 threads, and our GEMM against Héctor's GEMMLib
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/63
+**Audit #79 (2026-11-17):** brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/issue-79-audit-brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/issue-79-audit-brief.tex), reports in `.scratch/reports/issue-79/`. The sweep ran with the oracle off (now checked: 950/950 PASS); 5 of 8 per-n winners are inside launch noise; "ours faster" depends on his Y00.
 
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Board run.
 **Status:** ✅ Closed 2026-11-17 (merged in PR #72, then #74 into main). Run done on jbpi (6 of 6 steps ok); report: `HectorYolo/issue-63/report/issue-63-report.md`.
