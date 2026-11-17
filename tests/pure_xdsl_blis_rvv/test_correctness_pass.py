@@ -41,6 +41,7 @@ SHIPPED_CONFIG = HERE / "config.json"
 CORRECTNESS_CONFIG = HERE / "config_correctness.json"
 YOLO_CORRECTNESS_CONFIG = HERE / "config_yolo_correctness.json"  # issue #60
 PAPER_CORRECTNESS_CONFIG = HERE / "config_paper_correctness.json"  # issue #83
+ISSUE85_CONFIGS = [HERE / "config_issue85_correctness.json", HERE / "config_issue85_sweep.json"]  # issue #85
 
 # Elements per vector register at VLEN=256, fp32 (the generator's `vlen_elements`).
 VLEN_ELEMENTS = 8
@@ -205,7 +206,7 @@ def test_the_correctness_config_covers_every_shipped_pinning_with_the_check_on()
         assert row.datatype == "fp32" and row.method == "AXPY_FP32_Pack"
 
 
-@pytest.mark.parametrize("config_path", [SHIPPED_CONFIG, CORRECTNESS_CONFIG, YOLO_CORRECTNESS_CONFIG, PAPER_CORRECTNESS_CONFIG], ids=lambda p: p.name)
+@pytest.mark.parametrize("config_path", [SHIPPED_CONFIG, CORRECTNESS_CONFIG, YOLO_CORRECTNESS_CONFIG, PAPER_CORRECTNESS_CONFIG, *ISSUE85_CONFIGS], ids=lambda p: p.name)
 def test_no_config_row_runs_the_scalar_oracle_on_a_shape_bigger_than_b2(config_path: Path):
     # The oracle is scalar and O(m*n*k): on S5 (5000^3) it is hours. A row may only turn
     # the check on if every shape in its datasets is B2-sized or smaller.

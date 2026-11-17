@@ -1,0 +1,10 @@
+# Issue #85: correctness shapes under the scalar oracle's B2 limit (384x384x64 = 9.4M multiply-adds; docs/agents/execution.md
+# "Correctness pass"). They cover the sweep's extremes: n = 4 and 1024, k = 16 and 1152, m = 4800, and fringe rows and
+# columns on every tile of config_issue85_sweep.json (none of 300, 1200, 4800, 150, 1000 is a multiple of 32, 24 or 16; n = 1000 not of 15 or 7).
+# layer  M     N     K
+C_n4k16    1200  4     16
+C_n8       300   8     256
+C_m4800    4800  4     64
+C_k1152    300   16    1152
+C_n256     64    256   256
+C_n1024    150   1000  32

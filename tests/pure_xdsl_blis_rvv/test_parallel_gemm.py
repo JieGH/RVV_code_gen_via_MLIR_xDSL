@@ -100,6 +100,7 @@ def test_bad_thread_count_is_refused(tmp_path: Path) -> None:
 
 
 HARNESS = """\
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <vector>
@@ -127,8 +128,10 @@ static void run_case(int m, int n, int k, int mc, int nc, int kc, float beta) {
         std::vector<float> Bc((1 + kc) * (nr + nc), std::nanf(""));
         double pt = 0, kt = 0;
         uint64_t pb = 0;
+        auto t0 = std::chrono::steady_clock::now();
         gemm_blis_generic(m, n, k, alpha, A.data(), m, B.data(), k, beta, C.data(), m, Ac.data(), Bc.data(),
                           mc, nc, kc, mr, nr, &pt, &kt, &pb, %(scalar)s, false, 0, nullptr);
+        double wall = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
         double worst = 0;
         bool finite = true;
         for (int j = 0; j < n; ++j)
@@ -140,8 +143,8 @@ static void run_case(int m, int n, int k, int mc, int nc, int kc, float beta) {
                 if (!std::isfinite(got)) finite = false;
                 worst = std::max(worst, std::fabs(got - want));
             }
-        printf("CASE m=%%d n=%%d k=%%d beta=%%g rep=%%d finite=%%d max_err=%%.3g pack_bytes=%%llu\\n",
-               m, n, k, beta, rep, (int)finite, worst, (unsigned long long)pb);
+        printf("CASE m=%%d n=%%d k=%%d beta=%%g rep=%%d finite=%%d max_err=%%.3g pack_bytes=%%llu pt=%%.9g kt=%%.9g wall=%%.9g\\n",
+               m, n, k, beta, rep, (int)finite, worst, (unsigned long long)pb, pt, kt, wall);
     }
 }
 
@@ -159,7 +162,7 @@ int main() {
 """
 
 
-def _run_dispatch(project: Path, root: Path, scalar: bool = False) -> list[dict[str, str]]:
+def _run_dispatch(project: Path, root: Path, scalar: bool = False, instr: bool = False) -> list[dict[str, str]]:
     compiler = shutil.which("g++") or shutil.which("c++")
     if compiler is None:
         pytest.skip("no native C++ compiler available for the host-side dispatch test")
@@ -170,7 +173,7 @@ def _run_dispatch(project: Path, root: Path, scalar: bool = False) -> list[dict[
     (root / "harness.cpp").write_text(HARNESS % {"mr": MR, "nr": NR, "scalar": "true" if scalar else "false"})
     binary = root / "dispatch_test"
     build = subprocess.run(
-        [compiler, "-O1", "-std=c++17", "-fopenmp", "-DRVV_INSTRUMENTED=0", f"-I{stub_inc}", f"-I{project}",
+        [compiler, "-O1", "-std=c++17", "-fopenmp", f"-DRVV_INSTRUMENTED={int(instr)}", f"-I{stub_inc}", f"-I{project}",
          str(root / "harness.cpp"), str(root / "stub_kernels.cpp"), str(project / "gemm_dispatch_xdsl.cpp"),
          "-o", str(binary)],
         capture_output=True, text=True,
@@ -196,6 +199,24 @@ def test_the_parallel_gemm_with_scalar_packing_is_right(projects: dict[str, Path
     for row in _run_dispatch(projects[threads], tmp_path, scalar=True):
         assert row["finite"] == "1", row
         assert float(row["max_err"]) < 1e-4, row
+
+
+@pytest.mark.parametrize("scalar", [False, True])
+def test_the_instrumented_parallel_gemm_times_pack_and_compute(projects: dict[str, Path], tmp_path: Path, scalar: bool) -> None:
+    """Issue #85 M3: the instrumented 8-thread build is still right, and adds each thread's pack and compute
+    time, averaged over the threads, to pack_time / kernel_time. Barrier waits are in neither, so the two
+    together never exceed the call's wall time."""
+    for row in _run_dispatch(projects["8"], tmp_path, scalar=scalar, instr=True):
+        assert row["finite"] == "1", row
+        assert float(row["max_err"]) < 1e-4, row
+        pt, kt, wall = float(row["pt"]), float(row["kt"]), float(row["wall"])
+        assert pt > 0 and kt > 0, row
+        assert pt + kt <= wall * 1.05, row
+
+
+def test_the_uninstrumented_parallel_gemm_keeps_no_time(projects: dict[str, Path], tmp_path: Path) -> None:
+    for row in _run_dispatch(projects["8"], tmp_path):
+        assert float(row["pt"]) == 0 and float(row["kt"]) == 0, row
 
 
 def test_pack_bytes_match_one_thread(projects: dict[str, Path], tmp_path: Path) -> None:
@@ -241,7 +262,6 @@ def test_script_8_threads_run_on_cores_0_to_7_with_openmp_binding() -> None:
         (["--threads", "0"], ["--threads"]),
         (["--threads", "9"], ["--threads"]),
         (["--threads", "x"], ["--threads"]),
-        (["--threads", "8", "--instr"], ["--threads", "--instr"]),
         (["--threads", "8", "--no-ref-protocol"], ["--threads", "--no-ref-protocol"]),
         (["--threads", "8", "--pack-b", "col-g1"], ["--threads", "--pack-b"]),
         (["--threads", "8", "--zero-pack-lines"], ["--threads", "--zero-pack-lines"]),
@@ -262,6 +282,14 @@ def test_script_accepts_scalar_pack_at_8_threads() -> None:
     done = _run_script("--dry-run", "--threads", "8", "--scalar-pack")
     assert done.returncode == 0, done.stdout + done.stderr
     assert "scalar packing forced" in done.stdout
+
+
+def test_script_accepts_instr_at_8_threads_on_the_warm_up_protocol() -> None:
+    """Issue #85 M3: --threads 8 --instr runs, on the instrumented build's warm-up protocol."""
+    done = _run_script("--dry-run", "--threads", "8", "--instr")
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "INSTRUMENTED=1" in _line(done.stdout, "Build")
+    assert "WARM-UP" in _line(done.stdout, "Protocol")
 
 
 def test_the_provenance_block_names_threads_and_cores(tmp_path: Path) -> None:

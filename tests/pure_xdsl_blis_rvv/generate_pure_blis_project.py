@@ -287,11 +287,14 @@ def render_parallel_nest(
     no barrier, except before a short last block, whose split differs from the full ones'. One
     barrier ends each pc, before Bc is packed again. fp32 AXPY only (kc_pad == cur_kc). Vector packers,
     or with use_scalar_pack the 1-thread scalar packers on the same pieces (#83).
-    No timers or counters: the caller refuses the rest.
+    Timers (#85, instrumented build only): each thread sums its own pack and compute time; the means
+    over threads go to pack_time / kernel_time. Barrier waits count in neither. No counters.
     """
     return f"""
     (void) pack_time; (void) kernel_time; (void) perf; (void) zero_pack_lines; (void) pack_b_variant;
-    #pragma omp parallel num_threads({threads})
+    double pack_sum = 0, compute_sum = 0;  // per thread, summed over threads below (instrumented only)
+    (void) pack_sum; (void) compute_sum;
+    #pragma omp parallel num_threads({threads}) reduction(+ : pack_sum, compute_sum)
     {{
     const int32_t nth = omp_get_num_threads();
     const int32_t tid = omp_get_thread_num();
@@ -305,11 +308,14 @@ def render_parallel_nest(
             // B pack: unit u = (panel u / k_chunks, k-chunk u % k_chunks), dealt round robin.
             int32_t n_panels = (cur_nc + nr - 1) / nr;
             int32_t k_chunks = std::min((nth + n_panels - 1) / n_panels, cur_kc);
+            {{
+            rvv_region_timer _pack_clock(&pack_sum);
             for (int32_t u = tid; u < n_panels * k_chunks; u += nth) {{
                 int32_t j0 = (u / k_chunks) * nr, q = u % k_chunks;
                 int32_t k0 = cur_kc * q / k_chunks, k1 = cur_kc * (q + 1) / k_chunks;
                 if (use_scalar_pack) pack_CB_scalar(k1 - k0, std::min(nr, cur_nc - j0), b_ptr + j0 * ldb + k0, ldb, Bc + j0 * kc_pad + k0 * nr, nr);
                 else {pack_cb}(b_ptr + j0 * ldb + k0, Bc + j0 * kc_pad + k0 * nr, k1 - k0, std::min(nr, cur_nc - j0), ldb);
+            }}
             }}
             if (tid == 0) *pack_bytes += cur_kc * cur_nc * sizeof({c_type_b});
             #pragma omp barrier
@@ -327,8 +333,12 @@ def render_parallel_nest(
                 int32_t ir1 = std::min((m_panels * (tid + 1) / nth) * mr, cur_mc);
                 if (tid == 0) *pack_bytes += cur_mc * cur_kc * sizeof({c_type_a});
                 if (ir0 >= ir1) continue;
+                {{
+                rvv_region_timer _pack_clock(&pack_sum);
                 if (use_scalar_pack) pack_RB_scalar(ir1 - ir0, cur_kc, GET_PTR(A, pc * lda + ic + ir0), lda, Ac + ir0 * kc_pad, mr);
                 else {pack_rb}(GET_PTR(A, pc * lda + ic + ir0), Ac + ir0 * kc_pad, ir1 - ir0, cur_kc, lda);
+                }}
+                rvv_region_timer _compute_clock(&compute_sum);  // to the end of this ic block: its whole tile loop
                 for (int32_t jr = 0; jr < cur_nc; jr += nr) {{
                     int32_t cur_nr = std::min(cur_nc - jr, nr);
                     for (int32_t ir = ir0; ir < ir1; ir += mr) {{
@@ -345,6 +355,10 @@ def render_parallel_nest(
         }}
     }}
     }}
+#if RVV_INSTRUMENTED
+    *pack_time += pack_sum / {threads};
+    *kernel_time += compute_sum / {threads};
+#endif
 }}
 """
 
