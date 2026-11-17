@@ -1,0 +1,115 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=1.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+\setlist{nosep,leftmargin=1.3em}
+\titlespacing*{\section}{0pt}{1.1ex}{0.6ex}
+\titlespacing*{\subsection}{0pt}{0.9ex}{0.4ex}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45ex}
+\renewcommand{\arraystretch}{1.08}
+\newcommand{\iss}[1]{\href{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/#1}{\##1}}
+\newcommand{\bad}[1]{\textcolor{red!70!black}{\textbf{#1}}}
+\newcommand{\good}[1]{\textcolor{green!45!black}{\textbf{#1}}}
+\newcommand{\gap}[1]{\textcolor{orange!80!black}{\textbf{#1}}}
+
+\title{\vspace{-1.2cm}\textbf{Audit: did the YOLO work answer H\'ector's request?}\\[2pt]
+\large Brief of issue \iss{79}, covering \iss{58}, \iss{63} and \iss{56}}
+\author{RVV\_code\_gen\_via\_MLIR\_xDSL\\ \small branch \texttt{audit-did-the-yolo-work-answer-hectors-request}}
+\date{17 November 2026}
+
+\begin{document}
+\maketitle
+\vspace{-0.8cm}
+
+\paragraph{Scope.} An independent audit of the YOLO work: \iss{58} (parent), \iss{63} (S6, best tile per shape at 8
+threads, the result for H\'ector) and \iss{56} (S5, the parallel engine \iss{63} runs on). Three parts, each with its
+own report in \texttt{.scratch/reports/issue-79/}: \textbf{A}, fit to the request (\texttt{A-request-fit.md});
+\textbf{B}, the numbers (\texttt{B-numbers.md}, output in \texttt{B-recompute-output.md}); \textbf{C}, the engine
+(\texttt{C-engine.md}). Board numbers are from committed logs: \texttt{jbpi} (SpacemiT X60, VLEN 256),
+uninstrumented, reference protocol, \texttt{-{}-tmin 2}, \texttt{-{}-no-nc-overrides}; ours 8 threads on cores 0--7
+(\texttt{OMP\_PROC\_BIND=close}), 1 thread on core 4; his \texttt{gemm.x} at \texttt{b292c92}, 8 threads on cores
+0--7, no binding. GOPs by mean time, packing included, one pass over the 50 YOLO26 shapes.
+
+\section*{Verdicts}
+\begin{tabularx}{\linewidth}{@{}l l X@{}}
+\toprule
+item & verdict & finding \\
+\midrule
+A1 the question & \gap{GAP} & H\'ector asked for the best tile for \emph{his} parallel GEMM (most likely reading).
+\iss{63} measured \emph{our} GEMM; the step that tests our tiles in his GEMM (\iss{63} Q7) was skipped. \\
+A2 transfer & \gap{GAP} & Blocking (his MC = KC = 256), barriers (his: one per \texttt{ic} block), kernels (his
+library has none of our winners), im2col coupling (\texttt{PK\_MR = YOLO\_MR}, one MR for the whole network) and fp16
+plans all differ. \\
+B1 correctness & \bad{FAIL} $\to$ fixed & All 2850 rows of the 8-thread sweep ran with the oracle off. Only 24x8
+had ever been checked at 8 threads. Fixed by C3. \\
+B2 headline & \good{PASS} & All numbers reproduce within 0.1 ms with an independent script. \\
+B3 best per shape & \good{PASS} & Picked on one launch, scored on the other two: 8--11 ms per pass faster than the
+best single tile. \\
+B4 best per $n$ & \gap{GAP} & Only $n$ = 4, 8, 32 keep their winner in all 3 launches; the rest sit inside launch
+noise. Read as a family. \\
+B5 ours vs his & \gap{GAP} & ``Ours faster'' rests on his Y00 (6.7--105.5\,ms over 9 launches). Without Y00 and at the
+same tile (16x8), his engine is 15\% faster: 123.4 against 141.6\,ms. \\
+C1 host tests & \good{PASS} & 21/21 parallel tests; 623/623 full suite. \\
+C2 code read & \good{PASS} & \texttt{render\_parallel\_nest} matches \iss{56} \S5; no race found. \\
+C3 board check & \good{PASS} & All 19 tiles $\times$ 50 shapes at 8 threads against the scalar oracle: 950/950
+PASS (\texttt{logs/run\_2026-11-17\_092354}, \texttt{jbpi}, 17 Nov, other users none). \\
+\bottomrule
+\end{tabularx}
+
+\section*{Numbers (one pass over 50 shapes)}
+\begin{tabular}{@{}l r r r r r@{}}
+\toprule
+what & L1 & L2 & L3 & mean ms & GOPs \\
+\midrule
+ours 1T 24x8, core 4 (\iss{61}) & 698.9 & 701.2 & 696.6 & 698.9 & 4.25 \\
+ours 8T best single tile 16x12 & 144.8 & 145.3 & 147.0 & 145.7 & 20.41 \\
+ours 8T best tile per shape & 134.1 & 132.8 & 135.8 & 134.2 & 22.15 \\
+ours 8T at his tile 16x8 & 149.7 & 147.7 & 152.2 & 149.8 & 19.85 \\
+his 8T & 136.8 & 184.7 & 229.7 & 183.7 & 16.18 \\
+\midrule
+ours 8T best per shape, no Y00 & 127.9 & 126.6 & 129.5 & 128.0 & 22.72 \\
+ours 8T 16x8, no Y00 & 141.5 & 139.5 & 143.9 & 141.6 & 20.53 \\
+his 8T, no Y00 & 123.9 & 122.1 & 124.2 & 123.4 & 23.56 \\
+\bottomrule
+\end{tabular}
+
+\paragraph{Tile family at 8 threads (ours).} MR\,=\,32 with NR\,=\,4 for $n \le 8$; MR\,=\,32 with NR\,=\,6--7 for
+$n$\,=\,16--64; MR\,=\,16 with NR\,=\,12--15 for $n \ge 80$. Closest kernels in his library: 32x8, 16x16 (and 16x4 at $n$\,=\,4).
+
+\section*{The two anomalies (causes named, not proven)}
+\begin{itemize}
+\item \textbf{His Y00} (76800x16x27) varies 15.8x across 9 committed launches; no other shape of his moves more than
+1.56x. Y00 has 300 \texttt{ic} blocks, so 300 barriers per call (next highest: 19), and it is the first call of
+each process. Test: run \texttt{gemm.x} with Y00 moved to a later row.
+\item \textbf{Our slow reps at 8 threads}: 2--10\% of reps on mid-size shapes cost a roughly fixed extra 8--13\,ms and
+take 30--46\% of the time. Core 0 spent 13.1\% of its time in the kernel during \iss{63}'s runs against 0.2--0.5\% on
+cores 1--7, and our threads are bound, so the thread on core 0 can't move. Test: 7 threads on cores 1--7, or binding off.
+\end{itemize}
+
+\section*{Fixed on this branch}
+\begin{itemize}
+\item \texttt{config\_yolo\_correctness\_8t.json} and the board pass C3 (all 19 tiles, 50 shapes, 8 threads, oracle on).
+\item \texttt{HectorYolo/issue-63/README.md}: a ``read this before using the tile list'' block (whose GEMM, family
+not exact winners, tile-for-tile numbers, correctness).
+\item Links to this audit from \iss{56}, \iss{58} and \iss{63}.
+\end{itemize}
+
+\section*{Left open for the user}
+\begin{enumerate}
+\item Which reading H\'ector meant. If his GEMM: part D, his \texttt{gemm\_B3A2C0} rebuilt to use his own 32x8 /
+16x16 kernels by $n$ (local patch, no new kernel code), timed A-B-B-A against stock at 8 threads.
+\item His Y00: one short \texttt{gemm.x} run with Y00 moved.
+\item Our slow reps: 8 threads on 0--7 against 7 threads on 1--7.
+\end{enumerate}
+
+\end{document}

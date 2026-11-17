@@ -1,6 +1,7 @@
 # Parent: best microkernel size for the YOLO26 GEMM shapes on the K1, one core first, then 8 threads (Héctor's request)
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/58
+**Audit #79 (2026-11-17):** brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/issue-79-audit-brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/issue-79-audit-brief.tex), reports in `.scratch/reports/issue-79/`. Verdict: the tile answer comes from our GEMM, not Héctor's (GAP; his GEMM with other tiles is still untested); numbers reproduce; per-n winners are a family, not exact.
 
 **Role / Label:** `needs-triage`. Parent issue, opened 2026-11-15 for review.
 **Status:** ✅ Closed 2026-11-17. All sub-issues done and merged into main: #59, #60, #61 (PR #64), #62 (PR #66), #56 (PR #69), #63 (PR #72). Reports: `HectorYolo/issue-{56,61,62,63}/`.
