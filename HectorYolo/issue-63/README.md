@@ -16,6 +16,15 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/63 · **engin
 
 His Y00 (76800x16x27) swung 12.9 → 62.6 → 105.5 ms between launches; without it his GEMM is slightly ahead. Best tile per n at 8T: 32x4 (n = 4, 8), 32x7 (16, 32), 32x6 (64), 16x15 (80, 128), 16x14 (256).
 
+## Read this before using the tile list (audit #79, 2026-11-17)
+
+Audit: [`.scratch/reports/issue-79/`](../../.scratch/reports/issue-79/) (Part A: fit to Héctor's request, Part B: numbers, Part C: engine).
+
+- **These are the best tiles in *our* parallel GEMM, not in his.** His `gemm_B3A2C0` was not rebuilt with other tiles (#63 Q7 skipped). His blocking (MC = KC = 256), thread split (a barrier per `ic` block) and kernels differ from ours, so the ranking may not carry over. His library has fp32 kernels 32x8, 16x16 and 8x16 but none of the tiles above. His im2col+pack uses one MR for the whole network (`PK_MR = YOLO_MR`).
+- **Read the per-n list as a family, not exact winners.** Only n = 4, 8 and 32 keep the same winner in all 3 launches. For the other n the gap to the runner-up is smaller than the launch spread. What holds: MR = 32 with NR = 4 for n ≤ 8, MR = 32 with NR = 6-7 for n = 16-64, MR = 16 with NR = 12-15 for n ≥ 80.
+- **Same tile, same shapes:** ours at his tile 16x8 is 149.8 ms per pass (19.85 GOPs), 141.6 ms without Y00, against his 123.4 ms without Y00. His engine is about 15% faster tile for tile; ours gains from the tile choice.
+- **Correctness:** the timing launches here ran with the oracle off. Afterwards all 19 tiles were checked at 8 threads on all 50 shapes: 950 of 950 PASS (`tests/pure_xdsl_blis_rvv/logs/run_2026-11-17_092354/`, audit Part C3).
+
 ## Folders
 
 | folder | what |

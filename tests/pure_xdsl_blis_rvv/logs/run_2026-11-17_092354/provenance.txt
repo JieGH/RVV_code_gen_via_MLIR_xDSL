@@ -1,0 +1,99 @@
+Run on the board, generated 2026-11-17T09:23:54+01:00 by compile_macro_bench.sh
+  board          : jlei@jbpi
+  build          : UNINSTRUMENTED (INSTRUMENTED=0) -- comparable to the reference design
+  protocol       : REFERENCE (tmin=0.2 s) -- no warm-up, reps until tmin
+  pack lines     : not cleared: each line the packer writes is read from the L2 first
+  pack B         : row
+  threads        : 8 on cores 0-7
+  logs           : raw_*_noinstr_refproto_no_nc_override.txt
+  cpu pin        : 0-7
+  affinity       : pid 729268's current affinity list: 0-7
+  host           : jbpi (Linux 6.6.63 riscv64)
+  compiler (gcc) : gcc (Bianbu 13.2.0-23ubuntu4bb3) 13.2.0
+  compiler (g++) : g++ (Bianbu 13.2.0-23ubuntu4bb3) 13.2.0
+  governor       :  8 performance 
+  load average   : 2.26 2.07 2.03 2/457 729283
+  other users    : none
+  taken          : 2026-11-17T08:34:10+01:00
+  /proc/cpuinfo  :
+processor	: 0
+hart		: 0
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt_ime
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 1
+hart		: 1
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt_ime
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 2
+hart		: 2
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt_ime
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 3
+hart		: 3
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt_ime
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 4
+hart		: 4
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 5
+hart		: 5
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 6
+hart		: 6
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+
+processor	: 7
+hart		: 7
+model name	: Spacemit(R) X60
+isa		: rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_zve32x_zve64d_zve64f_zve64x_zvfh_zvfhmin_zvkt_sscofpmf_sstc_svinval_svnapot_svpbmt
+mmu		: sv39
+uarch		: spacemit,x60
+mvendorid	: 0x710
+marchid		: 0x8000000058000001
+mimpid		: 0x1000000049772200
+  raw events     : none
+  busy share     : fp32_AXPY_FP32_Pack_vlen256_MR16NR10: cpu0 100% cpu1 21% cpu2 21% cpu3 21% cpu4 21% cpu5 21% cpu6 21% cpu7 21%; fp32_AXPY_FP32_Pack_vlen256_MR16NR12: cpu0 100% cpu1 21% cpu2 21% cpu3 21% cpu4 21% cpu5 21% cpu6 21% cpu7 21%; fp32_AXPY_FP32_Pack_vlen256_MR16NR14: cpu0 99% cpu1 22% cpu2 21% cpu3 21% cpu4 21% cpu5 21% cpu6 21% cpu7 21%; fp32_AXPY_FP32_Pack_vlen256_MR16NR15: cpu0 99% cpu1 21% cpu2 21% cpu3 21% cpu4 21% cpu5 21% cpu6 21% cpu7 21%; fp32_AXPY_FP32_Pack_vlen256_MR16NR4: cpu0 99% cpu1 21% cpu2 21% cpu3 21% cpu4 21% cpu5 21% cpu6 21% cpu7 21%; fp32_AXPY_FP32_Pack_vlen256_MR16NR6: cpu0 99% cpu1 21% cpu2 21% cpu3 20% cpu4 20% cpu5 20% cpu6 20% cpu7 20%; fp32_AXPY_FP32_Pack_vlen256_MR16NR8: cpu0 99% cpu1 21% cpu2 21% cpu3 20% cpu4 21% cpu5 21% cpu6 21% cpu7 21%; fp32_AXPY_FP32_Pack_vlen256_MR24NR4: cpu0 99% cpu1 21% cpu2 21% cpu3 21% cpu4 21% cpu5 21% cpu6 21% cpu7 21%; fp32_AXPY_FP32_Pack_vlen256_MR24NR6: cpu0 99% cpu1 21% cpu2 20% cpu3 20% cpu4 20% cpu5 20% cpu6 20% cpu7 20%; fp32_AXPY_FP32_Pack_vlen256_MR24NR8: cpu0 99% cpu1 21% cpu2 21% cpu3 21% cpu4 21% cpu5 21% cpu6 21% cpu7 23%; fp32_AXPY_FP32_Pack_vlen256_MR24NR9: cpu0 99% cpu1 21% cpu2 21% cpu3 21% cpu4 21% cpu5 21% cpu6 21% cpu7 21%; fp32_AXPY_FP32_Pack_vlen256_MR32NR4: cpu0 99% cpu1 21% cpu2 21% cpu3 21% cpu4 21% cpu5 21% cpu6 21% cpu7 21%; fp32_AXPY_FP32_Pack_vlen256_MR32NR6: cpu0 88% cpu1 19% cpu2 18% cpu3 19% cpu4 18% cpu5 18% cpu6 18% cpu7 18%; fp32_AXPY_FP32_Pack_vlen256_MR32NR7: cpu0 99% cpu1 21% cpu2 21% cpu3 21% cpu4 21% cpu5 21% cpu6 21% cpu7 21%; fp32_AXPY_FP32_Pack_vlen256_MR8NR12: cpu0 99% cpu1 21% cpu2 21% cpu3 21% cpu4 21% cpu5 21% cpu6 21% cpu7 21%; fp32_AXPY_FP32_Pack_vlen256_MR8NR16: cpu0 99% cpu1 21% cpu2 20% cpu3 21% cpu4 21% cpu5 21% cpu6 21% cpu7 21%; fp32_AXPY_FP32_Pack_vlen256_MR8NR24: cpu0 100% cpu1 21% cpu2 21% cpu3 21% cpu4 21% cpu5 21% cpu6 21% cpu7 21%; fp32_AXPY_FP32_Pack_vlen256_MR8NR4: cpu0 73% cpu1 16% cpu2 15% cpu3 15% cpu4 15% cpu5 15% cpu6 16% cpu7 15%; fp32_AXPY_FP32_Pack_vlen256_MR8NR8: cpu0 100% cpu1 21% cpu2 21% cpu3 21% cpu4 21% cpu5 21% cpu6 21% cpu7 21%

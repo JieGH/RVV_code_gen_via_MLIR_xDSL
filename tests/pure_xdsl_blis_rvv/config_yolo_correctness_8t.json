@@ -1,0 +1,26 @@
+[
+    // Issue #79 (audit of #63): the 8-thread correctness pass the #63 sweep did not make. The 19 tiles of
+    // config_yolo_search.json on the full YOLO26 set, skip_ref_run OFF so the scalar oracle checks every row
+    // (#56 ran the oracle on this set at 24x8). Run: compile_macro_bench.sh --threads 8 --no-nc-overrides
+    // --tmin 0.2 --config config_yolo_correctness_8t.json. Every row must log Status=PASS.
+    // Format: [datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run, iterations].
+    ["fp32", "AXPY_FP32_Pack", [8, 4], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [8, 8], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [8, 12], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [8, 16], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [8, 24], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 4], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 6], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 8], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 10], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 12], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 14], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [24, 4], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [24, 6], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [24, 9], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 4], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["yolo26_k1.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["yolo26_k1.dat"], false, 5]
+]
