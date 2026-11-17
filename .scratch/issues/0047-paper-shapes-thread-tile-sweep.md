@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/71
 
 **Role / Label:** `needs-triage`. Board run. Independent of the YOLO work (#58, #63).
-**Status:** 📝 Open. Run done 2026-11-17 on jbpi (6 of 6 steps ok); results: `PaperSweep/issue-71/README.md`. Not closed.
+**Status:** ✅ Closed 2026-11-17 (merged in PR #73, then #74 into main). Run done on jbpi (6 of 6 steps ok); results: `PaperSweep/issue-71/README.md`.
 **Target:** `jbpi`, one board for the whole series.
 **Shapes:** `datasets/paper_bert_square.dat`, the paper's Table 1 (arXiv 2603.17800v1).
 
