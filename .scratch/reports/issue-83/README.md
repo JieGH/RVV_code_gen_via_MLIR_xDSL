@@ -4,6 +4,7 @@ The YOLO, BERT and Square sweeps (#61, #63, #71) were run again with one change:
 
 - **Brief (PDF):** [`report/issue83_brief.pdf`](report/issue83_brief.pdf) ([LaTeX](report/issue83_brief.tex))
 - **All tables:** [`report/tables.md`](report/tables.md)
+- **1T against 8T per shape (added 2026-11-17):** brief Part 1b, one table each for YOLO and BERT/Square: vector and scalar GOPs (by mean time / by median rep) at 1T and 8T, faster packer in bold, 8T/1T per packer.
 - **Script:** [`report/make_tables_and_figures.py`](report/make_tables_and_figures.py), run from `tests/pure_xdsl_blis_rvv/logs`. It writes `tables.md` and the chart data (`report/data/*.csv`); the brief draws the charts in LaTeX.
 
 ## Answer
