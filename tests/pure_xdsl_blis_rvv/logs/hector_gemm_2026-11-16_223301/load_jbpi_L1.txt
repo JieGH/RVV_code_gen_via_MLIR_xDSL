@@ -1,0 +1,12 @@
+jlei                  500   3       00:00 ps
+root                 11.9   0       00:00 sshd
+root                  2.0   0       02:27 kworker/0:1-cgroup_destroy
+root                  0.6   3 105-13:53:06 disp_eng_share_thread
+root                  0.2   0  1-01:33:14 kworker/0:2-cgroup_destroy
+systemd-oom           0.0   2 105-13:53:13 systemd-oomd
+root                  0.0   7       22:22 kworker/u16:6-rpciod
+root                  0.0   1 105-13:53:21 vq1
+root                  0.0   1 105-13:53:21 vq0
+messagebus            0.0   1 105-13:53:12 dbus-daemon
+root                  0.0   2 105-13:53:03 bluetoothd
+root                  0.0   1 105-13:53:12 NetworkManager

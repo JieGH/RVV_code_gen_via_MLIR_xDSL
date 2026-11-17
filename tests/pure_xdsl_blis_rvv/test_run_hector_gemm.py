@@ -112,3 +112,23 @@ def test_a_stopped_series_still_dumps_what_it_has(tmp_path: Path):
     _, logs = run_series(tmp_path, "--issue", "70", RUN_ERROR="2")
     dest = tmp_path / "HectorYolo" / "issue-70" / series_dir(logs).name
     assert (dest / "L1_T1_a.log").exists() and (dest / "hector_gemm_report.md").exists()
+
+
+# Issue #63: his 8-thread launches only, one at a time between ours; the build on the shared home is reused.
+def test_threads_8_runs_only_8_thread_launches_on_cores_0_to_7(tmp_path: Path):
+    done, logs = run_series(tmp_path, "--threads", "8", "--launches", "2")
+    assert done.returncode == 0, done.stdout + done.stderr
+    runs = (logs / "runs.txt").read_text().splitlines()
+    assert len(runs) == 2 and all("taskset -c 0-7 " in r and "OMP_NUM_THREADS=8 " in r for r in runs)
+
+
+def test_threads_takes_1_or_8_only(tmp_path: Path):
+    done, _ = run_series(tmp_path, "--threads", "4")
+    assert done.returncode != 0 and "--threads takes 1 or 8" in done.stderr
+
+
+def test_no_build_skips_the_copy_and_build(tmp_path: Path):
+    done, logs = run_series(tmp_path, "--threads", "8", "--launches", "1", "--no-build")
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert not (logs / "other.txt").exists()
+    assert len((logs / "runs.txt").read_text().splitlines()) == 1
