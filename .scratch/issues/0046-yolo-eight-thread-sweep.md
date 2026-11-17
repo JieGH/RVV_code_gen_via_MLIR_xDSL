@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/63
 
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Board run.
-**Status:** 📝 Open. Not run.
+**Status:** 📝 Open. Run done 2026-11-17 on jbpi (6 of 6 steps ok); report: `HectorYolo/issue-63/report/issue-63-report.md`. Not closed.
 **Blocked by:** nothing. #61 (S3) done; #56 (S5, parallel GEMM) done 2026-11-16: `--threads 8`, report `HectorYolo/issue-56/`.
 **Target:** `jbpi` or `jbpi2`, all 8 cores.
 **Shapes:** `datasets/yolo26_k1.dat`.
@@ -23,6 +23,21 @@ This is Héctor's request: **with 8 threads, which tile is fastest on each YOLO 
 - **(a)** Allow core 0 for this series only, through a new `--threads 8` path that pins threads 0-7 and records it in `provenance.txt`. Every number carries the note.
 - **(b)** Also run 7 threads (cores 1-7) and 4 threads (cores 4-7, one cluster) as clean points beside the 8-thread one.
 - Proposed: (a) + (b), so the 8-thread number answers Héctor and the 4- and 7-thread numbers show what core 0 costs.
+
+**Decided 2026-11-16 (grilling, defaults accepted): (a) only.** Fact: `--threads N` pins cores `0-(N-1)` (`compile_macro_bench.sh:241`), so 7 or 4 threads would still use core 0; (b) needs a new core-list option. #56 and #62 already ran 8 threads on cores 0-7 under the same exception. (b) stays an optional follow-up, not part of this issue.
+
+## 2a. Decisions (grilling, 2026-11-16, defaults accepted)
+
+| # | Question | Decision |
+|---|---|---|
+| Q1 | Core 0 | (a) only: 8 threads on cores 0-7, `OMP_PROC_BIND=close OMP_PLACES=cores`, note in `provenance.txt` and every table. No 4-/7-thread runs. |
+| Q2 | Our runner | Add `--threads N` to `run_yolo_sweep.sh` (passed to `compile_macro_bench.sh`, replaces `--cpu`). No new sweep script. |
+| Q3 | Tiles | All 19 Candidate Tiles of `config_yolo_search.json` (#61), rotated per launch as in #61. |
+| Q4 | Settings | Board `jbpi` (`jbpi2` if busy, one board for the whole series), uninstrumented, reference protocol, `--tmin 2`, `--no-nc-overrides`, vector packer: as #56 and #61. |
+| Q5 | Héctor's side | Rerun, not reuse #62: his `gemm.x` at commit `b292c92`, 8 threads on cores 0-7, `TIMIN=2.0`, via `run_hector_gemm.sh`. Add an 8-thread-only mode to it. |
+| Q6 | Alternation | One thin series script runs launches ours, his, his, ours, ours, his (3 each, A-B-B-A) on one board, with the usual idle check before each launch. |
+| Q7 | §3 step 3 (patched GEMMLib with our tiles) | Skip. Optional follow-up only. |
+| Q8 | Output | `HectorYolo/issue-63/` with series folders, `README.md` and `report/` in the issue-62 style; 1-core column from #61's committed logs; both GOPs metrics for ours, mean time only for his. |
 
 ## 3. Run
 
@@ -50,3 +65,13 @@ This is Héctor's request: **with 8 threads, which tile is fastest on each YOLO 
 - [ ] Core-0 decision recorded.
 - [ ] 3 launches per side, alternating, idle board, logs committed.
 - [ ] Table and short answer committed and linked from the parent.
+
+## 7. Result (2026-11-17)
+
+Run on `jbpi`, 21:18 → 01:00, ours L1, his, his, ours L2, ours L3, his; all 6 steps ok, no other user's job. Report: [`HectorYolo/issue-63/report/issue-63-report.md`](../../HectorYolo/issue-63/report/issue-63-report.md), README `HectorYolo/issue-63/README.md`.
+
+- One pass over 50 shapes, GOPs by mean time: ours 8T best single tile 16x12 145.6 ms (20.43 GOPs); ours 8T best per shape 134.1 ms (22.17); his 8T 183.7 ms (16.18).
+- His Y00 (76800x16x27) swung 12.9 → 62.6 → 105.5 ms between launches. Without Y00: ours 127.9 ms (22.74), his 123.4 ms (23.56).
+- Best tile per n at 8T: 32x4 (n = 4, 8), 32x7 (16, 32), 32x6 (64), 16x15 (80, 128), 16x14 (256). At 1T (#61): MR = 24 mostly.
+- At 8T our median rep is far above our mean on mid-size shapes (Y32: 61.09 against 38.19 GOPs); not studied.
+- Run folders: ours `run_2026-11-16_222551`, `run_2026-11-16_234245`, `run_2026-11-17_005337`; his `hector_gemm_2026-11-16_222943`, `hector_gemm_2026-11-16_223301`, `hector_gemm_2026-11-17_005723`.

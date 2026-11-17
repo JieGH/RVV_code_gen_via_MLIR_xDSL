@@ -48,12 +48,12 @@ while [ "$#" -gt 0 ]; do [ "$1" = --heatmap ] && touch "$2"; shift; done
 """
 
 
-def run_series(tmp_path: Path, *extra: str, behaviour: str = "ok,ok,ok", **env_extra: str
-               ) -> tuple[subprocess.CompletedProcess[str], Path]:
+def run_series(tmp_path: Path, *extra: str, behaviour: str = "ok,ok,ok", dataset: str = "yolo26_k1.dat",
+               **env_extra: str) -> tuple[subprocess.CompletedProcess[str], Path]:
     for name, text in (("run.sh", STUB_RUN), ("ps.sh", STUB_PS), ("report.sh", STUB_REPORT)):
         (tmp_path / name).write_text(text)
         (tmp_path / name).chmod(0o755)
-    (tmp_path / "dataset.dat").write_text((HERE / "datasets/yolo26_k1.dat").read_text())
+    (tmp_path / "dataset.dat").write_text((HERE / "datasets" / dataset).read_text())
     logs = tmp_path / "logs"
     logs.mkdir(exist_ok=True)
     env = {**os.environ, "YOLO_SWEEP_LOGS": str(logs), "YOLO_SWEEP_RUN": str(tmp_path / "run.sh"),
@@ -170,3 +170,55 @@ def test_the_issue_folder_defaults_to_61(tmp_path: Path):
     done, _ = run_series(tmp_path, "--launches", "1", behaviour="ok")
     assert done.returncode == 0, done.stdout + done.stderr
     assert list((tmp_path / "HectorYolo" / "issue-61").glob("yolo_sweep_*/tile_search_report.md"))
+
+
+# Issue #63: the same Tile Search at 8 threads, one launch at a time so another program's launches can go between.
+def test_threads_8_replaces_the_core_and_tells_the_bench_to_run_8_threads(tmp_path: Path):
+    done, logs = run_series(tmp_path, "--threads", "8", "--launches", "1", behaviour="ok")
+    assert done.returncode == 0, done.stdout + done.stderr
+    call = (logs / "calls.txt").read_text()
+    assert "--threads 8" in call and "--cpu" not in call
+    assert "Threads   : 8 on cores 0-7" in (series_dir(logs) / "plan.txt").read_text()
+
+
+def test_threads_with_cpu_is_refused(tmp_path: Path):
+    done, logs = run_series(tmp_path, "--threads", "8", "--cpu", "5")
+    assert done.returncode != 0 and "--threads fixes the cores" in done.stderr
+    assert not (logs / "calls.txt").exists()
+
+
+def test_launch_runs_only_that_launch_with_its_rotation(tmp_path: Path):
+    done, logs = run_series(tmp_path, "--launches", "3", "--launch", "2", behaviour="ok")
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert len((logs / "calls.txt").read_text().splitlines()) == 1
+    sd = series_dir(logs)
+    assert tiles(sd / "config_L2.json")[0] == "16x8" and not (sd / "config_L1.json").exists()
+    assert "Series finished: 1 of 1 launches ok" in done.stdout
+
+
+def test_launch_beyond_launches_is_refused(tmp_path: Path):
+    done, _ = run_series(tmp_path, "--launches", "3", "--launch", "4")
+    assert done.returncode != 0 and "--launch takes 1 to 3" in done.stderr
+
+
+def test_threads_other_than_1_or_8_is_refused(tmp_path: Path):
+    done, _ = run_series(tmp_path, "--threads", "4")
+    assert done.returncode != 0 and "--threads takes 1 or 8" in done.stderr
+
+
+# The paper's BERT and square shapes go through the same sweep with their own config.
+def test_config_runs_the_paper_shapes_on_the_19_tiles(tmp_path: Path):
+    done, logs = run_series(tmp_path, "--config", str(HERE / "config_paper_search.json"), "--launches", "1",
+                            behaviour="ok", dataset="paper_bert_square.dat")
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "19 tiles x datasets/paper_bert_square.dat" in done.stdout
+    cfg = series_dir(logs) / "config_L1.json"
+    assert len(tiles(cfg)) == 19 and "yolo26_k1.dat" not in cfg.read_text()
+
+
+def test_a_config_mixing_datasets_is_refused(tmp_path: Path):
+    mixed = tmp_path / "mixed.json"
+    rows = [r for r in (HERE / "config_paper_search.json").read_text().splitlines() if r.lstrip().startswith('["')]
+    mixed.write_text("[\n" + rows[0] + "\n" + rows[1].replace("paper_bert_square.dat", "yolo26_k1.dat") + "\n]\n")
+    done, _ = run_series(tmp_path, "--config", str(mixed))
+    assert done.returncode != 0 and "must run paper_bert_square.dat" in done.stderr

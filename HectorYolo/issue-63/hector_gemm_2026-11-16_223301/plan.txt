@@ -1,0 +1,6 @@
+Issue #63: Héctor's GEMMLib @ b292c92, unedited, built and run on an idle board of jbpi
+  Build    : his Makefile + Makefile.inc (gcc-14 -O3 -fopenmp, NQ_FP32, K1), make clean && make && make install (serial, his README), in ~/hector_gemmlib_b292c92 -- skipped (--no-build), the existing build is used
+  Run      : his gemm.bin command line, TIMIN=2, TEST=T, gemm_study/yolo.dat; no OMP_PROC_BIND (as his)
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7 (core 0: user's exception, 8-thread run only)
+  Order    : 8 (threads per launch)
+  Load     : both boards read before every launch; busy -> side note; none idle -> wait 10 min
