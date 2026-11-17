@@ -8,6 +8,7 @@
 \usepackage{array}
 \usepackage[table]{xcolor}
 \usepackage{pgfplots}
+\usepackage{pdflscape}
 \pgfplotsset{compat=1.18, table/col sep=comma}
 \usepgfplotslibrary{fillbetween}
 \definecolor{vec}{HTML}{2A78D6}
@@ -18,23 +19,41 @@
 \pgfplotsset{house/.style={axis line style={muted}, tick style={muted}, tick label style={font=\scriptsize},
   label style={font=\small}, title style={font=\small\bfseries, align=left}, legend style={font=\scriptsize, draw=none, fill=white},
   legend cell align=left, xmajorgrids, grid style={gridc}}}
-% Dot strips: one small axis per shape, GOPs along x in that shape's own window; vector launches on the top line,
-% scalar on the bottom line; tall tick = mean of the 3 launches; dashed line = vector mean.
-\pgfplotsset{dotrow/.style={house, scale only axis, width=9.2cm, height=0.55cm, anchor=north west, y dir=reverse,
-  ymin=-0.7, ymax=1.7, ytick=\empty, axis y line=none, axis x line*=bottom, xmajorgrids, max space between ticks=45,
-  tick label style={font=\tiny}, x tick label style={/pgf/number format/.cd, fixed, precision=2},
-  scaled x ticks=false, clip=false}}
-% \dotchart{key}{page}{title}
-\newcommand{\dotchart}[3]{%
-\begin{center}
-{\small\bfseries #3}\\[2pt]
-{\scriptsize \textcolor{vec}{$\bullet$} vector launch \quad \textcolor{scal}{$\bullet$} scalar launch \quad
-\textbf{|} mean of 3 launches \quad \textcolor{muted}{- - -} vector mean \quad right: mean GOPs, \textcolor{vec!70!black}{vector} / \textcolor{scal!70!black}{scalar}}\\[6pt]
-\hspace*{3.2cm}\input{data/dots_#1_#2.tex}\\[4pt]
-{\footnotesize\color{muted} Uninstrumented build, reference protocol, best tile, 3 launches per side. Each row has its own
-GOPs scale, zoomed to that shape (at least 8\% of its vector mean wide), so the launch-to-launch jitter is visible;
-compare rows by their numbers, not their positions.}
-\end{center}}
+\input{data/xmax.tex}
+% \gopsbars{data file}{plot height}{xmax}{title}: one row per shape (first on top), GOPs along x. Bar = mean of 3
+% launches, whisker = launch min-max, value printed past the whisker. Wide (landscape page) so the whiskers show.
+\newcommand{\gopsbars}[4]{%
+\begin{tikzpicture}
+\begin{axis}[house, scale only axis, width=18.6cm, height=#2, y dir=reverse,
+  ytick=data, yticklabels from table={#1}{label}, enlarge y limits={abs=0.6}, xmin=0, xmax=#3,
+  xlabel={GOPs by mean time (best tile)}, title={#4}, title style={at={(0,1)}, anchor=south west, xshift=-4.2cm, yshift=12pt},
+  legend style={at={(1,1)}, anchor=south east, legend columns=2, /tikz/every even column/.append style={column sep=6pt}},
+  axis y line*=left, axis x line*=bottom, max space between ticks=40,
+  every node near coord/.append style={font=\scriptsize, anchor=west, xshift=1pt, /pgf/number format/.cd, fixed, fixed zerofill, precision=2}]
+\addplot[xbar, area legend, bar width=0.3, bar shift=-0.155, fill=vec, draw=none] table[y=idx, x=vec]{#1};
+\addplot[xbar, area legend, bar width=0.3, bar shift=0.155, fill=scal, draw=none] table[y=idx, x=scal]{#1};
+% whiskers: own plots at each bar's centre (error bars on a shifted bar stay on the row centre)
+\addplot[draw=none, mark=none, forget plot, error bars/.cd, x dir=both, x explicit,
+  error bar style={black, line width=0.6pt}, error mark=|, error mark options={black, line width=0.6pt, mark size=2.6pt}]
+  table[x=vec, y expr=\thisrow{idx}-0.155, x error plus=vhi, x error minus=vlo]{#1};
+\addplot[draw=none, mark=none, forget plot, error bars/.cd, x dir=both, x explicit,
+  error bar style={black, line width=0.6pt}, error mark=|, error mark options={black, line width=0.6pt, mark size=2.6pt}]
+  table[x=scal, y expr=\thisrow{idx}+0.155, x error plus=shi, x error minus=slo]{#1};
+\addplot[only marks, mark=none, nodes near coords, point meta=explicit, forget plot]
+  table[x expr=\thisrow{vec}+\thisrow{vhi}, y expr=\thisrow{idx}-0.155, meta=vec]{#1};
+\addplot[only marks, mark=none, nodes near coords, point meta=explicit, forget plot]
+  table[x expr=\thisrow{scal}+\thisrow{shi}, y expr=\thisrow{idx}+0.155, meta=scal]{#1};
+\legend{vector packer, scalar packer}
+\end{axis}
+\end{tikzpicture}}
+% \barpage{data file}{plot height}{xmax}{title}{note}: one landscape page
+\newcommand{\barpage}[5]{%
+\begin{landscape}
+\centering
+\gopsbars{#1}{#2}{#3}{#4}\\[2pt]
+{\footnotesize\color{muted} Uninstrumented build, reference protocol, best tile, 3 launches per side; bar = mean of
+launches, whisker = launch min--max; value = GOPs by mean time. #5}
+\end{landscape}}
 % \gapnoise{1|8}{title}: one dot per shape; right of the diagonal = the packer gap is larger than the launch jitter
 \newcommand{\gapnoise}[2]{%
 \begin{tikzpicture}
@@ -141,27 +160,6 @@ C1/C2 YOLO-like 1T/8T on \texttt{jbpi} (76/76 and 76/76 PASS), C3/C4 paper-like 
 T3 BERT/Square 1T and 8T on \texttt{jbpi2}; T4 pack/compute split on \texttt{jbpi2}. Vector side: the committed
 \iss{61}, \iss{63} and \iss{71} logs (all \texttt{jbpi}).
 
-\section*{Key finding: which packer gaps are real}
-For each shape: the packer gap (vector minus scalar GOPs) against the launch jitter (the wider of the two sides'
-launch ranges, max $-$ min over 3 launches). A dot \textbf{below the diagonal} (outside the grey area) has a gap larger than its
-jitter: the two sides' launches do not overlap. Filled = scalar slower; hollow = scalar faster.
-
-\begin{itemize}
-  \item \textbf{YOLO:} 47 of 50 layers at 1T and 42 of 50 at 8T are below the diagonal. None goes the other way (scalar faster beyond its jitter).
-  \item \textbf{BERT/Square at 8T:} 1 of 10. The packer gap is lost in the jitter.
-  \item \textbf{BERT/Square at 1T:} 7 of 10, but each gap is only 1--2.4\% (0.05--0.23 GOPs). The vector side
-        ran on \texttt{jbpi} two days apart from the scalar side on \texttt{jbpi2}, and that gap is not measured
-        inside a launch, so 1--2\% is not called a packer difference (\S Limits).
-\end{itemize}
-
-\begin{center}
-\gapnoise{1}{Packer gap against launch jitter: 1 thread (core 4)}\\[6pt]
-\gapnoise{8}{Packer gap against launch jitter: 8 threads (cores 0--7)}\\
-{\footnotesize\color{muted} Uninstrumented build, reference protocol, best tile per side. One dot per shape. Log scales. The hollow BERT
-square at 1T (gap 1.40, jitter 3.09 GOPs) is B3, the noisy vector series.}
-\end{center}
-\clearpage
-
 \section*{Part 1: head to head}
 \small
 \begin{tabularx}{\textwidth}{@{}lrXXrr@{}}
@@ -199,23 +197,16 @@ Y42 & 300x256x1152 & 7.56 / 7.56 & 7.32 / 7.32 & 36.19 / 38.61 & 35.64 / 38.08 \
 GOPs by mean time / by median rep, best tile, mean of 3 launches. B3 at 1T is noise (vector launches 8.38, 8.05,
 5.29). All 60 shapes: \texttt{report/tables.md}.
 
-\clearpage
-\dotchart{paper1}{1}{BERT and Square, 1 thread (core 4): every launch, vector vs scalar packing}
-\clearpage
-\dotchart{paper8}{1}{BERT and Square, 8 threads (cores 0--7): every launch, vector vs scalar packing}
-\clearpage
-\dotchart{yolo1}{1}{YOLO layers, 1 thread (core 4): every launch, layers Y00--Y17}
-\clearpage
-\dotchart{yolo1}{2}{YOLO layers, 1 thread (core 4): every launch, layers Y18--Y36}
-\clearpage
-\dotchart{yolo1}{3}{YOLO layers, 1 thread (core 4): every launch, layers Y37--Y52}
-\clearpage
-\dotchart{yolo8}{1}{YOLO layers, 8 threads (cores 0--7): every launch, layers Y00--Y17}
-\clearpage
-\dotchart{yolo8}{2}{YOLO layers, 8 threads (cores 0--7): every launch, layers Y18--Y36}
-\clearpage
-\dotchart{yolo8}{3}{YOLO layers, 8 threads (cores 0--7): every launch, layers Y37--Y52}
-\clearpage
+\barpage{data/gops_paper1_1.csv}{13cm}{\xmaxPaperOne}{BERT and Square, 1 thread (core 4): vector vs scalar packing}{Vector on \texttt{jbpi} (\iss{71}), scalar on \texttt{jbpi2}.}
+\barpage{data/gops_paper8_1.csv}{13cm}{\xmaxPaperEight}{BERT and Square, 8 threads (cores 0--7): vector vs scalar packing}{Vector on \texttt{jbpi} (\iss{71}), scalar on \texttt{jbpi2}.}
+\barpage{data/gops_yolo1_1.csv}{13.0cm}{\xmaxYoloOne}{YOLO layers, 1 thread (core 4): vector vs scalar packing, layers Y00--Y13}{\texttt{jbpi}; vector from \iss{61}. Same GOPs scale on every page of this test.}
+\barpage{data/gops_yolo1_2.csv}{13.0cm}{\xmaxYoloOne}{YOLO layers, 1 thread (core 4): vector vs scalar packing, layers Y14--Y27}{\texttt{jbpi}; vector from \iss{61}. Same GOPs scale on every page of this test.}
+\barpage{data/gops_yolo1_3.csv}{13.0cm}{\xmaxYoloOne}{YOLO layers, 1 thread (core 4): vector vs scalar packing, layers Y28--Y41}{\texttt{jbpi}; vector from \iss{61}. Same GOPs scale on every page of this test.}
+\barpage{data/gops_yolo1_4.csv}{11.0cm}{\xmaxYoloOne}{YOLO layers, 1 thread (core 4): vector vs scalar packing, layers Y42--Y52}{\texttt{jbpi}; vector from \iss{61}. Same GOPs scale on every page of this test.}
+\barpage{data/gops_yolo8_1.csv}{13.0cm}{\xmaxYoloEight}{YOLO layers, 8 threads (cores 0--7): vector vs scalar packing, layers Y00--Y13}{\texttt{jbpi}; vector from \iss{63}. Same GOPs scale on every page of this test.}
+\barpage{data/gops_yolo8_2.csv}{13.0cm}{\xmaxYoloEight}{YOLO layers, 8 threads (cores 0--7): vector vs scalar packing, layers Y14--Y27}{\texttt{jbpi}; vector from \iss{63}. Same GOPs scale on every page of this test.}
+\barpage{data/gops_yolo8_3.csv}{13.0cm}{\xmaxYoloEight}{YOLO layers, 8 threads (cores 0--7): vector vs scalar packing, layers Y28--Y41}{\texttt{jbpi}; vector from \iss{63}. Same GOPs scale on every page of this test.}
+\barpage{data/gops_yolo8_4.csv}{11.0cm}{\xmaxYoloEight}{YOLO layers, 8 threads (cores 0--7): vector vs scalar packing, layers Y42--Y52}{\texttt{jbpi}; vector from \iss{63}. Same GOPs scale on every page of this test.}
 
 \section*{Part 2: why the shape and the reuse decide}
 A GEMM packs a block of A ($m\times k$) once; each packed element then meets $n$ columns of B. Packing is about $mk$
@@ -240,6 +231,26 @@ BERT/Square 8T & & & & & & & & & 0.983 & 0.971--1.012 \\
 \ratioplot{1}{The packer matters only when reuse $n$ is small: 1 thread}\\
 \ratioplot{8}{The packer matters only when reuse $n$ is small: 8 threads}\\
 {\footnotesize\color{muted} Grey band: $\pm$3\%, inside the day/board gap. One dot per shape. The 1T BERT dot at 1.19 is B3 (vector launches 5.3--8.4 GOPs).}
+\end{center}
+
+\subsection*{Which packer gaps are real}
+For each shape: the packer gap (vector minus scalar GOPs) against the launch jitter (the wider of the two sides'
+launch ranges, max $-$ min over 3 launches). A dot \textbf{below the diagonal} (outside the grey area) has a gap larger than its
+jitter: the two sides' launches do not overlap. Filled = scalar slower; hollow = scalar faster.
+
+\begin{itemize}
+  \item \textbf{YOLO:} 47 of 50 layers at 1T and 42 of 50 at 8T are below the diagonal. None goes the other way (scalar faster beyond its jitter).
+  \item \textbf{BERT/Square at 8T:} 1 of 10. The packer gap is lost in the jitter.
+  \item \textbf{BERT/Square at 1T:} 7 of 10, but each gap is only 1--2.4\% (0.05--0.23 GOPs). The vector side
+        ran on \texttt{jbpi} two days apart from the scalar side on \texttt{jbpi2}, and that gap is not measured
+        inside a launch, so 1--2\% is not called a packer difference (\S Limits).
+\end{itemize}
+
+\begin{center}
+\gapnoise{1}{Packer gap against launch jitter: 1 thread (core 4)}\\[6pt]
+\gapnoise{8}{Packer gap against launch jitter: 8 threads (cores 0--7)}\\
+{\footnotesize\color{muted} Uninstrumented build, reference protocol, best tile per side. One dot per shape. Log scales. The hollow BERT
+square at 1T (gap 1.40, jitter 3.09 GOPs) is B3, the noisy vector series.}
 \end{center}
 
 \subsection*{T4: the measured pack share}

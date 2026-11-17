@@ -58,21 +58,6 @@ All on the SpacemiT X60 boards (VLEN 256). Uninstrumented build, reference proto
 
 Series folders (reports, heatmaps, per-launch logs): [`yolo/`](yolo/) (T1, T2), [`paper/`](paper/) (T3). Driver logs (the C1-C4 PASS lines, launch times): [`driver_logs/`](driver_logs/). The early figures from 17 Nov (partial logs) are in [`preliminary/`](preliminary/).
 
-## Key finding: which packer gaps are real
-
-For each shape: the packer gap (|vector - scalar| mean GOPs) against the launch jitter (the wider of the two sides' max - min over 3 launches). A gap larger than its jitter means the two sides' launches don't overlap. Chart: "Packer gap against launch jitter" in the brief (log-log, one dot per shape).
-
-| test | gap larger than jitter | of which scalar faster |
-|---|---|---|
-| YOLO 1T | 47 of 50 | 0 |
-| YOLO 8T | 42 of 50 | 0 |
-| BERT/Square 1T | 7 of 10 (gaps 1-2.4%, 0.05-0.23 GOPs) | 0 |
-| BERT/Square 8T | 1 of 10 | 0 |
-
-- **YOLO:** the scalar loss is real on almost every layer.
-- **BERT/Square at 8T:** the gap is lost in the jitter.
-- **BERT/Square at 1T:** a steady 1-2% scalar loss sits above the launch jitter. But the vector side ran on `jbpi` two days before the scalar side ran on `jbpi2`, and that day/board gap isn't measured inside a launch. So 1-2% is not called a packer difference (see Limits).
-
 ## Part 1: head to head
 
 GOPs by mean time / by median rep, best tile, mean of 3 launches per side. Full per-shape tables, with tiles and launch spread: [`report/tables.md`](report/tables.md).
@@ -115,7 +100,7 @@ YOLO, the layers with the largest gap (GOPs by mean time; all 50 in [`report/tab
 
 Y10 at 8T: the vector launches spread 20%, so its gap is uncertain.
 
-Charts (vector graphics, drawn by LaTeX/pgfplots from [`report/data/`](report/data/)), in the [brief](report/issue83_brief.pdf), Part 1: one dot-strip chart per test. Each shape is one row, with GOPs along x. Every launch is a dot (vector on the top line, scalar below), a tall tick marks the mean, and the means are printed at the right. Each row has its own GOPs window (at least 8% of its vector mean wide), so a 1-2% launch jitter is visible even though YOLO runs from 1 to 60 GOPs. The per-launch values are in `report/data/launches_*.csv`.
+Charts (vector graphics, drawn by LaTeX/pgfplots from [`report/data/`](report/data/)), in the [brief](report/issue83_brief.pdf), Part 1: one bar chart per test, on wide landscape pages. Each shape is one row, with GOPs along x. The bar is the mean of 3 launches, the whisker shows launch min-max, and the value is printed past the whisker. YOLO takes 4 pages per thread count (13 layers each), with the same GOPs scale on every page. Per-launch values: `report/data/launches_*.csv`.
 
 ## Part 2: why the shape and the reuse decide
 
@@ -139,6 +124,21 @@ A GEMM packs a block of A (m x k) once, then each packed element is multiplied b
 The ratio climbs steadily with n. YOLO at n = 256 (0.97) reaches what BERT shows at n = 384 (0.98). At 8 threads, the n = 4 gap is smaller (0.70 against 0.60). Each thread packs only its own rows of A, so the pack work per thread is smaller.
 
 Chart: scalar/vector against n, 1T and 8T, in the [brief](report/issue83_brief.pdf), Part 2.
+
+### Which packer gaps are real
+
+For each shape: the packer gap (|vector - scalar| mean GOPs) against the launch jitter (the wider of the two sides' max - min over 3 launches). A gap larger than its jitter means the two sides' launches don't overlap. Chart: "Packer gap against launch jitter" in the brief (log-log, one dot per shape).
+
+| test | gap larger than jitter | of which scalar faster |
+|---|---|---|
+| YOLO 1T | 47 of 50 | 0 |
+| YOLO 8T | 42 of 50 | 0 |
+| BERT/Square 1T | 7 of 10 (gaps 1-2.4%, 0.05-0.23 GOPs) | 0 |
+| BERT/Square 8T | 1 of 10 | 0 |
+
+- **YOLO:** the scalar loss is real on almost every layer.
+- **BERT/Square at 8T:** the gap is lost in the jitter.
+- **BERT/Square at 1T:** a steady 1-2% scalar loss sits above the launch jitter. But the vector side ran on `jbpi` two days before the scalar side ran on `jbpi2`, and that day/board gap isn't measured inside a launch. So 1-2% is not called a packer difference (see Limits).
 
 ### T4: how much of the time is packing
 

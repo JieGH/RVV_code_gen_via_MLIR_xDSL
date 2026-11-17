@@ -134,39 +134,26 @@ def label(k):
     return f"{k} {'x'.join(map(str, dims[k]))} (n={dims[k][1]})"
 
 
-# 1. Per-launch dots, one strip per shape with its own GOPs window (so a 2% jitter is visible on a 1-60 GOPs set).
-ROWS_PER_PAGE = 17
-for key in RUNS:
-    v, s = data[key]
-    ks = sorted(v, key=order)
-    with open(f"{OUT}/data/launches_{key}.csv", "w") as f:
-        f.write("shape,m,n,k,vec_tile,vec_l1,vec_l2,vec_l3,vec_mean,scal_tile,scal_l1,scal_l2,scal_l3,scal_mean\n")
-        for k in ks:
-            f.write(f"{k},{','.join(map(str, dims[k]))},{v[k][0]},{','.join(f'{x:.3f}' for x in v[k][4])},{v[k][1]:.3f},"
-                    f"{s[k][0]},{','.join(f'{x:.3f}' for x in s[k][4])},{s[k][1]:.3f}\n")
-    pages = [ks[i:i + ROWS_PER_PAGE] for i in range(0, len(ks), ROWS_PER_PAGE)]
-    for pi, part in enumerate(pages):
-        out = ["\\begin{tikzpicture}"]
-        for r, k in enumerate(part):
-            dots = v[k][4] + s[k][4]
-            lo, hi = min(dots), max(dots)
-            mid, width = (lo + hi) / 2, max(hi - lo, 0.08 * v[k][1])  # window at least 8% of the vector mean
-            xmin, xmax = mid - 0.62 * width, mid + 0.62 * width
-            out.append(
-                f"\\begin{{axis}}[dotrow, at={{(0,{-r * 1.25:.2f}cm)}}, xmin={xmin:.4f}, xmax={xmax:.4f}]\n"
-                f"\\draw[muted, dashed, line width=0.4pt] (axis cs:{v[k][1]:.4f},-0.6) -- (axis cs:{v[k][1]:.4f},1.6);\n"
-                f"\\addplot[only marks, mark=*, mark size=1.7pt, color=vec, fill opacity=0.75] coordinates "
-                f"{{{''.join(f'({x:.4f},0)' for x in v[k][4])}}};\n"
-                f"\\addplot[only marks, mark=*, mark size=1.7pt, color=scal, fill opacity=0.75] coordinates "
-                f"{{{''.join(f'({x:.4f},1)' for x in s[k][4])}}};\n"
-                f"\\addplot[only marks, mark=|, mark size=4.5pt, line width=1.3pt, color=vec!60!black] coordinates {{({v[k][1]:.4f},0)}};\n"
-                f"\\addplot[only marks, mark=|, mark size=4.5pt, line width=1.3pt, color=scal!60!black] coordinates {{({s[k][1]:.4f},1)}};\n"
-                f"\\node[anchor=east, font=\\scriptsize] at (rel axis cs:0,0.5) {{{label(k)}}};\n"
-                f"\\node[anchor=west, font=\\scriptsize, align=left] at (rel axis cs:1,0.5) "
-                f"{{\\textcolor{{vec!70!black}}{{{v[k][1]:.2f}}}\\\\\\textcolor{{scal!70!black}}{{{s[k][1]:.2f}}}}};\n"
-                f"\\end{{axis}}")
-        out.append("\\end{tikzpicture}")
-        open(f"{OUT}/data/dots_{key}_{pi + 1}.tex", "w").write("\n".join(out) + "\n")
+# 1. Bar charts (Part 1): one row per shape, GOPs along x, whisker = launch min-max. Landscape pages of
+#    ROWS_PER_PAGE rows, the same x scale on every page of a test (xmax.tex). Per-launch values in launches_*.csv.
+ROWS_PER_PAGE = 13
+with open(f"{OUT}/data/xmax.tex", "w") as fx:
+    for key, name in [("yolo1", "YoloOne"), ("yolo8", "YoloEight"), ("paper1", "PaperOne"), ("paper8", "PaperEight")]:
+        v, s = data[key]
+        ks = sorted(v, key=order)
+        fx.write(f"\\newcommand{{\\xmax{name}}}{{{1.1 * max(max(src[k][4]) for src in (v, s) for k in ks):.1f}}}\n")
+        with open(f"{OUT}/data/launches_{key}.csv", "w") as f:
+            f.write("shape,m,n,k,vec_tile,vec_l1,vec_l2,vec_l3,vec_mean,scal_tile,scal_l1,scal_l2,scal_l3,scal_mean\n")
+            for k in ks:
+                f.write(f"{k},{','.join(map(str, dims[k]))},{v[k][0]},{','.join(f'{x:.3f}' for x in v[k][4])},{v[k][1]:.3f},"
+                        f"{s[k][0]},{','.join(f'{x:.3f}' for x in s[k][4])},{s[k][1]:.3f}\n")
+        for pi in range(0, len(ks), ROWS_PER_PAGE):
+            with open(f"{OUT}/data/gops_{key}_{pi // ROWS_PER_PAGE + 1}.csv", "w") as f:
+                f.write("idx,label,vec,vlo,vhi,scal,slo,shi\n")
+                for i, k in enumerate(ks[pi:pi + ROWS_PER_PAGE]):
+                    a_, b_ = v[k], s[k]
+                    f.write(f"{i},{label(k)},{a_[1]:.2f},{a_[1]-min(a_[4]):.3f},{max(a_[4])-a_[1]:.3f},"
+                            f"{b_[1]:.2f},{b_[1]-min(b_[4]):.3f},{max(b_[4])-b_[1]:.3f}\n")
 
 # 2. Gap against noise: x = |vector - scalar| mean GOPs, y = the wider launch range of the two sides (GOPs), log-log.
 #    Separate files for shapes where scalar is faster (drawn hollow).
