@@ -1,0 +1,12 @@
+correctness	1t	vector	jbpi	run_2026-11-17_214311
+correctness	1t	scalar	jbpi	run_2026-11-17_215328
+M1-launch1	1t	vector	jbpi	run_2026-11-17_220548
+M1-launch2	1t	scalar	jbpi	run_2026-11-17_221808
+M1-launch3	1t	scalar	jbpi	run_2026-11-17_223028
+M1-launch4	1t	vector	jbpi	run_2026-11-17_224248
+M1-launch5	1t	vector	jbpi	run_2026-11-17_225509
+M1-launch6	1t	scalar	jbpi	run_2026-11-17_230730
+M2-launch1	1t	vector	jbpi	run_2026-11-17_232351
+M2-launch2	1t	scalar	jbpi	run_2026-11-17_234012
+M2-launch3	1t	scalar	jbpi	run_2026-11-17_235635
+M2-launch4	1t	vector	jbpi	run_2026-11-18_001255

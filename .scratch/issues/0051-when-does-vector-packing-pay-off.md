@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/85
 **Parent:** #83 (scalar packing rerun). Follows its T4 figure "Does the pack share explain the slowdown?".
 **Role / Label:** `needs-triage`. Board runs (jbpi / jbpi2), idle boards only for timing.
-**Status:** spec written 2026-11-17. Not started.
+**Status:** runs and report done 2026-11-18. Correctness 4 × 30/30 PASS; M1, M2, M3 done on idle boards. Brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/when-does-vector-packing-pay-off/.scratch/reports/issue-85/report/issue85_brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/when-does-vector-packing-pay-off/.scratch/reports/issue-85/report/issue85_brief.tex), report [`.scratch/reports/issue-85/README.md`](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/when-does-vector-packing-pay-off/.scratch/reports/issue-85/README.md). Open: merge, on the user's word.
 **Branch:** `when-does-vector-packing-pay-off`, cut from `pure-xdsl` (after PR #84).
 **Report:** `.scratch/reports/issue-85/` (README + brief PDF/LaTeX, pgfplots charts, glossary).
 
@@ -69,9 +69,9 @@ Same design as #83; the only switch is `--scalar-pack`. Each sweep runs at **1T 
 
 ## 6. Closure
 
-- [ ] M3 timers in the 8T instrumented nest + host test
-- [ ] Configs and driver for P-n, P-m, P-k, P-tile
-- [ ] Correctness pass (vector and scalar, 1T and 8T) on every shape
-- [ ] M1, M2, M3 runs on idle boards, logs committed
-- [ ] Report + brief, linked here and in #83
+- [x] M3 timers in the 8T instrumented nest + host test
+- [x] Configs and driver for P-n, P-m, P-k, P-tile
+- [x] Correctness pass (vector and scalar, 1T and 8T), on small shapes under the oracle limit (§3b)
+- [x] M1, M2, M3 runs on idle boards, logs committed
+- [x] Report + brief, linked here and in #83
 - [ ] PR → `pure-xdsl`
