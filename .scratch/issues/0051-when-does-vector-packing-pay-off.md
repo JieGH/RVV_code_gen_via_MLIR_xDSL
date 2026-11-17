@@ -45,6 +45,15 @@ Same design as #83; the only switch is `--scalar-pack`. Each sweep runs at **1T 
 - **M2, 1T pack/compute split (the cause):** instrumented build, warm-up protocol, 200 reps, as #83 T4. Pack A and pack B times reported separately.
 - **M3, 8T pack/compute split:** the 8T path has no timers (#56). **Code change:** add pack A / pack B / compute timers to the parallel nest in the instrumented build only (per thread, report the max and mean over threads). Uninstrumented 8T code stays unchanged. Host test: the instrumented 8T build still matches the double-precision reference, and timers sum to within 5% of the wall time.
 
+## 3b. As built (2026-11-17, after code review)
+
+- **Correctness on small shapes, not every sweep shape.** The scalar oracle is O(m·n·k) and capped at B2 (384×384×64) by the repo rule (`test_correctness_pass.py`). `datasets/issue85_correctness_small.dat` covers n = 4 and 1000, k = 16 and 1152, m = 4800, and fringe rows/columns on all five tiles.
+- **Pack time is A + B together** at 1T and 8T: the 1T build has one pack sink, and splitting it changes the GEMM signature, the driver and every log parser. The sweeps separate the two instead: P-n changes only how often A is repacked ($1/n_c$), P-m only how far B's pack is amortised ($1/m$).
+- **M3 = mean over threads** of each thread's pack and compute time. Barrier waits are in neither. Wait share = 1 − (pack + compute) / wall (wall from the same instrumented run), so load imbalance shows without a max-over-threads column.
+- **M1 = 6 launches, 3 per packer**, order V S S V V S (house rule 2: ≥ 3 launches, alternating).
+- **Boards:** jbpi runs the 1T series (M1 + M2), jbpi2 the 8T series (M1 + M3), in parallel from separate checkouts. 1T/8T comparisons are ratios within one board.
+- Host test: pack + compute ≤ 1.05 × wall (upper bound only; the tiny test shapes are dominated by OpenMP start-up, so no lower bound).
+
 ## 4. Output
 
 - Per sweep, one chart per thread count: scalar/vector GOPs ratio against the swept dimension, noise band shaded; pack share on the same rows.

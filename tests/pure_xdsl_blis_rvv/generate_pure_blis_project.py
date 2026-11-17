@@ -293,11 +293,13 @@ def render_parallel_nest(
     return f"""
     (void) pack_time; (void) kernel_time; (void) perf; (void) zero_pack_lines; (void) pack_b_variant;
     double pack_sum = 0, compute_sum = 0;  // per thread, summed over threads below (instrumented only)
-    (void) pack_sum; (void) compute_sum;
+    int32_t team = 1;  // the team size OpenMP actually gave, for the mean
+    (void) pack_sum; (void) compute_sum; (void) team;
     #pragma omp parallel num_threads({threads}) reduction(+ : pack_sum, compute_sum)
     {{
     const int32_t nth = omp_get_num_threads();
     const int32_t tid = omp_get_thread_num();
+    if (tid == 0) team = nth;
     for (int32_t jc = 0; jc < n; jc += nc) {{
         int32_t cur_nc = std::min(n - jc, nc);
         for (int32_t pc = 0; pc < k; pc += kc) {{
@@ -356,8 +358,8 @@ def render_parallel_nest(
     }}
     }}
 #if RVV_INSTRUMENTED
-    *pack_time += pack_sum / {threads};
-    *kernel_time += compute_sum / {threads};
+    *pack_time += pack_sum / team;
+    *kernel_time += compute_sum / team;
 #endif
 }}
 """
