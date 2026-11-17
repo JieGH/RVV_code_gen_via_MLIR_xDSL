@@ -61,3 +61,10 @@ def test_a_failed_step_stops_the_series(tmp_path: Path):
 def test_dry_run_starts_nothing(tmp_path: Path):
     done, calls = run(tmp_path, "--dry-run")
     assert done.returncode == 0 and calls == [] and "1T L1, 8T L1, 8T L2, 1T L2, 1T L3, 8T L3" in done.stdout
+
+
+def test_scalar_pack_and_workspace_reach_every_step(tmp_path: Path):
+    """Issue #83: the scalar-packing rerun, possibly on the second board's own workspace."""
+    done, calls = run(tmp_path, "--launches", "1", "--issue", "83", "--scalar-pack", "--workspace", "ws2")
+    assert done.returncode == 0 and len(calls) == 2
+    assert all("--scalar-pack" in c and "--workspace ws2" in c and arg(c, "--issue") == "83" for c in calls)

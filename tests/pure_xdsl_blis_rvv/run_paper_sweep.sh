@@ -19,6 +19,8 @@
 #   --launches N    launches per thread count (default 3)
 #   --tmin S        --tmin of every launch (default 2)
 #   --issue N       the sweep's --issue (report copies go to $HECTOR_YOLO_DIR/issue-<N>/)
+#   --scalar-pack   the scalar packer in every launch (issue #83)
+#   --workspace W   the board-side directory, for a second series on the other board (shared NFS home)
 #   --dry-run       print the order, then stop
 # ============================================================
 
@@ -27,7 +29,7 @@ set -o pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SWEEP="${PAPER_SWEEP:-${HERE}/run_yolo_sweep.sh}"      # PAPER_SWEEP lets the order be tried against a stub
 
-AFTER=""; BOARD="jbpi"; LAUNCHES=3; TMIN=2; ISSUE=""; DRY_RUN=false
+EXTRA=(); AFTER=""; BOARD="jbpi"; LAUNCHES=3; TMIN=2; ISSUE=""; DRY_RUN=false
 die() { echo "Error: $*" >&2; exit 1; }
 
 while [[ "$#" -gt 0 ]]; do
@@ -37,6 +39,8 @@ while [[ "$#" -gt 0 ]]; do
         --launches)  LAUNCHES="$2"; shift ;;
         --tmin)      TMIN="$2"; shift ;;
         --issue)     ISSUE="$2"; shift ;;
+        --scalar-pack) EXTRA+=(--scalar-pack) ;;
+        --workspace) EXTRA+=(--workspace "$2"); shift ;;
         --dry-run)   DRY_RUN=true ;;
         -h|--help)   sed -n '3,/^# ====*$/p' "$0" | sed '$d'; exit 0 ;;
         *) die "unknown parameter: $1" ;;
@@ -57,7 +61,7 @@ for t in "${THREADS[@]}"; do
     if [ "${t}" = 1 ]; then n1=$((n1 + 1)); labels+=("1T L${n1}"); else n8=$((n8 + 1)); labels+=("8T L${n8}"); fi
 done
 
-echo "Paper shapes (B1-B5, S1-S5) Tile Search on ${BOARD}: 1T on core 4, 8T on cores 0-7, --tmin ${TMIN}, ${LAUNCHES} launches each"
+echo "Paper shapes (B1-B5, S1-S5) Tile Search on ${BOARD}: 1T on core 4, 8T on cores 0-7, --tmin ${TMIN}, ${LAUNCHES} launches each ${EXTRA[*]}"
 echo "  Order: $(IFS=,; echo "${labels[*]}" | sed 's/,/, /g')"
 [ "${DRY_RUN}" = true ] && { echo "  --dry-run: nothing was started."; exit 0; }
 
@@ -72,7 +76,7 @@ for ((i = 0; i < ${#THREADS[@]}; i++)); do
     if [ "${t}" = 1 ]; then n1=$((n1 + 1)); l=${n1}; else n8=$((n8 + 1)); l=${n8}; fi
     echo "[$(date +%H:%M)] step $((i + 1))/${#THREADS[@]}: ${labels[$i]}"
     "${SWEEP}" --config "${HERE}/config_paper_search.json" --threads "${t}" --launches "${LAUNCHES}" --launch "${l}" \
-        --boards "${BOARD}" --tmin "${TMIN}" --issue "${ISSUE}" \
+        --boards "${BOARD}" --tmin "${TMIN}" --issue "${ISSUE}" "${EXTRA[@]}" \
         || { echo "step $((i + 1)) (${labels[$i]}) failed; stopping the series."; exit 1; }
 done
 echo "Series finished: ${#THREADS[@]} of ${#THREADS[@]} steps ok."

@@ -222,3 +222,11 @@ def test_a_config_mixing_datasets_is_refused(tmp_path: Path):
     mixed.write_text("[\n" + rows[0] + "\n" + rows[1].replace("paper_bert_square.dat", "yolo26_k1.dat") + "\n]\n")
     done, _ = run_series(tmp_path, "--config", str(mixed))
     assert done.returncode != 0 and "must run paper_bert_square.dat" in done.stderr
+
+
+def test_scalar_pack_reaches_every_launch_and_the_plan(tmp_path: Path):
+    """Issue #83: --scalar-pack is passed to compile_macro_bench.sh and named in plan.txt."""
+    done, logs = run_series(tmp_path, "--threads", "8", "--launches", "1", "--scalar-pack", behaviour="ok")
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "--scalar-pack" in (logs / "calls.txt").read_text()
+    assert "scalar packer" in (series_dir(logs) / "plan.txt").read_text()

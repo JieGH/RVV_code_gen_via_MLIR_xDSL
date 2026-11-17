@@ -66,3 +66,11 @@ def test_dry_run_prints_the_order_and_starts_nothing(tmp_path: Path):
     done, calls = run(tmp_path, "--dry-run")
     assert done.returncode == 0 and calls == []
     assert "ours L1, his, his, ours L2, ours L3, his" in done.stdout
+
+
+def test_scalar_pack_goes_to_our_side_only_and_issue_to_both(tmp_path: Path):
+    """Issue #83: our side reruns with the scalar packer; his gemm.x is unchanged."""
+    done, calls = run(tmp_path, "--launches", "1", "--scalar-pack", "--issue", "83")
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert all(("--scalar-pack" in c) == c.startswith("ours") for c in calls)
+    assert all("--issue 83" in c for c in calls)

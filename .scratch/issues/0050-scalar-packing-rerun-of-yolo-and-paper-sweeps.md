@@ -2,7 +2,7 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/83
 **Role / Label:** `needs-triage`. Board runs.
-**Status:** opened 2026-11-17.
+**Status:** code done 2026-11-17 (host: 627/627 full suite, then 72/72 on the changed files after the review fixes); board runs started on `jbpi` (YOLO) and `jbpi2` (paper).
 **Branch:** `scalar-packing-rerun-of-yolo-and-paper-sweeps`, cut from `pure-xdsl`.
 **Reruns:** #61 (YOLO, 1 thread), #63 (YOLO, 8 threads, against Héctor's GEMMLib), #71 (paper shapes BERT B1-B5, Square S1-S5, 1 and 8 threads).
 
@@ -24,7 +24,7 @@ Every sweep so far (#61, #63, #71) used the **vector packer**. How do the same b
   - B: one call per (panel, k-chunk) unit;
   - A: one call per thread's rows `[ir0, ir1)`.
 - Lift the refusal, and pass `--scalar-pack` through `run_yolo_sweep.sh`, `run_paper_sweep.sh` and `run_issue63.sh`.
-- Host test: 8 threads with scalar packing gives the same C and Bc/Ac as 1 thread, plus the existing refusal test updated.
+- Host test: at 3 and 8 threads with scalar packing, C matches a double-precision reference on 6 split-edge cases x 2 betas x 20 reps (NaN-filled Ac/Bc); `--threads 8 --scalar-pack` is accepted by the script.
 - The vector path is unchanged.
 
 ## 3. Correctness (before any timing)
@@ -33,20 +33,24 @@ On the board, scalar packer, scalar oracle on (`skip_ref_run: false`), all 19 Ca
 
 | dataset | 1 thread (core 4) | 8 threads (cores 0-7) |
 |---|---|---|
-| YOLO26 (`yolo26_k1.dat`, 50 shapes) | C1 | C2 |
-| paper (`paper_bert_square.dat`, B1-B5, S1-S5) | C3 | C4 |
+| YOLO-like (`config_yolo_correctness.json`: `yolo_correctness_small.dat`, m = 300, n = 4/16, k = 9/27) | C1 | C2 |
+| paper-like (`config_paper_correctness.json`: `paper_correctness_small.dat`, B2, B3, 200^3) | C3 | C4 |
+
+The full YOLO and paper sets are too big for the scalar oracle (O(m·n·k)): the house rule allows no shape above B2 (384x384x64) under it (`docs/agents/execution.md`, "Correctness pass"; `test_correctness_pass.py`). The small sets keep each set's fringe rows and columns and several K blocks; the host test covers the 8-thread split edges.
 
 Pass: every row `PASS`. Correctness-only runs: their timings aren't quoted.
 
 ## 4. Timing runs (as the originals, plus `--scalar-pack`)
 
-All runs: `jbpi`, uninstrumented, reference protocol, `--tmin 2`, `--no-nc-overrides`, 19 tiles rotated per launch, idle board.
+All runs: uninstrumented, reference protocol, `--tmin 2`, `--no-nc-overrides`, 19 tiles rotated per launch, idle board.
 
 | run | as | order |
 |---|---|---|
 | T1 YOLO 1T, core 4 | #61 | 3 launches |
 | T2 YOLO 8T against Héctor's `gemm.x` (`b292c92`, unchanged: his own packing) | #63 | ours, his, his, ours, ours, his |
 | T3 paper 1T / 8T | #71 | 1T, 8T, 8T, 1T, 1T, 8T |
+
+**Boards (user, 2026-11-17: use both boards, idle only):** `jbpi` runs the YOLO part (C1, C2, T2, T1), the board of #61 and #63. `jbpi2` runs the paper part (C3, C4, T3) at the same time, from its own checkout and board workspace. Driver: `run_issue83.sh --part yolo|paper`.
 
 ## 5. Output
 
@@ -60,6 +64,7 @@ All runs: `jbpi`, uninstrumented, reference protocol, `--tmin 2`, `--no-nc-overr
 ## 6. Limits to state with the numbers
 
 - The scalar and vector runs are from different days (vector: 15-17 Nov). Same board, build and protocol, but not interleaved in one launch, so small gaps (under about 3%) aren't called a difference.
+- The paper part runs on `jbpi2`, #71 ran on `jbpi`: same SoC (SpacemiT X60), but a board-to-board gap adds to the day gap.
 - At 8 threads, core 0 is used (the user's 8-thread exception, #63 §2).
 
 ## 7. Closure

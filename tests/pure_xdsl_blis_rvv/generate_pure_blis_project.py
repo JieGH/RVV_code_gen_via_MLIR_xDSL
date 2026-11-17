@@ -285,11 +285,12 @@ def render_parallel_nest(
     (panel x k-chunk) units, so a narrow n still feeds every thread; one barrier follows it. Each
     thread packs and computes its own mr panels of every mc block (the ir split), so the A pack needs
     no barrier, except before a short last block, whose split differs from the full ones'. One
-    barrier ends each pc, before Bc is packed again. fp32 AXPY only (kc_pad == cur_kc), vector
-    packers only, no timers or counters: the caller refuses the rest.
+    barrier ends each pc, before Bc is packed again. fp32 AXPY only (kc_pad == cur_kc). Vector packers,
+    or with use_scalar_pack the 1-thread scalar packers on the same pieces (#83).
+    No timers or counters: the caller refuses the rest.
     """
     return f"""
-    (void) pack_time; (void) kernel_time; (void) perf; (void) use_scalar_pack; (void) zero_pack_lines; (void) pack_b_variant;
+    (void) pack_time; (void) kernel_time; (void) perf; (void) zero_pack_lines; (void) pack_b_variant;
     #pragma omp parallel num_threads({threads})
     {{
     const int32_t nth = omp_get_num_threads();
@@ -307,7 +308,8 @@ def render_parallel_nest(
             for (int32_t u = tid; u < n_panels * k_chunks; u += nth) {{
                 int32_t j0 = (u / k_chunks) * nr, q = u % k_chunks;
                 int32_t k0 = cur_kc * q / k_chunks, k1 = cur_kc * (q + 1) / k_chunks;
-                {pack_cb}(b_ptr + j0 * ldb + k0, Bc + j0 * kc_pad + k0 * nr, k1 - k0, std::min(nr, cur_nc - j0), ldb);
+                if (use_scalar_pack) pack_CB_scalar(k1 - k0, std::min(nr, cur_nc - j0), b_ptr + j0 * ldb + k0, ldb, Bc + j0 * kc_pad + k0 * nr, nr);
+                else {pack_cb}(b_ptr + j0 * ldb + k0, Bc + j0 * kc_pad + k0 * nr, k1 - k0, std::min(nr, cur_nc - j0), ldb);
             }}
             if (tid == 0) *pack_bytes += cur_kc * cur_nc * sizeof({c_type_b});
             #pragma omp barrier
@@ -325,7 +327,8 @@ def render_parallel_nest(
                 int32_t ir1 = std::min((m_panels * (tid + 1) / nth) * mr, cur_mc);
                 if (tid == 0) *pack_bytes += cur_mc * cur_kc * sizeof({c_type_a});
                 if (ir0 >= ir1) continue;
-                {pack_rb}(GET_PTR(A, pc * lda + ic + ir0), Ac + ir0 * kc_pad, ir1 - ir0, cur_kc, lda);
+                if (use_scalar_pack) pack_RB_scalar(ir1 - ir0, cur_kc, GET_PTR(A, pc * lda + ic + ir0), lda, Ac + ir0 * kc_pad, mr);
+                else {pack_rb}(GET_PTR(A, pc * lda + ic + ir0), Ac + ir0 * kc_pad, ir1 - ir0, cur_kc, lda);
                 for (int32_t jr = 0; jr < cur_nc; jr += nr) {{
                     int32_t cur_nr = std::min(cur_nc - jr, nr);
                     for (int32_t ir = ir0; ir < ir1; ir += mr) {{
