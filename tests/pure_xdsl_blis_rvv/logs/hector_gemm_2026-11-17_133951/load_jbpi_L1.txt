@@ -1,0 +1,12 @@
+jlei                  500   2       00:00 ps
+jlei                 50.0   7       00:00 bash
+jlei                 14.2   0       00:00 sshd
+root                  9.3   4       00:00 sshd
+root                  6.0   0    01:13:59 kworker/0:3-events
+root                  0.6   5 106-04:59:55 disp_eng_share_thread
+systemd-oom           0.0   4 106-05:00:02 systemd-oomd
+psiwins               0.0   5    01:13:58 sshd
+psiwins               0.0   0    01:13:26 ssh
+root                  0.0   1 106-05:00:10 vq1
+root                  0.0   4 106-05:00:10 vq0
+psiwins               0.0   0    01:11:31 ssh

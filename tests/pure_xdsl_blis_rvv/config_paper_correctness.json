@@ -1,0 +1,25 @@
+[
+    // Issue #83: the correctness pass for the scalar-packing rerun on paper-like shapes. The 19 tiles of
+    // config_paper_search.json with skip_ref_run OFF, on datasets/paper_correctness_small.dat (B2, B3 and a 200^3
+    // square: the full paper set is too big for the scalar oracle). Run with --scalar-pack at 1 thread (core 4)
+    // and at --threads 8, --tmin 0.2; a correctness run only, its timings are not quoted.
+    ["fp32", "AXPY_FP32_Pack", [8, 4], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [8, 8], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [8, 12], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [8, 16], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [8, 24], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 4], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 6], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 8], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 10], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 12], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 14], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [24, 4], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [24, 6], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [24, 9], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 4], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["paper_correctness_small.dat"], false, 5]
+]

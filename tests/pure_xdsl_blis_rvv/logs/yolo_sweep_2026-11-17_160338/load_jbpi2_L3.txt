@@ -1,0 +1,12 @@
+root                 12.8   2       00:00 sshd
+root                  0.6   1 106-07:23:32 disp_eng_share_thread
+systemd-oom           0.0   5 106-07:23:39 systemd-oomd
+root                  0.0   2 106-07:23:47 vq1
+root                  0.0   7 106-07:23:47 vq0
+root                  0.0   0  1-21:11:23 kworker/0:1-events
+root                  0.0   5    01:34:18 kworker/5:2-events
+root                  0.0   6 106-07:23:32 ksdioirqd/mmc1
+root                  0.0   5 106-06:42:31 fwupd
+root                  0.0   3 106-07:23:38 NetworkManager
+messagebus            0.0   3 106-07:23:38 dbus-daemon
+root                  0.0   3    02:34:31 kworker/u16:6-rpciod

@@ -38,12 +38,13 @@
 #   --workspace NAME  the board-side directory (compile_macro_bench.sh --riscv-workspace)
 #   --direct          reach the boards directly instead of through the jump host
 #   --riscv-user U --riscv-port P    (defaults jlei, 22)
-#   --issue N         HectorYolo/issue-<N>/ folder for the report and logs (default 61)
+#   --issue N         .scratch/reports/issue-<N>/ folder for the report and logs (default 61)
 #   --config FILE     the search config (default config_yolo_search.json); every row runs the same one dataset
+#   --scalar-pack     the scalar packer instead of the vector one (compile_macro_bench.sh --scalar-pack; issue #83)
 #   --dry-run         print the plan and the launch configs, then stop
 # After every finished launch: search_report.py over the launches so far (--compare 16x8 --compare n=4:16x4,
 # heatmap) into the series folder as tile_search_report.md / tile_search_heatmap.png, then the series folder
-# is copied to HectorYolo/issue-<N>/<series>/ (user, 2026-11-16).
+# is copied to .scratch/reports/issue-<N>/<series>/ (user, 2026-11-16).
 #
 # Jump-host settings come from the environment: REMOTE_PASS (default empty), REMOTE_HOST (default
 # fej), REMOTE_PORT (default 3322). Do not run tests, --dry-run of a wrapper or another benchmark
@@ -63,7 +64,7 @@ PY="${HERE}/../../.venv/bin/python"; [ -x "${PY}" ] || PY=python3
 REPORT_CMD=("${PY}" "${HERE}/search_report.py"); [ -n "${YOLO_SWEEP_REPORT:-}" ] && REPORT_CMD=("${YOLO_SWEEP_REPORT}")
 
 BOARDS="jbpi,jbpi2"; LAUNCHES=3; TMIN=10; CPU_ARGS=(--cpu 4); CPU_FLAG=false; CPU=""; WAIT_MIN=10
-WORKSPACE=""; MODE_ARG="--jump"; RISCV_USER="jlei"; RISCV_PORT="22"; DRY_RUN=false; ISSUE=61; THREADS=1; ONLY=""
+PACK_ARGS=(); PACKER="vector packer"; WORKSPACE=""; MODE_ARG="--jump"; RISCV_USER="jlei"; RISCV_PORT="22"; DRY_RUN=false; ISSUE=61; THREADS=1; ONLY=""
 CORES="core 4"
 
 die() { echo "Error: $*" >&2; exit 1; }
@@ -84,6 +85,7 @@ while [[ "$#" -gt 0 ]]; do
         --riscv-port)    RISCV_PORT="$2"; shift ;;
         --issue)         ISSUE="$2"; shift ;;
         --config)        CONFIG="$2"; shift ;;
+        --scalar-pack)   PACK_ARGS=(--scalar-pack); PACKER="scalar packer" ;;
         --dry-run)       DRY_RUN=true ;;
         -h|--help)       sed -n '3,/^# ====*$/p' "$0" | sed '$d'; exit 0 ;;
         *) die "unknown parameter: $1" ;;
@@ -154,7 +156,7 @@ busy() {
 print_plan() {
     echo "Issue #${ISSUE} Tile Search: ${LAUNCHES} launches on the first idle board of ${BOARDS}, ${N} tiles x datasets/${DATASET}"
     echo "  Threads   : ${THREADS} on ${CORES}"
-    echo "  Settings  : ${CPU_ARGS[*]} --no-nc-overrides --tmin ${TMIN}, uninstrumented, reference protocol, vector packer"
+    echo "  Settings  : ${CPU_ARGS[*]} --no-nc-overrides --tmin ${TMIN}, uninstrumented, reference protocol, ${PACKER}"
     echo "  Load      : the board's processes are read before every launch; another user's busy job means wait ${WAIT_MIN} min and read again"
     local l
     for ((l = FIRST; l <= LAST; l++)); do echo "  Launch ${l}  : starts at $(tile_of "${ROWS[$(( ((l - 1) * STEP) % N ))]}")"; done
@@ -200,7 +202,7 @@ newest_since() {
     echo "${d}"
 }
 
-# report_and_dump -- the report over the launches that finished so far, then the copy to HectorYolo/
+# report_and_dump -- the report over the launches that finished so far, then the copy to .scratch/reports/
 report_and_dump() {
     local dirs=()
     mapfile -t dirs < <(awk -F'\t' -v L="${LOGS}" 'NR > 1 && $5 == "0" { print L "/" $4 }' "${SERIES}/runs.tsv")
@@ -225,7 +227,7 @@ for ((l = FIRST; l <= LAST; l++)); do
     start="$(date +%Y-%m-%d_%H%M%S)"
     (
         flock -w 21600 9 || { echo "$(date -Is) gave up waiting for the lock"; exit 99; }
-        cd "${HERE}/../.." && "${BENCH_RUN}" "${CONN[@]}" --config "${cfg}" --no-nc-overrides "${CPU_ARGS[@]}" --tmin "${TMIN}"
+        cd "${HERE}/../.." && "${BENCH_RUN}" "${CONN[@]}" --config "${cfg}" --no-nc-overrides "${CPU_ARGS[@]}" "${PACK_ARGS[@]}" --tmin "${TMIN}"
     ) 9>"${LOCK}" >> "${log}" 2>&1
     rc=$?
     dir="$(newest_since "${start}")"

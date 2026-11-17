@@ -3,13 +3,15 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/58
 **Audit #79 (2026-11-17):** brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/issue-79-audit-brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/issue-79-audit-brief.tex), reports in `.scratch/reports/issue-79/`. Verdict: the tile answer comes from our GEMM, not Héctor's (GAP; his GEMM with other tiles is still untested); numbers reproduce; per-n winners are a family, not exact.
 
+**Scalar-packing rerun #83 (2026-11-17):** brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/report/issue83_brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/report/issue83_brief.tex), report [`.scratch/reports/issue-83/`](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/README.md). With the scalar packer, YOLO runs at 0.930 (1T) / 0.946 (8T) of vector GOPs (median of 50 layers), 0.59-0.83 on the n = 4 layers; the best tile changes on 14 / 17 layers. Packing is 50-83% of the time at small n, so keep the vector packer for YOLO.
+
 **Role / Label:** `needs-triage`. Parent issue, opened 2026-11-15 for review.
-**Status:** ✅ Closed 2026-11-17. All sub-issues done and merged into main: #59, #60, #61 (PR #64), #62 (PR #66), #56 (PR #69), #63 (PR #72). Reports: `HectorYolo/issue-{56,61,62,63}/`.
+**Status:** ✅ Closed 2026-11-17. All sub-issues done and merged into main: #59, #60, #61 (PR #64), #62 (PR #66), #56 (PR #69), #63 (PR #72). Reports: `.scratch/reports/issue-{56,61,62,63}/`.
 **Target:** SpacemiT X60, 8 cores, VLEN 256. That is the K1 chip in Héctor's OrangePi, and the same chip as our `jbpi`/`jbpi2` (`model name: Spacemit(R) X60`, 8 cores, in every `provenance.txt`).
 **Where code runs (user, 2026-11-15):** when C code can run on the RISC-V board (`jbpi`/`jbpi2`), run it there directly. No simulation, emulation (e.g. qemu) or host build as a stand-in: the board is right there, and we want to see how the code performs on the RISC-V machine. This is not a rule to force every step onto the board; Python tools (generator, reports, tests) stay on the host. Board runs follow the house rules (#39) and the check for other users.
-**Shapes:** the 53 YOLO26 GEMM shapes from Héctor (m, n, k after im2col): `HectorYolo/yolo26_k1_matrix_sizes.csv`. They match `gemm_study/yolo.dat` in his repo row for row.
+**Shapes:** the 53 YOLO26 GEMM shapes from Héctor (m, n, k after im2col): `.scratch/reports/yolo26_k1_matrix_sizes.csv`. They match `gemm_study/yolo.dat` in his repo row for row.
 **Primary sources:**
-- `HectorYolo/Re: Optimizaciones Yolo sobre RISC-V.pdf`: the email thread, 10-13 Nov 2026
+- `.scratch/reports/issue-58/Re: Optimizaciones Yolo sobre RISC-V.pdf`: the email thread, 10-13 Nov 2026
 - https://github.com/martineh/GEMMLib_yolo (commit `b292c92`, 13 Nov 2026): `src/GEMM/gemm_blis.c`, routine `gemm_B3A2C0`
 - `tests/pure_xdsl_blis_rvv/generate_pure_blis_project.py`, `config.py`, `templates/driver_benchmark.cpp`
 - #56 (`.scratch/issues/0040-parallel-gemm-design.md`): parallel GEMM, opened 2026-11-12, waiting on "which program"
@@ -64,7 +66,7 @@ We do not run our kernels inside his GEMM, and we do not copy his GEMM into our 
 | S2 #60 | **Our design:** add microkernel size search (list of tiles → best tile per shape) + report ([[0043-yolo-size-search-tooling]]) | spec + build | for the correctness check | S1 |
 | S3 #61 | One-core sweep of the candidate tiles on the YOLO shapes ([[0044-yolo-one-core-sweep]]) | board run | yes | S1, S2 |
 | S4 #62 | Read Héctor's parallel `gemm_B3A2C0` beside our macrokernel, and run his `gemm.bin` on the board ([[0045-read-hector-parallel-gemm]]) | code read + board run | yes, his C code | none |
-| S5 #56 | **Our design:** make the generated GEMM parallel, opt-in `--threads N`, default 1 ([[0040-parallel-gemm-design]]) | spec + build | yes, for the check | S4 · ✅ done 2026-11-16: 8 threads 152.1 ms per pass (4.59x), Héctor 135.7 ms; `HectorYolo/issue-56/` |
+| S5 #56 | **Our design:** make the generated GEMM parallel, opt-in `--threads N`, default 1 ([[0040-parallel-gemm-design]]) | spec + build | yes, for the check | S4 · ✅ done 2026-11-16: 8 threads 152.1 ms per pass (4.59x), Héctor 135.7 ms; `.scratch/reports/issue-56/` |
 | S6 #63 | 8-thread sweep, and our GEMM against Héctor's GEMMLib on his shapes ([[0046-yolo-eight-thread-sweep]]) | board run | yes | S3, S5 |
 
 S1, S2 and S4 can start now and do not depend on each other except S2 on S1.

@@ -1,0 +1,12 @@
+jlei                  600   4       00:00 ps
+root                 11.6   7       00:00 sshd
+root                  5.9   0    01:19:46 kworker/0:3-events
+root                  0.6   4 106-05:05:41 disp_eng_share_thread
+systemd-oom           0.0   6 106-05:05:49 systemd-oomd
+psiwins               0.0   3    01:19:45 sshd
+root                  0.0   4 106-05:05:57 vq1
+root                  0.0   6 106-05:05:57 vq0
+psiwins               0.0   0    01:19:12 ssh
+root                  0.0   5       55:16 kworker/u16:3-xprtiod
+root                  0.0   3 106-05:05:39 bluetoothd
+root                  0.0   1       44:29 kworker/u16:1-ext4-rsv-conversion

@@ -3,7 +3,7 @@
 Command (repo root):
 
 ```
-python -I .scratch/reports/issue-79/recompute_63.py --ours8 tests/pure_xdsl_blis_rvv/logs/run_2026-11-16_222551 tests/pure_xdsl_blis_rvv/logs/run_2026-11-16_234245 tests/pure_xdsl_blis_rvv/logs/run_2026-11-17_005337 --ours1 tests/pure_xdsl_blis_rvv/logs/run_2026-11-15_220501 tests/pure_xdsl_blis_rvv/logs/run_2026-11-15_231549 tests/pure_xdsl_blis_rvv/logs/run_2026-11-16_002638 --his HectorYolo/issue-63/hector_gemm_2026-11-16_222943/L1_T8_jbpi.csv HectorYolo/issue-63/hector_gemm_2026-11-16_223301/L1_T8_jbpi.csv HectorYolo/issue-63/hector_gemm_2026-11-17_005723/L1_T8_jbpi.csv
+python -I .scratch/reports/issue-79/recompute_63.py --ours8 tests/pure_xdsl_blis_rvv/logs/run_2026-11-16_222551 tests/pure_xdsl_blis_rvv/logs/run_2026-11-16_234245 tests/pure_xdsl_blis_rvv/logs/run_2026-11-17_005337 --ours1 tests/pure_xdsl_blis_rvv/logs/run_2026-11-15_220501 tests/pure_xdsl_blis_rvv/logs/run_2026-11-15_231549 tests/pure_xdsl_blis_rvv/logs/run_2026-11-16_002638 --his .scratch/reports/issue-63/hector_gemm_2026-11-16_222943/L1_T8_jbpi.csv .scratch/reports/issue-63/hector_gemm_2026-11-16_223301/L1_T8_jbpi.csv .scratch/reports/issue-63/hector_gemm_2026-11-17_005723/L1_T8_jbpi.csv
 ```
 
 ## B1. Coverage and correctness status

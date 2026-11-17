@@ -2,6 +2,8 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/61
 
+**Scalar-packing rerun #83 (2026-11-17):** brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/report/issue83_brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/report/issue83_brief.tex), report [`.scratch/reports/issue-83/`](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/README.md). Rerun of this sweep with the scalar packer: median 0.930 of vector GOPs (0.589-1.022), worst on n = 4 (Y14, Y30, Y47); best tile changes on 14 of 50 layers.
+
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Board run.
 **Status:** ✅ Series run 2026-11-15/16 on `jbpi`: 3 of 3 launches ok, idle board (§5a). Open question on Y14 (§5b).
 **Blocked by:** #59 (S1, dataset and tiles), #60 (S2, config, report, correctness pass).
@@ -49,7 +51,7 @@ Board time measured on #60's correctness pass: about 3 min per tile to build, so
 
 ## 5a. Result (`jbpi`, uninstrumented, reference protocol, `--tmin 2`, core 4, `--no-nc-overrides`, 3 launches)
 
-Series `logs/yolo_sweep_2026-11-15_205445/` (20:54-00:27); run folders `logs/run_2026-11-15_220501`, `logs/run_2026-11-15_231549`, `logs/run_2026-11-16_002638` (rotation starts 8x4, 16x8, 24x8). No other user's load before or after any launch. Full report and heatmap: `logs/yolo_sweep_2026-11-15_205445/tile_search_report.md`, `tile_search_heatmap.png` (copy in `HectorYolo/issue-61/sweep_final_2026-11-15/`).
+Series `logs/yolo_sweep_2026-11-15_205445/` (20:54-00:27); run folders `logs/run_2026-11-15_220501`, `logs/run_2026-11-15_231549`, `logs/run_2026-11-16_002638` (rotation starts 8x4, 16x8, 24x8). No other user's load before or after any launch. Full report and heatmap: `logs/yolo_sweep_2026-11-15_205445/tile_search_report.md`, `tile_search_heatmap.png` (copy in `.scratch/reports/issue-61/sweep_final_2026-11-15/`).
 
 GOPs over one pass of that n's shapes, whole call, packing included, as **by mean time / by median rep**:
 
@@ -67,7 +69,7 @@ GOPs over one pass of that n's shapes, whole call, packing included, as **by mea
 
 Short answer: one tile for the whole network is **24x8** (698.6 ms per pass by mean time, against 785.3 ms for 16x8). Per n: 24x9 for n = 8-32, 24x8 for n = 64 and 256, 32x7 for n = 80 and 128. For n = 4, 24x4 and Héctor's 16x4 tie (2.50 by mean time). 16x8 is the best tile on 1 of 50 shapes (Y44). MR = 8 tiles are the slowest (2.97-3.43 over the dataset).
 
-**Report:** [`.scratch/reports/issue-61-report.md`](../reports/issue-61-report.md) (engineering report: method, changes, verification, results, limitations; copy in `HectorYolo/issue-61/sweep_final_2026-11-15/`).
+**Report:** [`.scratch/reports/issue-61-report.md`](../reports/issue-61-report.md) (engineering report: method, changes, verification, results, limitations; copy in `.scratch/reports/issue-61/sweep_final_2026-11-15/`).
 
 ## 5b. Open question: Y14 with MR = 32
 

@@ -128,7 +128,7 @@ static void run_case(int m, int n, int k, int mc, int nc, int kc, float beta) {
         double pt = 0, kt = 0;
         uint64_t pb = 0;
         gemm_blis_generic(m, n, k, alpha, A.data(), m, B.data(), k, beta, C.data(), m, Ac.data(), Bc.data(),
-                          mc, nc, kc, mr, nr, &pt, &kt, &pb, false, false, 0, nullptr);
+                          mc, nc, kc, mr, nr, &pt, &kt, &pb, %(scalar)s, false, 0, nullptr);
         double worst = 0;
         bool finite = true;
         for (int j = 0; j < n; ++j)
@@ -159,7 +159,7 @@ int main() {
 """
 
 
-def _run_dispatch(project: Path, root: Path) -> list[dict[str, str]]:
+def _run_dispatch(project: Path, root: Path, scalar: bool = False) -> list[dict[str, str]]:
     compiler = shutil.which("g++") or shutil.which("c++")
     if compiler is None:
         pytest.skip("no native C++ compiler available for the host-side dispatch test")
@@ -167,7 +167,7 @@ def _run_dispatch(project: Path, root: Path) -> list[dict[str, str]]:
     stub_inc.mkdir(parents=True)
     (stub_inc / "riscv_vector.h").write_text("")
     (root / "stub_kernels.cpp").write_text(STUB_KERNELS % {"mr": MR, "nr": NR})
-    (root / "harness.cpp").write_text(HARNESS % {"mr": MR, "nr": NR})
+    (root / "harness.cpp").write_text(HARNESS % {"mr": MR, "nr": NR, "scalar": "true" if scalar else "false"})
     binary = root / "dispatch_test"
     build = subprocess.run(
         [compiler, "-O1", "-std=c++17", "-fopenmp", "-DRVV_INSTRUMENTED=0", f"-I{stub_inc}", f"-I{project}",
@@ -186,6 +186,14 @@ def _run_dispatch(project: Path, root: Path) -> list[dict[str, str]]:
 @pytest.mark.parametrize("threads", ["3", "8"])
 def test_the_parallel_gemm_is_right(projects: dict[str, Path], tmp_path: Path, threads: str) -> None:
     for row in _run_dispatch(projects[threads], tmp_path):
+        assert row["finite"] == "1", row
+        assert float(row["max_err"]) < 1e-4, row
+
+
+@pytest.mark.parametrize("threads", ["3", "8"])
+def test_the_parallel_gemm_with_scalar_packing_is_right(projects: dict[str, Path], tmp_path: Path, threads: str) -> None:
+    """Issue #83: --scalar-pack at N threads runs the 1-thread scalar packers on each thread's pieces."""
+    for row in _run_dispatch(projects[threads], tmp_path, scalar=True):
         assert row["finite"] == "1", row
         assert float(row["max_err"]) < 1e-4, row
 
@@ -235,7 +243,6 @@ def test_script_8_threads_run_on_cores_0_to_7_with_openmp_binding() -> None:
         (["--threads", "x"], ["--threads"]),
         (["--threads", "8", "--instr"], ["--threads", "--instr"]),
         (["--threads", "8", "--no-ref-protocol"], ["--threads", "--no-ref-protocol"]),
-        (["--threads", "8", "--scalar-pack"], ["--threads", "--scalar-pack"]),
         (["--threads", "8", "--pack-b", "col-g1"], ["--threads", "--pack-b"]),
         (["--threads", "8", "--zero-pack-lines"], ["--threads", "--zero-pack-lines"]),
         (["--threads", "8", "--cpu", "4"], ["--threads", "--cpu"]),
@@ -248,6 +255,13 @@ def test_script_refuses_at_argument_time(args: list[str], words: list[str]) -> N
     assert proc.returncode != 0, out
     assert all(w in out for w in words), out
     assert "Run overview" not in out
+
+
+def test_script_accepts_scalar_pack_at_8_threads() -> None:
+    """Issue #83: --threads 8 --scalar-pack is no longer refused, and the overview says scalar packing."""
+    done = _run_script("--dry-run", "--threads", "8", "--scalar-pack")
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "scalar packing forced" in done.stdout
 
 
 def test_the_provenance_block_names_threads_and_cores(tmp_path: Path) -> None:

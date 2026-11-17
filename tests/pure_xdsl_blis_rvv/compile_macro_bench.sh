@@ -69,7 +69,8 @@ set -e
 # --threads N (issue #56, default 1): the GEMM call runs on N threads (OpenMP; fp32 AXPY only). With 1
 # the generated code is byte-identical to before. N > 1 runs on cores 0..N-1 under
 # OMP_PROC_BIND=close OMP_PLACES=cores, core 0 included by the user's exception for these runs (#56 §5);
-# it refuses --cpu, --no-pin, --instr, --no-ref-protocol, --scalar-pack, --pack-b other than row and --zero-pack-lines.
+# it refuses --cpu, --no-pin, --instr, --no-ref-protocol, --pack-b other than row and --zero-pack-lines
+# (--scalar-pack runs the 1-thread scalar packers on each thread's pieces, issue #83).
 # provenance.txt gets a `threads` line.
 #
 # Every run starts by printing an overview of the settings in effect, defaults included.
@@ -217,13 +218,13 @@ if ! [[ "${THREADS}" =~ ^[1-8]$ ]]; then
     echo "Error: --threads takes 1 to 8 (the board has 8 cores; got '${THREADS}')."; exit 1
 fi
 if [ "${THREADS}" -gt 1 ]; then
-    for f in --scalar-pack --zero-pack-lines; do
+    for f in --zero-pack-lines; do
         if [[ "${TEST_ARGS}" == *"${f}"* ]]; then echo "Error: --threads ${THREADS} cannot run ${f} (one-thread only)."; exit 1; fi
     done
     if [ "${PACK_B_NAME}" != "row" ]; then echo "Error: --threads ${THREADS} runs the shipped packer only, not --pack-b ${PACK_B_NAME}."; exit 1; fi
     if [ "${INSTRUMENTED}" != "0" ]; then echo "Error: --threads ${THREADS} needs the uninstrumented build (drop --instr): its timers are not thread-safe."; exit 1; fi
     if [ -n "${USE_SCALAR_PACK:-}" ]; then echo "Error: --threads ${THREADS} cannot run with USE_SCALAR_PACK set."; exit 1; fi
-    # The warm-up protocol's scalar-pack pass would run the vector packers in the N-thread dispatch.
+    # The warm-up protocol times pack and compute apart; the N-thread dispatch keeps no timers (#56).
     if [ "${REF_PROTOCOL}" != "1" ]; then echo "Error: --threads ${THREADS} needs the reference protocol (drop --no-ref-protocol)."; exit 1; fi
     if [ "${CPU_FLAG}" = true ] || [ "${NO_PIN}" = true ]; then
         echo "Error: --threads ${THREADS} fixes the cores (0-$((THREADS - 1))): drop --cpu / --no-pin."; exit 1

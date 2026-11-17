@@ -1,0 +1,12 @@
+root                 10.0   2       00:00 sshd
+root                  6.2   0    01:11:51 kworker/0:3-events
+root                  0.6   0 106-04:57:47 disp_eng_share_thread
+systemd-oom           0.0   2 106-04:57:54 systemd-oomd
+psiwins               0.0   5    01:11:50 sshd
+psiwins               0.0   0    01:11:18 ssh
+root                  0.0   4 106-04:58:02 vq1
+root                  0.0   6 106-04:58:02 vq0
+psiwins               0.0   0    01:09:23 ssh
+root                  0.0   5       36:34 kworker/u16:1-nfsiod
+root                  0.0   2       47:22 kworker/u16:3-rpciod
+root                  0.0   3 106-04:57:44 bluetoothd

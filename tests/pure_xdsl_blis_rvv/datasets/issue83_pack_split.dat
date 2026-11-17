@@ -1,0 +1,16 @@
+# Issue #83: shapes for the instrumented pack/compute split, vector against scalar packer (1 thread, core 4).
+# They span reuse n (uses of each packed A element): YOLO n = 4 (Y14, Y30, Y47), 16 (Y10, Y40), 32 (Y29),
+# 80 (Y19), 256 (Y42); BERT B1, B2 (n = 384); Square S1 (n = 1000). Rows copied from yolo26_k1.dat and
+# paper_bert_square.dat.
+# layer  M     N     K
+Y14      4800  4     16
+Y30      1200  4     16
+Y47      300   4     16
+Y10      4800  16    32
+Y40      300   16    144
+Y29      1200  32    64
+Y19      4800  80    64
+Y42      300   256   1152
+B1       1024  384   1024
+B2       384   384   64
+S1       1000  1000  1000

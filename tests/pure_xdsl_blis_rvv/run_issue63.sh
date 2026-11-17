@@ -8,7 +8,7 @@
 #   his : run_hector_gemm.sh --threads 8 --launches 1 (his gemm.x at b292c92, cores 0-7); built once, by his
 #         first launch, then reused (--no-build; jbpi and jbpi2 share one NFS home)
 # Each runner reads the board before its launch and waits while another user's job is busy; each writes its own
-# series folder and copies it to HectorYolo/issue-63/. The first failed step stops the series.
+# series folder and copies it to .scratch/reports/issue-63/. The first failed step stops the series.
 # Core 0 is used: the user's exception for 8-thread runs (#63 §2, decided 2026-11-16).
 #
 # Usage (from the project root; detach it so it survives the terminal):
@@ -20,6 +20,8 @@
 #   --board B       the board for every step (default jbpi)
 #   --launches N    launches per side (default 3)
 #   --tmin S        our --tmin and his TIMIN (default 2)
+#   --scalar-pack   our side uses the scalar packer; his gemm.x is unchanged (issue #83)
+#   --issue N       .scratch/reports/issue-<N>/ for both sides (default 63)
 #   --dry-run       print the order, then stop
 # ============================================================
 
@@ -29,7 +31,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SWEEP="${ISSUE63_SWEEP:-${HERE}/run_yolo_sweep.sh}"      # ISSUE63_* let the order be tried against stubs
 HECTOR="${ISSUE63_HECTOR:-${HERE}/run_hector_gemm.sh}"
 
-SRC=""; BOARD="jbpi"; LAUNCHES=3; TMIN=2; DRY_RUN=false
+PACK_ARGS=(); ISSUE=63; SRC=""; BOARD="jbpi"; LAUNCHES=3; TMIN=2; DRY_RUN=false
 die() { echo "Error: $*" >&2; exit 1; }
 
 while [[ "$#" -gt 0 ]]; do
@@ -38,6 +40,8 @@ while [[ "$#" -gt 0 ]]; do
         --board)     BOARD="$2"; shift ;;
         --launches)  LAUNCHES="$2"; shift ;;
         --tmin)      TMIN="$2"; shift ;;
+        --scalar-pack) PACK_ARGS=(--scalar-pack) ;;
+        --issue)     ISSUE="$2"; shift ;;
         --dry-run)   DRY_RUN=true ;;
         -h|--help)   sed -n '3,/^# ====*$/p' "$0" | sed '$d'; exit 0 ;;
         *) die "unknown parameter: $1" ;;
@@ -56,7 +60,7 @@ labels=(); l=0
 for s in "${STEPS[@]}"; do [ "${s}" = ours ] && { l=$((l + 1)); labels+=("ours L${l}"); } || labels+=(his); done
 order="$(IFS=,; echo "${labels[*]}" | sed 's/,/, /g')"
 
-echo "Issue #63: 8 threads on cores 0-7 of ${BOARD}, --tmin ${TMIN}, ${LAUNCHES} launches per side"
+echo "Issue #${ISSUE}: 8 threads on cores 0-7 of ${BOARD}, --tmin ${TMIN}, ${LAUNCHES} launches per side ${PACK_ARGS[*]}"
 echo "  Order: ${order}"
 [ "${DRY_RUN}" = true ] && { echo "  --dry-run: nothing was started."; exit 0; }
 
@@ -66,10 +70,10 @@ for ((i = 0; i < ${#STEPS[@]}; i++)); do
     echo "[$(date +%H:%M)] step $((i + 1))/${#STEPS[@]}: ${labels[$i]}"
     if [ "${side}" = ours ]; then
         l=$((l + 1))
-        "${SWEEP}" --threads 8 --launches "${LAUNCHES}" --launch "${l}" --boards "${BOARD}" --tmin "${TMIN}" --issue 63
+        "${SWEEP}" --threads 8 --launches "${LAUNCHES}" --launch "${l}" --boards "${BOARD}" --tmin "${TMIN}" --issue "${ISSUE}" "${PACK_ARGS[@]}"
     else
         build=(); [ "${built}" = true ] && build=(--no-build)
-        "${HECTOR}" --src "${SRC}" --threads 8 --launches 1 --boards "${BOARD}" --timin "${TMIN}" --issue 63 "${build[@]}"
+        "${HECTOR}" --src "${SRC}" --threads 8 --launches 1 --boards "${BOARD}" --timin "${TMIN}" --issue "${ISSUE}" "${build[@]}"
     fi
     rc=$?
     [ "${rc}" -eq 0 ] || { echo "step $((i + 1)) (${side}) failed (exit ${rc}); stopping the series."; exit 1; }
