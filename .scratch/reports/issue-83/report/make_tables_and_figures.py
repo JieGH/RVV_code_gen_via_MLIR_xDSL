@@ -126,22 +126,64 @@ if T4:
 # ---------- chart data: the brief draws every chart in LaTeX (pgfplots, vector), user 2026-11-17 ----------
 import os
 os.makedirs(f"{OUT}/data", exist_ok=True)
-XMAX = {}
+for f in glob.glob(f"{OUT}/data/*"):
+    os.remove(f)
+
+
+def label(k):
+    return f"{k} {'x'.join(map(str, dims[k]))} (n={dims[k][1]})"
+
+
+# 1. Per-launch dots, one strip per shape with its own GOPs window (so a 2% jitter is visible on a 1-60 GOPs set).
+ROWS_PER_PAGE = 17
 for key in RUNS:
     v, s = data[key]
     ks = sorted(v, key=order)
-    XMAX[key] = 1.15 * max(max(src[k][4]) for src in (v, s) for k in ks)
-    parts = {"": ks} if len(ks) <= 25 else {"_a": ks[:25], "_b": ks[25:]}  # 50 layers: two pages, same x scale
-    for suffix, part in parts.items():
-      with open(f"{OUT}/data/gops_{key}{suffix}.csv", "w") as f:
-        f.write("idx,label,vec,vlo,vhi,scal,slo,shi\n")
-        for i, k in enumerate(part):
-            a, b = v[k], s[k]
-            f.write(f"{i},{k} {'x'.join(map(str, dims[k]))} (n={dims[k][1]}),{a[1]:.2f},{a[1]-min(a[4]):.3f},{max(a[4])-a[1]:.3f},"
-                    f"{b[1]:.2f},{b[1]-min(b[4]):.3f},{max(b[4])-b[1]:.3f}\n")
-with open(f"{OUT}/data/xmax.tex", "w") as f:  # shared GOPs axis length per test, read by the brief
-    for key, name in [("yolo1", "YoloOne"), ("yolo8", "YoloEight"), ("paper1", "PaperOne"), ("paper8", "PaperEight")]:
-        f.write(f"\\newcommand{{\\xmax{name}}}{{{XMAX[key]:.1f}}}\n")
+    with open(f"{OUT}/data/launches_{key}.csv", "w") as f:
+        f.write("shape,m,n,k,vec_tile,vec_l1,vec_l2,vec_l3,vec_mean,scal_tile,scal_l1,scal_l2,scal_l3,scal_mean\n")
+        for k in ks:
+            f.write(f"{k},{','.join(map(str, dims[k]))},{v[k][0]},{','.join(f'{x:.3f}' for x in v[k][4])},{v[k][1]:.3f},"
+                    f"{s[k][0]},{','.join(f'{x:.3f}' for x in s[k][4])},{s[k][1]:.3f}\n")
+    pages = [ks[i:i + ROWS_PER_PAGE] for i in range(0, len(ks), ROWS_PER_PAGE)]
+    for pi, part in enumerate(pages):
+        out = ["\\begin{tikzpicture}"]
+        for r, k in enumerate(part):
+            dots = v[k][4] + s[k][4]
+            lo, hi = min(dots), max(dots)
+            mid, width = (lo + hi) / 2, max(hi - lo, 0.08 * v[k][1])  # window at least 8% of the vector mean
+            xmin, xmax = mid - 0.62 * width, mid + 0.62 * width
+            out.append(
+                f"\\begin{{axis}}[dotrow, at={{(0,{-r * 1.25:.2f}cm)}}, xmin={xmin:.4f}, xmax={xmax:.4f}]\n"
+                f"\\draw[muted, dashed, line width=0.4pt] (axis cs:{v[k][1]:.4f},-0.6) -- (axis cs:{v[k][1]:.4f},1.6);\n"
+                f"\\addplot[only marks, mark=*, mark size=1.7pt, color=vec, fill opacity=0.75] coordinates "
+                f"{{{''.join(f'({x:.4f},0)' for x in v[k][4])}}};\n"
+                f"\\addplot[only marks, mark=*, mark size=1.7pt, color=scal, fill opacity=0.75] coordinates "
+                f"{{{''.join(f'({x:.4f},1)' for x in s[k][4])}}};\n"
+                f"\\addplot[only marks, mark=|, mark size=4.5pt, line width=1.3pt, color=vec!60!black] coordinates {{({v[k][1]:.4f},0)}};\n"
+                f"\\addplot[only marks, mark=|, mark size=4.5pt, line width=1.3pt, color=scal!60!black] coordinates {{({s[k][1]:.4f},1)}};\n"
+                f"\\node[anchor=east, font=\\scriptsize] at (rel axis cs:0,0.5) {{{label(k)}}};\n"
+                f"\\node[anchor=west, font=\\scriptsize, align=left] at (rel axis cs:1,0.5) "
+                f"{{\\textcolor{{vec!70!black}}{{{v[k][1]:.2f}}}\\\\\\textcolor{{scal!70!black}}{{{s[k][1]:.2f}}}}};\n"
+                f"\\end{{axis}}")
+        out.append("\\end{tikzpicture}")
+        open(f"{OUT}/data/dots_{key}_{pi + 1}.tex", "w").write("\n".join(out) + "\n")
+
+# 2. Gap against noise: x = |vector - scalar| mean GOPs, y = the wider launch range of the two sides (GOPs), log-log.
+#    Separate files for shapes where scalar is faster (drawn hollow).
+for th in ("1", "8"):
+    for name, key, pick in [("yolo", f"yolo{th}", lambda l: True), ("bert", f"paper{th}", lambda l: l[0] == "B"),
+                            ("square", f"paper{th}", lambda l: l[0] == "S")]:
+        v, s = data[key]
+        rows = {"pos": [], "neg": []}
+        for k in sorted((k for k in v if pick(k)), key=order):
+            gap = v[k][1] - s[k][1]
+            noise = max(max(v[k][4]) - min(v[k][4]), max(s[k][4]) - min(s[k][4]))
+            rows["pos" if gap >= 0 else "neg"].append(f"{abs(gap):.4f},{max(noise, 0.002):.4f},{k}\n")
+        for sign, rs in rows.items():
+            with open(f"{OUT}/data/gapnoise_{th}t_{name}_{sign}.csv", "w") as f:
+                f.write("gap,noise,shape\n" + "".join(rs or ["nan,nan,none\n"]))
+
+# 3. scalar/vector against reuse n (kept for Part 2).
 for th in ("1", "8"):
     for name, key, pick in [("yolo", f"yolo{th}", lambda l: True), ("bert", f"paper{th}", lambda l: l[0] == "B"),
                             ("square", f"paper{th}", lambda l: l[0] == "S")]:
@@ -150,9 +192,20 @@ for th in ("1", "8"):
             f.write("n,ratio,shape\n")
             for k in sorted((k for k in v if pick(k)), key=order):
                 f.write(f"{dims[k][1]},{s[k][1] / v[k][1]:.4f},{k}\n")
+
+# 4. T4: pack + compute time, as % of the vector packer's total (B), and predicted against measured (C).
 if T4:
     ls = sorted({l for l in t4 if isinstance(l, str)}, key=lambda l: dims[l][1])
-    with open(f"{OUT}/data/t4_pack_share.csv", "w") as f:
-        f.write("idx,label,vshare,sshare\n")
+    with open(f"{OUT}/data/t4_time.csv", "w") as f:
+        f.write("idx,label,vpack,vcomp,spack,scomp,vshare,sshare\n")
         for i, l in enumerate(ls):
-            f.write(f"{i},{l} {'x'.join(map(str, dims[l]))} (n={dims[l][1]}),{100*t4[l][0][2]:.1f},{100*t4[l][1][2]:.1f}\n")
+            (vp, vc, _), (sp, sc, _) = t4[l]
+            tot = vp + vc
+            f.write(f"{i},{label(l)},{100*vp/tot:.2f},{100*vc/tot:.2f},{100*sp/tot:.2f},{100*sc/tot:.2f},"
+                    f"{100*vp/tot:.0f},{100*sp/(sp+sc):.0f}\n")
+    with open(f"{OUT}/data/t4_predicted.csv", "w") as f:
+        f.write("pred,meas,shape\n")
+        for l in ls:
+            (vp, vc, _), (sp, sc, _) = t4[l]
+            v, s = data["yolo1" if l[0] == "Y" else "paper1"]
+            f.write(f"{(vp + vc) / (sp + sc):.4f},{s[l][1] / v[l][1]:.4f},{l}\n")
