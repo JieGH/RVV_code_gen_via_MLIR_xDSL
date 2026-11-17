@@ -30,12 +30,15 @@
   legend style={at={(1,1)}, anchor=south east, legend columns=2, /tikz/every even column/.append style={column sep=6pt}},
   axis y line*=left, axis x line*=bottom,
   every node near coord/.append style={font=\scriptsize, anchor=west, xshift=1pt, /pgf/number format/.cd, fixed, fixed zerofill, precision=2}]
-\addplot[xbar, area legend, bar width=0.3, bar shift=-0.155, fill=vec, draw=none, error bars/.cd, x dir=both, x explicit,
-  error bar style={black, line width=0.4pt}, error mark options={rotate=90, mark size=1.2pt, black}]
-  table[y=idx, x=vec, x error plus=vhi, x error minus=vlo]{#1};
-\addplot[xbar, area legend, bar width=0.3, bar shift=0.155, fill=scal, draw=none, error bars/.cd, x dir=both, x explicit,
-  error bar style={black, line width=0.4pt}, error mark options={rotate=90, mark size=1.2pt, black}]
-  table[y=idx, x=scal, x error plus=shi, x error minus=slo]{#1};
+\addplot[xbar, area legend, bar width=0.3, bar shift=-0.155, fill=vec, draw=none] table[y=idx, x=vec]{#1};
+\addplot[xbar, area legend, bar width=0.3, bar shift=0.155, fill=scal, draw=none] table[y=idx, x=scal]{#1};
+% whiskers: own plots at each bar's centre (error bars on a shifted bar stay on the row centre)
+\addplot[draw=none, mark=none, forget plot, error bars/.cd, x dir=both, x explicit,
+  error bar style={black, line width=0.5pt}, error mark=|, error mark options={black, line width=0.5pt, mark size=2.2pt}]
+  table[x=vec, y expr=\thisrow{idx}-0.155, x error plus=vhi, x error minus=vlo]{#1};
+\addplot[draw=none, mark=none, forget plot, error bars/.cd, x dir=both, x explicit,
+  error bar style={black, line width=0.5pt}, error mark=|, error mark options={black, line width=0.5pt, mark size=2.2pt}]
+  table[x=scal, y expr=\thisrow{idx}+0.155, x error plus=shi, x error minus=slo]{#1};
 \addplot[only marks, mark=none, nodes near coords, point meta=explicit, forget plot]
   table[x expr=\thisrow{vec}+\thisrow{vhi}, y expr=\thisrow{idx}-0.155, meta=vec]{#1};
 \addplot[only marks, mark=none, nodes near coords, point meta=explicit, forget plot]
