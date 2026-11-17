@@ -132,40 +132,41 @@ if T4:
         print(f"| {l} | {'x'.join(map(str, dims[l]))} | {tl} | {vp:.3f} / {vc:.3f} | {100*vs:.1f}% | {sp:.3f} / {sc:.3f} | {100*ss:.1f}% | {sp/vp:.2f} |")
 
 # ---------- figures ----------
-def bars(ax, v, s, shapes, rot=0):
-    x = range(len(shapes))
+def bars(ax, v, s, shapes):
+    """Horizontal bars: one row per shape (top to bottom), GOPs along x."""
+    y = range(len(shapes))
     for off, src, col, lab in [(-0.2, v, BLUE, "vector packer"), (0.2, s, ORANGE, "scalar packer")]:
-        ys = [src[k][1] for k in shapes]
+        xs = [src[k][1] for k in shapes]
         lo = [src[k][1] - min(src[k][4]) for k in shapes]
         hi = [max(src[k][4]) - src[k][1] for k in shapes]
-        ax.bar([i + off for i in x], ys, 0.38, color=col, label=lab)
-        ax.errorbar([i + off for i in x], ys, yerr=[lo, hi], fmt="none", ecolor=INK, elinewidth=0.7, capsize=1.5)
-    ax.set_xticks(list(x), shapes, rotation=rot, fontsize=7 if rot else 9)
-    ax.set_xlim(-0.7, len(shapes) - 0.3)
-    ax.set_ylabel("GOPs by mean time (best tile)")
-    ax.grid(axis="x", visible=False)
+        ax.barh([i + off for i in y], xs, 0.38, color=col, label=lab)
+        ax.errorbar(xs, [i + off for i in y], xerr=[lo, hi], fmt="none", ecolor=INK, elinewidth=0.7, capsize=1.5)
+    ax.set_yticks(list(y), [f"{k}  n={dims[k][1]}" for k in shapes], fontsize=7 if len(shapes) > 20 else 9)
+    ax.set_ylim(len(shapes) - 0.3, -0.7)  # first shape on top
+    ax.set_xlabel("GOPs by mean time (best tile)")
+    ax.grid(axis="y", visible=False)
 
 
 NOTE = "Uninstrumented build, reference protocol, 3 launches per side; bar = mean of launches, whisker = launch min-max."
-fig, axes = plt.subplots(1, 2, figsize=(10, 3.6))
+fig, axes = plt.subplots(1, 2, figsize=(10, 4.6))
 for ax, k in [(axes[0], "paper1"), (axes[1], "paper8")]:
     v, s = data[k]
     bars(ax, v, s, sorted(v, key=order))
     ax.set_title(TITLE[k].split(", ")[1], color=INK, loc="left")
-axes[1].legend(frameon=False, loc="upper right", bbox_to_anchor=(1, 1.16), ncol=2)
+axes[1].legend(frameon=False, loc="lower right")
 fig.suptitle("BERT (B1-B5) and Square (S1-S5): vector vs scalar packing", x=0.01, ha="left", color=INK)
 fig.text(0.01, 0.005, NOTE + " Vector on jbpi (#71), scalar on jbpi2 (#83).", fontsize=7, color=MUTED)
-fig.tight_layout(rect=(0, 0.04, 1, 0.95))
+fig.tight_layout(rect=(0, 0.04, 1, 0.97))
 fig.savefig(f"{OUT}/fig1_paper_vector_vs_scalar.png", dpi=150)
 
-fig, axes = plt.subplots(2, 1, figsize=(13, 7.2))
+fig, axes = plt.subplots(1, 2, figsize=(11, 12))
 for ax, k in [(axes[0], "yolo1"), (axes[1], "yolo8")]:
     v, s = data[k]
-    bars(ax, v, s, sorted(v, key=order), rot=90)
+    bars(ax, v, s, sorted(v, key=order))
     ax.set_title(TITLE[k], color=INK, loc="left")
-axes[0].legend(frameon=False, loc="upper left")
+axes[1].legend(frameon=False, loc="lower right")
 fig.text(0.01, 0.005, NOTE + " jbpi. Vector from #61 (1T) and #63 (8T).", fontsize=7, color=MUTED)
-fig.tight_layout(rect=(0, 0.02, 1, 1))
+fig.tight_layout(rect=(0, 0.015, 1, 1))
 fig.savefig(f"{OUT}/fig2_yolo_per_layer.png", dpi=150)
 
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.2), sharey=True)
