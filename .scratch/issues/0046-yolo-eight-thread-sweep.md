@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/63
 
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Board run.
-**Status:** 📝 Open. Run done 2026-11-17 on jbpi (6 of 6 steps ok); report: `HectorYolo/issue-63/report/issue-63-report.md`. Not closed.
+**Status:** ✅ Closed 2026-11-17 (merged in PR #72, then #74 into main). Run done on jbpi (6 of 6 steps ok); report: `HectorYolo/issue-63/report/issue-63-report.md`.
 **Blocked by:** nothing. #61 (S3) done; #56 (S5, parallel GEMM) done 2026-11-16: `--threads 8`, report `HectorYolo/issue-56/`.
 **Target:** `jbpi` or `jbpi2`, all 8 cores.
 **Shapes:** `datasets/yolo26_k1.dat`.

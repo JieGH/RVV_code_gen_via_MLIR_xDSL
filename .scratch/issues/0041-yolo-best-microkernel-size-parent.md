@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/58
 
 **Role / Label:** `needs-triage`. Parent issue, opened 2026-11-15 for review.
-**Status:** 📝 Open. Nothing built or measured.
+**Status:** ✅ Closed 2026-11-17. All sub-issues done and merged into main: #59, #60, #61 (PR #64), #62 (PR #66), #56 (PR #69), #63 (PR #72). Reports: `HectorYolo/issue-{56,61,62,63}/`.
 **Target:** SpacemiT X60, 8 cores, VLEN 256. That is the K1 chip in Héctor's OrangePi, and the same chip as our `jbpi`/`jbpi2` (`model name: Spacemit(R) X60`, 8 cores, in every `provenance.txt`).
 **Where code runs (user, 2026-11-15):** when C code can run on the RISC-V board (`jbpi`/`jbpi2`), run it there directly. No simulation, emulation (e.g. qemu) or host build as a stand-in: the board is right there, and we want to see how the code performs on the RISC-V machine. This is not a rule to force every step onto the board; Python tools (generator, reports, tests) stay on the host. Board runs follow the house rules (#39) and the check for other users.
 **Shapes:** the 53 YOLO26 GEMM shapes from Héctor (m, n, k after im2col): `HectorYolo/yolo26_k1_matrix_sizes.csv`. They match `gemm_study/yolo.dat` in his repo row for row.
