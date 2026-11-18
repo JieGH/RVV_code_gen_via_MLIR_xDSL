@@ -6,7 +6,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/95
 
 **Role / Label:** `needs-triage`. Opened 2026-11-18 at the user's request. Diagnosis, board runs on `jbpi`.
 **Status:** open. Main cause found and measured (§7): our A packer reads A in a slow order. Report written (§8). The fix is the pending issue #96, not started.
-**Report:** [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.tex), [README](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/README.md).
+**Report:** [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-95/report/issue95_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-95/report/issue95_report.tex), [README](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-95/README.md).
 **Branch:** `why-our-yolo-gemm-is-slower-than-hectors`, cut from the #94 branch (not `pure-xdsl`), because this work reads #94's committed logs, which are not on `pure-xdsl` until #94 merges.
 **Related:** #94 [[0053-yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors]] (the gap), #62 [[0045-read-hector-parallel-gemm]] (his code read), #79, #82.
 
@@ -177,7 +177,7 @@ All 50 shapes (`logs/issue95_pack_order_50_2026-11-18_*.txt`, our model's mc and
 
 ## 8. Report
 
-`.scratch/reports/issue-95/report/issue95_report.pdf` (5 pages; [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.pdf), [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.tex)). Data from `report/make_data.py`, which reads only committed logs.
+`.scratch/reports/issue-95/report/issue95_report.pdf` (5 pages; [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-95/report/issue95_report.pdf), [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-95/report/issue95_report.tex)). Data from `report/make_data.py`, which reads only committed logs.
 
 It contains the answer, a glossary, where the gap is, the method, H1, H3, the cause with code side by side, two charts (gap against order cost per shape for m > 300; pack time in both orders for Y00, Y05, Y01, Y10), the group table split by k, the limits of the pack test, the not-measured list, and all 50 shapes.
 

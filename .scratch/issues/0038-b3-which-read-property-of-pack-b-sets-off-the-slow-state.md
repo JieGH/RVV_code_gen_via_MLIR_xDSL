@@ -10,7 +10,7 @@ alone is not the cause), #50 §8 (a slow rep halves the L1D prefetch hits in bot
 
 **Role / Label:** `needs-triage` — opened 2026-10-22 at the user's request. Investigation ticket; the code it needs is spec #55
 [[0039-pack-b-read-order-variants-spec]]. Goal: a report in the week of 2026-10-26 with something new about the design.
-**Status:** 🔬 Series 1 and 2 done (2026-10-22/23, §8.1-8.3). The trigger is property C (4 B per column per touch). Reading one column at a time (`col-g1-m4`) removes B3's slow state on every tile and keeps B2 and Reuse24. Brief next.
+**Status:** ✅ Closed 2026-11-18 (housekeeping: answered, results merged). Was: 🔬 Series 1 and 2 done (2026-10-22/23, §8.1-8.3). The trigger is property C (4 B per column per touch). Reading one column at a time (`col-g1-m4`) removes B3's slow state on every tile and keeps B2 and Reuse24. Brief next.
 **Target:** `jbpi` (and `jbpi2` if no other user's job is on it), core 4, house rules of #39.
 **Shape(s):** B3 (64×384×384) under test; B3_K256 (64×384×256) because K moves the rule (#48 §8.3); B2 (384×384×64) and Reuse24 (384³)
 as the "do not make it worse" controls. All four are `datasets/issue46_ref_b3.dat`.

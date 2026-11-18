@@ -7,7 +7,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/50
 **Comes from:** #48 §8.6 ("count the prefetcher events at 16x6 against 16x7"), widened to the two B3_K256 tiles that flip the other way (#48 §8.3).
 
 **Role / Label:** `needs-triage` — sub-issue of #48, priority 2 of the #48 follow-ups (opened 2026-10-14). No code change: `--instr --raw-events x60-l2` already exists (#42).
-**Status:** 🟢 Answered (§8, below). Board time: `jbpi` only, 3/3 runs, no red note.
+**Status:** ✅ Closed 2026-11-18 (housekeeping: answered, results merged). Was: 🟢 Answered (§8, below). Board time: `jbpi` only, 3/3 runs, no red note.
 **Target:** `jbpi` and `jbpi2`, core 4, house rules of #39.
 **Shape(s):** B3 (64x384x384), B3_K256 (64x384x256); B2 as the steady control.
 **Primary Sources:**
