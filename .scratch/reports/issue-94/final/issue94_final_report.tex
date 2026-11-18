@@ -27,6 +27,7 @@
 \newcommand{\iss}[1]{\href{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/#1}{\##1}}
 \newcommand{\D}{../../issue-91/deck/data}
 \newcommand{\E}{../report/data}
+\newcommand{\G}{../../yolo-multithread/report/data}
 \newcommand{\Pd}{../../issue-91/deck/p85/data}
 \newcommand{\runs}{jbpi; ours: uninstrumented build (\texttt{INSTRUMENTED=0}), reference protocol, \texttt{--tmin 2}, \texttt{--no-nc-overrides}, tile 24x8; H\'ector's: \texttt{gemm.bin} at \texttt{b292c92}, \texttt{TIMIN=2.0}, his tiles. 1T on core 4, 8T on cores 0--7 with \texttt{OMP\_PROC\_BIND=close OMP\_PLACES=cores} on all three setups. 3 launches per setup per thread count, mixed in one series (\iss{94}).}
 \newcommand{\note}[1]{\\[2pt]{\footnotesize\color{muted}#1}}
@@ -81,9 +82,9 @@ Issue \iss{94}: the \iss{91} report with its \S1.2 replaced by the \iss{94} reru
 BLIS-style FP32 GEMM with a generated RVV microkernel) on the SpacemiT K1. Every number comes from a committed log. It is the \iss{91} report with one change: \S\ref{sec:94} (ours against H\'ector's) now uses the \iss{94} rerun, which mixes our GEMM (vector and scalar packer) and H\'ector's in one series with the same run settings; the answer, glossary, \S4, correctness and the runs list follow it. Everything else is \iss{91} unchanged (slides: \texttt{../../issue-91/deck/issue91\_deck.pdf}, not updated).
 
 \input{r0_answer}
-\input{r1_yolo}
-\input{../../issue-91/report/r2_paper}
-\input{../../issue-91/report/r3_packing}
+\input{../../yolo-multithread/report/r1_yolo}
+\input{../../yolo-multithread/report/r2_paper}
+\input{../../yolo-multithread/report/r3_packing}
 \input{r4_close}
-\input{r5_appendix}
+\input{../../yolo-multithread/report/r5_appendix}
 \end{document}

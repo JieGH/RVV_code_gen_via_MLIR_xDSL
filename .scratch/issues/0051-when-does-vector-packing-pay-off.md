@@ -2,6 +2,8 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/85
 
+**Combined YOLO report (all findings, read first):** `.scratch/reports/yolo-multithread/report/yolo_report.pdf` ([LaTeX](../reports/yolo-multithread/report/yolo_report.tex)); index of every YOLO report, newest first: `.scratch/reports/yolo-multithread/README.md`.
+
 **Combined report #91 (2026-11-18):** report [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/present-yolo-bert-square-and-packing-findings/.scratch/reports/issue-91/report/issue91_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/present-yolo-bert-square-and-packing-findings/.scratch/reports/issue-91/report/issue91_report.tex), slides [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/present-yolo-bert-square-and-packing-findings/.scratch/reports/issue-91/deck/issue91_deck.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/present-yolo-bert-square-and-packing-findings/.scratch/reports/issue-91/deck/issue91_deck.tex), [README](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/present-yolo-bert-square-and-packing-findings/.scratch/reports/issue-91/README.md). Covers #58 (#56, #61-#63), #71, #79, #82, #83, #85. Packing GOPs there are recomputed with the true mean time (2mnk / mean time per call); this issue's report quoted the average of per-rep GOPs as "by mean time" (README, Metric correction).
 **Parent:** #83 (scalar packing rerun). Follows its T4 figure "Does the pack share explain the slowdown?".
 **Role / Label:** `needs-triage`. Board runs (jbpi / jbpi2), idle boards only for timing.

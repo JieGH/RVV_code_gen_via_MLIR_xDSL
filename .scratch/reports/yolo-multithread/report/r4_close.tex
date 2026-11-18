@@ -1,0 +1,31 @@
+\section{Part 4: what to tell H\'ector}
+\begin{itemize}\setlength\itemsep{2pt}
+\item \textbf{1 thread:} in our GEMM, 24x8 gives 12\% more GOPs than H\'ector's 16x8 tile over the 50 shapes (698.6 against 785.3 ms per pass). H\'ector's own engine at 1T is faster than ours (583.4 against 697.2 ms, same series, \iss{94}), and 24x8 is not in H\'ector's library.
+\item \textbf{Whole engine at 8T (\iss{94}, same settings both sides):} level over the whole pass (ours 19.17, H\'ector's 18.99 GOPs at our 24x8 and his tiles); without Y00 H\'ector's leads (22.98 against 19.59). His Y00 takes about 30 ms at 8T with thread binding, against 13.7--15.3 ms without it (\iss{62}).
+\item \textbf{8 threads}, in our GEMM: pick the tile by n (MR 32 / NR 4 for n $\le$ 8, MR 32 / NR 6--7 for n = 16--64, MR 16 / NR 12--15 for n $\ge$ 80). Against H\'ector's 16x8 tile (149.6--149.8 ms per pass): best single tile 16x12 is 3\% faster, best tile per shape 10\% faster (134.1 ms). Only n = 4, 8, 32 keep the same winner in all 3 launches.
+\item \textbf{Caveat:} the tiles were timed in \emph{our} parallel GEMM. H\'ector's GEMM has other blocking (MC = KC = 256), thread split and kernels (fp32 32x8, 16x16, 8x16, 16x8, 16x4, 8x8; no NR 4/6/7 kernel at MR 32). Tile for tile, without Y00, H\'ector's engine is about 15\% faster than ours. fp16 was not tested.
+\item \textbf{Keep a vector packer} (measured on ours against a scalar packer, not on H\'ector's im2col + pack path): with a scalar packer YOLO keeps 0.929 / 0.945 of the GOPs (1T / 8T), 0.58 at n = 4.
+\item \textbf{Ask H\'ector:} did H\'ector mean ``best tiles in a parallel GEMM'' or ``best tiles for \emph{H\'ector's} GEMM''? And the number of calls per shape per image, to weight the shapes.
+\end{itemize}
+
+\input{r5_why1t}
+
+\section{Open items and limits}\label{sec:open}
+\subsection*{Our 1T gap (\iss{95})}
+The cause is found (Part 5, \S\ref{sec:95}); the fix, packing A column by column, is pending in \iss{96}, not started. Its exact gain in our GEMM is not measured.
+
+\subsection*{One essential test, not yet run}
+\textbf{Our tile family inside H\'ector's GEMM} (\iss{82} \S1, \iss{79} part D). H\'ector's \texttt{gemm\_B3A2C0} (GEMMLib\_yolo \texttt{b292c92}) in a scratch copy, choosing by n among kernels H\'ector's library already has (32x8, 16x16; no new kernel code), timed against H\'ector's stock build: A-B-B-A (stock, patched, patched, stock), 8 threads, idle jbpi, \texttt{TIMIN=2.0}. Needed before ``use these tiles'' applies to H\'ector's code. Skip if H\'ector meant best tiles in any parallel GEMM; then \S4 keeps its caveat.
+
+\subsection*{Not run; stated as limits}
+\begin{itemize}\setlength\itemsep{1pt}
+\item \textbf{H\'ector's Y00 swing} (6.7--105.5 ms over 9 launches): ours against H\'ector's is quoted without Y00 (\iss{82} \S2); in \iss{94} (8T bound) it was steady but slow, 29.5--30.4 ms in all 3 launches. Why is not measured.
+\item \textbf{Our slow reps at 8T}: likely core 0, which takes the interrupts. They lower GOPs by mean time on mid-size shapes; they do not change the tile family (\iss{82} \S3).
+\item \textbf{BERT/Square packer comparison} crosses boards and days (vector jbpi, scalar jbpi2). \iss{85} shows on one board that large n gives no packer difference at 8T.
+\item \textbf{Two \iss{85} loss cases} (1T compute after vector packing; 8T 16x4 uninstrumented only): open, neither from the pack.
+\item \textbf{\iss{85} crosses boards} for 8T against 1T (1T jbpi, 8T jbpi2); its shapes are synthetic, around one base point; it compares two packers, not packing against no packing.
+\item \textbf{Pass times are unweighted} sums over the 50 distinct shapes: calls per image are unknown (\iss{58} \S5.4). H\'ector's fast path packs A inside im2col; ours always packs A, so our times include an A pack H\'ector's pre-packed path skips (\iss{58} \S5.3).
+\item \textbf{19 Candidate Tiles} (the YOLO list) for every sweep, not the paper's full heatmap. This repo's design, not the paper's code: the paper's GFLOPS are not compared.
+\item \textbf{fp16 and n = 1} (GEMV) out of scope.
+\item \textbf{\iss{83} and \iss{85} reports} still quote the average of rep GOPs as ``by mean time''; this report corrects the numbers (\S\ref{sec:metric}) but not those reports.
+\end{itemize}

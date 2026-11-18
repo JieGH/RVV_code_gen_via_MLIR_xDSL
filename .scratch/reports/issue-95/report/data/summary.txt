@@ -1,8 +1,8 @@
-probe y10: 4800x16x32 mc 2560 kc 32 ours 1.82 (median 1.82) his 5.12
-probe y10b: 4800x16x32 mc 2560 kc 32 ours 1.82 (median 1.82) his 5.15
-probe y11: 4800x16x576 mc 578 kc 170 ours 2.07 (median 2.07) his 2.15
-probe y10_mc240: 4800x16x32 mc 240 kc 32 ours 2.27 (median 2.28) his 5.09
-probe y11_mc240: 4800x16x576 mc 240 kc 170 ours 1.84 (median 1.84) his 2.21
+probe y10: 4800x16x32 mc 2560 kc 32 ours 1.82 his 5.12
+probe y10b: 4800x16x32 mc 2560 kc 32 ours 1.82 his 5.15
+probe y11: 4800x16x576 mc 578 kc 170 ours 2.07 his 2.15
+probe y10_mc240: 4800x16x32 mc 240 kc 32 ours 2.27 his 5.09
+probe y11_mc240: 4800x16x576 mc 240 kc 170 ours 1.84 his 2.21
 instr 4800x16x32: vector pack 2.16 scalar pack 2.46 compute 0.63 share 77.4%
 instr 19200x8x144: vector pack 41.53 scalar pack 43.75 compute 4.64 share 90.0%
 group all 50: n 50 ours 696.9 his 583.4 gap 113.6 po 454.9 ph 200.4 cost 254.5

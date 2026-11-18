@@ -56,7 +56,7 @@ Issue \iss{95} (follows \iss{94}) \quad$\cdot$\quad 18 Nov 2026
 \item[uninstrumented build] \texttt{INSTRUMENTED=0}, no timers inside the GEMM. Every GOPs value here comes from it.
 \item[instrumented build] timers around pack and compute (\texttt{--instr}, warm-up protocol). The timers cost 11--17\%, so only its times as shares and its counters are used.
 \item[reference protocol] no warm-up; call the GEMM until \texttt{tmin} seconds have passed; mean time per call. H\'ector's driver uses the same loop (\texttt{TIMIN}).
-\item[GOPs by mean time / by median rep] 2mnk / mean time per call; 2mnk / median call time (ours only, his driver keeps no per-call time).
+\item[GOPs by mean time] 2mnk / mean time per call. The only GOPs metric in this report.
 \item[probe run] one shape, ours then H\'ector's, back to back (\texttt{probe\_issue95.sh}, \texttt{--tmin 1}).
 \item[pack test] \texttt{issue95/pack\_order.c}: packs the same A both ways on the board and times each.
 \item[order cost] pack time in our order minus pack time in his order, same blocks.
@@ -76,10 +76,9 @@ At 1T, \iss{94} measured our pass at 696.9 ms (4.27 GOPs) and H\'ector's at 583.
 
 \section{H1: the block size along m is a small effect}
 \begin{center}\small
-\begin{tabular}{@{}ll rrl rrr@{}}
+\begin{tabular}{@{}ll rrl rr@{}}
 \toprule
-probe run & shape & mc & kc & mc from & \multicolumn{2}{c}{ours, GOPs} & H\'ector's \\
- & & & & & by mean time & by median rep & by mean time \\
+probe run & shape & mc & kc & mc from & ours, GOPs & H\'ector's, GOPs \\
 \midrule
 \csname @@input\endcsname \D/probe_rows.tex
 \bottomrule

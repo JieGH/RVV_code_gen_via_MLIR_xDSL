@@ -1,6 +1,8 @@
 # S6: 8-thread sweep: best tile per YOLO shape with 8 threads, and our GEMM against Héctor's GEMMLib
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/63
+
+**Combined YOLO report (all findings, read first):** `.scratch/reports/yolo-multithread/report/yolo_report.pdf` ([LaTeX](../reports/yolo-multithread/report/yolo_report.tex)); index of every YOLO report, newest first: `.scratch/reports/yolo-multithread/README.md`.
 **Audit #79 (2026-11-17):** brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/issue-79-audit-brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/issue-79-audit-brief.tex), reports in `.scratch/reports/issue-79/`. The sweep ran with the oracle off (now checked: 950/950 PASS); 5 of 8 per-n winners are inside launch noise; "ours faster" depends on his Y00.
 
 **Scalar-packing rerun #83 (2026-11-17):** brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/report/issue83_brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/report/issue83_brief.tex), report [`.scratch/reports/issue-83/`](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/scalar-packing-rerun-of-yolo-and-paper-sweeps/.scratch/reports/issue-83/README.md). Rerun of our side with the scalar packer (Héctor's side unchanged): median 0.946 of vector GOPs (0.671-0.985), worst on n = 4; best tile changes on 17 of 50 layers.

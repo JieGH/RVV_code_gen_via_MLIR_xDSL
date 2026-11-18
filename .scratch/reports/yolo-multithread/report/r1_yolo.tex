@@ -32,7 +32,7 @@ one pass over 50 shapes & \multicolumn{3}{c}{1T (core 4)} & \multicolumn{3}{c}{8
 \csname @@input\endcsname \E/pass_rows.tex
 \bottomrule
 \end{tabular}
-\note{\runs}
+\note{GOPs by mean time. \runs}
 \end{center}
 
 \begin{center}\small
@@ -62,19 +62,6 @@ n & shapes & 1T & 8T & speedup & 1T & 8T & speedup & 1T & 8T & speedup \\
 \note{GOPs by mean time per n group. \runs}
 \end{center}
 
-\begin{center}\small\setlength\tabcolsep{4pt}
-\begin{tabular}{@{}rr rrr rrr@{}}
-\toprule
- & & \multicolumn{3}{c}{V: ours, vector packer} & \multicolumn{3}{c}{S: ours, scalar packer} \\
-\cmidrule(lr){3-5}\cmidrule(l){6-8}
-n & shapes & 1T & 8T & speedup & 1T & 8T & speedup \\
-\midrule
-\csname @@input\endcsname \E/by_n_median_rows.tex
-\bottomrule
-\end{tabular}
-\note{GOPs by median rep (ours only: H\'ector's driver gives no per-call time). \runs}
-\end{center}
-
 \begin{itemize}\setlength\itemsep{1pt}
 \item \textbf{1T:} H 5.10, V 4.27, S 4.05 GOPs; the launch ranges do not overlap.
 \item \textbf{8T, whole pass:} V 19.17, H 18.99, S 18.52 GOPs; V's launch range lies inside H's.
@@ -82,7 +69,7 @@ n & shapes & 1T & 8T & speedup & 1T & 8T & speedup \\
 \item \textbf{By n, 8T:} V is highest at n = 4 (5.75 against H 4.16), n = 16 (9.50 against 6.18) and n = 256 (28.30 against 25.51); H at n = 8, 32, 64, 80 and 128 (n = 32: 20.34 against V 13.74). Y00 is one of the 10 shapes with n = 16.
 \item \textbf{Speedup 8T over 1T:} S 4.57$\times$, V 4.49$\times$, H 3.73$\times$ (4.53, 4.45, 4.49$\times$ without Y00).
 \item \textbf{Scalar packer:} below V on every n at 8T, and on every n but 256 at 1T (\S3 has the cause).
-\item \textbf{Against \iss{56}/\iss{62}:} V 4.26 / 19.55 GOPs then, 4.27 / 19.17 now; H 5.10 / 21.91 then (unbound, 8 h apart), 5.10 / 18.99 now (bound, same series).
+\item \textbf{Against \iss{56}/\iss{62}:} V 4.26 / 19.55 GOPs then, 4.27 / 19.17 now; H 5.10 / 21.87 then (unbound, 8 h apart), 5.10 / 18.99 now (bound, same series).
 \item H\'ector's B pack gives a column slice to only some threads at small n (1 thread at n = 4 or 8, 2 at n = 16, 4 at n = 32), which fits H\'ector's weaker small-n scaling (\iss{62}).
 \end{itemize}
 
@@ -108,22 +95,22 @@ n & shapes & 1T & 8T & speedup & 1T & 8T & speedup \\
 \toprule
 n & shapes & best tile & mc / kc & best GOPs & & 16x8 & 16x4 \\
 \midrule
-4 & 3 & 24x4 & 300--4800 / 16 & 2.50 / 2.54 &  & 1.66 / 1.67 & 2.50 / 2.52 \\
-8 & 1 & 24x9 & 682 / 144 & 1.12 / 1.12 &  & 0.88 / 0.88 & 0.86 / 0.86 \\
-16 & 10 & 24x9 & 300--3034 / 27--170 & 2.12 / 2.12 &  & 1.67 / 1.67 & 1.63 / 1.63 \\
-32 & 6 & 24x9 & 578--2560 / 32--170 & 3.21 / 3.21 &  & 2.81 / 2.81 & 2.59 / 2.59 \\
-64 & 10 & 24x8 & 300--1706 / 48--170 & 4.97 / 4.98 &  & 4.51 / 4.52 & 4.01 / 4.01 \\
-80 & 6 & 32x7 & 300--1536 / 64--128 & 5.90 / 5.88 &  & 5.29 / 5.27 & 4.55 / 4.56 \\
-128 & 9 & 32x7 & 300--1024 / 96--128 & 6.61 / 6.62 &  & 6.01 / 6.01 & 5.11 / 5.11 \\
-256 & 5 & 24x8 & 300 / 128--170 & 7.60 / 7.56 &  & 7.25 / 7.28 & 6.17 / 6.18 \\
+4 & 3 & 24x4 & 300--4800 / 16 & 2.50 &  & 1.66 & 2.50 \\
+8 & 1 & 24x9 & 682 / 144 & 1.12 &  & 0.88 & 0.86 \\
+16 & 10 & 24x9 & 300--3034 / 27--170 & 2.12 &  & 1.67 & 1.63 \\
+32 & 6 & 24x9 & 578--2560 / 32--170 & 3.21 &  & 2.81 & 2.59 \\
+64 & 10 & 24x8 & 300--1706 / 48--170 & 4.97 &  & 4.51 & 4.01 \\
+80 & 6 & 32x7 & 300--1536 / 64--128 & 5.90 &  & 5.29 & 4.55 \\
+128 & 9 & 32x7 & 300--1024 / 96--128 & 6.61 &  & 6.01 & 5.11 \\
+256 & 5 & 24x8 & 300 / 128--170 & 7.60 &  & 7.25 & 6.17 \\
 \midrule
-all & 50 & 24x8 &  & 4.26 / 4.25 &  & 3.79 / 3.79 & 3.44 / 3.44 \\
+all & 50 & 24x8 &  & 4.26 &  & 3.79 & 3.44 \\
 \bottomrule
 \end{tabular}
-\note{GOPs by mean time / by median rep over one pass of that n's shapes (\iss{61}, \texttt{0044} \S5a). jbpi, core 4, uninstrumented, reference protocol, \texttt{--tmin 2}, 3 launches. mc / kc: cache blocking of the best tile over that n's layers (nc = n; per layer in Appendix~\ref{app:blk}).}
+\note{GOPs by mean time over one pass of that n's shapes (\iss{61}, \texttt{0044} \S5a). jbpi, core 4, uninstrumented, reference protocol, \texttt{--tmin 2}, 3 launches. mc / kc: cache blocking of the best tile over that n's layers (nc = n; per layer in Appendix~\ref{app:blk}).}
 \end{center}
 
-\noindent Best single tiles over the 50 shapes (ms per pass by mean time / by median rep): 24x8 698.6 / 698.9, 24x9 703.2 / 702.4, 32x7 726.2 / 725.8, 24x6 726.4 / 724.3, 16x8 785.3 / 785.1. MR = 24 wins at 1 thread; MR = 8 tiles are the slowest (2.97--3.43 GOPs over the dataset). At n = 4, 24x4 and H\'ector's 16x4 tie.
+\noindent Best single tiles over the 50 shapes (ms per pass by mean time): 24x8 698.6, 24x9 703.2, 32x7 726.2, 24x6 726.4, 16x8 785.3. MR = 24 wins at 1 thread; MR = 8 tiles are the slowest (2.97--3.43 GOPs over the dataset). At n = 4, 24x4 and H\'ector's 16x4 tie. The 1T winner changes between launches at n = 4 (16x4, 24x4, 24x4), n = 8 (24x9, 24x6, 24x9) and n = 256 (32x7, 32x7, 24x8; 24x8 7.60 against 32x7 7.57).
 
 \subsection{8 threads: best tile per n (\iss{63})}
 \begin{center}\small
@@ -142,22 +129,22 @@ n & shapes & 1T best (\iss{61}) & 8T best & 8T mc / kc & 1T GOPs & 8T GOPs \\
 \bottomrule
 \end{tabular}
 \hspace{1.2em}
-\begin{tabular}{@{}l rr@{}}
+\begin{tabular}{@{}l r@{}}
 \toprule
-8T single tile, 50 shapes & ms (mean) & ms (median rep) \\
+8T single tile, 50 shapes & ms \\
 \midrule
-16x12 & 145.6 & 134.8 \\
-32x7 & 145.8 & 133.6 \\
-16x14 & 146.2 & 135.9 \\
-16x10 & 146.6 & 135.2 \\
-16x15 & 147.5 & 135.7 \\
-32x6 & 148.2 & 135.1 \\
-16x8 & 149.6 & 132.4 \\
+16x12 & 145.6 \\
+32x7 & 145.8 \\
+16x14 & 146.2 \\
+16x10 & 146.6 \\
+16x15 & 147.5 \\
+32x6 & 148.2 \\
+16x8 & 149.6 \\
 \midrule
-best tile per shape & 134.1 & \\
+best tile per shape & 134.1 \\
 \bottomrule
 \end{tabular}
-\note{\iss{63}: jbpi, cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}, 19 tiles $\times$ 50 shapes, 3 launches A-B-B-A with H\'ector's runs (ours, H\'ector's, H\'ector's, ours, ours, H\'ector's). GOPs by mean time; single-tile times from \texttt{tile\_search\_8t\_3launches.md} (the \iss{79} recompute gives 149.8 ms for 16x8). By median rep, 16x8 is the fastest single tile (132.4 ms). 1T column: \iss{61}, jbpi core 4, same settings. 8T mc / kc: blocking of the 8T best tile over that n's layers (nc = n; same blocking at 1T and 8T for a given tile).}
+\note{\iss{63}: jbpi, cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}, 19 tiles $\times$ 50 shapes, 3 launches A-B-B-A with H\'ector's runs (ours, H\'ector's, H\'ector's, ours, ours, H\'ector's). GOPs by mean time; single-tile times from \texttt{tile\_search\_8t\_3launches.md} (the \iss{79} recompute gives 149.8 ms for 16x8). 1T column: \iss{61}, jbpi core 4, same settings. 8T mc / kc: blocking of the 8T best tile over that n's layers (nc = n; same blocking at 1T and 8T for a given tile).}
 \end{center}
 
 \begin{itemize}\setlength\itemsep{1pt}
@@ -165,7 +152,7 @@ best tile per shape & 134.1 & \\
 \item \textbf{Read the 8T list as a family} (\iss{79} B4): only n = 4, 8 and 32 keep the same winner in all 3 launches; for the others the gap to the runner-up is smaller than the launch range. What holds: MR 32 / NR 4 for n $\le$ 8, MR 32 / NR 6--7 for n = 16--64, MR 16 / NR 12--15 for n $\ge$ 80.
 \item The single-tile ranking is tight: 7 tiles within 145.6--149.6 ms. Picking the tile per shape saves about 8\% over the best single tile (134.1 against 145.6 ms).
 \item \textbf{Picked on one launch, scored on the other two}, the per-shape choice is still 8--11 ms per pass faster than the best single tile (\iss{79} B3).
-\item \textbf{Mean time against median rep at 8T:} on mid-size shapes our median rep is far above our mean (Y32: 61.09 against 38.19 GOPs; Y34 at 16x15: 60.00 against 37.33). A few reps per launch are much slower; at 1T the two metrics agree within about 0.1\%. Likely cause: core 0 takes every device interrupt (13.1\% system time against 0.2--0.5\% on cores 1--7, \iss{79} B6); not tested.
+\item \textbf{Slow reps at 8T:} a few reps per launch are much slower and pull the mean-time GOPs down on mid-size shapes; at 1T this does not happen (glossary, GOPs by mean time). Likely cause: core 0 takes every device interrupt (13.1\% system time against 0.2--0.5\% on cores 1--7, \iss{79} B6); not tested.
 \end{itemize}
 
 \subsection{Ours against H\'ector's GEMM (\iss{63}, \iss{79})}\label{sec:63}
@@ -191,8 +178,7 @@ H\'ector's GEMM & 123.4 & 23.56 \\
 \begin{itemize}\setlength\itemsep{1pt}
 \item \textbf{H\'ector's Y00 decides the totals.} It took 12.9, 62.6 and 105.5 ms in H\'ector's three launches here (6.7--105.5 ms over all 9 of H\'ector's launches); ours is steady at 10.6 GOPs (32x4). Without Y00 H\'ector's passes are steady (122.1--124.2 ms).
 \item \textbf{Tile for tile, H\'ector's engine is about 15\% faster} (123.4 against 141.6 ms, without Y00). Choosing the tile per shape recovers most of the gap, not all: 127.9 against H\'ector's 123.4 ms (3.7\% behind).
-\item H\'ector's 8T pass here (183.7 ms) differs from H\'ector's separate \iss{62} run (135.7 ms); the difference is mostly Y00.
-\item By median rep our best tile beats H\'ector's mean on 39 of 50 shapes (25 of 50 by mean time); H\'ector's driver has no median, so this compares different metrics and is not used for the verdict.
+\item H\'ector's 8T pass here (183.7 ms) differs from H\'ector's separate \iss{62} run (135.9 ms); the difference is mostly Y00.
 \item Why H\'ector's Y00 swings is not measured: 300 barriers per call, or Y00 being the first call of each process (\iss{82} \S2).
 \end{itemize}
 
