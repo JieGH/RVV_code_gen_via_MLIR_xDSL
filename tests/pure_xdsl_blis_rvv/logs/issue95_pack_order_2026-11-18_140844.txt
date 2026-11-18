@@ -1,0 +1,5 @@
+A 4800x32 MR 24 MC 2400 reps 200 | panel-outer (ours) 1.752 ms | column-outer (his) 0.573 ms
+A 4800x32 MR 24 MC 240 reps 200 | panel-outer (ours) 1.815 ms | column-outer (his) 0.659 ms
+A 4800x32 MR 16 MC 320 reps 200 | panel-outer (ours) 1.625 ms | column-outer (his) 0.344 ms
+A 76800x27 MR 24 MC 2400 reps 20 | panel-outer (ours) 32.627 ms | column-outer (his) 7.600 ms
+A 4800x576 MR 24 MC 240 reps 20 | panel-outer (ours) 47.050 ms | column-outer (his) 21.155 ms

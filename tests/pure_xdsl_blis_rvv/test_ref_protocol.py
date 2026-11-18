@@ -398,6 +398,7 @@ def test_the_overview_lists_every_setting_and_marks_the_defaults(uninstrumented:
     assert "Variants       : MR4_NR4" in ov
     assert "Cache blocking : analytical model" in ov
     assert "RVV_FORCE_NC: not set" in ov
+    assert "RVV_FORCE_MC: not set" in ov
     assert "tiny.dat" in ov
     assert "logs/raw_fp32_STUB_noinstr_refproto.txt" in ov
 
@@ -406,12 +407,14 @@ def test_the_overview_marks_what_the_user_set_and_what_the_environment_set(
     uninstrumented: Driver,
 ):
     proc = uninstrumented.run(
-        "--tmin", "0.05", "--scalar-pack", env={"RVV_FORCE_NC": "16"}
+        "--tmin", "0.05", "--scalar-pack", env={"RVV_FORCE_NC": "16", "RVV_FORCE_MC": "8"}
     )
     ov = _overview(proc.stdout)
     assert "until tmin = 0.05 s" in ov and "[--tmin]" in ov.split("Reps")[1].splitlines()[0]
     assert "scalar packing forced" in ov and "[--scalar-pack]" in ov
     assert "RVV_FORCE_NC=16" in ov
+    assert "RVV_FORCE_MC=8" in ov  # issue #95 probe knob
+    assert "mc:8 " in proc.stdout or "mc=8 " in proc.stdout, proc.stdout[-800:]
 
     warm = _overview(uninstrumented.run("--no-ref-protocol").stdout)
     assert "Protocol       : WARM-UP" in warm

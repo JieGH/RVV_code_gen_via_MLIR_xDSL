@@ -1,0 +1,1 @@
+▶ P0 (4800x16x576)       | best variant 24x8 [24 rows x 8 columns of C per tile] | 2.07 GOPs by mean time [whole GEMM call, packing included] | 2.07 GOPs median rep | 24 reps | ✅ C[4450,15]: 140.15 == 140.15 [sample entry vs the naive scalar GEMM] (cache blocking mc:578 nc:16 kc:170)

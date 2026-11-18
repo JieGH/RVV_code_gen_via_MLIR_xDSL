@@ -318,6 +318,7 @@ else
     ov "" "nc overrides: as listed in ${CONFIG}, applied to the row with exactly that label" "default"
 fi
 ov "" "$([ -n "${FORCE_NC}" ] && echo "RVV_FORCE_NC=${FORCE_NC} overrides nc for every shape" || echo "RVV_FORCE_NC: not set")" "$([ -n "${FORCE_NC}" ] && echo "--force-nc" || echo default)"
+ov "" "$([ -n "${RVV_FORCE_MC:-}" ] && echo "RVV_FORCE_MC=${RVV_FORCE_MC} overrides mc for every shape (issue #95 probe)" || echo "RVV_FORCE_MC: not set")" "$([ -n "${RVV_FORCE_MC:-}" ] && echo environment || echo default)"
 if [ -n "${PIN_CPU}" ]; then
     ov "Pinning" "${PIN_PREFIX}make run (the timed run only), cpu ${PIN_CPU}" "${PIN_SOURCE}"
 else
@@ -449,6 +450,8 @@ FORCE_NC_ENV=""
 if [ -n "${FORCE_NC}" ]; then
     FORCE_NC_ENV="RVV_FORCE_NC=${FORCE_NC} "
 fi
+# Issue #95 probe: RVV_FORCE_MC from the caller's environment reaches the timed run the same way.
+[ -n "${RVV_FORCE_MC:-}" ] && FORCE_NC_ENV+="RVV_FORCE_MC=${RVV_FORCE_MC} "
 # Issue #21: the conditions of this run, taken on the board just before it. If the probe
 # fails, what lands in provenance.txt is the ssh error, and compare_ref_baseline.py then
 # reports the pinning as unknown rather than assume it.
