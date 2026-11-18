@@ -2,6 +2,8 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/59
 
+**Combined YOLO report (all findings, read first):** `.scratch/reports/yolo-multithread/report/yolo_report.pdf` ([LaTeX](../reports/yolo-multithread/report/yolo_report.tex)); index of every YOLO report, newest first: `.scratch/reports/yolo-multithread/README.md`.
+
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Desk work, no board.
 **Status:** ✅ Done 2026-11-15. Dataset committed (`ad43e255`, branch `yolo26-k1-best-microkernel-size-per-gemm-shape`); candidate tile list (19 tiles) and shape counting agreed 2026-11-15.
 **Shapes:** 53 shapes, `.scratch/reports/yolo26_k1_matrix_sizes.csv` (same as `gemm_study/yolo.dat` in Héctor's repo).

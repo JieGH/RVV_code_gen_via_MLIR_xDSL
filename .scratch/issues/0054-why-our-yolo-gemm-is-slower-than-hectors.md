@@ -2,6 +2,8 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/95
 
+**Combined YOLO report (all findings, read first):** `.scratch/reports/yolo-multithread/report/yolo_report.pdf` ([LaTeX](../reports/yolo-multithread/report/yolo_report.tex)); index of every YOLO report, newest first: `.scratch/reports/yolo-multithread/README.md`.
+
 **Role / Label:** `needs-triage`. Opened 2026-11-18 at the user's request. Diagnosis, board runs on `jbpi`.
 **Status:** open. Main cause found and measured (§7): our A packer reads A in a slow order. Report written (§8). The fix is the pending issue #96, not started.
 **Report:** [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.tex), [README](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/README.md).

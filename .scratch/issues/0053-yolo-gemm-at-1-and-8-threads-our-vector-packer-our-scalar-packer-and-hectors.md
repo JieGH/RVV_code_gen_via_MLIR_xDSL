@@ -2,6 +2,8 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/94
 
+**Combined YOLO report (all findings, read first):** `.scratch/reports/yolo-multithread/report/yolo_report.pdf` ([LaTeX](../reports/yolo-multithread/report/yolo_report.tex)); index of every YOLO report, newest first: `.scratch/reports/yolo-multithread/README.md`.
+
 **Role / Label:** `needs-triage`. Opened 2026-11-18 at the user's request. Board runs on `jbpi`.
 **Status:** open. Board series done 2026-11-18 (18 of 18 launches ok, every row PASS). Report written and linked (§7). Code review done (§7.1). Waiting for the user to close; then PR.
 **Report:** [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/report/issue94_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/report/issue94_report.tex), [README](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/README.md); folder `.scratch/reports/issue-94/`.
