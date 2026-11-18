@@ -222,10 +222,10 @@ if [ "${THREADS}" -gt 1 ]; then
         if [[ "${TEST_ARGS}" == *"${f}"* ]]; then echo "Error: --threads ${THREADS} cannot run ${f} (one-thread only)."; exit 1; fi
     done
     if [ "${PACK_B_NAME}" != "row" ]; then echo "Error: --threads ${THREADS} runs the shipped packer only, not --pack-b ${PACK_B_NAME}."; exit 1; fi
-    if [ "${INSTRUMENTED}" != "0" ]; then echo "Error: --threads ${THREADS} needs the uninstrumented build (drop --instr): its timers are not thread-safe."; exit 1; fi
     if [ -n "${USE_SCALAR_PACK:-}" ]; then echo "Error: --threads ${THREADS} cannot run with USE_SCALAR_PACK set."; exit 1; fi
-    # The warm-up protocol times pack and compute apart; the N-thread dispatch keeps no timers (#56).
-    if [ "${REF_PROTOCOL}" != "1" ]; then echo "Error: --threads ${THREADS} needs the reference protocol (drop --no-ref-protocol)."; exit 1; fi
+    # The uninstrumented N-thread dispatch keeps no timers (#56); --instr adds per-thread ones (#85) and
+    # runs its own default, the warm-up protocol.
+    if [ "${INSTRUMENTED}" = "0" ] && [ "${REF_PROTOCOL}" != "1" ]; then echo "Error: --threads ${THREADS} needs the reference protocol (drop --no-ref-protocol)."; exit 1; fi
     if [ "${CPU_FLAG}" = true ] || [ "${NO_PIN}" = true ]; then
         echo "Error: --threads ${THREADS} fixes the cores (0-$((THREADS - 1))): drop --cpu / --no-pin."; exit 1
     fi
