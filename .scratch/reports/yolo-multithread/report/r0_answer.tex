@@ -2,7 +2,7 @@
 \begin{enumerate}\setlength\itemsep{4pt}
 \item \textbf{H\'ector's YOLO request (\iss{58}): which microkernel sizes run fastest?}
   \begin{itemize}\setlength\itemsep{1pt}
-  \item \textbf{1 thread:} 24x8 for the whole network: 698.6 ms per pass over the 50 shapes (4.26 GOPs), against 785.3 ms (3.79 GOPs) for our GEMM at H\'ector's 16x8 tile. Per n: 24x4 (n = 4), 24x9 (n = 8--32), 24x8 (n = 64, 256), 32x7 (n = 80, 128).
+  \item \textbf{1 thread:} 24x8 for the whole network: 698.6 ms per pass over the 50 shapes (4.26 GOPs), against 785.3 ms (3.79 GOPs) for our GEMM at H\'ector's 16x8 tile. Per n: 24x4 (n = 4), 24x9 (n = 8--32), 24x8 (n = 64, 256), 32x7 (n = 80, 128); at n = 4, 8 and 256 the winner changes between launches (n = 256: 24x8 and 32x7 tie).
   \item \textbf{8 threads, in our parallel GEMM:} the winner changes with n and is best read as a family: MR 32 / NR 4 for n $\le$ 8, MR 32 / NR 6--7 for n = 16--64, MR 16 / NR 12--15 for n $\ge$ 80. Best tile per shape: 134.1 ms per pass; best single tile (16x12): 145.6 ms; H\'ector's 16x8 tile in our GEMM: 149.6--149.8 ms.
   \item \textbf{Our GEMM against H\'ector's, one series (\iss{94}), tile 24x8 against his tiles:} 1T: H\'ector's 5.10 GOPs, ours 4.27 (vector packer), 4.05 (scalar packer). 8T, with the same thread binding: whole pass 19.17 (ours) against 18.99 (H\'ector's), inside the launch range; without Y00 H\'ector's leads, 22.98 against 19.59 GOPs (\S\ref{sec:94}).
   \item \textbf{Why ours trails H\'ector's at 1 thread (\iss{95}, \S\ref{sec:95}):} our A packer reads the column-major A one 24-row panel at a time, jumping a full column per read; H\'ector's reads each column once. The pack is 77\% of our time on Y10 and 90\% on Y05 (instrumented build, shares only). The 1T gap sits on the 23 shapes with m $>$ 300 and k $\le$ kc (131.0 of 140.5 ms), where a board pack test puts the read-order cost at the same size (162.2 ms). The fix is pending in \iss{96}.
@@ -12,8 +12,8 @@
 \item \textbf{Packing (\iss{83}, \iss{85}): keep the vector packer.}
   \begin{itemize}\setlength\itemsep{1pt}
   \item YOLO with a scalar packer: scalar $\div$ vector GOPs median 0.929 (1T) and 0.945 (8T), down to 0.58 at n = 4; the best tile changes on 13 (1T) and 20 (8T) of 50 layers.
-  \item BERT and Square: within the 3\% board/day gap, except B3 at 1T (1.227), the shape where the vector packer is known to be slow (\iss{36}).
-  \item Slowdown $\approx$ pack share $\times$ extra pack cost. n sets the pack share (87\% at n = 4, 7\% at n = 1024 at k = 256); k and m set the extra cost (1.2--3.4$\times$ when the packed blocks stay in cache, 1.02--1.12$\times$ when both packers wait on memory).
+  \item BERT and Square: mostly within the 3\% board/day gap. Exceptions: B3 at 1T (1.227), the shape where the vector packer is known to be slow (\iss{36}); B2 at 1T (0.961, steady); B5 at 8T (0.963) and B3 at 8T (0.941), each with one slow scalar launch.
+  \item Slowdown $\approx$ pack share $\times$ extra pack cost. n sets the pack share (87\% at n = 4, 7\% at n = 1024 at k = 256); k and m set the extra cost (1.2--3.4$\times$ when the packed blocks stay in cache, 1.02--1.17$\times$ when both packers wait on memory, at m = 1200).
   \end{itemize}
 \item \textbf{Across YOLO and the paper shapes, the best tile at 1 thread is not the best at 8 threads.}
 \end{enumerate}
@@ -27,7 +27,7 @@
 m $\times$ n $\times$ k & C (m $\times$ n) += A (m $\times$ k) $\cdot$ B (k $\times$ n). For YOLO and BERT, nc = n, so each packed element of A is reused n times. \\
 tile MR$\times$NR & The microkernel's block of C: MR rows by NR columns. The sweeps try 19 Candidate Tiles per shape. \\
 cache blocking mc / nc / kc & Block sizes of the GEMM loops: mc rows of A, nc columns of B, kc depth, per packed block. Our GEMM takes them from the analytical cache model for each shape and tile (clamped to m, n, k; no nc overrides); they do not change with threads or packer. Every value quoted here is the one the run's console log prints. Chart labels give the tile, then its blocking. \\
-best tile & For one shape (or one n group), the tile with the highest GOPs by mean time, averaged over launches. \\
+best tile & For one shape (or one n group), the tile with the highest GOPs by mean time, averaged over launches. Parts 1.3, 1.4 and 2 average each shape's GOPs over launches; \S\ref{sec:94} and Part 5 average the times. The two differ by under 0.4\%, except that at 1T, n = 256, 24x8 and 32x7 swap places (both $\approx$ 7.56--7.60). \\
 family & A group of tiles that trade places between launches; the gap between them is inside the launch range. \\
 GOPs by mean time & 2mnk $\div$ mean time per call (raw column \texttt{KerGOPs\_Harmonic}). Main metric. \\
 only GOPs by mean time & Every GOPs and ms value in this report is by mean time. At 1T the median rep agrees with it within 0.019 (ratio) on 95\% of cases; at 8T a few slow reps per launch make the mean time lower on mid-size YOLO shapes (median ratio 1.02--1.12, \texttt{metric\_gap.py}). \\

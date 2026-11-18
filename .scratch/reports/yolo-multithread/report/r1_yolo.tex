@@ -69,7 +69,7 @@ n & shapes & 1T & 8T & speedup & 1T & 8T & speedup & 1T & 8T & speedup \\
 \item \textbf{By n, 8T:} V is highest at n = 4 (5.75 against H 4.16), n = 16 (9.50 against 6.18) and n = 256 (28.30 against 25.51); H at n = 8, 32, 64, 80 and 128 (n = 32: 20.34 against V 13.74). Y00 is one of the 10 shapes with n = 16.
 \item \textbf{Speedup 8T over 1T:} S 4.57$\times$, V 4.49$\times$, H 3.73$\times$ (4.53, 4.45, 4.49$\times$ without Y00).
 \item \textbf{Scalar packer:} below V on every n at 8T, and on every n but 256 at 1T (\S3 has the cause).
-\item \textbf{Against \iss{56}/\iss{62}:} V 4.26 / 19.55 GOPs then, 4.27 / 19.17 now; H 5.10 / 21.91 then (unbound, 8 h apart), 5.10 / 18.99 now (bound, same series).
+\item \textbf{Against \iss{56}/\iss{62}:} V 4.26 / 19.55 GOPs then, 4.27 / 19.17 now; H 5.10 / 21.87 then (unbound, 8 h apart), 5.10 / 18.99 now (bound, same series).
 \item H\'ector's B pack gives a column slice to only some threads at small n (1 thread at n = 4 or 8, 2 at n = 16, 4 at n = 32), which fits H\'ector's weaker small-n scaling (\iss{62}).
 \end{itemize}
 
@@ -110,7 +110,7 @@ all & 50 & 24x8 &  & 4.26 &  & 3.79 & 3.44 \\
 \note{GOPs by mean time over one pass of that n's shapes (\iss{61}, \texttt{0044} \S5a). jbpi, core 4, uninstrumented, reference protocol, \texttt{--tmin 2}, 3 launches. mc / kc: cache blocking of the best tile over that n's layers (nc = n; per layer in Appendix~\ref{app:blk}).}
 \end{center}
 
-\noindent Best single tiles over the 50 shapes (ms per pass by mean time): 24x8 698.6, 24x9 703.2, 32x7 726.2, 24x6 726.4, 16x8 785.3. MR = 24 wins at 1 thread; MR = 8 tiles are the slowest (2.97--3.43 GOPs over the dataset). At n = 4, 24x4 and H\'ector's 16x4 tie.
+\noindent Best single tiles over the 50 shapes (ms per pass by mean time): 24x8 698.6, 24x9 703.2, 32x7 726.2, 24x6 726.4, 16x8 785.3. MR = 24 wins at 1 thread; MR = 8 tiles are the slowest (2.97--3.43 GOPs over the dataset). At n = 4, 24x4 and H\'ector's 16x4 tie. The 1T winner changes between launches at n = 4 (16x4, 24x4, 24x4), n = 8 (24x9, 24x6, 24x9) and n = 256 (32x7, 32x7, 24x8; 24x8 7.60 against 32x7 7.57).
 
 \subsection{8 threads: best tile per n (\iss{63})}
 \begin{center}\small
@@ -178,7 +178,7 @@ H\'ector's GEMM & 123.4 & 23.56 \\
 \begin{itemize}\setlength\itemsep{1pt}
 \item \textbf{H\'ector's Y00 decides the totals.} It took 12.9, 62.6 and 105.5 ms in H\'ector's three launches here (6.7--105.5 ms over all 9 of H\'ector's launches); ours is steady at 10.6 GOPs (32x4). Without Y00 H\'ector's passes are steady (122.1--124.2 ms).
 \item \textbf{Tile for tile, H\'ector's engine is about 15\% faster} (123.4 against 141.6 ms, without Y00). Choosing the tile per shape recovers most of the gap, not all: 127.9 against H\'ector's 123.4 ms (3.7\% behind).
-\item H\'ector's 8T pass here (183.7 ms) differs from H\'ector's separate \iss{62} run (135.7 ms); the difference is mostly Y00.
+\item H\'ector's 8T pass here (183.7 ms) differs from H\'ector's separate \iss{62} run (135.9 ms); the difference is mostly Y00.
 \item Why H\'ector's Y00 swings is not measured: 300 barriers per call, or Y00 being the first call of each process (\iss{82} \S2).
 \end{itemize}
 
