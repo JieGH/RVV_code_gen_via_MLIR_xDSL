@@ -2,6 +2,7 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/91 · issue write-up: `.scratch/issues/0052-present-yolo-bert-square-and-packing-findings.md`.
 
+- **Report (PDF, A4, 19 pages):** [`report/issue91_report.pdf`](report/issue91_report.pdf) ([LaTeX](report/issue91_report.tex), parts `r0_answer` … `r5_appendix`): answer, glossary, setup, full tables per part, all #85 sweep charts, appendix with every run folder, all 50 YOLO layers and every #85 point.
 - **Deck (PDF):** [`deck/issue91_deck.pdf`](deck/issue91_deck.pdf) ([LaTeX](deck/issue91_deck.tex), sections `s1_setup_yolo.tex`, `s2_paper.tex`, `s3_packing.tex`, `s4_close.tex`)
 - **Data:** `deck/data/` (CSV files name their source in a `#` line); packing numbers from [`deck/make_data.py`](deck/make_data.py) → `deck/data/packing_tables.md`, `deck/data/p85_tables.md`, `deck/p85/data/`.
 - **No new board runs.** Every number comes from committed logs of #56, #61, #62, #63, #71, #79, #83, #85.

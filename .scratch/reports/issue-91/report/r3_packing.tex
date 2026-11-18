@@ -182,7 +182,7 @@ n $\ge$ 128, k $\ge$ 576 or m = 4800, 1T (3 points) & 0.97--0.98 & & vector, by 
 \end{figure}
 \begin{itemize}\setlength\itemsep{1pt}
 \item Predicted within 0.02 of measured on 24 (1T) and 20 (8T) of 46 points; within 0.05 on 38 and 34; median miss 0.016 and 0.025.
-\item Biggest misses at 8T: the 16x4 loss case (0.47) and the tiny 1200$\times$4$\times$16 calls (0.13--0.28), where threads wait 53--82\% of the call. At 1T: 128 and 600$\times$256$\times$256 (0.25, 0.17), where one instrumented vector launch was disturbed, and the 24x8 loss points (0.14--0.15).
+\item Biggest misses at 8T: the 16x4 loss case (0.47) and the tiny 1200$\times$4$\times$16 calls (0.13--0.28), where threads wait 53--82\% of the call (wait share from M3, \iss{85} brief). At 1T: 128 and 600$\times$256$\times$256 (0.25, 0.17), where one instrumented vector launch was disturbed, and the 24x8 loss points (0.14--0.15).
 \end{itemize}
 
 \subsection{Two places where vector packing measures slower}

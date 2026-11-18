@@ -33,7 +33,7 @@ layer & m $\times$ n $\times$ k & vector & scalar & s/v & vector & scalar & s/v 
 \csname @@input\endcsname \D/yolo_sv_rows.tex
 \bottomrule
 \end{longtable}}
-\noindent Best tile and GOPs by mean time / by median rep, mean of 3 launches per side; s/v by mean time. Sorted by n, m, k. Uninstrumented, reference protocol, \texttt{--tmin 2}. Vector: \iss{61}, \iss{63}; scalar: \iss{83} T1, T2.
+\noindent Best tile and GOPs by mean time / by median rep, mean of 3 launches per side; s/v by mean time. Sorted by n, m, k. jbpi, 1T core 4, 8T cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}. Vector: \iss{61}, \iss{63} (15--17 Nov); scalar: \iss{83} T1, T2 (17 Nov); not interleaved.
 
 \section{\iss{85} GOPs, all points}\label{app:85}
 GOPs by mean time / by median rep, mean of 3 launches per packer (uninstrumented, reference protocol, \texttt{--tmin 3}); bold = faster packer; $^{\sim}$ = gap inside the launch range; s/v by mean time; 8T/1T crosses boards. Rows from \iss{85}'s script with the true mean time.
