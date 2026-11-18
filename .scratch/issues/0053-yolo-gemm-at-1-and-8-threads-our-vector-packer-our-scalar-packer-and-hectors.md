@@ -5,6 +5,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/94
 **Role / Label:** `needs-triage`. Opened 2026-11-18 at the user's request. Board runs on `jbpi`.
 **Status:** open. Board series done 2026-11-18 (18 of 18 launches ok, every row PASS). Report written and linked (§7). Code review done (§7.1). Waiting for the user to close; then PR.
 **Report:** [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/report/issue94_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/report/issue94_report.tex), [README](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/README.md); folder `.scratch/reports/issue-94/`.
+**Final report (the #91 report with §1.2 redone from this rerun):** [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/final/issue94_final_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/final/issue94_final_report.tex).
 **Branch:** `yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors`, cut from `pure-xdsl`.
 **Related:** #56 [[0040-parallel-gemm-design]] (ours, vector packer), #62 [[0045-read-hector-parallel-gemm]] (Héctor's `gemm.bin`), #83 [[0050-scalar-packing-rerun-of-yolo-and-paper-sweeps]] (scalar packer).
 
@@ -103,6 +104,9 @@ Series `issue94_2026-11-18_115554`, jbpi, 12:00-13:09. The board was idle before
   - 1T: V 4.25-4.29, S 4.05-4.05, H 5.08-5.12.
   - 8T: V 19.14-19.18, S 18.47-18.54, H 18.75-19.27. V's range lies inside H's.
 - **Earlier runs:** #56 V 4.26 / 19.55; #62 H 5.10 / 21.87, his 8T then without thread binding.
+- **Without Y00** (as #91 §1.4 quotes ours against Héctor's), 8T: V 19.59, S 18.96, H 22.98 GOPs (148.4, 153.3, 126.5 ms).
+  - Héctor's Y00 took 29.5-30.4 ms in each of his 8T launches; at 1T it took 15.3-15.6 ms, and at 8T in #62 (no binding) 13.7-15.3 ms.
+  - So the whole-pass tie at 8T comes from Y00.
 - **By n:** report §3.
   - 8T: V is highest at n = 4, 16 and 256; H at n = 8, 32, 64, 80 and 128.
   - S is below V at every n at 8T, and at every n except 256 at 1T.
@@ -121,10 +125,21 @@ Two reviews: standards and spec.
   - The "earlier runs" line quotes #56/#62 from committed logs. It is context for a rerun, not a new analysis.
   - The launch-range column and the per-shape appendix follow the #91 report.
 
+### 7.2 Final report (user, 2026-11-18)
+
+The user asked for one final report: the #91 report with its opening comparison against Héctor (§1.2, from #56/#62) replaced by this rerun.
+
+- `final/issue94_final_report.pdf` (24 pages).
+- §1.2 has the V/S/H tables (whole pass, without Y00, by n by mean time and by median rep) and the two by-n charts.
+- The answer, glossary (V/S/H, thread binding), Part 4, correctness, limits (Y00) and runs list are updated.
+- Parts 2 and 3 are #91's, unchanged. The #91 slides are not updated.
+- #91's own report is left as committed; its issue gets a pointer here.
+
 ## 8. Closure
 
 - [x] Driver and host test, tests passing
 - [x] C1, C2 all PASS
 - [x] 18 launches done, logs committed
 - [x] Report written and linked (#94, #56, #62, #83)
+- [x] Final report (#91 with §1.2 from this rerun), linked from #91 and #94
 - [x] Code review done, findings fixed (§7.1; host suite 646 passed)

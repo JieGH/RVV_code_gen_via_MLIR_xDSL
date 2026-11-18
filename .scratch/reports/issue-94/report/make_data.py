@@ -138,9 +138,10 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("series", nargs="?", type=Path)
     ap.add_argument("--logs", type=Path, default=TESTS / "logs")
-    ap.add_argument("--out", type=Path, default=Path(__file__).resolve().parent / "data")
+    ap.add_argument("--out", type=Path, default=None, help="default: data/, or check/ with --check (keeps data/ intact)")
     ap.add_argument("--check", action="store_true")
     a = ap.parse_args()
+    a.out = a.out or Path(__file__).resolve().parent / ("check" if a.check else "data")
     if a.check:
         rep = ROOT / ".scratch" / "reports"
         launches = [("V", 0, rep / "issue-56" / "parallel_gemm_2026-11-16_193132"),
@@ -170,6 +171,15 @@ def main() -> None:
             lines.append(f"{s} {metric}: 1T {t[1] * 1e3:.1f} ms {g[1]:.2f} GOPs | 8T {t[8] * 1e3:.1f} ms {g[8]:.2f} GOPs | {t[1] / t[8]:.2f}x")
             if which == 0:
                 pass_csv.append(f"{i},{NAMES[s]},{g[1]:.2f},{g[8]:.2f},{g[1]:.2f},{g[8]:.2f}")
+
+    # #91 quotes ours against Héctor's without Y00 too (his Y00 time swings between launches, #82 §2)
+    nz = [lb for lb in labels if lb != "Y00"]
+    wo = {s: {t: pass_s(times[s][t], nz, 0) for t in THREADS} for s in have}
+    noy00_rows = [f"{NAMES[s]} & {wo[s][1] * 1e3:.1f} & {ops(shapes, nz) / wo[s][1] / 1e9:.2f} & {wo[s][8] * 1e3:.1f} & "
+                  f"{ops(shapes, nz) / wo[s][8] / 1e9:.2f} & {wo[s][1] / wo[s][8]:.2f}$\\times$ \\\\" for s in have]
+    y00 = {s: {t: [x[0] * 1e3 for x in times[s][t]["Y00"]] for t in THREADS} for s in have}
+    lines += [f"{s} without Y00: 1T {wo[s][1] * 1e3:.1f} ms | 8T {wo[s][8] * 1e3:.1f} ms; Y00 ms per launch 1T "
+              f"{' '.join(f'{v:.1f}' for v in y00[s][1])} 8T {' '.join(f'{v:.1f}' for v in y00[s][8])}" for s in have]
 
     ns = sorted({shapes[lb][1] for lb in labels})
     by_n_mean, by_n_med, by_n_csv = [], [], ["idx,label," + ",".join(f"{s}{t}" for s in have for t in THREADS)]
@@ -229,7 +239,7 @@ def main() -> None:
         import datetime
         (a.out / "date.tex").write_text(datetime.date.today().strftime("%-d %b %Y"))
     for name, body in (("pass_rows.tex", pass_rows), ("by_n_mean_rows.tex", by_n_mean), ("by_n_median_rows.tex", by_n_med),
-                       ("shape_rows.tex", shape_rows), ("pass.csv", pass_csv), ("by_n.csv", by_n_csv),
+                       ("shape_rows.tex", shape_rows), ("noy00_rows.tex", noy00_rows), ("pass.csv", pass_csv), ("by_n.csv", by_n_csv),
                        ("checks.txt", checks), ("summary.txt", lines)):
         (a.out / name).write_text("\n".join(body) + "\n")
     print("\n".join(lines))

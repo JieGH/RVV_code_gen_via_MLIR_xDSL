@@ -4,6 +4,9 @@ V by median rep: 1T 696.9 ms 4.27 GOPs | 8T 148.3 ms 20.06 GOPs | 4.70x
 S by mean time: 1T 733.9 ms 4.05 GOPs | 8T 160.6 ms 18.52 GOPs | 4.57x
 S by median rep: 1T 733.6 ms 4.05 GOPs | 8T 152.7 ms 19.48 GOPs | 4.81x
 H by mean time: 1T 583.4 ms 5.10 GOPs | 8T 156.6 ms 18.99 GOPs | 3.73x
+V without Y00: 1T 659.5 ms | 8T 148.4 ms; Y00 ms per launch 1T 38.8 38.6 35.7 8T 6.9 6.7 6.7
+S without Y00: 1T 694.1 ms | 8T 153.3 ms; Y00 ms per launch 1T 39.7 40.2 39.5 8T 7.4 7.3 7.2
+H without Y00: 1T 567.9 ms | 8T 126.5 ms; Y00 ms per launch 1T 15.3 15.3 15.6 8T 29.5 30.2 30.4
 n=4: V1=1.56 V8=5.75 S1=0.88 S8=4.51 H1=2.43 H8=4.16
 n=8: V1=1.09 V8=3.90 S1=1.01 S8=3.80 H1=2.35 H8=7.09
 n=16: V1=2.06 V8=9.50 S1=1.92 S8=9.02 H1=2.81 H8=6.18
