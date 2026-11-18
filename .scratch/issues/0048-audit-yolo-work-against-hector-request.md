@@ -8,7 +8,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/79
 Reports: [A: fit to the request](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/A-request-fit.md) · [B: numbers](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/B-numbers.md) · [C: engine](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/C-engine.md) · brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/issue-79-audit-brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/audit-did-the-yolo-work-answer-hectors-request/.scratch/reports/issue-79/issue-79-audit-brief.tex)
 
 **Role / Label:** `needs-triage`. Independent audit plus fixes. Host only; no board runs unless the user approves part D.
-**Status:** A, B, C done 2026-11-17 (§6). Open: three items that need the user (§6.3); part D held.
+**Status:** A, B, C done 2026-11-17 (§6). Open items moved to #82 (§6.3). PR #80 merged to `pure-xdsl`, #81 to `main`.
 **Branch:** `audit-did-the-yolo-work-answer-hectors-request`, cut from `pure-xdsl`.
 **Scope:** the parent #58 and its result sub-issue #63 (S6, 8-thread tile sweep), plus #56 (S5, the parallel engine #63 runs on) where #63 relies on it.
 **Primary sources:**
@@ -112,6 +112,8 @@ Build his GEMMLib with our best tile per n group (local patch, never pushed) and
 - `.scratch/reports/issue-79/`: the three reports, `recompute_63.py`, `rep_tails.py`, the brief (PDF + LaTeX).
 
 ### 6.3 Left open (needs the user; each is a board run)
+
+Moved to #82 (`.scratch/issues/0049-yolo-follow-up-board-runs-after-audit.md`) on 2026-11-17; the user will run them later.
 
 1. **Which reading Héctor meant.** If his GEMM: part D, his `gemm_B3A2C0` with his own 32x8 / 16x16 kernels chosen by n (local patch, no new kernel code), A-B-B-A against stock at 8 threads.
 2. **His Y00:** one short `gemm.x` run with Y00 moved to a later row.

@@ -1,0 +1,9 @@
+Issue #30 — reference, direct and unwrapped. B1 (layer 1, 1024x384x1024) + B5 (layer 5,
+1024x384x4096), both MR32 NR6 OPT=LDX GATHER=2(macc) SWAP=0, RUN_MODE=FAMILY_EXO.
+
+Dataset (reference's own #layer m n k Flops format, Flops column unused by the parser):
+#layer	m	n	k	Flops
+1	1024	384	1024	0
+5	1024	384	4096	0
+
+--dry-run: stopping before touching a board.
