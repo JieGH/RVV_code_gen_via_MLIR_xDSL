@@ -4,7 +4,7 @@ Owner issue: #58 (parent, https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/is
 
 ## Read this
 
-- **Combined report (PDF, A4, 28 pages):** [`report/yolo_report.pdf`](report/yolo_report.pdf) ([LaTeX](report/yolo_report.tex)).
+- **Combined report (PDF, A4, 34 pages):** [`report/yolo_report.pdf`](report/yolo_report.pdf) ([LaTeX](report/yolo_report.tex)).
   - Parts 1–4 come from the #94 final report: the YOLO tile search (1T / 8T), ours against Héctor's (#94 rerun), the paper shapes and vector against scalar packing.
   - Part 5 comes from #95: why ours trails Héctor's at 1 thread.
 

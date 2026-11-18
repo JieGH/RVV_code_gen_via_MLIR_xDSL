@@ -65,7 +65,7 @@ reads jump lda floats (19.2 KB on Y10) every MR floats; each read is on another 
 \end{center}
 The pack test (\texttt{issue95/pack\_order.c}, run on the board) packs the same A both ways with the same RVV copy, in the same mc $\times$ kc blocks as our GEMM, and checks that both give the same packed bytes (\texttt{memcmp}). Against the in-GEMM pack time of the instrumented build it reads 2.19 against 2.16 ms on Y10 and 46.27 against 41.53 ms on Y05. It reads high in general: on \input{\F/over.tex} its pack time is above our whole uninstrumented call, and the per-shape chart shows the largest excess on the k $>$ kc shapes (for example Y11, Y16: an order cost of 27 ms against a gap under 3 ms). So the tables below give the size of the effect, not exact in-GEMM savings.
 
-\csname @@input\endcsname \F/figs.tex
+\csname @@input\endcsname \G/figs95.tex
 
 \begin{center}\small
 \begin{tabular}{@{}l r rrr rrr@{}}
