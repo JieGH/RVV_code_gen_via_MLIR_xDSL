@@ -1,0 +1,25 @@
+Issue #94: YOLO26 (datasets/yolo26_k1.dat), V = ours vector packer, S = ours scalar packer (tile 24x8), H = Héctor's gemm.x (b292c92)
+  Board    : jbpi; 1T on core 4, 8T on cores 0-7 (core 0: user's 8-thread exception)
+  Ours     : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, every row checked
+  Héctor   : TIMIN=2, TEST=T, his tiles; 8T OMP_PROC_BIND=close OMP_PLACES=cores (as ours); built by his first launch, then reused
+  Check    : C1 (1T) and C2 (8T) first: config_issue94_correctness.json, --scalar-pack, oracle on
+  step 1: V 1T
+  step 2: S 1T
+  step 3: H 1T
+  step 4: V 8T
+  step 5: S 8T
+  step 6: H 8T
+  step 7: S 8T
+  step 8: H 8T
+  step 9: V 8T
+  step 10: S 1T
+  step 11: H 1T
+  step 12: V 1T
+  step 13: H 1T
+  step 14: V 1T
+  step 15: S 1T
+  step 16: H 8T
+  step 17: V 8T
+  step 18: S 8T
+[11:58] C1: 4 of 4 rows PASS (run_2026-11-18_115802)
+[11:59] C2: 4 of 4 rows PASS (run_2026-11-18_115959)

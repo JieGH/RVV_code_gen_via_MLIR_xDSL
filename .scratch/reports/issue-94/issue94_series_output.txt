@@ -1,0 +1,715 @@
+Issue #94: YOLO26 (datasets/yolo26_k1.dat), V = ours vector packer, S = ours scalar packer (tile 24x8), H = Héctor's gemm.x (b292c92)
+  Board    : jbpi; 1T on core 4, 8T on cores 0-7 (core 0: user's 8-thread exception)
+  Ours     : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, every row checked
+  Héctor   : TIMIN=2, TEST=T, his tiles; 8T OMP_PROC_BIND=close OMP_PLACES=cores (as ours); built by his first launch, then reused
+  Check    : C1 (1T) and C2 (8T) first: config_issue94_correctness.json, --scalar-pack, oracle on
+  step 1: V 1T
+  step 2: S 1T
+  step 3: H 1T
+  step 4: V 8T
+  step 5: S 8T
+  step 6: H 8T
+  step 7: S 8T
+  step 8: H 8T
+  step 9: V 8T
+  step 10: S 1T
+  step 11: H 1T
+  step 12: V 1T
+  step 13: H 1T
+  step 14: V 1T
+  step 15: S 1T
+  step 16: H 8T
+  step 17: V 8T
+  step 18: S 8T
+[11:55] C1: config_issue94_correctness.json on jbpi --cpu 4, --scalar-pack, oracle on
+
+------------------------------------------------------------
+ Run overview   ([default] = not set by you)
+------------------------------------------------------------
+  Build          : UNINSTRUMENTED (INSTRUMENTED=0) -- comparable to the reference design   [default]
+  Protocol       : REFERENCE (matches the reference design's test_gemm.c)   [default]
+  Warm-up        : none: the cold first rep is inside the mean
+  Reps           : until tmin = 0.2 s has passed   [--tmin]
+  Correctness    : checked AFTER timing (unless skip_ref_run in /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/config_issue94_correctness.json)
+  Packing        : scalar packing forced   [--scalar-pack]
+  Pack lines     : not cleared: each line the packer writes is read from the L2 first   [default]
+  Pack B         : row (shipped xDSL packer)   [default]
+  Threads        : 1 (one core)   [default]
+  Cache blocking : analytical model   [default]
+                 : nc overrides: OFF (every shape uses the heuristic's nc; the nc table in /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/config_issue94_correctness.json is ignored)   [--no-nc-overrides]
+                 : RVV_FORCE_NC: not set   [default]
+  Pinning        : taskset -c 4 make run (the timed run only), cpu 4   [--cpu]
+  Config         : /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/config_issue94_correctness.json   [--config]
+  Board          : jlei@jbpi:22, jump-host fej -> board, workspace xdsl_rvv_microkernel
+  Logs           : raw_*_noinstr_refproto_scalarpack_no_nc_override.txt
+                 : reps_*_noinstr_refproto_scalarpack_no_nc_override.txt (every timed rep, in the order it ran)   [default]
+                 : raw events: none   [default]
+                 : busy share of every core during each timed run (make run), from /proc/stat -> provenance.txt   [default]
+  Driver args    : --no-nc-overrides --scalar-pack --tmin 0.2 --save-reps
+------------------------------------------------------------
+
+  Mode: Jump-host (x86 → fej → jbpi)
+
+
+------------------------------------------------------------
+ Dependency Check
+------------------------------------------------------------
+  [OK] python3: /home/jlei/anaconda3/bin/python3
+  [OK] rsync: /usr/bin/rsync
+  [OK] ssh: /usr/bin/ssh
+  [OK] .venv activated
+
+------------------------------------------------------------
+ [1/3] Generate C Code Locally
+------------------------------------------------------------
+Loaded config: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/config_issue94_correctness.json with 1 designs
+
+============================================================
+Building project for fp32_AXPY_FP32_Pack_vlen256...
+============================================================
+
+[+] Pinned kernel mode: only generating MR=24, NR=8
+
+[+] Generating Global Microkernel Pool...
+    -> Generating deduplicated Packing modules
+
+[+] Generating headers, generic dispatcher, and generic BLIS...
+
+[+] Merging and applying passes for gemm_b0_xdsl...
+    -> Lowered to pj_gen/fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b0_xdsl.cpp
+
+[+] Merging and applying passes for gemm_b1_xdsl...
+    -> Lowered to pj_gen/fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b1_xdsl.cpp
+
+[+] Merging and applying passes for gemm_pack_xdsl...
+    -> Lowered to pj_gen/fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_pack_xdsl.cpp
+
+[+] Generated header: pj_gen/fp32_AXPY_FP32_Pack_vlen256_MR24NR8/generated_kernels.h
+[+] Configured Makefile to run specific datasets: yolo_correctness_small.dat
+  [OK] Generated project locally.
+  [OK] board can pin to core 4
+
+------------------------------------------------------------
+ [2/3] Sync to Board
+------------------------------------------------------------
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+sending incremental file list
+created directory xdsl_rvv_microkernel/tests/pure_xdsl_blis_rvv/pj_gen
+./
+compile_order.txt
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/Makefile
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/driver_benchmark.cpp
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b0_xdsl.cpp
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b0_xdsl.mlir
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b1_xdsl.cpp
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b1_xdsl.mlir
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_dispatch_xdsl.cpp
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_headers.h
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_pack_xdsl.cpp
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_pack_xdsl.mlir
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/generated_kernels.h
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/pack_b_variants.h
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/pack_lines.h
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/perf_counters.h
+
+sent 264.243 bytes  received 398 bytes  529.282,00 bytes/sec
+total size is 262.970  speedup is 0,99
+sending incremental file list
+
+sent 1.476 bytes  received 12 bytes  992,00 bytes/sec
+total size is 25.942  speedup is 17,43
+sending incremental file list
+
+sent 298 bytes  received 13 bytes  622,00 bytes/sec
+total size is 8.570  speedup is 27,56
+  [OK] Synced pj_gen/, datasets/, and modelLevel/ → jlei@fej:xdsl_rvv_microkernel/tests/pure_xdsl_blis_rvv/
+
+------------------------------------------------------------
+ [3/4] Compile and Benchmark on Board
+------------------------------------------------------------
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+rm -rf build_instr* *.o test_gemm*.x
+g++ -O2 -std=c++17 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -c driver_benchmark.cpp -o build_instr0/driver_benchmark.o
+g++ -O2 -std=c++17 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -c gemm_b0_xdsl.cpp -o build_instr0/gemm_b0_xdsl.o
+g++ -O2 -std=c++17 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -c gemm_b1_xdsl.cpp -o build_instr0/gemm_b1_xdsl.o
+g++ -O2 -std=c++17 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -c gemm_dispatch_xdsl.cpp -o build_instr0/gemm_dispatch_xdsl.o
+g++ -O2 -std=c++17 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -c gemm_pack_xdsl.cpp -o build_instr0/gemm_pack_xdsl.o
+gcc -O3 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -DRVV_INSTRUMENTED=0 -c ../../modelLevel/model_level.c -o build_instr0/model_level.o
+g++ -O2 -std=c++17 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -o test_gemm_fp32_AXPY_FP32_Pack_noinstr.x build_instr0/driver_benchmark.o build_instr0/gemm_b0_xdsl.o build_instr0/gemm_b1_xdsl.o build_instr0/gemm_dispatch_xdsl.o build_instr0/gemm_pack_xdsl.o build_instr0/model_level.o -lm
+Running dataset: ../../datasets/yolo_correctness_small.dat
+
+============================================================
+ Run overview   ([default] = not set by you)
+============================================================
+  Build          : UNINSTRUMENTED (RVV_INSTRUMENTED=0) -- comparable to the reference design   [fixed at build time: make INSTRUMENTED=]
+                   per-tile timers and perf counters compiled out; pack/compute breakdown = nan
+  Protocol       : REFERENCE (matches test_gemm.c:339-361)   [default]
+  Warm-up        : none: the cold first rep is inside the mean
+  Reps           : until tmin = 0.2 s has passed, one clock read per rep   [--tmin]
+  Correctness    : checked against the scalar reference GEMM, AFTER timing   [skip_ref_run is false in config.json]
+  Packing        : scalar packing forced   [--scalar-pack]
+  Pack lines     : not cleared: each line the packer writes is read from the L2 first   [default]
+  Pad ldb        : ldb = k (no padding)   [default]
+  Pack B         : row (shipped xDSL packer)   [default]
+  Kernel family  : fp32 AXPY_FP32_Pack | VLEN 256 | arch jbpi2   [config.json]
+  Variants       : MR24_NR8   [config.json]
+  Cache blocking : analytical model (get_optim_mc_nc_kc)   [default]
+                   nc overrides: OFF (every shape uses the heuristic's nc; config.json has: none)   [--no-nc-overrides]
+                   RVV_FORCE_NC: not set   [default]
+  Dataset        : ../../datasets/yolo_correctness_small.dat
+  Logs           : logs/raw_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt
+                   logs/summary_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt
+                   logs/perf_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt
+                   logs/reps_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt (every timed rep, in the order it ran)   [--save-reps]
+                   raw events: none   [default]
+
+============================================================
+ Benchmark Config: Arch=jbpi2 | Datatype=fp32 | Method=AXPY_FP32_Pack | VLEN=256
+ Dataset: ../../datasets/yolo_correctness_small.dat
+============================================================
+
+ How to read this output
+   GOPs   [billions of operations per second = 2*M*N*K / time; a multiply-add counts as 2; higher is better]
+   Timed  [the whole GEMM call per rep -- pack A and B + microkernel compute + loop overhead; same region the reference design times]
+   Spread [each rep's own GOPs: the slowest, 5th percentile, 95th percentile and fastest rep, the width of the middle 50%,
+           the standard deviation, and the fastest-to-median ratio; a wide spread means unstable timing]
+   Full definitions of every log column: docs/metrics.md
+
+
+  [YC_m300_n4_k9 (300x4x9)] Running scalar reference ...   [YC_m300_n4_k9 (300x4x9)] Testing variant 1/1 : MR24_NR8                                                                                        +- YC_m300_n4_k9 (300x4x9) 24x8 [MR24_NR8: 24 rows x 8 columns of C per microkernel tile]
+  |  Speed [GOPs = billions of operations per second = 2*M*N*K / time; higher is better]
+  |    by mean time      : 1.26 GOPs  [mean of 11678 reps = 0.017 ms per GEMM call; the reference design's own formula]
+  |    by median rep     : 1.27 GOPs  [median of the per-rep GOPs; not thrown off by a few slow reps]
+  |    what is timed     : the whole GEMM call per rep  [pack A and B + microkernel compute + loop overhead; same region the reference design times]
+  |    spread per rep    : slowest 0.11 | 5th percentile 1.24 | 95th percentile 1.30 | fastest 1.32  [GOPs of single reps]
+  |                        middle-50% width 0.02 | std-dev 0.05 | std-dev / median 4% [above 15% = unstable] | fastest / median 1.04x [above 1.25 = cache thrashing]
+  |    reps              : 11678  [until tmin=0.2 s, reference protocol]
+  |    naive scalar GEMM : 0.44 GOPs  [our own slow triple loop, run once to check the answer; NOT the reference design]
+  |                        this run is 2.9 times faster than it
+  |    pack vs compute   : not available  [per-tile timers are compiled out of this build; rerun with --instr for the split and the hardware counters]
+  +- ✅ PASS [result matches the naive scalar GEMM] [cache blocking: mc=300 rows of A per block, nc=4 columns of B per block, kc=9 depth of each block]
+                                                                               ▶ YC_m300_n4_k9 (300x4x9) | best variant 24x8 [24 rows x 8 columns of C per tile] | 1.26 GOPs by mean time [whole GEMM call, packing included] | 1.27 GOPs median rep | 11678 reps | ✅ C[262,2]: 1.95 == 1.95 [sample entry vs the naive scalar GEMM] (cache blocking mc:300 nc:4 kc:9)
+  [YC_m300_n4_k27 (300x4x27)] Running scalar reference ...   [YC_m300_n4_k27 (300x4x27)] Testing variant 1/1 : MR24_NR8                                                                                        +- YC_m300_n4_k27 (300x4x27) 24x8 [MR24_NR8: 24 rows x 8 columns of C per microkernel tile]
+  |  Speed [GOPs = billions of operations per second = 2*M*N*K / time; higher is better]
+  |    by mean time      : 1.48 GOPs  [mean of 4567 reps = 0.044 ms per GEMM call; the reference design's own formula]
+  |    by median rep     : 1.49 GOPs  [median of the per-rep GOPs; not thrown off by a few slow reps]
+  |    what is timed     : the whole GEMM call per rep  [pack A and B + microkernel compute + loop overhead; same region the reference design times]
+  |    spread per rep    : slowest 0.42 | 5th percentile 1.45 | 95th percentile 1.52 | fastest 1.55  [GOPs of single reps]
+  |                        middle-50% width 0.03 | std-dev 0.04 | std-dev / median 3% [above 15% = unstable] | fastest / median 1.04x [above 1.25 = cache thrashing]
+  |    reps              : 4567  [until tmin=0.2 s, reference protocol]
+  |    naive scalar GEMM : 0.49 GOPs  [our own slow triple loop, run once to check the answer; NOT the reference design]
+  |                        this run is 3.0 times faster than it
+  |    pack vs compute   : not available  [per-tile timers are compiled out of this build; rerun with --instr for the split and the hardware counters]
+  +- ✅ PASS [result matches the naive scalar GEMM] [cache blocking: mc=300 rows of A per block, nc=4 columns of B per block, kc=27 depth of each block]
+                                                                               ▶ YC_m300_n4_k27 (300x4x27) | best variant 24x8 [24 rows x 8 columns of C per tile] | 1.48 GOPs by mean time [whole GEMM call, packing included] | 1.49 GOPs median rep | 4567 reps | ✅ C[108,2]: 5.64 == 5.64 [sample entry vs the naive scalar GEMM] (cache blocking mc:300 nc:4 kc:27)
+  [YC_m300_n16_k9 (300x16x9)] Running scalar reference ...   [YC_m300_n16_k9 (300x16x9)] Testing variant 1/1 : MR24_NR8                                                                                        +- YC_m300_n16_k9 (300x16x9) 24x8 [MR24_NR8: 24 rows x 8 columns of C per microkernel tile]
+  |  Speed [GOPs = billions of operations per second = 2*M*N*K / time; higher is better]
+  |    by mean time      : 4.35 GOPs  [mean of 10079 reps = 0.020 ms per GEMM call; the reference design's own formula]
+  |    by median rep     : 4.38 GOPs  [median of the per-rep GOPs; not thrown off by a few slow reps]
+  |    what is timed     : the whole GEMM call per rep  [pack A and B + microkernel compute + loop overhead; same region the reference design times]
+  |    spread per rep    : slowest 1.66 | 5th percentile 4.16 | 95th percentile 4.56 | fastest 4.79  [GOPs of single reps]
+  |                        middle-50% width 0.14 | std-dev 0.19 | std-dev / median 4% [above 15% = unstable] | fastest / median 1.09x [above 1.25 = cache thrashing]
+  |    reps              : 10079  [until tmin=0.2 s, reference protocol]
+  |    naive scalar GEMM : 0.46 GOPs  [our own slow triple loop, run once to check the answer; NOT the reference design]
+  |                        this run is 9.5 times faster than it
+  |    pack vs compute   : not available  [per-tile timers are compiled out of this build; rerun with --instr for the split and the hardware counters]
+  +- ✅ PASS [result matches the naive scalar GEMM] [cache blocking: mc=300 rows of A per block, nc=16 columns of B per block, kc=9 depth of each block]
+                                                                               ▶ YC_m300_n16_k9 (300x16x9) | best variant 24x8 [24 rows x 8 columns of C per tile] | 4.35 GOPs by mean time [whole GEMM call, packing included] | 4.38 GOPs median rep | 10079 reps | ✅ C[262,9]: 1.58 == 1.58 [sample entry vs the naive scalar GEMM] (cache blocking mc:300 nc:16 kc:9)
+  [YC_m300_n16_k27 (300x16x27)] Running scalar reference ...   [YC_m300_n16_k27 (300x16x27)] Testing variant 1/1 : MR24_NR8                                                                                        +- YC_m300_n16_k27 (300x16x27) 24x8 [MR24_NR8: 24 rows x 8 columns of C per microkernel tile]
+  |  Speed [GOPs = billions of operations per second = 2*M*N*K / time; higher is better]
+  |    by mean time      : 4.58 GOPs  [mean of 3537 reps = 0.057 ms per GEMM call; the reference design's own formula]
+  |    by median rep     : 4.61 GOPs  [median of the per-rep GOPs; not thrown off by a few slow reps]
+  |    what is timed     : the whole GEMM call per rep  [pack A and B + microkernel compute + loop overhead; same region the reference design times]
+  |    spread per rep    : slowest 2.88 | 5th percentile 4.39 | 95th percentile 4.74 | fastest 4.87  [GOPs of single reps]
+  |                        middle-50% width 0.12 | std-dev 0.16 | std-dev / median 3% [above 15% = unstable] | fastest / median 1.05x [above 1.25 = cache thrashing]
+  |    reps              : 3537  [until tmin=0.2 s, reference protocol]
+  |    naive scalar GEMM : 0.52 GOPs  [our own slow triple loop, run once to check the answer; NOT the reference design]
+  |                        this run is 8.8 times faster than it
+  |    pack vs compute   : not available  [per-tile timers are compiled out of this build; rerun with --instr for the split and the hardware counters]
+  +- ✅ PASS [result matches the naive scalar GEMM] [cache blocking: mc=300 rows of A per block, nc=16 columns of B per block, kc=27 depth of each block]
+                                                                               ▶ YC_m300_n16_k27 (300x16x27) | best variant 24x8 [24 rows x 8 columns of C per tile] | 4.58 GOPs by mean time [whole GEMM call, packing included] | 4.61 GOPs median rep | 3537 reps | ✅ C[164,3]: 6.56 == 6.56 [sample entry vs the naive scalar GEMM] (cache blocking mc:300 nc:16 kc:27)
+
+------------------------------------------------------------
+ [4/4] Fetch Logs
+------------------------------------------------------------
+receiving file list ... done
+./
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/logs/
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/logs/cpu_times_after
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/logs/cpu_times_before
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/logs/perf_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/logs/raw_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/logs/reps_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/logs/summary_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt
+
+sent 176 bytes  received 2.182.853 bytes  1.455.352,67 bytes/sec
+total size is 2.181.506  speedup is 1,00
+  [OK] Fetched logs to tests/pure_xdsl_blis_rvv/logs/run_2026-11-18_115802/fp32_AXPY_FP32_Pack_vlen256_MR24NR8/
+  [OK] Merged cross-project results into tests/pure_xdsl_blis_rvv/logs/run_2026-11-18_115802/all_*.txt
+wrote tests/pure_xdsl_blis_rvv/logs/run_2026-11-18_115802/comparison.md
+  [OK] Wrote comparison table to tests/pure_xdsl_blis_rvv/logs/run_2026-11-18_115802/comparison.md
+
+------------------------------------------------------------
+ Done.
+
+  Build    : UNINSTRUMENTED (INSTRUMENTED=0) -- comparable to the reference design
+  Protocol : REFERENCE (tmin=0.2 s) -- no warm-up, reps until tmin
+  Note     : pack/compute breakdown and perf counters are nan in this build
+  Logs     : tests/pure_xdsl_blis_rvv/logs/run_2026-11-18_115802/ (raw_*_noinstr_refproto_scalarpack_no_nc_override.txt)
+------------------------------------------------------------
+[11:58] C1: 4 of 4 rows PASS (run_2026-11-18_115802)
+[11:58] C2: config_issue94_correctness.json on jbpi --threads 8, --scalar-pack, oracle on
+
+------------------------------------------------------------
+ Run overview   ([default] = not set by you)
+------------------------------------------------------------
+  Build          : UNINSTRUMENTED (INSTRUMENTED=0) -- comparable to the reference design   [default]
+  Protocol       : REFERENCE (matches the reference design's test_gemm.c)   [default]
+  Warm-up        : none: the cold first rep is inside the mean
+  Reps           : until tmin = 0.2 s has passed   [--tmin]
+  Correctness    : checked AFTER timing (unless skip_ref_run in /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/config_issue94_correctness.json)
+  Packing        : scalar packing forced   [--scalar-pack]
+  Pack lines     : not cleared: each line the packer writes is read from the L2 first   [default]
+  Pack B         : row (shipped xDSL packer)   [default]
+  Threads        : 8 (OpenMP, cores 0-7; core 0 by the user's #56 exception to house rule 1)   [--threads]
+  Cache blocking : analytical model   [default]
+                 : nc overrides: OFF (every shape uses the heuristic's nc; the nc table in /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/config_issue94_correctness.json is ignored)   [--no-nc-overrides]
+                 : RVV_FORCE_NC: not set   [default]
+  Pinning        : OMP_NUM_THREADS=8 OMP_PROC_BIND=close OMP_PLACES=cores taskset -c 0-7 make run (the timed run only), cpu 0-7   [--threads]
+  Config         : /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/config_issue94_correctness.json   [--config]
+  Board          : jlei@jbpi:22, jump-host fej -> board, workspace xdsl_rvv_microkernel
+  Logs           : raw_*_noinstr_refproto_scalarpack_no_nc_override.txt
+                 : reps_*_noinstr_refproto_scalarpack_no_nc_override.txt (every timed rep, in the order it ran)   [default]
+                 : raw events: none   [default]
+                 : busy share of every core during each timed run (make run), from /proc/stat -> provenance.txt   [default]
+  Driver args    : --no-nc-overrides --scalar-pack --tmin 0.2 --save-reps
+------------------------------------------------------------
+
+  Mode: Jump-host (x86 → fej → jbpi)
+
+
+------------------------------------------------------------
+ Dependency Check
+------------------------------------------------------------
+  [OK] python3: /home/jlei/anaconda3/bin/python3
+  [OK] rsync: /usr/bin/rsync
+  [OK] ssh: /usr/bin/ssh
+  [OK] .venv activated
+
+------------------------------------------------------------
+ [1/3] Generate C Code Locally
+------------------------------------------------------------
+Loaded config: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/config_issue94_correctness.json with 1 designs
+
+============================================================
+Building project for fp32_AXPY_FP32_Pack_vlen256...
+============================================================
+
+[+] Pinned kernel mode: only generating MR=24, NR=8
+
+[+] Generating Global Microkernel Pool...
+    -> Generating deduplicated Packing modules
+
+[+] Generating headers, generic dispatcher, and generic BLIS...
+
+[+] Merging and applying passes for gemm_b0_xdsl...
+    -> Lowered to pj_gen/fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b0_xdsl.cpp
+
+[+] Merging and applying passes for gemm_b1_xdsl...
+    -> Lowered to pj_gen/fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b1_xdsl.cpp
+
+[+] Merging and applying passes for gemm_pack_xdsl...
+    -> Lowered to pj_gen/fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_pack_xdsl.cpp
+
+[+] Generated header: pj_gen/fp32_AXPY_FP32_Pack_vlen256_MR24NR8/generated_kernels.h
+[+] Configured Makefile to run specific datasets: yolo_correctness_small.dat
+  [OK] Generated project locally.
+  [OK] board can pin to core 0-7
+
+------------------------------------------------------------
+ [2/3] Sync to Board
+------------------------------------------------------------
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+sending incremental file list
+created directory xdsl_rvv_microkernel/tests/pure_xdsl_blis_rvv/pj_gen
+./
+compile_order.txt
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/Makefile
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/driver_benchmark.cpp
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b0_xdsl.cpp
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b0_xdsl.mlir
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b1_xdsl.cpp
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b1_xdsl.mlir
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_dispatch_xdsl.cpp
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_headers.h
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_pack_xdsl.cpp
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_pack_xdsl.mlir
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/generated_kernels.h
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/pack_b_variants.h
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/pack_lines.h
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/perf_counters.h
+
+sent 263.902 bytes  received 398 bytes  176.200,00 bytes/sec
+total size is 262.663  speedup is 0,99
+sending incremental file list
+
+sent 1.476 bytes  received 12 bytes  2.976,00 bytes/sec
+total size is 25.942  speedup is 17,43
+sending incremental file list
+
+sent 298 bytes  received 13 bytes  622,00 bytes/sec
+total size is 8.570  speedup is 27,56
+  [OK] Synced pj_gen/, datasets/, and modelLevel/ → jlei@fej:xdsl_rvv_microkernel/tests/pure_xdsl_blis_rvv/
+
+------------------------------------------------------------
+ [3/4] Compile and Benchmark on Board
+------------------------------------------------------------
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+rm -rf build_instr* *.o test_gemm*.x
+g++ -O2 -std=c++17 -fopenmp -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -c driver_benchmark.cpp -o build_instr0/driver_benchmark.o
+g++ -O2 -std=c++17 -fopenmp -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -c gemm_b0_xdsl.cpp -o build_instr0/gemm_b0_xdsl.o
+g++ -O2 -std=c++17 -fopenmp -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -c gemm_b1_xdsl.cpp -o build_instr0/gemm_b1_xdsl.o
+g++ -O2 -std=c++17 -fopenmp -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -c gemm_dispatch_xdsl.cpp -o build_instr0/gemm_dispatch_xdsl.o
+g++ -O2 -std=c++17 -fopenmp -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -c gemm_pack_xdsl.cpp -o build_instr0/gemm_pack_xdsl.o
+gcc -O3 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -DRVV_INSTRUMENTED=0 -c ../../modelLevel/model_level.c -o build_instr0/model_level.o
+g++ -O2 -std=c++17 -fopenmp -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -o test_gemm_fp32_AXPY_FP32_Pack_noinstr.x build_instr0/driver_benchmark.o build_instr0/gemm_b0_xdsl.o build_instr0/gemm_b1_xdsl.o build_instr0/gemm_dispatch_xdsl.o build_instr0/gemm_pack_xdsl.o build_instr0/model_level.o -lm
+Running dataset: ../../datasets/yolo_correctness_small.dat
+
+============================================================
+ Run overview   ([default] = not set by you)
+============================================================
+  Build          : UNINSTRUMENTED (RVV_INSTRUMENTED=0) -- comparable to the reference design   [fixed at build time: make INSTRUMENTED=]
+                   per-tile timers and perf counters compiled out; pack/compute breakdown = nan
+  Protocol       : REFERENCE (matches test_gemm.c:339-361)   [default]
+  Warm-up        : none: the cold first rep is inside the mean
+  Reps           : until tmin = 0.2 s has passed, one clock read per rep   [--tmin]
+  Correctness    : checked against the scalar reference GEMM, AFTER timing   [skip_ref_run is false in config.json]
+  Packing        : scalar packing forced   [--scalar-pack]
+  Pack lines     : not cleared: each line the packer writes is read from the L2 first   [default]
+  Pad ldb        : ldb = k (no padding)   [default]
+  Pack B         : row (shipped xDSL packer)   [default]
+  Kernel family  : fp32 AXPY_FP32_Pack | VLEN 256 | arch jbpi2   [config.json]
+  Variants       : MR24_NR8   [config.json]
+  Cache blocking : analytical model (get_optim_mc_nc_kc)   [default]
+                   nc overrides: OFF (every shape uses the heuristic's nc; config.json has: none)   [--no-nc-overrides]
+                   RVV_FORCE_NC: not set   [default]
+  Dataset        : ../../datasets/yolo_correctness_small.dat
+  Logs           : logs/raw_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt
+                   logs/summary_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt
+                   logs/perf_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt
+                   logs/reps_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt (every timed rep, in the order it ran)   [--save-reps]
+                   raw events: none   [default]
+
+============================================================
+ Benchmark Config: Arch=jbpi2 | Datatype=fp32 | Method=AXPY_FP32_Pack | VLEN=256
+ Dataset: ../../datasets/yolo_correctness_small.dat
+============================================================
+
+ How to read this output
+   GOPs   [billions of operations per second = 2*M*N*K / time; a multiply-add counts as 2; higher is better]
+   Timed  [the whole GEMM call per rep -- pack A and B + microkernel compute + loop overhead; same region the reference design times]
+   Spread [each rep's own GOPs: the slowest, 5th percentile, 95th percentile and fastest rep, the width of the middle 50%,
+           the standard deviation, and the fastest-to-median ratio; a wide spread means unstable timing]
+   Full definitions of every log column: docs/metrics.md
+
+
+  [YC_m300_n4_k9 (300x4x9)] Running scalar reference ...   [YC_m300_n4_k9 (300x4x9)] Testing variant 1/1 : MR24_NR8                                                                                        +- YC_m300_n4_k9 (300x4x9) 24x8 [MR24_NR8: 24 rows x 8 columns of C per microkernel tile]
+  |  Speed [GOPs = billions of operations per second = 2*M*N*K / time; higher is better]
+  |    by mean time      : 1.56 GOPs  [mean of 14460 reps = 0.014 ms per GEMM call; the reference design's own formula]
+  |    by median rep     : 1.66 GOPs  [median of the per-rep GOPs; not thrown off by a few slow reps]
+  |    what is timed     : the whole GEMM call per rep  [pack A and B + microkernel compute + loop overhead; same region the reference design times]
+  |    spread per rep    : slowest 0.00 | 5th percentile 1.59 | 95th percentile 1.76 | fastest 1.83  [GOPs of single reps]
+  |                        middle-50% width 0.07 | std-dev 0.09 | std-dev / median 5% [above 15% = unstable] | fastest / median 1.10x [above 1.25 = cache thrashing]
+  |    reps              : 14460  [until tmin=0.2 s, reference protocol]
+  |    naive scalar GEMM : 0.44 GOPs  [our own slow triple loop, run once to check the answer; NOT the reference design]
+  |                        this run is 3.6 times faster than it
+  |    pack vs compute   : not available  [per-tile timers are compiled out of this build; rerun with --instr for the split and the hardware counters]
+  +- ✅ PASS [result matches the naive scalar GEMM] [cache blocking: mc=300 rows of A per block, nc=4 columns of B per block, kc=9 depth of each block]
+                                                                               ▶ YC_m300_n4_k9 (300x4x9) | best variant 24x8 [24 rows x 8 columns of C per tile] | 1.56 GOPs by mean time [whole GEMM call, packing included] | 1.66 GOPs median rep | 14460 reps | ✅ C[262,2]: 1.95 == 1.95 [sample entry vs the naive scalar GEMM] (cache blocking mc:300 nc:4 kc:9)
+  [YC_m300_n4_k27 (300x4x27)] Running scalar reference ...   [YC_m300_n4_k27 (300x4x27)] Testing variant 1/1 : MR24_NR8                                                                                        +- YC_m300_n4_k27 (300x4x27) 24x8 [MR24_NR8: 24 rows x 8 columns of C per microkernel tile]
+  |  Speed [GOPs = billions of operations per second = 2*M*N*K / time; higher is better]
+  |    by mean time      : 3.82 GOPs  [mean of 11778 reps = 0.017 ms per GEMM call; the reference design's own formula]
+  |    by median rep     : 3.85 GOPs  [median of the per-rep GOPs; not thrown off by a few slow reps]
+  |    what is timed     : the whole GEMM call per rep  [pack A and B + microkernel compute + loop overhead; same region the reference design times]
+  |    spread per rep    : slowest 0.57 | 5th percentile 3.66 | 95th percentile 4.01 | fastest 4.16  [GOPs of single reps]
+  |                        middle-50% width 0.14 | std-dev 0.18 | std-dev / median 5% [above 15% = unstable] | fastest / median 1.08x [above 1.25 = cache thrashing]
+  |    reps              : 11778  [until tmin=0.2 s, reference protocol]
+  |    naive scalar GEMM : 0.26 GOPs  [our own slow triple loop, run once to check the answer; NOT the reference design]
+  |                        this run is 14.9 times faster than it
+  |    pack vs compute   : not available  [per-tile timers are compiled out of this build; rerun with --instr for the split and the hardware counters]
+  +- ✅ PASS [result matches the naive scalar GEMM] [cache blocking: mc=300 rows of A per block, nc=4 columns of B per block, kc=27 depth of each block]
+                                                                               ▶ YC_m300_n4_k27 (300x4x27) | best variant 24x8 [24 rows x 8 columns of C per tile] | 3.82 GOPs by mean time [whole GEMM call, packing included] | 3.85 GOPs median rep | 11778 reps | ✅ C[108,2]: 5.64 == 5.64 [sample entry vs the naive scalar GEMM] (cache blocking mc:300 nc:4 kc:27)
+  [YC_m300_n16_k9 (300x16x9)] Running scalar reference ...   [YC_m300_n16_k9 (300x16x9)] Testing variant 1/1 : MR24_NR8                                                                                        +- YC_m300_n16_k9 (300x16x9) 24x8 [MR24_NR8: 24 rows x 8 columns of C per microkernel tile]
+  |  Speed [GOPs = billions of operations per second = 2*M*N*K / time; higher is better]
+  |    by mean time      : 5.95 GOPs  [mean of 13782 reps = 0.015 ms per GEMM call; the reference design's own formula]
+  |    by median rep     : 5.99 GOPs  [median of the per-rep GOPs; not thrown off by a few slow reps]
+  |    what is timed     : the whole GEMM call per rep  [pack A and B + microkernel compute + loop overhead; same region the reference design times]
+  |    spread per rep    : slowest 0.26 | 5th percentile 5.65 | 95th percentile 6.40 | fastest 6.75  [GOPs of single reps]
+  |                        middle-50% width 0.31 | std-dev 0.30 | std-dev / median 5% [above 15% = unstable] | fastest / median 1.13x [above 1.25 = cache thrashing]
+  |    reps              : 13782  [until tmin=0.2 s, reference protocol]
+  |    naive scalar GEMM : 0.48 GOPs  [our own slow triple loop, run once to check the answer; NOT the reference design]
+  |                        this run is 12.5 times faster than it
+  |    pack vs compute   : not available  [per-tile timers are compiled out of this build; rerun with --instr for the split and the hardware counters]
+  +- ✅ PASS [result matches the naive scalar GEMM] [cache blocking: mc=300 rows of A per block, nc=16 columns of B per block, kc=9 depth of each block]
+                                                                               ▶ YC_m300_n16_k9 (300x16x9) | best variant 24x8 [24 rows x 8 columns of C per tile] | 5.95 GOPs by mean time [whole GEMM call, packing included] | 5.99 GOPs median rep | 13782 reps | ✅ C[262,9]: 1.58 == 1.58 [sample entry vs the naive scalar GEMM] (cache blocking mc:300 nc:16 kc:9)
+  [YC_m300_n16_k27 (300x16x27)] Running scalar reference ...   [YC_m300_n16_k27 (300x16x27)] Testing variant 1/1 : MR24_NR8                                                                                        +- YC_m300_n16_k27 (300x16x27) 24x8 [MR24_NR8: 24 rows x 8 columns of C per microkernel tile]
+  |  Speed [GOPs = billions of operations per second = 2*M*N*K / time; higher is better]
+  |    by mean time      : 12.52 GOPs  [mean of 9660 reps = 0.021 ms per GEMM call; the reference design's own formula]
+  |    by median rep     : 12.59 GOPs  [median of the per-rep GOPs; not thrown off by a few slow reps]
+  |    what is timed     : the whole GEMM call per rep  [pack A and B + microkernel compute + loop overhead; same region the reference design times]
+  |    spread per rep    : slowest 2.06 | 5th percentile 11.92 | 95th percentile 13.29 | fastest 14.04  [GOPs of single reps]
+  |                        middle-50% width 0.56 | std-dev 0.59 | std-dev / median 5% [above 15% = unstable] | fastest / median 1.12x [above 1.25 = cache thrashing]
+  |    reps              : 9660  [until tmin=0.2 s, reference protocol]
+  |    naive scalar GEMM : 0.31 GOPs  [our own slow triple loop, run once to check the answer; NOT the reference design]
+  |                        this run is 39.8 times faster than it
+  |    pack vs compute   : not available  [per-tile timers are compiled out of this build; rerun with --instr for the split and the hardware counters]
+  +- ✅ PASS [result matches the naive scalar GEMM] [cache blocking: mc=300 rows of A per block, nc=16 columns of B per block, kc=27 depth of each block]
+                                                                               ▶ YC_m300_n16_k27 (300x16x27) | best variant 24x8 [24 rows x 8 columns of C per tile] | 12.52 GOPs by mean time [whole GEMM call, packing included] | 12.59 GOPs median rep | 9660 reps | ✅ C[164,3]: 6.56 == 6.56 [sample entry vs the naive scalar GEMM] (cache blocking mc:300 nc:16 kc:27)
+
+------------------------------------------------------------
+ [4/4] Fetch Logs
+------------------------------------------------------------
+receiving file list ... done
+./
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/logs/
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/logs/cpu_times_after
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/logs/cpu_times_before
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/logs/perf_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/logs/raw_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/logs/reps_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/logs/summary_fp32_AXPY_FP32_Pack_noinstr_refproto_scalarpack_no_nc_override.txt
+
+sent 176 bytes  received 3.662.684 bytes  7.325.720,00 bytes/sec
+total size is 3.660.977  speedup is 1,00
+  [OK] Fetched logs to tests/pure_xdsl_blis_rvv/logs/run_2026-11-18_115959/fp32_AXPY_FP32_Pack_vlen256_MR24NR8/
+  [OK] Merged cross-project results into tests/pure_xdsl_blis_rvv/logs/run_2026-11-18_115959/all_*.txt
+wrote tests/pure_xdsl_blis_rvv/logs/run_2026-11-18_115959/comparison.md
+  [OK] Wrote comparison table to tests/pure_xdsl_blis_rvv/logs/run_2026-11-18_115959/comparison.md
+
+------------------------------------------------------------
+ Done.
+
+  Build    : UNINSTRUMENTED (INSTRUMENTED=0) -- comparable to the reference design
+  Protocol : REFERENCE (tmin=0.2 s) -- no warm-up, reps until tmin
+  Note     : pack/compute breakdown and perf counters are nan in this build
+  Logs     : tests/pure_xdsl_blis_rvv/logs/run_2026-11-18_115959/ (raw_*_noinstr_refproto_scalarpack_no_nc_override.txt)
+------------------------------------------------------------
+[11:59] C2: 4 of 4 rows PASS (run_2026-11-18_115959)
+[11:59] step 1/18: V 1T
+Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (50 shapes, every row checked)
+  Settings : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, vector packer
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)
+  Order    : 1 (threads per launch), one board: the first idle one of jbpi
+  Load     : the board's processes are read before every launch; busy -> wait 10 min and read again
+[12:00] board: jbpi
+[12:00] launch 1/1: 1 thread(s) on cores 4 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_115959/L1_T1_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/parallel_gemm_2026-11-18_115959
+    ok: run_2026-11-18_120426
+Series finished: 1 of 1 launches ok on jbpi. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_115959
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[12:04] step 2/18: S 1T
+Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (50 shapes, every row checked)
+  Settings : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, scalar packer
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)
+  Order    : 1 (threads per launch), one board: the first idle one of jbpi
+  Load     : the board's processes are read before every launch; busy -> wait 10 min and read again
+[12:04] board: jbpi
+[12:04] launch 1/1: 1 thread(s) on cores 4 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_120430/L1_T1_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/parallel_gemm_2026-11-18_120430
+    ok: run_2026-11-18_120857
+Series finished: 1 of 1 launches ok on jbpi. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_120430
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[12:09] step 3/18: H 1T
+Issue #94: Héctor's GEMMLib @ b292c92, unedited, built and run on an idle board of jbpi
+  Build    : his Makefile + Makefile.inc (gcc-14 -O3 -fopenmp, NQ_FP32, K1), make clean && make && make install (serial, his README), in ~/hector_gemmlib_b292c92
+  Run      : his gemm.bin command line, TIMIN=2, TEST=T, gemm_study/yolo.dat; 8 threads with OMP_PROC_BIND=close OMP_PLACES=cores (--omp-bind, as ours)
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7 (core 0: user's exception, 8-thread run only)
+  Order    : 1 (threads per launch)
+  Load     : both boards read before every launch; busy -> side note; none idle -> wait 10 min
+[12:09] copying /tmp/claude-1001/-home-jlei-Documents-ws-MLIR-repo-xdsl-microkernels-RVV-code-gen-via-MLIR-xDSL/1be44cf8-0b93-47d7-929c-eac422b245ea/scratchpad/GEMMLib_yolo to jbpi:~/hector_gemmlib_b292c92 and building (his Makefile)
+[12:09] launch 1/1: 1 thread(s) on cores 4 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-18_120900/L1_T1_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/hector_gemm_2026-11-18_120900
+Series finished: 1 of 1 launches ok. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-18_120900
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[12:12] step 4/18: V 8T
+Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (50 shapes, every row checked)
+  Settings : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, vector packer
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)
+  Order    : 8 (threads per launch), one board: the first idle one of jbpi
+  Load     : the board's processes are read before every launch; busy -> wait 10 min and read again
+[12:12] board: jbpi
+[12:12] launch 1/1: 8 thread(s) on cores 0-7 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_121218/L1_T8_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/parallel_gemm_2026-11-18_121218
+    ok: run_2026-11-18_121650
+Series finished: 1 of 1 launches ok on jbpi. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_121218
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[12:16] step 5/18: S 8T
+Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (50 shapes, every row checked)
+  Settings : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, scalar packer
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)
+  Order    : 8 (threads per launch), one board: the first idle one of jbpi
+  Load     : the board's processes are read before every launch; busy -> wait 10 min and read again
+[12:16] board: jbpi
+[12:16] launch 1/1: 8 thread(s) on cores 0-7 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_121658/L1_T8_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/parallel_gemm_2026-11-18_121658
+    ok: run_2026-11-18_122115
+Series finished: 1 of 1 launches ok on jbpi. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_121658
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[12:21] step 6/18: H 8T
+Issue #94: Héctor's GEMMLib @ b292c92, unedited, built and run on an idle board of jbpi
+  Build    : his Makefile + Makefile.inc (gcc-14 -O3 -fopenmp, NQ_FP32, K1), make clean && make && make install (serial, his README), in ~/hector_gemmlib_b292c92 -- skipped (--no-build), the existing build is used
+  Run      : his gemm.bin command line, TIMIN=2, TEST=T, gemm_study/yolo.dat; 8 threads with OMP_PROC_BIND=close OMP_PLACES=cores (--omp-bind, as ours)
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7 (core 0: user's exception, 8-thread run only)
+  Order    : 8 (threads per launch)
+  Load     : both boards read before every launch; busy -> side note; none idle -> wait 10 min
+[12:21] launch 1/1: 8 thread(s) on cores 0-7 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-18_122122/L1_T8_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/hector_gemm_2026-11-18_122122
+Series finished: 1 of 1 launches ok. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-18_122122
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[12:23] step 7/18: S 8T
+Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (50 shapes, every row checked)
+  Settings : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, scalar packer
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)
+  Order    : 8 (threads per launch), one board: the first idle one of jbpi
+  Load     : the board's processes are read before every launch; busy -> wait 10 min and read again
+[12:23] board: jbpi
+[12:23] launch 1/1: 8 thread(s) on cores 0-7 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_122351/L1_T8_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/parallel_gemm_2026-11-18_122351
+    ok: run_2026-11-18_122822
+Series finished: 1 of 1 launches ok on jbpi. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_122351
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[12:28] step 8/18: H 8T
+Issue #94: Héctor's GEMMLib @ b292c92, unedited, built and run on an idle board of jbpi
+  Build    : his Makefile + Makefile.inc (gcc-14 -O3 -fopenmp, NQ_FP32, K1), make clean && make && make install (serial, his README), in ~/hector_gemmlib_b292c92 -- skipped (--no-build), the existing build is used
+  Run      : his gemm.bin command line, TIMIN=2, TEST=T, gemm_study/yolo.dat; 8 threads with OMP_PROC_BIND=close OMP_PLACES=cores (--omp-bind, as ours)
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7 (core 0: user's exception, 8-thread run only)
+  Order    : 8 (threads per launch)
+  Load     : both boards read before every launch; busy -> side note; none idle -> wait 10 min
+[12:28] launch 1/1: 8 thread(s) on cores 0-7 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-18_122829/L1_T8_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/hector_gemm_2026-11-18_122829
+Series finished: 1 of 1 launches ok. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-18_122829
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[12:30] step 9/18: V 8T
+Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (50 shapes, every row checked)
+  Settings : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, vector packer
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)
+  Order    : 8 (threads per launch), one board: the first idle one of jbpi
+  Load     : the board's processes are read before every launch; busy -> wait 10 min and read again
+[12:30] board: jbpi
+[12:30] launch 1/1: 8 thread(s) on cores 0-7 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_123058/L1_T8_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/parallel_gemm_2026-11-18_123058
+    ok: run_2026-11-18_123514
+Series finished: 1 of 1 launches ok on jbpi. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_123058
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[12:35] step 10/18: S 1T
+Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (50 shapes, every row checked)
+  Settings : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, scalar packer
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)
+  Order    : 1 (threads per launch), one board: the first idle one of jbpi
+  Load     : the board's processes are read before every launch; busy -> wait 10 min and read again
+[12:35] board: jbpi
+[12:35] launch 1/1: 1 thread(s) on cores 4 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_123522/L1_T1_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/parallel_gemm_2026-11-18_123522
+    ok: run_2026-11-18_123948
+Series finished: 1 of 1 launches ok on jbpi. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_123522
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[12:39] step 11/18: H 1T
+Issue #94: Héctor's GEMMLib @ b292c92, unedited, built and run on an idle board of jbpi
+  Build    : his Makefile + Makefile.inc (gcc-14 -O3 -fopenmp, NQ_FP32, K1), make clean && make && make install (serial, his README), in ~/hector_gemmlib_b292c92 -- skipped (--no-build), the existing build is used
+  Run      : his gemm.bin command line, TIMIN=2, TEST=T, gemm_study/yolo.dat; 8 threads with OMP_PROC_BIND=close OMP_PLACES=cores (--omp-bind, as ours)
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7 (core 0: user's exception, 8-thread run only)
+  Order    : 1 (threads per launch)
+  Load     : both boards read before every launch; busy -> side note; none idle -> wait 10 min
+[12:39] launch 1/1: 1 thread(s) on cores 4 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-18_123951/L1_T1_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/hector_gemm_2026-11-18_123951
+Series finished: 1 of 1 launches ok. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-18_123951
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[12:42] step 12/18: V 1T
+Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (50 shapes, every row checked)
+  Settings : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, vector packer
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)
+  Order    : 1 (threads per launch), one board: the first idle one of jbpi
+  Load     : the board's processes are read before every launch; busy -> wait 10 min and read again
+[12:42] board: jbpi
+[12:42] launch 1/1: 1 thread(s) on cores 4 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_124220/L1_T1_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/parallel_gemm_2026-11-18_124220
+    ok: run_2026-11-18_124647
+Series finished: 1 of 1 launches ok on jbpi. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_124220
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[12:46] step 13/18: H 1T
+Issue #94: Héctor's GEMMLib @ b292c92, unedited, built and run on an idle board of jbpi
+  Build    : his Makefile + Makefile.inc (gcc-14 -O3 -fopenmp, NQ_FP32, K1), make clean && make && make install (serial, his README), in ~/hector_gemmlib_b292c92 -- skipped (--no-build), the existing build is used
+  Run      : his gemm.bin command line, TIMIN=2, TEST=T, gemm_study/yolo.dat; 8 threads with OMP_PROC_BIND=close OMP_PLACES=cores (--omp-bind, as ours)
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7 (core 0: user's exception, 8-thread run only)
+  Order    : 1 (threads per launch)
+  Load     : both boards read before every launch; busy -> side note; none idle -> wait 10 min
+[12:46] launch 1/1: 1 thread(s) on cores 4 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-18_124651/L1_T1_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/hector_gemm_2026-11-18_124651
+Series finished: 1 of 1 launches ok. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-18_124651
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[12:49] step 14/18: V 1T
+Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (50 shapes, every row checked)
+  Settings : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, vector packer
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)
+  Order    : 1 (threads per launch), one board: the first idle one of jbpi
+  Load     : the board's processes are read before every launch; busy -> wait 10 min and read again
+[12:49] board: jbpi
+[12:49] launch 1/1: 1 thread(s) on cores 4 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_124919/L1_T1_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/parallel_gemm_2026-11-18_124919
+    ok: run_2026-11-18_125346
+Series finished: 1 of 1 launches ok on jbpi. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_124919
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[12:53] step 15/18: S 1T
+Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (50 shapes, every row checked)
+  Settings : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, scalar packer
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)
+  Order    : 1 (threads per launch), one board: the first idle one of jbpi
+  Load     : the board's processes are read before every launch; busy -> wait 10 min and read again
+[12:53] board: jbpi
+[12:53] launch 1/1: 1 thread(s) on cores 4 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_125350/L1_T1_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/parallel_gemm_2026-11-18_125350
+    ok: run_2026-11-18_125816
+Series finished: 1 of 1 launches ok on jbpi. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_125350
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[12:58] step 16/18: H 8T
+Issue #94: Héctor's GEMMLib @ b292c92, unedited, built and run on an idle board of jbpi
+  Build    : his Makefile + Makefile.inc (gcc-14 -O3 -fopenmp, NQ_FP32, K1), make clean && make && make install (serial, his README), in ~/hector_gemmlib_b292c92 -- skipped (--no-build), the existing build is used
+  Run      : his gemm.bin command line, TIMIN=2, TEST=T, gemm_study/yolo.dat; 8 threads with OMP_PROC_BIND=close OMP_PLACES=cores (--omp-bind, as ours)
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7 (core 0: user's exception, 8-thread run only)
+  Order    : 8 (threads per launch)
+  Load     : both boards read before every launch; busy -> side note; none idle -> wait 10 min
+[12:58] launch 1/1: 8 thread(s) on cores 0-7 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-18_125819/L1_T8_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/hector_gemm_2026-11-18_125819
+Series finished: 1 of 1 launches ok. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/hector_gemm_2026-11-18_125819
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[13:00] step 17/18: V 8T
+Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (50 shapes, every row checked)
+  Settings : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, vector packer
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)
+  Order    : 8 (threads per launch), one board: the first idle one of jbpi
+  Load     : the board's processes are read before every launch; busy -> wait 10 min and read again
+[13:00] board: jbpi
+[13:00] launch 1/1: 8 thread(s) on cores 0-7 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_130048/L1_T8_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/parallel_gemm_2026-11-18_130048
+    ok: run_2026-11-18_130504
+Series finished: 1 of 1 launches ok on jbpi. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_130048
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[13:05] step 18/18: S 8T
+Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (50 shapes, every row checked)
+  Settings : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, scalar packer
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)
+  Order    : 8 (threads per launch), one board: the first idle one of jbpi
+  Load     : the board's processes are read before every launch; busy -> wait 10 min and read again
+[13:05] board: jbpi
+[13:05] launch 1/1: 8 thread(s) on cores 0-7 of jbpi: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_130512/L1_T8_jbpi.log
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/parallel_gemm_2026-11-18_130512
+    ok: run_2026-11-18_130928
+Series finished: 1 of 1 launches ok on jbpi. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/parallel_gemm_2026-11-18_130512
+Report copy: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/.scratch/reports/issue-94/issue94_2026-11-18_115554
+[13:09] Series finished: 18 of 18 steps ok. Logs: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/logs/issue94_2026-11-18_115554

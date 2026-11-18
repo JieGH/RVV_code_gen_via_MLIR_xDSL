@@ -1,0 +1,23 @@
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}
+\begin{axis}[house, xbar, bar width=7pt, width=12cm, height=3.3cm, y dir=reverse, ytick={0,1,2}, yticklabels={{V: ours, vector packer},{S: ours, scalar packer},{H: H\'ector's}}, enlarge y limits={abs=0.7}, xmin=0, xmax=6.0, xlabel={GOPs by mean time, 1T (core 4), one pass over 50 shapes}, nodes near coords, nodes near coords style={font=\scriptsize, anchor=west, /pgf/number format/fixed, /pgf/number format/precision=2, /pgf/number format/zerofill}, legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}, bar shift=0pt]
+\addplot[fill=his, draw=none] coordinates {(5.10,2)};
+\addplot[fill=scal, draw=none] coordinates {(4.05,1)};
+\addplot[fill=vec, draw=none] coordinates {(4.27,0)};
+
+\end{axis}
+\end{tikzpicture}
+\note{\runs}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}
+\begin{axis}[house, xbar, bar width=7pt, width=12cm, height=3.3cm, y dir=reverse, ytick={0,1,2}, yticklabels={{V: ours, vector packer},{S: ours, scalar packer},{H: H\'ector's}}, enlarge y limits={abs=0.7}, xmin=0, xmax=22.6, xlabel={GOPs by mean time, 8T (cores 0--7), one pass over 50 shapes}, nodes near coords, nodes near coords style={font=\scriptsize, anchor=west, /pgf/number format/fixed, /pgf/number format/precision=2, /pgf/number format/zerofill}, legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}, bar shift=0pt]
+\addplot[fill=his, draw=none] coordinates {(18.99,2)};
+\addplot[fill=scal, draw=none] coordinates {(18.52,1)};
+\addplot[fill=vec, draw=none] coordinates {(19.17,0)};
+
+\end{axis}
+\end{tikzpicture}
+\note{\runs}
+\end{figure}

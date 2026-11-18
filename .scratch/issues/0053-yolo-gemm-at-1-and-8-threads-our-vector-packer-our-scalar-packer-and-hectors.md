@@ -3,7 +3,8 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/94
 
 **Role / Label:** `needs-triage`. Opened 2026-11-18 at the user's request. Board runs on `jbpi`.
-**Status:** open. Driver and host test done (637 passed on the full suite); board series running (`logs/issue94.out`).
+**Status:** open. Board series done 2026-11-18 (18 of 18 launches ok, every row PASS). Report written and linked (§7); code review next.
+**Report:** [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/report/issue94_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/report/issue94_report.tex), [README](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/README.md); folder `.scratch/reports/issue-94/`.
 **Branch:** `yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors`, cut from `pure-xdsl`.
 **Related:** #56 [[0040-parallel-gemm-design]] (ours, vector packer), #62 [[0045-read-hector-parallel-gemm]] (Héctor's `gemm.bin`), #83 [[0050-scalar-packing-rerun-of-yolo-and-paper-sweeps]] (scalar packer).
 
@@ -84,10 +85,32 @@ Every row must PASS, or the series stops before timing. Their times are not quot
 
 Linked from this issue and #56, #62, #83.
 
-## 7. Closure
+## 7. Results (2026-11-18)
+
+Series `issue94_2026-11-18_115554`, jbpi, 12:00-13:09. The board was idle before every launch (no waits, no side notes).
+
+- **Correctness:** C1 4 of 4 PASS, C2 4 of 4 PASS. Each of our 12 timed launches: 50 of 50 PASS. Each of Héctor's 6: 53 of 53 OK in his own check.
+- **One pass, GOPs by mean time, mean of 3 launches.** Ours: uninstrumented build, reference protocol, `--tmin 2`. Héctor's: `TIMIN=2.0`.
+
+| setup | 1T (core 4) ms | GOPs | 8T (cores 0-7, bound) ms | GOPs | speedup |
+|---|---|---|---|---|---|
+| V: ours, vector packer | 697.2 | 4.27 | 155.2 | 19.17 | 4.49x |
+| S: ours, scalar packer | 733.9 | 4.05 | 160.6 | 18.52 | 4.57x |
+| H: Héctor's gemm.bin | 583.4 | 5.10 | 156.6 | 18.99 | 3.73x |
+
+- **GOPs by median rep** (ours only): V 4.27 / 20.06, S 4.05 / 19.48 at 1T / 8T.
+- **Launch ranges:**
+  - 1T: V 4.25-4.29, S 4.05-4.05, H 5.08-5.12.
+  - 8T: V 19.14-19.18, S 18.47-18.54, H 18.75-19.27. V's range lies inside H's.
+- **Earlier runs:** #56 V 4.26 / 19.55; #62 H 5.10 / 21.87, his 8T then without thread binding.
+- **By n:** report §3.
+  - 8T: V is highest at n = 4, 16 and 256; H at n = 8, 32, 64, 80 and 128.
+  - S is below V at every n at 8T, and at every n except 256 at 1T.
+
+## 8. Closure
 
 - [x] Driver and host test, tests passing
-- [ ] C1, C2 all PASS
-- [ ] 18 launches done, logs committed
-- [ ] Report written and linked
+- [x] C1, C2 all PASS
+- [x] 18 launches done, logs committed
+- [x] Report written and linked (#94, #56, #62, #83)
 - [ ] Code review done, findings fixed
