@@ -1,0 +1,11 @@
+# Source: .scratch/reports/issue-56/README.md, table "By n". GOPs by mean time, one pass over the shapes with that n.
+# Ours: tile 24x8, jbpi, uninstrumented, reference protocol, --tmin 2, 3 launches. His: #62 jbpi series, his gemm.bin, TIMIN=2.0.
+idx,label,ours1,ours8,his1,his8,lours,lhis
+0,n=4 (3),1.61,6.49,2.44,8.15,24x8 mc=300--4096 kc=16,16x4
+1,n=8 (1),1.09,3.87,2.40,6.95,24x8 mc=682 kc=144,16x8
+2,n=16 (10),2.05,9.47,2.83,9.06,24x8 mc=300--3034 kc=27--170,16x8
+3,n=32 (6),3.20,13.82,5.12,18.84,24x8 mc=578--2560 kc=32--170,16x8
+4,n=64 (10),4.98,23.46,5.53,27.54,24x8 mc=300--1706 kc=48--170,16x8
+5,n=80 (6),5.68,32.30,7.61,32.57,24x8 mc=300--1536 kc=64--170,16x8
+6,n=128 (9),6.20,30.43,6.14,33.54,24x8 mc=300--1024 kc=96--170,16x8
+7,n=256 (5),7.40,32.82,5.99,29.77,24x8 mc=300 kc=128--170,16x8

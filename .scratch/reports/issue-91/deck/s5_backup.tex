@@ -1,0 +1,51 @@
+% ===== Backup: the remaining #85 sweeps, one chart per sweep and thread count (true GOPs by mean time) =====
+
+\begin{frame}\centering\Large Backup: the other \iss{85} sweeps\end{frame}
+
+\begin{frame}{\iss{85} P-m, n = 16, k = 256 (1 thread)}
+\centering
+\ratiochart{p85/data/pm16_1t.csv}{4.6cm}{1.2}
+\src{1T: jbpi, core 4; tile 24x8 unless named; uninstrumented, reference protocol, \texttt{--tmin 3}, 3 launches per packer (V S S V V S); GOPs by mean time recomputed (\texttt{make\_data.py}). Filled = gap outside the launch range, open = inside. Right: tile, cache blocking (from the logs), then pack share vector / scalar (instrumented, 2 launches per packer).}
+\end{frame}
+
+\begin{frame}{\iss{85} P-m, n = 16, k = 256 (8 threads)}
+\centering
+\ratiochart{p85/data/pm16_8t.csv}{4.6cm}{1.2}
+\src{8T: jbpi2, cores 0--7, pack share = mean over threads; tile 24x8 unless named; uninstrumented, reference protocol, \texttt{--tmin 3}, 3 launches per packer (V S S V V S); GOPs by mean time recomputed (\texttt{make\_data.py}). Filled = gap outside the launch range, open = inside. Right: tile, cache blocking (from the logs), then pack share vector / scalar (instrumented, 2 launches per packer).}
+\end{frame}
+
+\begin{frame}{\iss{85} P-m, n = 256, k = 256 (1 thread)}
+\centering
+\ratiochart{p85/data/pm256_1t.csv}{4.6cm}{1.2}
+\src{1T: jbpi, core 4; tile 24x8 unless named; uninstrumented, reference protocol, \texttt{--tmin 3}, 3 launches per packer (V S S V V S); GOPs by mean time recomputed (\texttt{make\_data.py}). Filled = gap outside the launch range, open = inside. Right: tile, cache blocking (from the logs), then pack share vector / scalar (instrumented, 2 launches per packer).}
+\end{frame}
+
+\begin{frame}{\iss{85} P-m, n = 256, k = 256 (8 threads)}
+\centering
+\ratiochart{p85/data/pm256_8t.csv}{4.6cm}{1.2}
+\src{8T: jbpi2, cores 0--7, pack share = mean over threads; tile 24x8 unless named; uninstrumented, reference protocol, \texttt{--tmin 3}, 3 launches per packer (V S S V V S); GOPs by mean time recomputed (\texttt{make\_data.py}). Filled = gap outside the launch range, open = inside. Right: tile, cache blocking (from the logs), then pack share vector / scalar (instrumented, 2 launches per packer).}
+\end{frame}
+
+\begin{frame}{\iss{85} P-k, m = 1200, n = 256 (1 thread)}
+\centering
+\ratiochart{p85/data/pk256_1t.csv}{4.6cm}{1.2}
+\src{1T: jbpi, core 4; tile 24x8 unless named; uninstrumented, reference protocol, \texttt{--tmin 3}, 3 launches per packer (V S S V V S); GOPs by mean time recomputed (\texttt{make\_data.py}). Filled = gap outside the launch range, open = inside. Right: tile, cache blocking (from the logs), then pack share vector / scalar (instrumented, 2 launches per packer).}
+\end{frame}
+
+\begin{frame}{\iss{85} P-k, m = 1200, n = 256 (8 threads)}
+\centering
+\ratiochart{p85/data/pk256_8t.csv}{4.6cm}{1.2}
+\src{8T: jbpi2, cores 0--7, pack share = mean over threads; tile 24x8 unless named; uninstrumented, reference protocol, \texttt{--tmin 3}, 3 launches per packer (V S S V V S); GOPs by mean time recomputed (\texttt{make\_data.py}). Filled = gap outside the launch range, open = inside. Right: tile, cache blocking (from the logs), then pack share vector / scalar (instrumented, 2 launches per packer).}
+\end{frame}
+
+\begin{frame}{\iss{85} P-tile: 1200$\times$4$\times$16, 1200$\times$16$\times$256, 1200$\times$256$\times$256 (1 thread)}
+\centering
+\ratiochart{p85/data/ptile_1t.csv}{6.2cm}{1.5}
+\src{1T: jbpi, core 4; tile 24x8 unless named; uninstrumented, reference protocol, \texttt{--tmin 3}, 3 launches per packer (V S S V V S); GOPs by mean time recomputed (\texttt{make\_data.py}). Filled = gap outside the launch range, open = inside. Right: tile, cache blocking (from the logs), then pack share vector / scalar (instrumented, 2 launches per packer).}
+\end{frame}
+
+\begin{frame}{\iss{85} P-tile: 1200$\times$4$\times$16, 1200$\times$16$\times$256, 1200$\times$256$\times$256 (8 threads)}
+\centering
+\ratiochart{p85/data/ptile_8t.csv}{6.2cm}{1.5}
+\src{8T: jbpi2, cores 0--7, pack share = mean over threads; tile 24x8 unless named; uninstrumented, reference protocol, \texttt{--tmin 3}, 3 launches per packer (V S S V V S); GOPs by mean time recomputed (\texttt{make\_data.py}). Filled = gap outside the launch range, open = inside. Right: tile, cache blocking (from the logs), then pack share vector / scalar (instrumented, 2 launches per packer).}
+\end{frame}

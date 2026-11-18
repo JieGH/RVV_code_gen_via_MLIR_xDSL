@@ -1,0 +1,104 @@
+% ===== Section 2: paper shapes BERT B1-B5 / Square S1-S5, best tile at 1T and 8T (#71) =====
+\begin{frame}{Paper shapes, 1 thread: the paper's picks hold (among our 19 tiles)}
+\begin{columns}[T]
+\begin{column}{0.62\textwidth}
+\begin{tikzpicture}
+\begin{axis}[house, xbar, bar width=4pt, width=0.88\linewidth, height=6.6cm, y dir=reverse,
+  ytick=data, yticklabels from table={data/paper_tiles.csv}{label}, enlarge y limits={abs=0.6},
+  xmin=0, xmax=26, xtick={0,2,...,12}, xlabel={GOPs by mean time, 1T},
+  nodes near coords, point meta=explicit symbolic, every node near coord/.append style={font=\tiny, anchor=west},
+  legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}]
+\addplot[fill=vec, draw=none] table[y=idx, x=a1_327, meta=l327]{data/paper_tiles.csv};
+\addplot[fill=sq, draw=none] table[y=idx, x=a1_1615, meta=l1615]{data/paper_tiles.csv};
+\legend{32x7, 16x15}
+\end{axis}
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.36\textwidth}
+\small
+\begin{itemize}\setlength\itemsep{3pt}
+\item The paper's 1-core heatmap peaks at 16x15; its GEMM runs used 32x7 for S1--S5 and 32x6, 16x15, 32x7 for BERT.
+\item \textbf{32x7 is best on 9 of 10 shapes}; 16x15 on B2 (12.58 against 11.76).
+\item One tile for all 10 shapes: 32x7, 48.0 s per pass, \textbf{9.53 GOPs}; 32x6 8.83; 16x15 7.47.
+\item By median rep: same bests, except B3 (16x12, 7.23; its launches spread 4.15--8.87).
+\end{itemize}
+\end{column}
+\end{columns}
+\src{\iss{71}: jbpi, 1T core 4, uninstrumented, reference protocol, \texttt{--tmin 2}, \texttt{--no-nc-overrides}, vector packer, 19 Candidate Tiles (the YOLO list, not the paper's full heatmap), 3 launches (1T 8T 8T 1T 1T 8T). S5 gets few reps per launch at 1T. This repo's current design, not the paper's code; the paper's GFLOPS are not compared.}
+\end{frame}
+
+\begin{frame}{Paper shapes, 8 threads: BERT (16x8 wins B1, B4, B5)}
+\begin{columns}[T]
+\begin{column}{0.62\textwidth}
+\begin{tikzpicture}
+\begin{axis}[house, xbar, bar width=4pt, width=0.88\linewidth, height=6.4cm, y dir=reverse,
+  ytick={0,...,4}, yticklabels={B1 1024x384x1024, B2 384x384x64, B3 64x384x384, B4 4096x384x1024, B5 1024x384x4096}, enlarge y limits={abs=0.6},
+  xmin=0, xmax=170, xtick={0,20,...,80}, xlabel={GOPs by mean time, 8T},
+  nodes near coords, point meta=explicit symbolic, every node near coord/.append style={font=\tiny, anchor=west},
+  legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}]
+\addplot[fill=his, draw=none, skip coords between index={5}{10}] table[y=idx, x=a8_168, meta=l168]{data/paper_tiles.csv};
+\addplot[fill=vec, draw=none, skip coords between index={5}{10}] table[y=idx, x=a8_327, meta=l327]{data/paper_tiles.csv};
+\addplot[fill=sq, draw=none, skip coords between index={5}{10}] table[y=idx, x=a8_1615, meta=l1615]{data/paper_tiles.csv};
+\legend{16x8, 32x7, 16x15}
+\end{axis}
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.36\textwidth}
+\small
+\begin{itemize}\setlength\itemsep{3pt}
+\item \textbf{16x8 is best on 8 of 10 shapes} (BERT and Square); B2: 16x12 (81.99; 16x15 81.12); B3: 8x24 (27.78).
+\item One tile for all 10: 16x8, 9.47 s per pass, \textbf{48.27 GOPs}; 16x15 44.96; the paper's 32x7 44.07 (4th).
+\item 32x7 and 16x15 share their blocking; 16x8 gets mc 384, kc 256.
+\end{itemize}
+\end{column}
+\end{columns}
+\src{\iss{71}: jbpi, 8T cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}, \texttt{--no-nc-overrides}, vector packer, 19 tiles, 3 launches interleaved with the 1T launches. Core 0 takes the board's interrupts. Bar label: tile, then the cache blocking mc / nc / kc from the run log.}
+\end{frame}
+
+\begin{frame}{Paper shapes, 8 threads: Square (16x8 wins all five)}
+\begin{columns}[T]
+\begin{column}{0.62\textwidth}
+\begin{tikzpicture}
+\begin{axis}[house, xbar, bar width=4pt, width=0.88\linewidth, height=6.4cm, y dir=reverse,
+  ytick={5,...,9}, yticklabels={S1 1000$^3$, S2 2000$^3$, S3 3000$^3$, S4 4000$^3$, S5 5000$^3$}, enlarge y limits={abs=0.6},
+  xmin=0, xmax=170, xtick={0,20,...,80}, xlabel={GOPs by mean time, 8T},
+  nodes near coords, point meta=explicit symbolic, every node near coord/.append style={font=\tiny, anchor=west},
+  legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}]
+\addplot[fill=his, draw=none, skip coords between index={0}{5}] table[y=idx, x=a8_168, meta=l168]{data/paper_tiles.csv};
+\addplot[fill=vec, draw=none, skip coords between index={0}{5}] table[y=idx, x=a8_327, meta=l327]{data/paper_tiles.csv};
+\addplot[fill=sq, draw=none, skip coords between index={0}{5}] table[y=idx, x=a8_1615, meta=l1615]{data/paper_tiles.csv};
+\legend{16x8, 32x7, 16x15}
+\end{axis}
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.36\textwidth}
+\small
+\begin{itemize}\setlength\itemsep{3pt}
+\item By median rep: same bests, except B2 (16x15, 86.31). S1, S2: 49.80, 50.15 by median rep against 44.70, 47.33 by mean time; a few slow reps in every launch pull the mean time down.
+\item 8T/1T on the best single tile: 48.27 / 9.53 = 5.1$\times$.
+\item From S2 up, nc stops at 1024--1536, below n.
+\end{itemize}
+\end{column}
+\end{columns}
+\src{\iss{71}: jbpi, 8T cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}, \texttt{--no-nc-overrides}, vector packer, 19 tiles, 3 launches interleaved with the 1T launches. Core 0 takes the board's interrupts. Bar label: tile, then the cache blocking mc / nc / kc from the run log.}
+\end{frame}
+
+\begin{frame}{Paper shapes: what changes with threads}\small
+\small
+\begin{tabular}{@{}lllll@{}}
+\toprule
+ & 1T best & 8T best & 8T: paper's 32x7 & tile family at 8T \\
+\midrule
+BERT B1, B4, B5 & 32x7 & 16x8 & 8--13\% slower & MR 16, NR 8 \\
+BERT B2 (k = 64) & 16x15 & 16x12 / 16x15 & 28\% slower & MR 16, wide NR \\
+BERT B3 (m = 64) & 32x7 & 8x24 & 40\% slower & MR 8, wide NR \\
+Square S1--S5 & 32x7 & 16x8 & 1--15\% slower & MR 16, NR 8 \\
+\bottomrule
+\end{tabular}
+\vspace{8pt}
+\begin{itemize}\setlength\itemsep{3pt}
+\item Same pattern as YOLO: \textbf{the 1-thread winner is not the 8-thread winner.} At 8T the winners have MR = 16 or less.
+\item Why the winner changes with threads is not measured.
+\end{itemize}
+\src{\iss{71}: jbpi, 1T core 4 / 8T cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}, 3 launches each. ``Slower'' = (best $-$ 32x7) $\div$ best, GOPs by mean time.}
+\end{frame}
