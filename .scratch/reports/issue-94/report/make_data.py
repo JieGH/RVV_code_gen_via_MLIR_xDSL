@@ -4,8 +4,8 @@
 Reads the run_issue94.sh series folder (steps.tsv: one row per launch, the series folder each runner wrote) and the
 committed run folders under tests/pure_xdsl_blis_rvv/logs/. Writes CSVs (pgfplots) and LaTeX table rows into data/.
 
-Metrics, per shape and launch: mean time per call (GOPs by mean time = 2mnk / mean time) and median rep time
-(GOPs by median rep). Across launches the times are averaged. One pass = the sum of those times over the 50 shapes,
+Metric, per shape and launch: mean time per call (GOPs by mean time = 2mnk / mean time); mean time only, as in
+every report since 2026-11-18. Across launches the times are averaged. One pass = the sum of those times over the 50 shapes,
 each shape once; its GOPs = total ops / pass time. Héctor's driver gives the mean time only.
 
 Usage: make_data.py <issue94 series folder> [--logs DIR] [--out DIR]
@@ -159,14 +159,14 @@ def main() -> None:
     lines = [f"shapes: {len(labels)}; launches per setup and thread count: {nl}"]
     pass_rows, pass_csv = [], ["idx,label,g1,g8,l1,l8"]
     for i, s in enumerate(have):
-        for which, metric in ((0, "by mean time"), (1, "by median rep")):
+        for which, metric in ((0, "by mean time"),):
             if s == "H" and which == 1:
                 continue
             t = {th: pass_s(times[s][th], labels, which) for th in THREADS}
             g = {th: total / t[th] / 1e9 for th in THREADS}
             rng = {th: launch_range(times[s][th], shapes, labels) for th in THREADS} if which == 0 else None
             r = (lambda th: f"{rng[th][0]:.2f}--{rng[th][1]:.2f}") if rng else (lambda th: "")
-            pass_rows.append(f"{NAMES[s]}, {metric} & {t[1] * 1e3:.1f} & {g[1]:.2f} & {r(1)} & {t[8] * 1e3:.1f} & "
+            pass_rows.append(f"{NAMES[s]} & {t[1] * 1e3:.1f} & {g[1]:.2f} & {r(1)} & {t[8] * 1e3:.1f} & "
                              f"{g[8]:.2f} & {r(8)} & {t[1] / t[8]:.2f}$\\times$ \\\\")
             lines.append(f"{s} {metric}: 1T {t[1] * 1e3:.1f} ms {g[1]:.2f} GOPs | 8T {t[8] * 1e3:.1f} ms {g[8]:.2f} GOPs | {t[1] / t[8]:.2f}x")
             if which == 0:
@@ -182,7 +182,7 @@ def main() -> None:
               f"{' '.join(f'{v:.1f}' for v in y00[s][1])} 8T {' '.join(f'{v:.1f}' for v in y00[s][8])}" for s in have]
 
     ns = sorted({shapes[lb][1] for lb in labels})
-    by_n_mean, by_n_med, by_n_csv = [], [], ["idx,label," + ",".join(f"{s}{t}" for s in have for t in THREADS)]
+    by_n_mean, by_n_csv = [], ["idx,label," + ",".join(f"{s}{t}" for s in have for t in THREADS)]
     for i, n in enumerate(ns):
         ls = [lb for lb in labels if shapes[lb][1] == n]
         o = ops(shapes, ls)
@@ -190,8 +190,6 @@ def main() -> None:
         cells = " & ".join(f"{gm[s, 1]:.2f} & {gm[s, 8]:.2f} & {gm[s, 8] / gm[s, 1]:.2f}$\\times$" for s in have)
         by_n_mean.append(f"{n} & {len(ls)} & {cells} \\\\")
         ours = [s for s in have if s != "H"]
-        gd = {(s, t): o / pass_s(times[s][t], ls, 1) / 1e9 for s in ours for t in THREADS}
-        by_n_med.append(f"{n} & {len(ls)} & " + " & ".join(f"{gd[s, 1]:.2f} & {gd[s, 8]:.2f} & {gd[s, 8] / gd[s, 1]:.2f}$\\times$" for s in ours) + " \\\\")
         by_n_csv.append(f"{i},n = {n} ({len(ls)})," + ",".join(f"{gm[s, t]:.2f}" for s in have for t in THREADS))
         lines.append(f"n={n}: " + " ".join(f"{s}{t}={gm[s, t]:.2f}" for s in have for t in THREADS))
 
@@ -238,7 +236,7 @@ def main() -> None:
             + "\\bottomrule\\end{longtable}}\n")
         import datetime
         (a.out / "date.tex").write_text(datetime.date.today().strftime("%-d %b %Y"))
-    for name, body in (("pass_rows.tex", pass_rows), ("by_n_mean_rows.tex", by_n_mean), ("by_n_median_rows.tex", by_n_med),
+    for name, body in (("pass_rows.tex", pass_rows), ("by_n_mean_rows.tex", by_n_mean), 
                        ("shape_rows.tex", shape_rows), ("noy00_rows.tex", noy00_rows), ("pass.csv", pass_csv), ("by_n.csv", by_n_csv),
                        ("checks.txt", checks), ("summary.txt", lines)):
         (a.out / name).write_text("\n".join(body) + "\n")

@@ -29,7 +29,7 @@ cache blocking mc / nc / kc & Block sizes of the GEMM loops: mc rows of A, nc co
 best tile & For one shape (or one n group), the tile with the highest GOPs by mean time, averaged over launches. \\
 family & A group of tiles that trade places between launches; the gap between them is inside the launch range. \\
 GOPs by mean time & 2mnk $\div$ mean time per call (raw column \texttt{KerGOPs\_Harmonic}). Main metric. \\
-GOPs by median rep & Median over reps of each rep's GOPs (\texttt{KerGOPs\_Median}). Less sensitive to a few slow reps. \\
+only GOPs by mean time & Every GOPs and ms value in this report is by mean time (\texttt{.scratch/reports/yolo-multithread/report/metric\_gap.py} compares it with the median rep). \\
 ms per pass & Sum of one call's mean time over the shapes (each distinct shape once, unweighted). \\
 launch & One full run of the test (every tile on every shape). Written ``launch 1/2/3''. \\
 A-B-B-A & Run order that interleaves two sides (e.g.\ ours, H\'ector's, H\'ector's, ours), so slow drift hits both. \\

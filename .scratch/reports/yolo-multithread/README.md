@@ -22,16 +22,17 @@ Owner issue: #58 (parent, https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/is
 
 ## Files
 
-- `report/yolo_report.tex`: main file. GOPs by mean time and by median rep share one cell, "mean / median" (Héctor's driver gives only the mean, so his cells show one value). It inputs:
+- `report/yolo_report.tex`: main file. Every GOPs and ms value is by mean time only (user's choice, 2026-11-18; `report/metric_gap.py` shows how far the median rep differs). It inputs:
   - `r0_answer.tex`: copy of #94's, plus the #95 answer and glossary terms.
-  - `r1_yolo.tex`, `r2_paper.tex`, `r3_packing.tex`: copies of #94's / #91's Parts 1–3, with the two-metric columns merged into one.
-  - `../../issue-94/final/r5_appendix.tex`: unchanged; its tables already use "mean / median".
+  - `r1_yolo.tex`, `r2_paper.tex`, `r3_packing.tex`: copies of #94's / #91's Parts 1–3, with the median-rep values removed. The #94 final report reads these too.
+  - `r5_appendix.tex`: copy of #94's appendix, reading the mean-only data below.
   - `r4_close.tex`: copy of #94's. The short #95 note now points to Part 5, and the file inputs `r5_why1t.tex`.
-  - `r5_why1t.tex`: Part 5, the #95 report body (probe table merged the same way).
+  - `r5_why1t.tex`: Part 5, the #95 report body (mean time only).
   - `r6_appendix95.tex`: #95's all-50-shapes table and logs.
-- `report/make_data.py` → `report/data/`: merges the #94 one-pass and by-n rows and the #95 probe rows into "mean / median" cells.
+- `report/make_data.py` → `report/data/`: mean-only copies of the #91 data files that hold "mean / median" cells (the ~ mark stays).
+- `report/metric_gap.py` → `report/data/metric_gap_rows.tex`: GOPs by median rep ÷ GOPs by mean time per case, per run group (min, median, 95th, max). Not in the PDF; the reason only mean time is kept.
 - Data read in place: `../issue-91/deck/data`, `../issue-94/report/data`, `../issue-95/report/data`. Build those first with each folder's `make_data.py` (see their READMEs).
-- The per-issue reports (`../issue-91`, `../issue-94`, `../issue-95`) are not changed; they keep two columns.
+- Mean time only also in `../issue-94/report`, `../issue-94/final` and `../issue-95/report` (their generators no longer write median rows). Older reports (`../issue-91`, `../issue-83`, `../issue-85`, #61–#63 READMEs) are kept as they were and still show both; this report supersedes them.
 
 Build: from `report/`, run `python3 make_data.py`, then `tectonic -X compile yolo_report.tex`.
 

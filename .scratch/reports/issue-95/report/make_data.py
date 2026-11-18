@@ -86,8 +86,8 @@ def main() -> None:
         if p["split"]:
             continue
         rows.append(f"{tex(p['label'])} & {p['shape'].replace('x', '$\\times$')} & {p['mc']} & {p['kc']} & "
-                    f"{'forced' if p['forced'] else 'model'} & {p['ours']:.2f} & {p['median']:.2f} & {p['his']:.2f} \\\\")
-        lines.append(f"probe {p['label']}: {p['shape']} mc {p['mc']} kc {p['kc']} ours {p['ours']:.2f} (median {p['median']:.2f}) his {p['his']:.2f}")
+                    f"{'forced' if p['forced'] else 'model'} & {p['ours']:.2f} & {p['his']:.2f} \\\\")
+        lines.append(f"probe {p['label']}: {p['shape']} mc {p['mc']} kc {p['kc']} ours {p['ours']:.2f} his {p['his']:.2f}")
     (a.out / "probe_rows.tex").write_text("\n".join(rows) + "\n")
 
     irows = []

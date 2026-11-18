@@ -16,10 +16,10 @@ The \iss{83} and \iss{85} scripts read the raw column \texttt{KerGOPs\_Mean}, th
 YOLO s/v median, 1T / 8T & 0.930 / 0.946 & 0.929 / 0.945 \\
 YOLO best tile changes, 1T / 8T & 14 / 17 & 13 / 20 \\
 BERT/Square s/v median, 8T & 0.987 & 0.992 \\
-YOLO Y34, 8T & 0.921 & 0.818 (0.932 by median rep) \\
+YOLO Y34, 8T & 0.921 & 0.818 \\
 B3, 1T & 1.194 (called noise) & 1.227, steady (\S\ref{sec:paperpack}) \\
 \iss{85} model within 0.02, 1T / 8T & 25 / 25 of 46 & 24 / 20 of 46 \\
-\iss{85} 8T, 1200$\times$16$\times$256 & 0.944 & 0.982$^{\sim}$ (0.937 by median rep) \\
+\iss{85} 8T, 1200$\times$16$\times$256 & 0.944 & 0.982$^{\sim}$ \\
 \iss{85} 8T, 1200$\times$256$\times$256, 16x4 & 1.42 & 1.46 \\
 \bottomrule
 \end{tabular}
@@ -32,18 +32,18 @@ At 1T the ratios move by up to 0.02 (YOLO) and 0.03 (B3). At 8T, where a few slo
 \toprule
  & & \multicolumn{1}{c}{1T (core 4)} & \multicolumn{1}{c}{8T (cores 0--7)} \\
 \cmidrule(lr){3-3}\cmidrule(l){4-4}
-n & layers & s/v: mean time / median rep (ranges) & s/v: mean time / median rep (ranges) \\
+n & layers & s/v (min--max) & s/v (min--max) \\
 \midrule
-4 & 3 & 0.589 / 0.642 (0.583--0.713 / 0.589--0.725) & 0.700 / 0.699 (0.649--0.817 / 0.674--0.824) \\
-8 & 1 & 0.894 / 0.898 & 0.939 / 0.940 \\
-16 & 10 & 0.906 / 0.908 (0.785--0.931 / 0.783--0.936) & 0.938 / 0.934 (0.836--0.957 / 0.804--0.958) \\
-32 & 6 & 0.928 / 0.928 (0.925--0.939 / 0.921--0.982) & 0.946 / 0.949 (0.861--0.957 / 0.927--0.958) \\
-64 & 10 & 0.941 / 0.942 (0.913--0.956 / 0.913--0.956) & 0.948 / 0.957 (0.769--1.044 / 0.813--1.014) \\
-80 & 6 & 0.933 / 0.934 (0.886--1.023 / 0.891--1.043) & 0.937 / 0.885 (0.818--0.965 / 0.825--0.984) \\
-128 & 9 & 0.945 / 0.945 (0.922--0.956 / 0.916--0.955) & 0.975 / 0.953 (0.896--1.003 / 0.750--0.997) \\
-256 & 5 & 0.968 / 0.968 (0.930--1.010 / 0.931--1.031) & 0.971 / 0.988 (0.884--1.000 / 0.979--1.036) \\
+4 & 3 & 0.589 (0.583--0.713) & 0.700 (0.649--0.817) \\
+8 & 1 & 0.894 & 0.939 \\
+16 & 10 & 0.906 (0.785--0.931) & 0.938 (0.836--0.957) \\
+32 & 6 & 0.928 (0.925--0.939) & 0.946 (0.861--0.957) \\
+64 & 10 & 0.941 (0.913--0.956) & 0.948 (0.769--1.044) \\
+80 & 6 & 0.933 (0.886--1.023) & 0.937 (0.818--0.965) \\
+128 & 9 & 0.945 (0.922--0.956) & 0.975 (0.896--1.003) \\
+256 & 5 & 0.968 (0.930--1.010) & 0.971 (0.884--1.000) \\
 \midrule
-all & 50 & 0.929 / 0.932 (0.583--1.023 / 0.589--1.043) & 0.945 / 0.943 (0.649--1.044 / 0.674--1.036) \\
+all & 50 & 0.929 (0.583--1.023) & 0.945 (0.649--1.044) \\
 \bottomrule
 \end{tabular}
 \note{Median (min--max) over the layers with that n of scalar $\div$ vector GOPs, best tile each side, mean of 3 launches each (\texttt{deck/data/packing\_tables.md}). jbpi, uninstrumented, reference protocol, \texttt{--tmin 2}, 19 tiles. Vector: \iss{61}, \iss{63} runs; scalar: \iss{83} T1, T2. All 50 layers with their best tiles: Appendix~\ref{app:yolo}; cache blocking of those tiles: Appendix~\ref{app:blk}.}
@@ -52,7 +52,6 @@ all & 50 & 0.929 / 0.932 (0.583--1.023 / 0.589--1.043) & 0.945 / 0.943 (0.649--1
 \begin{itemize}\setlength\itemsep{1pt}
 \item Scalar packing costs YOLO a median 7\% (1T) and 5.5\% (8T), and up to 42\% on the n = 4 layers (Y14 4800$\times$4$\times$16: 0.583 at 1T).
 \item The best tile changes with the packer on 13 (1T) and 20 (8T) of 50 layers.
-\item At 8T the mean-time and median-rep values differ more (n = 80, 128): a few slow reps per launch, as in \S1.
 \end{itemize}
 
 \subsection{BERT and Square}\label{sec:paperpack}
@@ -63,15 +62,15 @@ all & 50 & 0.929 / 0.932 (0.583--1.023 / 0.589--1.043) & 0.945 / 0.943 (0.649--1
 \cmidrule(lr){2-4}\cmidrule(l){5-7}
 shape & vector & scalar & s/v & vector & scalar & s/v \\
 \midrule
-\csname @@input\endcsname \D/paper_sv.tex
+\csname @@input\endcsname \G/paper_sv.tex
 \bottomrule
 \end{tabular}
-\note{Best tile and its GOPs by mean time / by median rep, each side, mean of 3 launches; s/v by mean time. Cache blocking of each tile per shape: \S2 blocking table. Vector: \iss{71} on jbpi; scalar: \iss{83} T3 on jbpi2, a day later (same SoC; board and day gaps not measured). Uninstrumented, reference protocol, \texttt{--tmin 2}.}
+\note{Best tile and its GOPs by mean time, each side, mean of 3 launches; s/v by mean time. Cache blocking of each tile per shape: \S2 blocking table. Vector: \iss{71} on jbpi; scalar: \iss{83} T3 on jbpi2, a day later (same SoC; board and day gaps not measured). Uninstrumented, reference protocol, \texttt{--tmin 2}.}
 \end{center}
 \begin{itemize}\setlength\itemsep{1pt}
 \item s/v median 0.983 (1T) and 0.992 (8T); the best tile is unchanged except B3 at 1T. At 1T most shapes show a steady 1--3\% scalar loss, inside the 3\% board/day gap.
 \item \textbf{B3 at 1T (1.227) is real and steady.} B3 (64$\times$384$\times$384) is the shape where the vector packer is slow (\iss{36}): at 16x15 the vector side gives 4.98 GOPs, the scalar side 8.60 (launches 8.62, 8.66, 8.53); the vector side's best, 32x7, is steady at 7.01.
-\item B3 at 8T (0.941) is noise: one scalar launch gave 23.78 GOPs, the other two 27.40 and 27.23 (vector 27.42--28.02); by median rep 0.985.
+\item B3 at 8T (0.941) is noise: one scalar launch gave 23.78 GOPs, the other two 27.40 and 27.23 (vector 27.42--28.02).
 \end{itemize}
 
 \subsection{Why: pack share $\times$ extra pack cost (\iss{83} T4)}
@@ -124,7 +123,7 @@ S1 & 1000$^3$ & 32x7 & 768/1000/128 & 9\% & 9\% & 1.07 & 0.996 & 0.995 \\
 Base point m = 1200, k = 256, tile 24x8, n = 16 or 256. Sweeps: P-n (n = 4--1024), P-m (m = 64--4800 at n = 16 and 256), P-k (k = 16--1152 at n = 16 and 256), P-tile (5 tiles on 1200$\times$4$\times$16, 1200$\times$16$\times$256, 1200$\times$256$\times$256). Correctness first: 30 of 30 PASS per packer on each board (oracle on, small shapes). One chart per sweep and thread count. Dot: scalar $\div$ vector GOPs by mean time; whisker: noise band (scalar min $\div$ vector max to scalar max $\div$ vector min); filled: gap outside the launch range, open: inside. Right of each chart: the point's tile and the cache blocking its log prints, then pack share vector / scalar (instrumented build). GOPs tables in Appendix~\ref{app:85}.
 
 \ratiofig{\Pd/pn_1t.csv}{5.2cm}{1.25}{P-n, 1T. \onet}
-\ratiofig{\Pd/pn_8t.csv}{5.2cm}{1.25}{P-n, 8T. \eightt\ By median rep n = 16, 32, 64 give 0.937, 0.955, 0.974; by mean time one slow launch (vector at n = 16, either at 32, scalar at 64) puts them inside the noise.}
+\ratiofig{\Pd/pn_8t.csv}{5.2cm}{1.25}{P-n, 8T. \eightt\ One slow launch (vector at n = 16, either at 32, scalar at 64) puts them inside the noise.}
 \ratiofig{\Pd/pk16_1t.csv}{4.4cm}{1.1}{P-k, n = 16, 1T. \onet}
 \ratiofig{\Pd/pk16_8t.csv}{4.4cm}{1.1}{P-k, n = 16, 8T. \eightt}
 \ratiofig{\Pd/pk256_1t.csv}{4.4cm}{1.15}{P-k, n = 256, 1T. \onet}

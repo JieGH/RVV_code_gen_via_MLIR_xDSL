@@ -47,7 +47,6 @@ Issue \iss{94} (reruns \iss{56} and \iss{62} with \iss{83}'s scalar packer) \qua
 \item[\texttt{--tmin}, \texttt{TIMIN}] that time budget per shape: 2 s on both sides.
 \item[uninstrumented build] \texttt{INSTRUMENTED=0}: no timers inside the GEMM. The only build used for these numbers.
 \item[GOPs by mean time] 2mnk / mean time per call. The only metric H\'ector's driver gives.
-\item[GOPs by median rep] 2mnk / median time of the calls in a launch. Ours only (H\'ector's driver keeps no per-call time).
 \item[one pass] each of the 50 shapes once. Pass time = sum over the shapes of the time per call (averaged over the 3 launches); pass GOPs = total operations / pass time.
 \item[launch range] lowest and highest pass GOPs of the single launches.
 \item[speedup] 1T pass time / 8T pass time.
@@ -109,19 +108,6 @@ n & shapes & 1T & 8T & speedup & 1T & 8T & speedup & 1T & 8T & speedup \\
 \bottomrule
 \end{tabular}
 \note{GOPs by mean time. \runs}
-\end{center}
-
-\begin{center}\small\setlength\tabcolsep{4pt}
-\begin{tabular}{@{}rr rrr rrr@{}}
-\toprule
- & & \multicolumn{3}{c}{V: ours, vector packer} & \multicolumn{3}{c}{S: ours, scalar packer} \\
-\cmidrule(lr){3-5}\cmidrule(l){6-8}
-n & shapes & 1T & 8T & speedup & 1T & 8T & speedup \\
-\midrule
-\csname @@input\endcsname \D/by_n_median_rows.tex
-\bottomrule
-\end{tabular}
-\note{GOPs by median rep (ours only: H\'ector's driver gives no per-call time). \runs}
 \end{center}
 
 \input{\D/by_n_figs.tex}

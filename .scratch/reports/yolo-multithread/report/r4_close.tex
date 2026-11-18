@@ -20,7 +20,7 @@ The cause is found (Part 5, \S\ref{sec:95}); the fix, packing A column by column
 \subsection*{Not run; stated as limits}
 \begin{itemize}\setlength\itemsep{1pt}
 \item \textbf{H\'ector's Y00 swing} (6.7--105.5 ms over 9 launches): ours against H\'ector's is quoted without Y00 (\iss{82} \S2); in \iss{94} (8T bound) it was steady but slow, 29.5--30.4 ms in all 3 launches. Why is not measured.
-\item \textbf{Our slow reps at 8T}: likely core 0, which takes the interrupts. They lower GOPs by mean time against by median rep; they do not change the tile family (\iss{82} \S3).
+\item \textbf{Our slow reps at 8T}: likely core 0, which takes the interrupts. They lower GOPs by mean time on mid-size shapes; they do not change the tile family (\iss{82} \S3).
 \item \textbf{BERT/Square packer comparison} crosses boards and days (vector jbpi, scalar jbpi2). \iss{85} shows on one board that large n gives no packer difference at 8T.
 \item \textbf{Two \iss{85} loss cases} (1T compute after vector packing; 8T 16x4 uninstrumented only): open, neither from the pack.
 \item \textbf{\iss{85} crosses boards} for 8T against 1T (1T jbpi, 8T jbpi2); its shapes are synthetic, around one base point; it compares two packers, not packing against no packing.
