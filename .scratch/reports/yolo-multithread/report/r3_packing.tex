@@ -68,7 +68,7 @@ shape & vector & scalar & s/v & vector & scalar & s/v \\
 \note{Best tile and its GOPs by mean time, each side, mean of 3 launches; s/v by mean time. Cache blocking of each tile per shape: \S2 blocking table. Vector: \iss{71} on jbpi; scalar: \iss{83} T3 on jbpi2, a day later (same SoC; board and day gaps not measured). Uninstrumented, reference protocol, \texttt{--tmin 2}.}
 \end{center}
 \begin{itemize}\setlength\itemsep{1pt}
-\item s/v median 0.983 (1T) and 0.992 (8T); the best tile is unchanged except B3 at 1T. At 1T most shapes show a steady 1--3\% scalar loss, inside the 3\% board/day gap.
+\item s/v median 0.983 (1T) and 0.992 (8T); the best tile is unchanged except B3 at 1T. At 1T most shapes show a steady 1--3\% scalar loss, inside the 3\% board/day gap; B2 loses a steady 3.9\% (0.961). At 8T B5 (0.963) has one slow scalar launch (40.80 against 42.61--42.66).
 \item \textbf{B3 at 1T (1.227) is real and steady.} B3 (64$\times$384$\times$384) is the shape where the vector packer is slow (\iss{36}): at 16x15 the vector side gives 4.98 GOPs, the scalar side 8.60 (launches 8.62, 8.66, 8.53); the vector side's best, 32x7, is steady at 7.01.
 \item B3 at 8T (0.941) is noise: one scalar launch gave 23.78 GOPs, the other two 27.40 and 27.23 (vector 27.42--28.02).
 \end{itemize}
@@ -147,7 +147,7 @@ n $\le$ 16, m $\le$ 128 (2 points) & 0.73--0.74 & 0.87--0.96 & \textbf{vector} \
 n $\le$ 32, k $\ge$ 144, m $\ge$ 300 (15 points) & 0.86--0.94 & 0.90--0.98 & \textbf{vector}: all above noise at 1T, 10 of 15 at 8T \\
 n = 256, m $\le$ 300 (3 points) & 0.92--0.96 & 0.97--1.05$^{\sim}$ & \textbf{vector} at 1T; either at 8T \\
 n = 64 (1 point) & 0.98$^{\sim}$ & 0.94$^{\sim}$ & either: inside the noise \\
-n $\ge$ 128, 8T (20 points) & & 0.93--1.09 & either: 17 of 20 inside the noise; above it 16x4 (1.46, below), 32x7 (1.02), n = 128 (0.99) \\
+n $\ge$ 128, 8T (20 points) & & 0.93--1.09; 16x4 1.46 & either: 17 of 20 inside the noise; above it 16x4 (1.46, below), 32x7 (1.02), n = 128 (0.99) \\
 n $\ge$ 128, k = 144--256, m = 1200--2400, 24x8, 1T (6 points) & 1.03--1.19 & & scalar measures faster (4 of 6 above noise); the loss is in compute, not packing \\
 n $\ge$ 128, k $\ge$ 576 or m = 4800, 1T (3 points) & 0.97--0.98 & & vector, by 2--3\% \\
 1200$\times$256$\times$256, 16x4, 8T & & 1.46 & scalar measures faster, uninstrumented build only \\
@@ -157,7 +157,7 @@ n $\ge$ 128, k $\ge$ 576 or m = 4800, 1T (3 points) & 0.97--0.98 & & vector, by 
 
 \begin{itemize}\setlength\itemsep{1pt}
 \item \textbf{n sets the pack share} (k = 256, 1T): 87\% at n = 4, 77\% at n = 16, 48\% at n = 64, 7\% at n = 1024; 8T within a few points.
-\item \textbf{k and m set the extra pack cost}: scalar packing costs 1.2--3.0$\times$ the vector pack time at k $\le$ 64 on P-k (up to 3.4$\times$ on P-tile at 8T), 1.9$\times$ at m $\le$ 128 (1T), and only 1.02--1.12$\times$ at k $\ge$ 144, where both packers wait on memory.
+\item \textbf{k and m set the extra pack cost}: scalar packing costs 1.2--3.0$\times$ the vector pack time at k $\le$ 64 on P-k (up to 3.4$\times$ on P-tile at 8T), 1.9$\times$ at m $\le$ 128 (1T), and only 1.02--1.17$\times$ at k $\ge$ 144 on P-k (m = 1200; 1.02--1.12$\times$ above k = 144), where both packers wait on memory. On P-m at k = 256 and m = 300--600 it spans 0.74--1.84$\times$ (1T).
 \item \textbf{At small n the tile hardly changes the ratio}: 1200$\times$4$\times$16 over 5 tiles gives 0.67--0.77 (1T) and 0.75--0.82 (8T). At 1200$\times$256$\times$256, 8T, it spans 0.98--1.46.
 \item \textbf{Threads:} on some small-n points the gain is a little smaller at 8T (1200$\times$4$\times$256: 0.91 at 1T, 0.94 at 8T), not on all.
 \end{itemize}

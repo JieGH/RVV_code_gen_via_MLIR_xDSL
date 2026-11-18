@@ -9,7 +9,7 @@
 Terms: see the glossary (panel-outer / column-outer, pack test, order cost / gap, probe run).
 
 \subsection{Where the gap is (from \iss{94})}
-At 1T, \iss{94} measured our pass at 696.9 ms (4.27 GOPs) and H\'ector's at 583.4 ms (5.10 GOPs). Per shape, we lose most on large m with small k (Y10 4800$\times$16$\times$32: 0.31 of his GOPs; Y00, Y01, Y03 0.39--0.43) and win every shape with m = 300 (1.03--1.73). Y10 became the test shape: largest loss, 4.9 MFLOP per call.
+At 1T, \iss{94} measured our pass at 697.2 ms (4.27 GOPs) and H\'ector's at 583.4 ms (5.10 GOPs). Per shape, we lose most on large m with small k (Y10 4800$\times$16$\times$32: 0.31 of his GOPs; Y00, Y01, Y03 0.39--0.43) and win 16 of the 17 shapes with m = 300 (1.03--1.73; Y47 300$\times$4$\times$16 is the exception at 0.89, slower in all 3 launches). Y10 became the test shape: largest loss, 4.9 MFLOP per call.
 
 \subsection{Method}
 \begin{enumerate}\setlength\itemsep{1pt}
@@ -30,7 +30,7 @@ probe run & shape & mc & kc & mc from & ours, GOPs & H\'ector's, GOPs \\
 \end{tabular}
 \note{\onetp\ Uninstrumented build, reference protocol, \texttt{--tmin 1} on both sides. Run folders: \texttt{logs/issue95\_probe\_*}.}
 \end{center}
-Our model keeps mc $\times$ kc near 96\,K floats (about 384 KB) on every shape with m $>$ 300 (Y10: 2560 $\times$ 32). H\'ector's A block is 256 $\times$ 32 floats on Y10 (32 KB). Forcing our mc to 240 lifts Y10 from 1.82 to 2.27 GOPs, far from his 5.09, and lowers Y11 (2.07 to 1.84). H1 predicted 4 GOPs or more: rejected as the main cause.
+Our model keeps mc $\times$ kc at 96--98\,K floats (about 384 KB) on 24 of the 33 shapes with m $>$ 300, and at 77--82\,K on 7 more (Y10: 2560 $\times$ 32 = 80\,K); Y14 (64\,K) and Y30 (19\,K) are smaller. H\'ector's A block is 256 $\times$ 32 floats on Y10 (32 KB). Forcing our mc to 240 lifts Y10 from 1.82 to 2.27 GOPs, far from his 5.09, and lowers Y11 (2.07 to 1.84). H1 predicted 4 GOPs or more: rejected as the main cause.
 
 \subsection{H3: our A pack takes most of our time}
 \begin{center}\small\setlength\tabcolsep{4pt}
@@ -77,7 +77,7 @@ shapes & count & ours ms & H\'ector's ms & gap & our order & his order & order c
 \csname @@input\endcsname \F/group_rows.tex
 \bottomrule
 \end{tabular}
-\note{\onetp\ \iss{94}: GOPs by mean time, mean of 3 launches; ours uninstrumented, reference protocol, \texttt{--tmin 2}; his \texttt{TIMIN=2.0}. Pack test: \input{\F/pack_file.tex}, our model's mc and kc, MR 24.}
+\note{\onetp\ \iss{94}: GOPs by mean time, mean of 3 launches; ours uninstrumented, reference protocol, \texttt{--tmin 2}; his \texttt{TIMIN=2.0}. Pack test: \input{\F/pack_file.tex}, our model's mc and kc, MR 24. GEMM times are rebuilt from \iss{94} GOPs rounded to 2 decimals; the raw times give 697.2 ms for our pass and gaps of 140.8 (m $>$ 300), 131.2 (k $\le$ kc) and $-$26.9 ms (m = 300).}
 \end{center}
 \begin{itemize}\setlength\itemsep{1pt}
 \item m $>$ 300, k $\le$ kc (23 shapes): 131.0 of the 140.5 ms gap, and an order cost of 162.2 ms: the same size. These are the shapes where the pack test matches the GEMM best.
