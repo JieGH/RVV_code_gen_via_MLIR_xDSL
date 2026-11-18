@@ -1,0 +1,23 @@
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}
+\begin{axis}[house, xbar, bar width=7pt, width=12cm, height=11.3cm, y dir=reverse, ytick={0,1,2,3,4,5,6,7}, yticklabels={{n = 4 (3)},{n = 8 (1)},{n = 16 (10)},{n = 32 (6)},{n = 64 (10)},{n = 80 (6)},{n = 128 (9)},{n = 256 (5)}}, enlarge y limits={abs=0.7}, xmin=0, xmax=40.6, xlabel={GOPs by mean time, 8T (cores 0--7), one pass over the shapes with that n (shape count in brackets)}, nodes near coords, nodes near coords style={font=\scriptsize, anchor=west, /pgf/number format/fixed, /pgf/number format/precision=2, /pgf/number format/zerofill}, legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}, reverse legend]
+\addplot[fill=his, draw=none] coordinates {(4.16,0) (7.09,1) (6.18,2) (20.34,3) (25.38,4) (31.97,5) (34.38,6) (25.51,7)};
+\addplot[fill=scal, draw=none] coordinates {(4.51,0) (3.80,1) (9.02,2) (13.35,3) (22.52,4) (29.85,5) (28.64,6) (28.13,7)};
+\addplot[fill=vec, draw=none] coordinates {(5.75,0) (3.90,1) (9.50,2) (13.74,3) (23.40,4) (30.52,5) (29.46,6) (28.30,7)};
+\legend{{H: H\'ector's},{S: ours, scalar packer},{V: ours, vector packer}}
+\end{axis}
+\end{tikzpicture}
+\note{\runs}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}
+\begin{axis}[house, xbar, bar width=7pt, width=12cm, height=11.3cm, y dir=reverse, ytick={0,1,2,3,4,5,6,7}, yticklabels={{n = 4 (3)},{n = 8 (1)},{n = 16 (10)},{n = 32 (6)},{n = 64 (10)},{n = 80 (6)},{n = 128 (9)},{n = 256 (5)}}, enlarge y limits={abs=0.7}, xmin=0, xmax=9.1, xlabel={GOPs by mean time, 1T (core 4), one pass over the shapes with that n (shape count in brackets)}, nodes near coords, nodes near coords style={font=\scriptsize, anchor=west, /pgf/number format/fixed, /pgf/number format/precision=2, /pgf/number format/zerofill}, legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}, reverse legend]
+\addplot[fill=his, draw=none] coordinates {(2.43,0) (2.35,1) (2.81,2) (5.07,3) (5.52,4) (7.58,5) (6.16,6) (6.15,7)};
+\addplot[fill=scal, draw=none] coordinates {(0.88,0) (1.01,1) (1.92,2) (2.98,3) (4.72,4) (5.39,5) (6.02,6) (7.72,7)};
+\addplot[fill=vec, draw=none] coordinates {(1.56,0) (1.09,1) (2.06,2) (3.22,3) (4.98,4) (5.66,5) (6.23,6) (7.37,7)};
+\legend{{H: H\'ector's},{S: ours, scalar packer},{V: ours, vector packer}}
+\end{axis}
+\end{tikzpicture}
+\note{\runs}
+\end{figure}

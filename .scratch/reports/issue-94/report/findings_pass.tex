@@ -1,0 +1,10 @@
+\subsection*{What the pass shows}
+All numbers: jbpi, GOPs by mean time, mean of 3 launches; ours uninstrumented, reference protocol, \texttt{--tmin 2}; H\'ector's \texttt{TIMIN=2.0}.
+\begin{itemize}\setlength\itemsep{1pt}
+\item 1T (core 4): H 5.10, V 4.27, S 4.05 GOPs. The launch ranges do not overlap (H 5.08--5.12, V 4.25--4.29, S 4.05--4.05).
+\item 8T (cores 0--7, bound): V 19.17, H 18.99, S 18.52 GOPs. V's range (19.14--19.18) lies inside H's (18.75--19.27); S's (18.47--18.54) lies below both.
+\item By median rep (ours only): V 4.27 / 20.06, S 4.05 / 19.48 GOPs at 1T / 8T.
+\item 8T without Y00: H 22.98, V 19.59, S 18.96 GOPs (126.5, 148.4, 153.3 ms). The whole-pass tie at 8T comes from H\'ector's Y00, about 30 ms in each of his 8T launches, twice his 1T time.
+\item Speedup 8T over 1T: S 4.57$\times$, V 4.49$\times$, H 3.73$\times$.
+\item Earlier runs, same tile and shapes: \iss{56} V 4.26 / 19.55 GOPs; \iss{62} H 5.10 / 21.87 GOPs, his 8T then without thread binding. Here his 8T has the binding (\S1).
+\end{itemize}

@@ -1,0 +1,1 @@
+4800x16x32 tile 24x8 ours 2.27 his 5.09 ratio 0.45 RED

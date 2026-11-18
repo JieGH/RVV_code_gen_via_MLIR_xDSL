@@ -1,0 +1,144 @@
+Issue #94: YOLO26 (datasets/yolo26_k1.dat), V = ours vector packer, S = ours scalar packer (tile 24x8), H = Héctor's gemm.x (b292c92)
+  Board    : jbpi; 1T on core 4, 8T on cores 0-7 (core 0: user's 8-thread exception)
+  Ours     : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, every row checked
+  Héctor   : TIMIN=2, TEST=T, his tiles; built by his first launch, then reused
+  Check    : C1 (1T) and C2 (8T) first: config_issue94_correctness.json, --scalar-pack, oracle on
+  step 1: V 1T
+  step 2: S 1T
+  step 3: H 1T
+  step 4: V 8T
+  step 5: S 8T
+  step 6: H 8T
+  step 7: S 8T
+  step 8: H 8T
+  step 9: V 8T
+  step 10: S 1T
+  step 11: H 1T
+  step 12: V 1T
+  step 13: H 1T
+  step 14: V 1T
+  step 15: S 1T
+  step 16: H 8T
+  step 17: V 8T
+  step 18: S 8T
+[11:52] C1: config_issue94_correctness.json on jbpi --cpu 4, --scalar-pack, oracle on
+
+------------------------------------------------------------
+ Run overview   ([default] = not set by you)
+------------------------------------------------------------
+  Build          : UNINSTRUMENTED (INSTRUMENTED=0) -- comparable to the reference design   [default]
+  Protocol       : REFERENCE (matches the reference design's test_gemm.c)   [default]
+  Warm-up        : none: the cold first rep is inside the mean
+  Reps           : until tmin = 0.2 s has passed   [--tmin]
+  Correctness    : checked AFTER timing (unless skip_ref_run in /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/config_issue94_correctness.json)
+  Packing        : scalar packing forced   [--scalar-pack]
+  Pack lines     : not cleared: each line the packer writes is read from the L2 first   [default]
+  Pack B         : row (shipped xDSL packer)   [default]
+  Threads        : 1 (one core)   [default]
+  Cache blocking : analytical model   [default]
+                 : nc overrides: OFF (every shape uses the heuristic's nc; the nc table in /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/config_issue94_correctness.json is ignored)   [--no-nc-overrides]
+                 : RVV_FORCE_NC: not set   [default]
+  Pinning        : taskset -c 4 make run (the timed run only), cpu 4   [--cpu]
+  Config         : /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/config_issue94_correctness.json   [--config]
+  Board          : jlei@jbpi:22, jump-host fej -> board, workspace xdsl_rvv_microkernel
+  Logs           : raw_*_noinstr_refproto_scalarpack_no_nc_override.txt
+                 : reps_*_noinstr_refproto_scalarpack_no_nc_override.txt (every timed rep, in the order it ran)   [default]
+                 : raw events: none   [default]
+                 : busy share of every core during each timed run (make run), from /proc/stat -> provenance.txt   [default]
+  Driver args    : --no-nc-overrides --scalar-pack --tmin 0.2 --save-reps
+------------------------------------------------------------
+
+  Mode: Jump-host (x86 → fej → jbpi)
+
+
+------------------------------------------------------------
+ Dependency Check
+------------------------------------------------------------
+  [OK] python3: /home/jlei/anaconda3/bin/python3
+  [OK] rsync: /usr/bin/rsync
+  [OK] ssh: /usr/bin/ssh
+  [OK] .venv activated
+
+------------------------------------------------------------
+ [1/3] Generate C Code Locally
+------------------------------------------------------------
+Loaded config: /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/config_issue94_correctness.json with 1 designs
+
+============================================================
+Building project for fp32_AXPY_FP32_Pack_vlen256...
+============================================================
+
+[+] Pinned kernel mode: only generating MR=24, NR=8
+
+[+] Generating Global Microkernel Pool...
+    -> Generating deduplicated Packing modules
+
+[+] Generating headers, generic dispatcher, and generic BLIS...
+
+[+] Merging and applying passes for gemm_b0_xdsl...
+    -> Lowered to pj_gen/fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b0_xdsl.cpp
+
+[+] Merging and applying passes for gemm_b1_xdsl...
+    -> Lowered to pj_gen/fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b1_xdsl.cpp
+
+[+] Merging and applying passes for gemm_pack_xdsl...
+    -> Lowered to pj_gen/fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_pack_xdsl.cpp
+
+[+] Generated header: pj_gen/fp32_AXPY_FP32_Pack_vlen256_MR24NR8/generated_kernels.h
+[+] Configured Makefile to run specific datasets: yolo_correctness_small.dat
+  [OK] Generated project locally.
+  [OK] board can pin to core 4
+
+------------------------------------------------------------
+ [2/3] Sync to Board
+------------------------------------------------------------
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+sending incremental file list
+created directory xdsl_rvv_microkernel/tests/pure_xdsl_blis_rvv/pj_gen
+./
+compile_order.txt
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/Makefile
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/driver_benchmark.cpp
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b0_xdsl.cpp
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b0_xdsl.mlir
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b1_xdsl.cpp
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_b1_xdsl.mlir
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_dispatch_xdsl.cpp
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_headers.h
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_pack_xdsl.cpp
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/gemm_pack_xdsl.mlir
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/generated_kernels.h
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/pack_b_variants.h
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/pack_lines.h
+fp32_AXPY_FP32_Pack_vlen256_MR24NR8/perf_counters.h
+
+sent 264.226 bytes  received 398 bytes  529.248,00 bytes/sec
+total size is 262.970  speedup is 0,99
+sending incremental file list
+./
+issue83_pack_split.dat
+issue85_correctness_small.dat
+issue85_sweep.dat
+issue85_tile.dat
+paper_correctness_small.dat
+
+sent 3.866 bytes  received 126 bytes  2.661,33 bytes/sec
+total size is 25.942  speedup is 6,50
+sending incremental file list
+
+sent 298 bytes  received 13 bytes  622,00 bytes/sec
+total size is 8.570  speedup is 27,56
+  [OK] Synced pj_gen/, datasets/, and modelLevel/ → jlei@fej:xdsl_rvv_microkernel/tests/pure_xdsl_blis_rvv/
+
+------------------------------------------------------------
+ [3/4] Compile and Benchmark on Board
+------------------------------------------------------------
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+rm -rf build_instr* *.o test_gemm*.x
+g++ -O2 -std=c++17 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -c driver_benchmark.cpp -o build_instr0/driver_benchmark.o
+g++ -O2 -std=c++17 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -c gemm_b0_xdsl.cpp -o build_instr0/gemm_b0_xdsl.o
+g++ -O2 -std=c++17 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -c gemm_b1_xdsl.cpp -o build_instr0/gemm_b1_xdsl.o
+g++ -O2 -std=c++17 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -c gemm_dispatch_xdsl.cpp -o build_instr0/gemm_dispatch_xdsl.o
+g++ -O2 -std=c++17 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=0 -c gemm_pack_xdsl.cpp -o build_instr0/gemm_pack_xdsl.o

@@ -22,6 +22,7 @@
 #       > tests/pure_xdsl_blis_rvv/logs/parallel_gemm.out 2>&1 < /dev/null &
 # Flags: --boards a,b (default jbpi: the board of the #62 series compared against; give --hector to match another)  --launches N (3)  --tmin S (2)  --wait-min M (10)  --workspace NAME
 #        --direct  --riscv-user U  --riscv-port P  --issue N (56)  --hector <#62 series folder>  --dry-run
+#        --threads 1|8 (run only that thread count, --launches of it; issue #94)  --scalar-pack (scalar packer; #83, #94)
 # No tests or --dry-run of another wrapper meanwhile: they rewrite pj_gen/.
 # ============================================================
 
@@ -37,7 +38,7 @@ source "${HERE}/hector_yolo_dump.sh"
 PY="${HERE}/../../.venv/bin/python"; [ -x "${PY}" ] || PY=python3
 
 BOARDS="jbpi"; LAUNCHES=3; TMIN=2; WAIT_MIN=10; WORKSPACE=""; MODE_ARG="--jump"; RISCV_USER="jlei"
-RISCV_PORT="22"; DRY_RUN=false; ISSUE=56
+RISCV_PORT="22"; DRY_RUN=false; ISSUE=56; THREADS=""; PACK_ARGS=(); PACKER="vector packer"
 HECTOR="${HERE}/../../.scratch/reports/issue-62/hector_gemm_2026-11-16_111457"   # his jbpi series
 
 die() { echo "Error: $*" >&2; exit 1; }
@@ -54,6 +55,8 @@ while [[ "$#" -gt 0 ]]; do
         --riscv-port)  RISCV_PORT="$2"; shift ;;
         --issue)       ISSUE="$2"; shift ;;
         --hector)      HECTOR="$2"; shift ;;
+        --threads)     THREADS="$2"; shift ;;
+        --scalar-pack) PACK_ARGS=(--scalar-pack); PACKER="scalar packer" ;;
         --dry-run)     DRY_RUN=true ;;
         -h|--help)     sed -n '3,/^# ====*$/p' "$0" | sed '$d'; exit 0 ;;
         *) die "unknown parameter: $1" ;;
@@ -62,6 +65,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 [[ "${LAUNCHES}" =~ ^[1-9][0-9]*$ ]] || die "--launches takes a whole number of at least 1 (got '${LAUNCHES}')"
+[[ -z "${THREADS}" || "${THREADS}" =~ ^[18]$ ]] || die "--threads takes 1 or 8 (got '${THREADS}')"
 [[ "${WAIT_MIN}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || die "--wait-min takes minutes (got '${WAIT_MIN}')"
 IFS=',' read -ra BOARD_LIST <<< "${BOARDS}"
 [ -n "${BOARD_LIST[0]:-}" ] || die "--boards takes a comma-separated list"
@@ -73,6 +77,7 @@ ORDER=()
 for ((i = 0; i < 2 * LAUNCHES; i++)); do
     case $(( i % 4 )) in 0|3) ORDER+=(1) ;; *) ORDER+=(8) ;; esac
 done
+[ -n "${THREADS}" ] && { ORDER=(); for ((i = 0; i < LAUNCHES; i++)); do ORDER+=("${THREADS}"); done; }
 args_of() { [ "$1" = 1 ] && echo "--cpu 4" || echo "--threads 8"; }
 cores_of() { [ "$1" = 1 ] && echo 4 || echo 0-7; }
 
@@ -93,8 +98,8 @@ busy() {
 }
 
 print_plan() {
-    echo "Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (${SHAPES} shapes, every row checked)"
-    echo "  Settings : uninstrumented, reference protocol, --tmin ${TMIN}, --no-nc-overrides, vector packer"
+    echo "Issue #${ISSUE}: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (${SHAPES} shapes, every row checked)"
+    echo "  Settings : uninstrumented, reference protocol, --tmin ${TMIN}, --no-nc-overrides, ${PACKER}"
     echo "  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)"
     echo "  Order    : ${ORDER[*]} (threads per launch), one board: the first idle one of ${BOARDS}"
     echo "  Load     : the board's processes are read before every launch; busy -> wait ${WAIT_MIN} min and read again"
@@ -149,7 +154,7 @@ for ((l = 1; l <= TOTAL; l++)); do
     # shellcheck disable=SC2046  # args_of is two words on purpose
     (
         flock -w 21600 9 || { echo "$(date -Is) gave up waiting for the lock"; exit 99; }
-        cd "${HERE}/../.." && "${BENCH_RUN}" "${CONN[@]}" --config "${CONFIG}" --no-nc-overrides --tmin "${TMIN}" $(args_of "${th}")
+        cd "${HERE}/../.." && "${BENCH_RUN}" "${CONN[@]}" --config "${CONFIG}" --no-nc-overrides --tmin "${TMIN}" $(args_of "${th}") "${PACK_ARGS[@]}"
     ) 9>"${LOCK}" >> "${log}" 2>&1
     rc=$?
     dir="$(newest_since "${start}")"

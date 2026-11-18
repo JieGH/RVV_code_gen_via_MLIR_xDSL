@@ -1,0 +1,4 @@
+idx,label,g1,g8,l1,l8
+0,ours, vector packer,4.27,19.17,4.27,19.17
+1,ours, scalar packer,4.05,18.52,4.05,18.52
+2,H\'ector's gemm.bin,5.10,18.99,5.10,18.99

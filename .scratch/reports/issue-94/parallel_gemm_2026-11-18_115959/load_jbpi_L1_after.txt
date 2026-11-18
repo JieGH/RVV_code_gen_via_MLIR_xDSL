@@ -1,0 +1,12 @@
+jlei                  500   7       00:00 ps
+jlei                 50.0   1       00:00 bash
+root                 11.6   3       00:00 sshd
+root                  0.6   6 107-03:24:32 disp_eng_share_thread
+systemd-oom           0.0   1 107-03:24:39 systemd-oomd
+root                  0.0   5 107-03:24:47 vq1
+root                  0.0   7       04:29 kworker/u16:8-rpciod
+root                  0.0   6 107-03:24:47 vq0
+root                  0.0   0 107-03:24:29 bluetoothd
+messagebus            0.0   4 107-03:24:38 dbus-daemon
+root                  0.0   1       04:29 kworker/u16:6-rpciod
+root                  0.0   7 107-03:24:38 NetworkManager

@@ -1,0 +1,1 @@
+4800x16x576 tile 24x8 ours 1.84 his 2.21 ratio 0.84 GREEN
