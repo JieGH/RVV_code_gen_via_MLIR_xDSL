@@ -132,3 +132,15 @@ def test_no_build_skips_the_copy_and_build(tmp_path: Path):
     assert done.returncode == 0, done.stdout + done.stderr
     assert not (logs / "other.txt").exists()
     assert len((logs / "runs.txt").read_text().splitlines()) == 1
+
+
+def test_omp_bind_binds_8_thread_launches_like_ours_and_is_off_by_default(tmp_path: Path):
+    (tmp_path / "bind").mkdir()
+    (tmp_path / "plain").mkdir()
+    done, logs = run_series(tmp_path / "bind", "--omp-bind")
+    assert done.returncode == 0, done.stdout + done.stderr
+    runs = (logs / "runs.txt").read_text().splitlines()
+    bound = ["OMP_PROC_BIND=close OMP_PLACES=cores " in r for r in runs]
+    assert bound == ["taskset -c 0-7 " in r for r in runs] and any(bound)  # 8T only (issue #94)
+    done, logs = run_series(tmp_path / "plain")
+    assert not any("OMP_PROC_BIND" in r for r in (logs / "runs.txt").read_text().splitlines())  # as he runs it (#62)

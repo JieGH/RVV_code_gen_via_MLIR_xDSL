@@ -32,6 +32,8 @@
 #   --boards a,b     boards to pick from (default jbpi,jbpi2)
 #   --launches N     launches per thread count (default 3)
 #   --threads 1|8    run only that thread count, --launches of it (issue #63); default both, in the order above
+#   --omp-bind       8-thread launches also set OMP_PROC_BIND=close OMP_PLACES=cores, as our 8-thread runs do (issue #94:
+#                    same run settings on both sides); default off, as he runs it (#62)
 #   --no-build       skip the copy and build: reuse ~/<--dir> from an earlier series (shared NFS home; #63)
 #   --timin S        his TIMIN (default 2.0, as in gemm.bin)
 #   --wait-min M     minutes between reads when no board is idle (default 10)
@@ -53,7 +55,7 @@ source "${HERE}/board_pin.sh"                    # OTHER_USERS_AWK
 source "${HERE}/hector_yolo_dump.sh"
 PY="${HERE}/../../.venv/bin/python"; [ -x "${PY}" ] || PY=python3
 
-SRC=""; BOARDS="jbpi,jbpi2"; LAUNCHES=3; TIMIN="2.0"; WAIT_MIN=10; DIR="hector_gemmlib_b292c92"; DRY_RUN=false; ISSUE=62; THREADS=""; BUILT=false
+SRC=""; BOARDS="jbpi,jbpi2"; LAUNCHES=3; TIMIN="2.0"; WAIT_MIN=10; DIR="hector_gemmlib_b292c92"; DRY_RUN=false; ISSUE=62; THREADS=""; BUILT=false; OMP_BIND=false
 USER_ON_BOARD="jlei"
 
 die() { echo "Error: $*" >&2; exit 1; }
@@ -69,6 +71,7 @@ while [[ "$#" -gt 0 ]]; do
         --issue)     ISSUE="$2"; shift ;;
         --threads)   THREADS="$2"; shift ;;
         --no-build)  BUILT=true ;;
+        --omp-bind)  OMP_BIND=true ;;
         --dry-run)   DRY_RUN=true ;;
         -h|--help)   sed -n '3,/^# ====*$/p' "$0" | sed '$d'; exit 0 ;;
         *) die "unknown parameter: $1" ;;
@@ -111,7 +114,7 @@ cpus_of() { [ "$1" = 1 ] && echo 4 || echo 0-7; }
 print_plan() {
     echo "Issue #${ISSUE}: Héctor's GEMMLib @ ${WANT_COMMIT}, unedited, built and run on an idle board of ${BOARDS}"
     echo "  Build    : his Makefile + Makefile.inc (gcc-14 -O3 -fopenmp, NQ_FP32, K1), make clean && make && make install (serial, his README), in ~/${DIR}$([ "${BUILT}" = true ] && echo " -- skipped (--no-build), the existing build is used")"
-    echo "  Run      : his gemm.bin command line, TIMIN=${TIMIN}, TEST=T, gemm_study/yolo.dat; no OMP_PROC_BIND (as his)"
+    echo "  Run      : his gemm.bin command line, TIMIN=${TIMIN}, TEST=T, gemm_study/yolo.dat; $([ "${OMP_BIND}" = true ] && echo "8 threads with OMP_PROC_BIND=close OMP_PLACES=cores (--omp-bind, as ours)" || echo "no OMP_PROC_BIND (as his)")"
     echo "  Cores    : 1 thread on core 4; 8 threads on cores 0-7 (core 0: user's exception, 8-thread run only)"
     echo "  Order    : ${ORDER[*]} (threads per launch)"
     echo "  Load     : both boards read before every launch; busy -> side note; none idle -> wait ${WAIT_MIN} min"
@@ -176,6 +179,7 @@ for ((l = 1; l <= TOTAL; l++)); do
     echo "[$(date +%H:%M)] launch ${l}/${TOTAL}: ${th} thread(s) on cores ${cpus} of ${board}: ${SERIES}/${name}.log"
     # OMP_NESTEED (sic) is his gemm.bin's spelling, kept as he runs it
     cmd="cd ~/${DIR} && mkdir -p output && export OMP_NESTEED=FALSE OPENBLAS_NUM_THREADS=${th} OMP_NUM_THREADS=${th}"
+    [ "${OMP_BIND}" = true ] && [ "${th}" -gt 1 ] && cmd+=" OMP_PROC_BIND=close OMP_PLACES=cores"
     # LD_LIBRARY_PATH: gemm.x NEEDs libGEMM.so by name, which his LD_PRELOAD alone does not satisfy (same file)
     cmd+=" && LD_LIBRARY_PATH=\$(pwd)/install/lib LD_PRELOAD=\$(pwd)/install/lib/libGEMM.so taskset -c ${cpus} ./build/gemm.x \"\" C C C N N 1.0 0.0"
     cmd+=" ${TIMIN} T gemm_study/yolo.dat output/${name}.csv ${th} 1 0 0 0 0 0 0"

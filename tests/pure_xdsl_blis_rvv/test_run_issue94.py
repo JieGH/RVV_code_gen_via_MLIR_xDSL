@@ -52,6 +52,7 @@ def test_series_calls_each_runner_with_its_setup(tmp_path: Path):
         assert f"--threads {t} --launches 1" in line and "--issue 94" in line
         assert line.startswith("his.sh" if s == "H" else "ours.sh")
         assert ("--scalar-pack" in line) == (s == "S")
+        assert ("--omp-bind" in line) == (s == "H")  # same run settings as ours (user, 2026-11-18)
     his_calls = [ln for ln in lines if ln.startswith("his.sh")]
     assert "--no-build" not in his_calls[0] and all("--no-build" in ln for ln in his_calls[1:])
     series = next((tmp_path / "logs").glob("issue94_*"))

@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/94
 
 **Role / Label:** `needs-triage`. Opened 2026-11-18 at the user's request. Board runs on `jbpi`.
-**Status:** open. Driver and host test done (637 passed on the full suite); board series next.
+**Status:** open. Driver and host test done (637 passed on the full suite); board series running (`logs/issue94.out`).
 **Branch:** `yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors`, cut from `pure-xdsl`.
 **Related:** #56 [[0040-parallel-gemm-design]] (ours, vector packer), #62 [[0045-read-hector-parallel-gemm]] (Héctor's `gemm.bin`), #83 [[0050-scalar-packing-rerun-of-yolo-and-paper-sweeps]] (scalar packer).
 
@@ -26,8 +26,22 @@ Why: #83 compared the scalar packer to Héctor only at 8 threads, with the best 
 - Tile 24x8, the 50 YOLO26 shapes of `datasets/yolo26_k1.dat` (no n = 1 rows), board `jbpi`.
 - Ours: uninstrumented build (`INSTRUMENTED=0`), reference protocol, `--tmin 2`, `--no-nc-overrides`, every row checked (`config_parallel_gemm.json`).
 - 8 threads: `OMP_PROC_BIND=close OMP_PLACES=cores`, cores 0-7 (core 0 by the user's 8-thread exception, #56 §5).
-- Héctor: `TIMIN=2.0`, `TEST=T`, his tiles (16x8; 16x4 at n = 4), his `gemm_study/yolo.dat` (53 rows; the 3 n = 1 rows go to his GEMV and are left out of the comparison, as in #56).
+- Héctor: `TIMIN=2.0`, `TEST=T`, 8T bound like ours (§2.1), his tiles (16x8; 16x4 at n = 4), his `gemm_study/yolo.dat` (53 rows; the 3 n = 1 rows go to his GEMV and are left out of the comparison, as in #56).
 - All three setups mixed in one series, 3 launches per setup per thread count, the order rotated between rounds.
+
+### 2.1 Same run settings on both sides (user, 2026-11-18)
+
+User: when comparing with Héctor's design, use the same run settings (time per shape, cores, flags) as far as
+possible; the algorithms stay each side's own. Checked flag by flag:
+
+| setting | ours | Héctor | in this series |
+|---|---|---|---|
+| time per shape | reps until `--tmin 2`, mean per call, check after timing | `TIMIN=2.0`, the same loop | same |
+| cores | 1T core 4, 8T cores 0-7 | the same | same |
+| 8T thread binding | `OMP_PROC_BIND=close OMP_PLACES=cores` | none in #62 (only `taskset`) | **same now**: his 8T launches get the same binding (`run_hector_gemm.sh --omp-bind`, env only, his code unchanged) |
+| compiler | g++ 13.2 `-O2` (generated kernels) | gcc-14 `-O3` (his Makefile) | **differs**, kept: matching it changes our build and breaks the link to #56 and every earlier run. Offered as a separate run. |
+
+The first start (11:52) was stopped by me during C1, before any timed launch, to add the binding; it restarts from C1.
 
 ## 3. Order
 

@@ -9,7 +9,8 @@
 # round (V S H, S H V, H V S) so each setup takes each place once: 18 launches.
 #   V: run_parallel_gemm.sh --threads T --launches 1                (tile 24x8, every row checked)
 #   S: run_parallel_gemm.sh --threads T --launches 1 --scalar-pack
-#   H: run_hector_gemm.sh   --threads T --launches 1 (his gemm.x at b292c92, unchanged; built by his first launch)
+#   H: run_hector_gemm.sh   --threads T --launches 1 --omp-bind (his gemm.x at b292c92, unchanged; built by his first
+#      launch; 8T with OMP_PROC_BIND=close OMP_PLACES=cores, the same run settings as ours, user 2026-11-18)
 # Each runner reads the board before its launch and waits while another user's job is busy, writes its own series
 # folder and copies it to .scratch/reports/issue-94/. The first failed step stops the series.
 # Logs: logs/issue94_<stamp>/: plan.txt (plan and order), steps.tsv (step, setup, threads, series folder, exit).
@@ -87,7 +88,7 @@ print_plan() {
     echo "Issue #94: YOLO26 (datasets/yolo26_k1.dat), V = ours vector packer, S = ours scalar packer (tile 24x8), H = Héctor's gemm.x (b292c92)"
     echo "  Board    : ${BOARD}; 1T on core 4, 8T on cores 0-7 (core 0: user's 8-thread exception)"
     echo "  Ours     : uninstrumented, reference protocol, --tmin ${TMIN}, --no-nc-overrides, every row checked"
-    echo "  Héctor   : TIMIN=${TMIN}, TEST=T, his tiles; built by his first launch, then reused"
+    echo "  Héctor   : TIMIN=${TMIN}, TEST=T, his tiles; 8T OMP_PROC_BIND=close OMP_PLACES=cores (as ours); built by his first launch, then reused"
     echo "  Check    : $([ "${CHECK}" = true ] && echo "C1 (1T) and C2 (8T) first: ${CFG}, --scalar-pack, oracle on" || echo "skipped (--skip-correctness)")"
     local i=0
     for st in "${STEPS[@]}"; do i=$((i + 1)); echo "  step ${i}: ${st% *} ${st#* }T"; done
@@ -110,7 +111,7 @@ for st in "${STEPS[@]}"; do
         V) "${OURS}" --threads "${t}" --launches 1 --boards "${BOARD}" --tmin "${TMIN}" --issue 94 ;;
         S) "${OURS}" --threads "${t}" --launches 1 --boards "${BOARD}" --tmin "${TMIN}" --issue 94 --scalar-pack ;;
         H) build=(); [ "${built}" = true ] && build=(--no-build)
-           "${HECTOR}" --src "${SRC}" --threads "${t}" --launches 1 --boards "${BOARD}" --timin "${TMIN}" --issue 94 "${build[@]}" ;;
+           "${HECTOR}" --src "${SRC}" --threads "${t}" --launches 1 --boards "${BOARD}" --timin "${TMIN}" --issue 94 --omp-bind "${build[@]}" ;;
     esac
     rc=$?
     pat=parallel_gemm_; [ "${s}" = H ] && pat=hector_gemm_
