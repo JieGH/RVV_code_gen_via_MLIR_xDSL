@@ -101,7 +101,6 @@ Series `issue94_2026-11-18_115554`, jbpi, 12:00-13:09. The board was idle before
 | S: ours, scalar packer | 733.9 | 4.05 | 160.6 | 18.52 | 4.57x |
 | H: Héctor's gemm.bin | 583.4 | 5.10 | 156.6 | 18.99 | 3.73x |
 
-- **GOPs by median rep** (ours only): V 4.27 / 20.06, S 4.05 / 19.48 at 1T / 8T.
 - **Launch ranges:**
   - 1T: V 4.25-4.29, S 4.05-4.05, H 5.08-5.12.
   - 8T: V 19.14-19.18, S 18.47-18.54, H 18.75-19.27. V's range lies inside H's.
@@ -132,7 +131,7 @@ Two reviews: standards and spec.
 The user asked for one final report: the #91 report with its opening comparison against Héctor (§1.2, from #56/#62) replaced by this rerun.
 
 - `final/issue94_final_report.pdf` (24 pages).
-- §1.2 has the V/S/H tables (whole pass, without Y00, by n by mean time and by median rep) and the two by-n charts.
+- §1.2 has the V/S/H tables (whole pass, without Y00, by n; GOPs by mean time only since 2026-11-18, see `.scratch/reports/yolo-multithread/README.md`) and the two by-n charts.
 - The answer, glossary (V/S/H, thread binding), Part 4, correctness, limits (Y00) and runs list are updated.
 - Parts 2 and 3 are #91's, unchanged. The #91 slides are not updated.
 - #91's own report is left as committed; its issue gets a pointer here.
