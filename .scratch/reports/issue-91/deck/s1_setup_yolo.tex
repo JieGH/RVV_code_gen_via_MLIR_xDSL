@@ -98,7 +98,8 @@ speedup ours / his & \multicolumn{2}{r}{4.59x / 4.30x} \\
 \end{tabular}
 \vspace{6pt}
 \begin{itemize}\setlength\itemsep{2pt}
-\item Ours matches or beats his on 25 of 50 shapes by mean time (39 of 50 by median rep, \iss{63}).
+\item Ours (24x8) matches or beats his on 25 of 50 shapes by mean time (\iss{56}).
+\item In \iss{63} (interleaved), ours at the best tile per shape also 25 of 50 by mean time, 39 of 50 by median rep against his mean.
 \item n $\le$ 32: we scale better (3.6--4.6x against 2.9--3.7x), but start from a slower 1 thread.
 \end{itemize}
 \end{column}
@@ -210,7 +211,7 @@ his & 123.4 & 23.56 \\
 \begin{itemize}\setlength\itemsep{3pt}
 \item His Y00 swings 12.9 $\to$ 62.6 $\to$ 105.5 ms over his 3 launches (6.7--105.5 ms over 9). Ours is steady (10.6 GOPs).
 \item \textbf{Without Y00, tile for tile, his engine is about 15\% faster} (123.4 against 141.6 ms).
-\item Ours gains back most of it only by choosing the tile per shape.
+\item Choosing the tile per shape recovers most of it, not all: 127.9 against his 123.4 ms.
 \item His 8T pass here is 183.7 ms; in his separate \iss{62} run (previous slide) it was 135.7 ms. The difference is mostly his Y00.
 \item Why Y00 swings is not measured (300 barriers per call, or first call of the process).
 \end{itemize}

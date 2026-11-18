@@ -48,6 +48,7 @@ def best(acc):
     return b
 
 
+ALL = {}
 print("# Packing numbers, true GOPs by mean time (KerGOPs_Harmonic) and by median rep\n")
 for test, (vd, sd) in RUNS83.items():
     (va, dims), (sa, _) = load(vd), load(sd)
@@ -56,6 +57,7 @@ for test, (vd, sd) in RUNS83.items():
     r_mean = [sb[l][1] / vb[l][1] for l in rows]
     r_med = [sb[l][2] / vb[l][2] for l in rows]
     changed = sum(vb[l][0] != sb[l][0] for l in rows)
+    ALL[test] = (vb, sb, dims, rows)
     print(f"## {test}: {len(rows)} shapes; scalar/vector by mean time median {st.median(r_mean):.3f} "
           f"({min(r_mean):.3f}-{max(r_mean):.3f}); by median rep median {st.median(r_med):.3f} "
           f"({min(r_med):.3f}-{max(r_med):.3f}); best tile changed on {changed}\n")
@@ -132,4 +134,16 @@ with open(os.path.join(DATA, "paper_sv.tex"), "w") as f:
         cells = [a["label"]]
         for r in (a, b):
             cells += [f"{r['vec']} / {r['vmed']}", f"{r['scal']} / {r['smed']}", f"{float(r['ratio']):.3f}"]
+        f.write(" & ".join(cells) + " \\\\\n")
+
+# Per-layer YOLO rows for the report appendix: tile and GOPs (mean time / median rep) per packer, s/v, 1T then 8T.
+with open(os.path.join(DATA, "yolo_sv_rows.tex"), "w") as f:
+    v1, s1, dims, rows = ALL["yolo_1t"]
+    v8, s8, _, _ = ALL["yolo_8t"]
+    for l in rows:
+        m, n, k = dims[l]
+        cells = [l, f"{m}$\\times${n}$\\times${k}"]
+        for vb, sb in ((v1, s1), (v8, s8)):
+            cells += [f"{vb[l][0]} {vb[l][1]:.2f} / {vb[l][2]:.2f}", f"{sb[l][0]} {sb[l][1]:.2f} / {sb[l][2]:.2f}",
+                      f"{sb[l][1] / vb[l][1]:.3f}"]
         f.write(" & ".join(cells) + " \\\\\n")

@@ -1,0 +1,45 @@
+\clearpage
+\appendix
+\section{Runs}
+All on the SpacemiT X60 boards, run folders under \texttt{tests/pure\_xdsl\_blis\_rvv/logs/}. Uninstrumented build and reference protocol unless named; every timing run on an idle board.
+{\footnotesize
+\begin{longtable}{@{}p{1.2cm} p{4.2cm} p{1.4cm} p{9.2cm}@{}}
+\toprule
+issue & what & board & run folders \\
+\midrule\endhead
+\iss{56} & our GEMM 24x8, 1T / 8T, 50 shapes, oracle on & jbpi & \texttt{run\_2026-11-16\_193618}, \texttt{\_194037}, \texttt{\_194504}, \texttt{\_194944}, \texttt{\_195424}, \texttt{\_195855} (1T 8T 8T 1T 1T 8T) \\
+\iss{62} & his \texttt{gemm.bin}, 1T / 8T & jbpi, jbpi2 & \texttt{hector\_gemm\_2026-11-16\_111457} (jbpi), \texttt{hector\_gemm\_2026-11-16\_113052} (jbpi2) \\
+\iss{61} & 1T tile search, 19 tiles, \texttt{--tmin 2} & jbpi & \texttt{run\_2026-11-15\_220501}, \texttt{\_231549}, \texttt{run\_2026-11-16\_002638} \\
+\iss{63} & 8T tile search + his GEMM, A-B-B-A & jbpi & ours \texttt{run\_2026-11-16\_222551}, \texttt{\_234245}, \texttt{run\_2026-11-17\_005337}; his \texttt{hector\_gemm\_2026-11-16\_222943}, \texttt{\_223301}, \texttt{hector\_gemm\_2026-11-17\_005723} \\
+\iss{79} C3 & 8T correctness, 19 tiles $\times$ 50 shapes & jbpi & \texttt{run\_2026-11-17\_092354} (950/950 PASS) \\
+\iss{71} & paper shapes, 1T / 8T & jbpi & 1T \texttt{run\_2026-11-17\_020326}, \texttt{\_043612}, \texttt{\_053929}; 8T \texttt{\_024808}, \texttt{\_033254}, \texttt{\_062411} \\
+\iss{83} C1--C4 & scalar packer correctness & jbpi, jbpi2 & \texttt{run\_2026-11-17\_115404}, \texttt{\_122902} (jbpi, 76/76); \texttt{\_115336}, \texttt{\_122805} (jbpi2, 57/57) \\
+\iss{83} T1 & YOLO 1T, scalar & jbpi & \texttt{run\_2026-11-17\_171901}, \texttt{\_182951}, \texttt{\_194103} \\
+\iss{83} T2 & YOLO 8T, scalar & jbpi & \texttt{run\_2026-11-17\_133645}, \texttt{\_145239}, \texttt{\_160305} \\
+\iss{83} T3 & paper 1T / 8T, scalar & jbpi2 & 1T \texttt{run\_2026-11-17\_133114}, \texttt{\_160334}, \texttt{\_170643}; 8T \texttt{\_141548}, \texttt{\_150024}, \texttt{\_175117} \\
+\iss{83} T4 & pack/compute split, instrumented, 1T & jbpi2 & \texttt{run\_2026-11-17\_182435}, \texttt{\_185726}, \texttt{\_193019}, \texttt{\_200306} (V S S V) \\
+\iss{85} & correctness, M1 (GOPs), M2 / M3 (split) & jbpi (1T), jbpi2 (8T) & listed in \texttt{.scratch/reports/issue-85/README.md} (\S Runs) and each series' \texttt{runs.tsv} \\
+\bottomrule
+\end{longtable}}
+
+\section{YOLO, all 50 layers: vector against scalar packer}\label{app:yolo}
+{\footnotesize\setlength\tabcolsep{3pt}
+\begin{longtable}{@{}l l ll r ll r@{}}
+\toprule
+ & & \multicolumn{3}{c}{1T (jbpi, core 4)} & \multicolumn{3}{c}{8T (jbpi, cores 0--7)} \\
+\cmidrule(lr){3-5}\cmidrule(l){6-8}
+layer & m $\times$ n $\times$ k & vector & scalar & s/v & vector & scalar & s/v \\
+\midrule\endhead
+\csname @@input\endcsname \D/yolo_sv_rows.tex
+\bottomrule
+\end{longtable}}
+\noindent Best tile and GOPs by mean time / by median rep, mean of 3 launches per side; s/v by mean time. Sorted by n, m, k. Uninstrumented, reference protocol, \texttt{--tmin 2}. Vector: \iss{61}, \iss{63}; scalar: \iss{83} T1, T2.
+
+\section{\iss{85} GOPs, all points}\label{app:85}
+GOPs by mean time / by median rep, mean of 3 launches per packer (uninstrumented, reference protocol, \texttt{--tmin 3}); bold = faster packer; $^{\sim}$ = gap inside the launch range; s/v by mean time; 8T/1T crosses boards. Rows from \iss{85}'s script with the true mean time.
+\gopstable{\Pd/tab_pn.tex}{P-n: m = 1200, k = 256, tile 24x8}
+\gopstable{\Pd/tab_pm16.tex}{P-m: n = 16, k = 256, tile 24x8}
+\gopstable{\Pd/tab_pm256.tex}{P-m: n = 256, k = 256, tile 24x8}
+\gopstable{\Pd/tab_pk16.tex}{P-k: m = 1200, n = 16, tile 24x8}
+\gopstable{\Pd/tab_pk256.tex}{P-k: m = 1200, n = 256, tile 24x8}
+\gopstable{\Pd/tab_ptile.tex}{P-tile}

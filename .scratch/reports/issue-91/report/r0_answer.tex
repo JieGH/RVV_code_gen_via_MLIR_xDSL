@@ -1,0 +1,59 @@
+\section*{Answer}
+\begin{enumerate}\setlength\itemsep{4pt}
+\item \textbf{H\'ector's YOLO request (\iss{58}): which microkernel sizes run fastest?}
+  \begin{itemize}\setlength\itemsep{1pt}
+  \item \textbf{1 thread:} 24x8 for the whole network: 698.6 ms per pass over the 50 shapes (4.26 GOPs), against 785.3 ms (3.79 GOPs) for our GEMM at his 16x8 tile. Per n: 24x4 (n = 4), 24x9 (n = 8--32), 24x8 (n = 64, 256), 32x7 (n = 80, 128).
+  \item \textbf{8 threads, in our parallel GEMM:} the winner changes with n and is best read as a family: MR 32 / NR 4 for n $\le$ 8, MR 32 / NR 6--7 for n = 16--64, MR 16 / NR 12--15 for n $\ge$ 80. Best tile per shape: 134.1 ms per pass; best single tile (16x12): 145.6 ms; his 16x8 tile in our GEMM: 149.6--149.8 ms.
+  \item \textbf{Caveat:} the tiles were timed in \emph{our} GEMM, not in his. Tile for tile (16x8, without the unstable shape Y00), his engine is about 15\% faster than ours. Whether our tile family speeds up \emph{his} GEMM is the one essential test still open (\S\ref{sec:open}).
+  \end{itemize}
+\item \textbf{Paper shapes (\iss{71}): does the paper's tile choice hold?} At 1 thread, yes among our 19 tiles: 32x7 wins 9 of 10 shapes (16x15 wins B2). At 8 threads, no: 16x8 wins 8 of 10 shapes and the whole pass (48.27 GOPs, against 44.07 for 32x7).
+\item \textbf{Packing (\iss{83}, \iss{85}): keep the vector packer.}
+  \begin{itemize}\setlength\itemsep{1pt}
+  \item YOLO with a scalar packer: scalar $\div$ vector GOPs median 0.929 (1T) and 0.945 (8T), down to 0.58 at n = 4; the best tile changes on 13 (1T) and 20 (8T) of 50 layers.
+  \item BERT and Square: within the 3\% board/day gap, except B3 at 1T (1.227), the shape where the vector packer is known to be slow (\iss{36}).
+  \item Slowdown $\approx$ pack share $\times$ extra pack cost. n sets the pack share (87\% at n = 4, 7\% at n = 1024 at k = 256); k and m set the extra cost (1.2--3.4$\times$ when the packed blocks stay in cache, 1.02--1.12$\times$ when both packers wait on memory).
+  \end{itemize}
+\item \textbf{Across YOLO and the paper shapes, the best tile at 1 thread is not the best at 8 threads.}
+\end{enumerate}
+
+\noindent\textbf{Metric note.} The \iss{83} and \iss{85} reports quote the average of each rep's GOPs as ``GOPs by mean time''. Here every packing number is recomputed from the same runs with the true GOPs by mean time (2mnk $\div$ mean time per call), as in \iss{61}, \iss{63}, \iss{71}. The answers above hold either way; \S\ref{sec:metric} lists what moves.
+
+\section*{Glossary}
+{\small
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}p{3.6cm} X@{}}
+\toprule
+m $\times$ n $\times$ k & C (m $\times$ n) += A (m $\times$ k) $\cdot$ B (k $\times$ n). For YOLO and BERT, nc = n, so each packed element of A is reused n times. \\
+tile MR$\times$NR & The microkernel's block of C: MR rows by NR columns. The sweeps try 19 Candidate Tiles per shape. \\
+best tile & For one shape (or one n group), the tile with the highest GOPs by mean time, averaged over launches. \\
+family & A group of tiles that trade places between launches; the gap between them is inside the launch range. \\
+GOPs by mean time & 2mnk $\div$ mean time per call (raw column \texttt{KerGOPs\_Harmonic}). Main metric. \\
+GOPs by median rep & Median over reps of each rep's GOPs (\texttt{KerGOPs\_Median}). Less sensitive to a few slow reps. \\
+ms per pass & Sum of one call's mean time over the shapes (each distinct shape once, unweighted). \\
+launch & One full run of the test (every tile on every shape). Written ``launch 1/2/3''. \\
+A-B-B-A & Run order that interleaves two sides (e.g.\ ours, his, his, ours), so slow drift hits both. \\
+launch range / $\sim$ & Lowest to highest launch. A gap smaller than the wider range is not called a difference (marked $\sim$, or an open dot). \\
+1T / 8T & 1 thread pinned to core 4 / 8 threads on cores 0--7 (core 0 only for 8-thread runs, by the user's exception). \\
+uninstrumented build & \texttt{INSTRUMENTED=0}, no timers inside the GEMM. All GOPs come from it. \\
+instrumented build & Timers around pack and compute (\texttt{--instr}). Timers cost 11--17\%, so only its time shares and ratios are used. \\
+reference protocol & No warm-up; reps repeat until \texttt{--tmin} seconds (2 s, or 3 s in \iss{85}) have passed. \\
+warm-up protocol & Warm-up first, then a fixed 200 reps. Used by the instrumented build. \\
+vector / scalar packer & Copies a block of A or B into a contiguous buffer before the microkernel reads it. Vector: RVV loads/stores, 8 fp32 per instruction. Scalar (\texttt{--scalar-pack}): one float per load/store. Same layout and buffers. \\
+pack share & Pack time $\div$ (pack + compute), from the instrumented build; A and B together. \\
+extra pack cost & Scalar pack time $\div$ vector pack time. \\
+s/v & Scalar GOPs $\div$ vector GOPs. Below 1: vector packing is faster. \\
+predicted s/v & (vector pack + compute) $\div$ (scalar pack + compute): the slowdown if only the pack time changes. \\
+oracle & The naive scalar GEMM that checks C in correctness runs. \\
+\bottomrule
+\end{tabularx}}
+
+\section*{Setup}
+{\small
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}p{2.6cm} X@{}}
+\toprule
+chip & SpacemiT K1: 8 X60 cores, RVV 1.0, VLEN 256. Same chip as H\'ector's OrangePi. \\
+boards & \texttt{jbpi} and \texttt{jbpi2}, reached through a jump host. Each table names its board. \\
+house rules & Idle board (other users checked before every launch), 3 launches per side in A-B-B-A order, \texttt{--no-nc-overrides}, every quoted number from a committed log. \\
+shapes & YOLO26: H\'ector's 53 GEMM shapes after im2col (\texttt{datasets/yolo26\_k1.dat}); 50 timed, the 3 n = 1 shapes run on his GEMV. Paper: Table 1 of arXiv 2603.17800v1 (\texttt{datasets/paper\_bert\_square.dat}). \\
+his GEMM & GEMMLib\_yolo at commit \texttt{b292c92}, unedited, built on the board with his Makefile; \texttt{gemm.bin}, \texttt{TIMIN=2.0}; his driver reports the mean time only. \\
+\bottomrule
+\end{tabularx}}
