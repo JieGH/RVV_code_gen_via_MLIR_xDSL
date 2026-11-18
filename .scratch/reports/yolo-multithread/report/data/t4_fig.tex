@@ -1,0 +1,20 @@
+\definecolor{comp}{HTML}{B4B2A9}
+\begin{center}
+\begin{tikzpicture}
+    \begin{axis}[house, width=12.5cm, height=12.5cm, y dir=reverse, bar width=6.5pt,
+      ytick={0,...,10}, yticklabels={{Y14 4800$\times$4$\times$16\\[-1pt]\tiny 24x4 mc=4800 nc=4 kc=16},{Y30 1200$\times$4$\times$16\\[-1pt]\tiny 32x4 mc=1200 nc=4 kc=16},{Y47 300$\times$4$\times$16\\[-1pt]\tiny 16x4 mc=300 nc=4 kc=16},{Y10 4800$\times$16$\times$32\\[-1pt]\tiny 24x8 mc=2560 nc=16 kc=32},{Y40 300$\times$16$\times$144\\[-1pt]\tiny 24x8 mc=300 nc=16 kc=144},{Y29 1200$\times$32$\times$64\\[-1pt]\tiny 32x4 mc=1200 nc=32 kc=64},{Y19 4800$\times$80$\times$64\\[-1pt]\tiny 32x7 mc=1536 nc=80 kc=64},{Y42 300$\times$256$\times$1152\\[-1pt]\tiny 24x8 mc=300 nc=256 kc=170},{B1 1024$\times$384$\times$1024\\[-1pt]\tiny 32x7 mc=768 nc=384 kc=128},{B2 384$\times$384$\times$64\\[-1pt]\tiny 16x15 mc=384 nc=384 kc=64},{S1 1000$\times$1000$\times$1000\\[-1pt]\tiny 32x7 mc=768 nc=1000 kc=128}}, yticklabel style={align=right, font=\scriptsize},
+      enlarge y limits={abs=0.6}, xmin=0, xmax=228, xtick={0,25,...,150}, xticklabel={\pgfmathprintnumber{\tick}\%},
+      xlabel={time of one GEMM call of that shape, as \% of the same call with the vector packer (top bar of each pair = 100\%)},
+      legend style={at={(0.5,1.01)}, anchor=south, legend columns=-1, font=\scriptsize}]
+    \addlegendimage{area legend, fill=vec, draw=none}\addlegendentry{packing A and B, vector packer}
+    \addlegendimage{area legend, fill=scal, draw=none}\addlegendentry{packing A and B, scalar packer}
+    \addlegendimage{area legend, fill=comp, draw=none}\addlegendentry{microkernel compute}
+    \addplot[xbar, fill=comp, draw=none, bar shift=3.6pt, forget plot, nodes near coords, point meta=explicit symbolic, every node near coord/.append style={font=\tiny, anchor=west, yshift=3.6pt}] coordinates {(100.00,0) [vector packer: 100\%, pack 75\%] (100.00,1) [vector packer: 100\%, pack 65\%] (100.00,2) [vector packer: 100\%, pack 51\%] (100.00,3) [vector packer: 100\%, pack 77\%] (100.00,4) [vector packer: 100\%, pack 35\%] (100.00,5) [vector packer: 100\%, pack 56\%] (100.00,6) [vector packer: 100\%, pack 49\%] (100.00,7) [vector packer: 100\%, pack 23\%] (100.00,8) [vector packer: 100\%, pack 17\%] (100.00,9) [vector packer: 100\%, pack 7\%] (100.00,10) [vector packer: 100\%, pack 9\%]};
+\addplot[xbar, fill=vec, draw=none, bar shift=3.6pt, forget plot] coordinates {(74.88,0) (64.67,1) (51.27,2) (76.96,3) (35.49,4) (55.53,5) (49.30,6) (22.97,7) (16.88,8) (6.52,9) (8.61,10)};
+    \addplot[xbar, fill=comp, draw=none, bar shift=-3.6pt, forget plot, nodes near coords, point meta=explicit symbolic, every node near coord/.append style={font=\tiny, anchor=west, yshift=-3.6pt}] coordinates {(143.76,0) [scalar packer: 144\%, pack 83\%] (137.43,1) [scalar packer: 137\%, pack 74\%] (151.04,2) [scalar packer: 151\%, pack 66\%] (111.30,3) [scalar packer: 111\%, pack 80\%] (125.99,4) [scalar packer: 126\%, pack 50\%] (108.05,5) [scalar packer: 108\%, pack 60\%] (106.01,6) [scalar packer: 106\%, pack 52\%] (102.94,7) [scalar packer: 103\%, pack 25\%] (101.37,8) [scalar packer: 101\%, pack 19\%] (103.02,9) [scalar packer: 103\%, pack 10\%] (100.41,10) [scalar packer: 100\%, pack 9\%]};
+\addplot[xbar, fill=scal, draw=none, bar shift=-3.6pt, forget plot] coordinates {(119.02,0) (102.00,1) (99.39,2) (88.50,3) (62.63,4) (64.61,5) (55.54,6) (25.62,7) (19.06,8) (10.12,9) (9.26,10)};
+    \draw[muted, dashed] (axis cs:100,-0.6) -- (axis cs:100,10.6);
+    \end{axis}
+    \end{tikzpicture}
+\note{\iss{83} T4: jbpi2, instrumented build (timers cost 11--17\%, so only shares and ratios are used), warm-up protocol, 200 reps, 1T core 4, 2 launches per packer (V S S V); each shape on its 1T best tile. Row: shape, then the tile and cache blocking that run used (from its log). Two bars per shape: top with the vector packer, bottom with the scalar packer. Each bar is one GEMM call split into packing (A and B) and microkernel compute. Bar label: packer, call time as \% of the vector call, then the share of that call spent packing. Rows in the order of the table below (by n).}
+\end{center}

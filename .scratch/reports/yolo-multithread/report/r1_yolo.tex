@@ -47,7 +47,7 @@ one pass over 49 shapes, without Y00 & \multicolumn{2}{c}{1T (core 4)} & \multic
 \note{GOPs by mean time, same runs. Y00 (76800$\times$16$\times$27) left out as in \S\ref{sec:63}: H\'ector's Y00 took 29.5, 30.2 and 30.4 ms in his three 8T launches here (15.3--15.6 ms at 1T; 13.7--15.3 ms at 8T in \iss{62}, without binding); ours 6.7--7.4 ms at 8T.}
 \end{center}
 
-\input{\E/by_n_figs.tex}
+\input{\G/shape_figs.tex}
 
 \begin{center}\small\setlength\tabcolsep{4pt}
 \begin{tabular}{@{}rr rrr rrr rrr@{}}
@@ -73,22 +73,8 @@ n & shapes & 1T & 8T & speedup & 1T & 8T & speedup & 1T & 8T & speedup \\
 \item H\'ector's B pack gives a column slice to only some threads at small n (1 thread at n = 4 or 8, 2 at n = 16, 4 at n = 32), which fits H\'ector's weaker small-n scaling (\iss{62}).
 \end{itemize}
 
-\subsection{1 thread: best tile per n (\iss{61})}\label{sec:1t}
-\begin{figure}[htbp]\centering
-\begin{tikzpicture}
-\begin{axis}[house, xbar, bar width=6pt, width=13cm, height=13cm, y dir=reverse,
-  ytick=data, yticklabels from table={\D/tile1t_by_n.csv}{label}, enlarge y limits={abs=0.6},
-  xmin=0, xmax=14.5, xtick={0,1,...,8}, xlabel={GOPs by mean time, 1 thread, one pass over the shapes with that n},
-  nodes near coords, point meta=explicit symbolic, every node near coord/.append style={font=\scriptsize, anchor=west},
-  legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}]
-\addplot[fill=vec, draw=none] table[y=idx, x=best, meta=lbest]{\D/tile1t_by_n.csv};
-\addplot[fill=his, draw=none] table[y=idx, x=t168, meta=l168]{\D/tile1t_by_n.csv};
-\addplot[fill=his!45, draw=none] table[y=idx, x=t164, meta=l164]{\D/tile1t_by_n.csv};
-\legend{best tile for that n, 16x8, 16x4}
-\end{axis}
-\end{tikzpicture}
-\note{\iss{61}: jbpi, core 4, uninstrumented, reference protocol, \texttt{--tmin 2}, 19 tiles, rows rotated per launch, 3 launches, vector packer. Bar label: tile, then its cache blocking over that n's layers (nc = n). Report: \texttt{logs/yolo\_sweep\_2026-11-15\_205445/tile\_search\_report.md}.}
-\end{figure}
+\subsection{1 thread: best tile per layer (\iss{61})}\label{sec:1t}
+\input{\G/tile_figs_1t.tex}
 
 \begin{center}\small
 \begin{tabular}{@{}rrll rr rr@{}}
@@ -112,7 +98,7 @@ all & 50 & 24x8 &  & 4.26 &  & 3.79 & 3.44 \\
 
 \noindent Best single tiles over the 50 shapes (ms per pass by mean time): 24x8 698.6, 24x9 703.2, 32x7 726.2, 24x6 726.4, 16x8 785.3. MR = 24 wins at 1 thread; MR = 8 tiles are the slowest (2.97--3.43 GOPs over the dataset). At n = 4, 24x4 and H\'ector's 16x4 tie. The 1T winner changes between launches at n = 4 (16x4, 24x4, 24x4), n = 8 (24x9, 24x6, 24x9) and n = 256 (32x7, 32x7, 24x8; 24x8 7.60 against 32x7 7.57).
 
-\subsection{8 threads: best tile per n (\iss{63})}
+\subsection{8 threads: best tile per layer (\iss{63})}
 \begin{center}\small
 \begin{tabular}{@{}rr lll rr@{}}
 \toprule
@@ -154,6 +140,8 @@ best tile per shape & 134.1 \\
 \item \textbf{Picked on one launch, scored on the other two}, the per-shape choice is still 8--11 ms per pass faster than the best single tile (\iss{79} B3).
 \item \textbf{Slow reps at 8T:} a few reps per launch are much slower and pull the mean-time GOPs down on mid-size shapes; at 1T this does not happen (glossary, GOPs by mean time). Likely cause: core 0 takes every device interrupt (13.1\% system time against 0.2--0.5\% on cores 1--7, \iss{79} B6); not tested.
 \end{itemize}
+
+\input{\G/tile_figs_8t.tex}
 
 \subsection{Ours against H\'ector's GEMM (\iss{63}, \iss{79})}\label{sec:63}
 \begin{center}\small

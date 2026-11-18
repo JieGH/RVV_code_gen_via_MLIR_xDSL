@@ -34,7 +34,7 @@ layer & m $\times$ n $\times$ k & vector & scalar & s/v & vector & scalar & s/v 
 \csname @@input\endcsname \G/yolo_sv_rows.tex
 \bottomrule
 \end{longtable}}
-\noindent Best tile and GOPs by mean time, mean of 3 launches per side; s/v by mean time. Sorted by n, m, k. jbpi, 1T core 4, 8T cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}. Vector: \iss{61}, \iss{63} (15--17 Nov); scalar: \iss{83} T1, T2 (17 Nov); not interleaved.
+\noindent Best tile and GOPs by mean time, mean of 3 launches per side; s/v by mean time. In H\'ector's layer order; Y06, Y21, Y35 (n = 1) not timed yet, left empty. jbpi, 1T core 4, 8T cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}. Vector: \iss{61}, \iss{63} (15--17 Nov); scalar: \iss{83} T1, T2 (17 Nov); not interleaved.
 
 \section{YOLO, all 50 layers: cache blocking}\label{app:blk}
 mc / kc per layer and tile (nc = n on every layer), as printed in the run logs; a tile's blocking is the same at 1T and 8T and with either packer. 24x8: \S1.2 and the 1T best single tile; 16x8: H\'ector's tile in our GEMM. Best tiles as in Appendix~\ref{app:yolo}.
@@ -45,7 +45,7 @@ mc / kc per layer and tile (nc = n on every layer), as printed in the run logs; 
 \cmidrule(lr){5-6}\cmidrule(l){7-8}
 layer & m $\times$ n $\times$ k & 24x8 & 16x8 & 1T & 8T & 1T & 8T \\
 \midrule\endhead
-\csname @@input\endcsname \D/yolo_blk_rows.tex
+\csname @@input\endcsname \G/yolo_blk_rows.tex
 \bottomrule
 \end{longtable}}
 
