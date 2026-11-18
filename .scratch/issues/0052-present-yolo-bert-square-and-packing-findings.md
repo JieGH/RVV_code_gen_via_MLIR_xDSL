@@ -3,7 +3,8 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/91
 
 **Role / Label:** `needs-triage`. Write-up from committed data; no new code.
-**Status:** open 2026-11-18.
+**Status:** deliverables done 2026-11-18, waiting on the user (§3 decision, merge). Report [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/present-yolo-bert-square-and-packing-findings/.scratch/reports/issue-91/report/issue91_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/present-yolo-bert-square-and-packing-findings/.scratch/reports/issue-91/report/issue91_report.tex) (A4, 19 pages, added at the user's request), slides [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/present-yolo-bert-square-and-packing-findings/.scratch/reports/issue-91/deck/issue91_deck.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/present-yolo-bert-square-and-packing-findings/.scratch/reports/issue-91/deck/issue91_deck.tex), [README](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/present-yolo-bert-square-and-packing-findings/.scratch/reports/issue-91/README.md).
+**Metric correction:** #83 and #85 quoted the average of per-rep GOPs as "by mean time". The deck and report recompute every packing number with 2mnk / mean time per call (`deck/make_data.py`). The answers hold; details move (YOLO 0.929 / 0.945, best tile changes 13 / 20, model within 0.02 on 24 / 20 of 46; B3 at 1T is a steady 1.227, not noise). The numbers in §2 below are the pre-correction ones. The #83/#85 reports themselves are not corrected yet.
 **Branch:** `present-yolo-bert-square-and-packing-findings`, cut from `pure-xdsl`.
 **Covers:** #58 (parent: #59-#63, #56), #79 audit, #82 (open runs), #71, #83, #85.
 **Deliverable:** one deck (PDF, LaTeX beamer, pgfplots charts drawn from the committed CSVs), plus `.scratch/reports/issue-91/README.md`. Linked from every covered issue.
@@ -57,8 +58,8 @@ Every slide names its board, build, protocol, cores and launches. GOPs by mean t
 
 ## 5. Closure criteria
 
-- [ ] Deck compiled (PDF + LaTeX) in `.scratch/reports/issue-91/`, charts from committed CSVs, glossary slide.
-- [ ] Every number traced to a committed log or report; board, build, protocol, cores named per slide.
+- [x] Deck compiled (PDF + LaTeX) in `.scratch/reports/issue-91/`, charts from committed CSVs, glossary slide.
+- [x] Every number traced to a committed log or report; board, build, protocol, cores named per slide.
 - [ ] §3 run done (results added to slides 5 and 13) or skipped with the reason.
-- [ ] Linked from #58, #71, #79, #82, #83, #85 (issue files and GitHub bodies).
+- [x] Linked from #58, #71, #79, #82, #83, #85 (issue files and GitHub bodies).
 - [ ] Merged: PR → `pure-xdsl` → `main`, after the user approves.
