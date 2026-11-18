@@ -525,6 +525,10 @@ static void print_run_overview(const RunSettings& r) {
     overview_line("", forced_nc ? string("RVV_FORCE_NC=") + forced_nc + " overrides nc for every shape"
                                 : string("RVV_FORCE_NC: not set"),
                   forced_nc ? "environment" : "default");
+    const char* forced_mc = std::getenv("RVV_FORCE_MC");
+    overview_line("", forced_mc ? string("RVV_FORCE_MC=") + forced_mc + " overrides mc for every shape"
+                                : string("RVV_FORCE_MC: not set"),
+                  forced_mc ? "environment" : "default");
     overview_line("Dataset", r.dataset);
     overview_line("Logs", r.raw_log);
     overview_line("", r.summary_log);
@@ -910,6 +914,11 @@ int main(int argc, char** argv) {
             if (const char* forced_nc = std::getenv("RVV_FORCE_NC")) {
                 int nc_req = std::atoi(forced_nc);
                 nc = (n < nc_req) ? n : nc_req;
+            }
+            // Issue #95 probe: force mc (rows of A per packed block) for every shape; unset = the model's mc.
+            if (const char* forced_mc = std::getenv("RVV_FORCE_MC")) {
+                int mc_req = std::atoi(forced_mc);
+                mc = (m < mc_req) ? m : mc_req;
             }
 
             int kc_pad = kc;

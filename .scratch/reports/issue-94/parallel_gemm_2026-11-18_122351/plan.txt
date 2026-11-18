@@ -1,0 +1,6 @@
+Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (50 shapes, every row checked)
+  Settings : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, scalar packer
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)
+  Order    : 8 (threads per launch), one board: the first idle one of jbpi
+  Load     : the board's processes are read before every launch; busy -> wait 10 min and read again
+[12:23] board: jbpi

@@ -1,0 +1,168 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=1.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{pgfplots}
+\usepackage{hyperref}
+\hypersetup{colorlinks, linkcolor=black, urlcolor=blue!60!black}
+\pgfplotsset{compat=1.18}
+\definecolor{vec}{HTML}{2A78D6}
+\definecolor{scal}{HTML}{EB6834}
+\definecolor{his}{HTML}{8A5CC2}
+\definecolor{muted}{HTML}{6B6A64}
+\definecolor{gridc}{HTML}{E4E3DE}
+\pgfplotsset{house/.style={axis line style={muted}, tick style={muted}, tick label style={font=\scriptsize},
+  label style={font=\small}, legend style={font=\scriptsize, draw=none, fill=white},
+  legend cell align=left, xmajorgrids, grid style={gridc}}}
+\newcommand{\iss}[1]{\href{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/#1}{\##1}}
+\newcommand{\D}{data}
+\newcommand{\note}[1]{\\[2pt]{\footnotesize\color{muted}#1}}
+\newcommand{\onet}{jbpi, 1 thread on core 4, idle board. Ours: tile 24x8, vector packer, \texttt{--no-nc-overrides}. H\'ector's: \texttt{gemm.bin} build at \texttt{b292c92}, his code unchanged.}
+\renewcommand{\arraystretch}{1.08}
+\begin{document}
+\sloppy
+\begin{center}
+{\Large\bfseries Why our YOLO GEMM trails H\'ector's at 1 thread}\\[4pt]
+The order in which our packer reads A\\[2pt]
+Issue \iss{95} (follows \iss{94}) \quad$\cdot$\quad 18 Nov 2026
+\end{center}
+
+\section*{Answer}
+\begin{itemize}\setlength\itemsep{2pt}
+\item \textbf{Main cause: our A packer reads A in a slow order.} A is stored column by column. Our packer fills one 24-row panel at a time and, for each panel, reads 24 floats from every column, jumping a full column (19.2 KB on Y10) between reads. H\'ector's packer reads each column once from top to bottom and spreads it over the panels. Same bytes, same packed result.
+\item \textbf{The pack takes most of our time} on the large-m shapes: 77\% on Y10 (4800$\times$16$\times$32) and 90\% on Y05 (19200$\times$8$\times$144) (instrumented build, shares only). Our compute part on Y10 runs at about 7.8 GOPs, faster than H\'ector's whole call (5.1).
+\item \textbf{The gap sits where A is large and packed in one block of k.} The 23 shapes with m $>$ 300 and k $\le$ kc carry 131.0 ms of the 140.5 ms 1-thread gap on the m $>$ 300 shapes. On them the pack test puts the order cost at 162.2 ms per pass: the same size as the gap. On the 10 shapes with k $>$ kc the gap is only 9.5 ms. On the 17 shapes with m = 300, A is small and we are 27.0 ms ahead.
+\item \textbf{The pack test overstates absolute pack times} (on \input{\D/over.tex} it takes longer than our whole GEMM call), most on k $>$ kc. Its numbers show the size of the order effect, not an exact share of our time. Only an in-GEMM change can give the exact gain.
+\item \textbf{Not the main cause:} the block size along m (forcing mc to 240 lifts Y10 by about 25\%, not to his level), and our 24x8 microkernel.
+\item \textbf{No fix in this issue.} The fix (a column-order A packer) is the pending issue \iss{96}.
+\end{itemize}
+
+\section*{Glossary}
+\begin{description}\setlength\itemsep{0pt}\small
+\item[ours, H\'ector's] our GEMM (xDSL Project Generator, generated RVV microkernel); H\'ector's \texttt{gemm.bin} from GEMMLib\_yolo at \texttt{b292c92}, his code unchanged.
+\item[shape, Y\textit{nn}] one YOLO26 layer as an m $\times$ n $\times$ k GEMM (\texttt{datasets/yolo26\_k1.dat}).
+\item[A, column-major, lda] A is m $\times$ k, stored column by column; one column is m contiguous floats, so the next column starts lda = m floats later.
+\item[pack A] copy a block of A (mc rows $\times$ kc columns) into panels of MR rows, so the microkernel reads it contiguously. Done once per block, inside the timed call.
+\item[panel-outer (our order)] for each MR-row panel, for each of the kc columns: read MR floats.
+\item[column-outer (his order)] for each of the kc columns, for each MR-row panel: read MR floats.
+\item[mc, nc, kc] block sizes: rows of A, columns of B, depth. Ours from the analytical cache model per shape; H\'ector's fixed (MC = KC = 256, NC = n).
+\item[tile MRxNR] the microkernel's block of C. Ours 24x8; H\'ector's 16x8 (16x4 at n = 4).
+\item[1T] 1 thread, pinned to core 4.
+\item[uninstrumented build] \texttt{INSTRUMENTED=0}, no timers inside the GEMM. Every GOPs value here comes from it.
+\item[instrumented build] timers around pack and compute (\texttt{--instr}, warm-up protocol). The timers cost 11--17\%, so only its times as shares and its counters are used.
+\item[reference protocol] no warm-up; call the GEMM until \texttt{tmin} seconds have passed; mean time per call. H\'ector's driver uses the same loop (\texttt{TIMIN}).
+\item[GOPs by mean time / by median rep] 2mnk / mean time per call; 2mnk / median call time (ours only, his driver keeps no per-call time).
+\item[probe run] one shape, ours then H\'ector's, back to back (\texttt{probe\_issue95.sh}, \texttt{--tmin 1}).
+\item[pack test] \texttt{issue95/pack\_order.c}: packs the same A both ways on the board and times each.
+\item[order cost] pack time in our order minus pack time in his order, same blocks.
+\item[gap] our time minus H\'ector's time per call, 1T, from \iss{94} (mean of 3 launches each).
+\end{description}
+
+\section{Where the gap is (from \iss{94})}
+At 1T, \iss{94} measured our pass at 696.9 ms (4.27 GOPs) and H\'ector's at 583.4 ms (5.10 GOPs). Per shape, we lose most on large m with small k (Y10 4800$\times$16$\times$32: 0.31 of his GOPs; Y00, Y01, Y03 0.39--0.43) and win every shape with m = 300 (1.03--1.73). Y10 became the test shape: largest loss, 4.9 MFLOP per call.
+
+\section{Method}
+\begin{enumerate}\setlength\itemsep{1pt}
+\item \textbf{Test loop.} \texttt{probe\_issue95.sh M N K} runs one shape on both sides, back to back, and refuses to start while another user is busy on the board. Red when ours $<$ 0.8 of his.
+\item \textbf{Code read} of both loop nests (\texttt{gemm\_dispatch\_xdsl.cpp}; his \texttt{gemm\_B3A2C0} in \texttt{gemm\_blis.c}). Both are BLIS loops in the same order (jc, pc: pack B, ic: pack A, jr, ir, microkernel). His build has \texttt{-DGEMMLIB\_ON} and no \texttt{OPENBLAS\_ON}/\texttt{BLIS\_ON}, so \texttt{gemm.bin} times his own code.
+\item \textbf{Hypotheses, ranked before testing:} H1 mc too large; H2 our microkernel slower; H3 our A pack costs more; H4 compiler flags.
+\item \textbf{Probes}, one change at a time: mc forced (\texttt{RVV\_FORCE\_MC}, a new opt-in knob, off by default), the instrumented split, and the pack test.
+\end{enumerate}
+
+\section{H1: the block size along m is a small effect}
+\begin{center}\small
+\begin{tabular}{@{}ll rrl rrr@{}}
+\toprule
+probe run & shape & mc & kc & mc from & \multicolumn{2}{c}{ours, GOPs} & H\'ector's \\
+ & & & & & by mean time & by median rep & by mean time \\
+\midrule
+\csname @@input\endcsname \D/probe_rows.tex
+\bottomrule
+\end{tabular}
+\note{\onet\ Uninstrumented build, reference protocol, \texttt{--tmin 1} on both sides. Run folders: \texttt{logs/issue95\_probe\_*}.}
+\end{center}
+Our model keeps mc $\times$ kc near 96\,K floats (about 384 KB) on every shape with m $>$ 300 (Y10: 2560 $\times$ 32). H\'ector's A block is 256 $\times$ 32 floats on Y10 (32 KB). Forcing our mc to 240 lifts Y10 from 1.82 to 2.27 GOPs, far from his 5.09, and lowers Y11 (2.07 to 1.84). H1 predicted 4 GOPs or more: rejected as the main cause.
+
+\section{H3: our A pack takes most of our time}
+\begin{center}\small\setlength\tabcolsep{4pt}
+\begin{tabular}{@{}l rrr r r rr@{}}
+\toprule
+shape & vector pack & scalar pack & compute & pack share & compute only & \multicolumn{2}{c}{vector pack} \\
+ & ms & ms & ms & & GOPs & IPC & L1D read miss \\
+\midrule
+\csname @@input\endcsname \D/instr_rows.tex
+\bottomrule
+\end{tabular}
+\note{\onet\ Instrumented build (\texttt{--instr}, warm-up protocol; timers cost 11--17\%, so read the shares, not the times). Pack share = vector pack / (vector pack + compute). The scalar packer is timed in its own pass.}
+\end{center}
+\begin{itemize}\setlength\itemsep{1pt}
+\item The vector pack stalls: IPC 0.03--0.04, 96\% back-end stall. Our scalar packer is as slow (2.46 and 43.75 ms), so the cause is not vector against scalar instructions.
+\item Our compute on Y10 alone gives about 7.8 GOPs, above H\'ector's whole call (5.1). H2 (our microkernel) is not supported.
+\end{itemize}
+
+\section{The cause: the order in which A is read}
+\begin{center}\small
+\begin{tabular}{@{}p{7.6cm} p{7.6cm}@{}}
+\toprule
+ours (\texttt{pack\_RB\_v\_*}, generated) & H\'ector's (\texttt{pack\_generic\_MRxkc\_A}) \\
+\midrule
+\texttt{for each panel i (MR rows):} & \texttt{for each column j (kc):} \\
+\texttt{\ \ for each column j (kc):} & \texttt{\ \ for each panel i (MR rows):} \\
+\texttt{\ \ \ \ copy A[i..i+MR, j] to panel i} & \texttt{\ \ \ \ copy A[i..i+MR, j] to panel i} \\
+\midrule
+reads jump lda floats (19.2 KB on Y10) every MR floats; each read is on another 4 KB page, and every panel walks the same pages again & each column is read as one run of mc contiguous floats \\
+\bottomrule
+\end{tabular}
+\end{center}
+The pack test (\texttt{issue95/pack\_order.c}, run on the board) packs the same A both ways with the same RVV copy, in the same mc $\times$ kc blocks as our GEMM, and checks that both give the same packed bytes (\texttt{memcmp}). Against the in-GEMM pack time of the instrumented build it reads 2.19 against 2.16 ms on Y10 and 46.27 against 41.53 ms on Y05. It reads high in general: on \input{\D/over.tex} its pack time is above our whole uninstrumented call, and the per-shape chart shows the largest excess on the k $>$ kc shapes (for example Y11, Y16: an order cost of 27 ms against a gap under 3 ms). So the tables below give the size of the effect, not exact in-GEMM savings.
+
+\csname @@input\endcsname \D/figs.tex
+
+\begin{center}\small
+\begin{tabular}{@{}l r rrr rrr@{}}
+\toprule
+ & & \multicolumn{3}{c}{GEMM per 1T pass, \iss{94}} & \multicolumn{3}{c}{A pack per pass, pack test} \\
+\cmidrule(lr){3-5}\cmidrule(l){6-8}
+shapes & count & ours ms & H\'ector's ms & gap & our order & his order & order cost \\
+\midrule
+\csname @@input\endcsname \D/group_rows.tex
+\bottomrule
+\end{tabular}
+\note{\onet\ \iss{94}: GOPs by mean time, mean of 3 launches; ours uninstrumented, reference protocol, \texttt{--tmin 2}; his \texttt{TIMIN=2.0}. Pack test: \input{\D/pack_file.tex}, our model's mc and kc, MR 24.}
+\end{center}
+\begin{itemize}\setlength\itemsep{1pt}
+\item m $>$ 300, k $\le$ kc (23 shapes): 131.0 of the 140.5 ms gap, and an order cost of 162.2 ms: the same size. These are the shapes where the pack test matches the GEMM best.
+\item m $>$ 300, k $>$ kc (10 shapes): gap 9.5 ms. The test's 89.5 ms there is not usable (it overstates most on these shapes).
+\item m = 300: A is at most 300 $\times$ 2304 floats, the order costs 2.8 ms in all, and we are ahead by 27.0 ms.
+\end{itemize}
+
+\section{Not measured here}
+\begin{itemize}\setlength\itemsep{1pt}
+\item Our GEMM with a column-order A packer. This changes the generated packer (the vector path); it is the pending issue \iss{96}.
+\item 8 threads. Each thread packs its own A block the same way; the 8T gap also includes H\'ector's Y00 behaviour (\iss{94}).
+\item MR 16 against MR 24 in his order (0.34 against 0.71 ms for Y10's A in two separate pack tests): a smaller, second effect.
+\item H4 (compiler). Our kernels already build at \texttt{-O3}; only the driver and pack C++ build at \texttt{-O2}.
+\end{itemize}
+
+\appendix
+\section{All 50 shapes}
+{\footnotesize\setlength\tabcolsep{4pt}
+\begin{longtable}{@{}ll rr rrr rrr@{}}
+\toprule
+ & & & & \multicolumn{3}{c}{GEMM per call, 1T, \iss{94}} & \multicolumn{3}{c}{A pack, pack test} \\
+\cmidrule(lr){5-7}\cmidrule(l){8-10}
+shape & m$\times$n$\times$k & mc & kc & ours ms & his ms & gap & our order & his order & order cost \\
+\midrule\endhead
+\csname @@input\endcsname \D/shape_rows.tex
+\bottomrule
+\end{longtable}}
+\noindent{\footnotesize\color{muted}Sorted by order cost. \onet\ Same sources as the table in \S5.}
+
+\section{Logs}
+All under \texttt{tests/pure\_xdsl\_blis\_rvv/logs/}, committed: probe runs \texttt{issue95\_probe\_2026-11-18\_*} (each with \texttt{result.txt}, \texttt{ours.log}, \texttt{his.log}, \texttt{his.csv}, and its run folder named in \texttt{ours\_run.txt}); pack tests \texttt{issue95\_pack\_order\_2026-11-18\_140844.txt} (first version, full k; not used for the tables) and \input{\D/pack_file.tex}.
+\end{document}

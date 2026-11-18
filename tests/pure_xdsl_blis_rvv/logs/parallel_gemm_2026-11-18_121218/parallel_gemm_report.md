@@ -1,0 +1,24 @@
+# Our parallel GEMM on the board: `parallel_gemm_2026-11-18_121218`
+
+```
+Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (50 shapes, every row checked)
+  Settings : uninstrumented, reference protocol, --tmin 2, --no-nc-overrides, vector packer
+  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)
+  Order    : 8 (threads per launch), one board: the first idle one of jbpi
+  Load     : the board's processes are read before every launch; busy -> wait 10 min and read again
+[12:12] board: jbpi
+```
+
+Launches ok: 0 at 1 thread (core 4), 1 at 8 threads (cores 0-7, core 0 included: user's exception, #56 §5). Héctor's numbers: `hector_gemm_2026-11-16_111457` (#62).
+
+WARNING: 0 launch(es) at 1 thread(s), fewer than 3 (house rule 2).
+
+WARNING: 1 launch(es) at 8 thread(s), fewer than 3 (house rule 2).
+
+## Run conditions
+
+- L1 8T: 50 PASS, 0 FAIL, 0 other
+
+- run_2026-11-18_121650: jlei@jbpi, UNINSTRUMENTED (INSTRUMENTED=0), REFERENCE (tmin=2 s), core 0-7, raw events none, busy fp32_AXPY_FP32_Pack_vlen256_MR24NR8: cpu0 89% cpu1 60% cpu2 59% cpu3 60% cpu4 60% cpu5 59% cpu6 60% cpu7 60%
+
+No shape has launches at both thread counts yet.

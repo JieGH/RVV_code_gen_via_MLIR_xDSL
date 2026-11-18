@@ -1,0 +1,12 @@
+root                 11.9   2       00:00 sshd
+root                  1.2   0       58:37 kworker/0:0-events
+root                  0.6   1 107-03:55:27 disp_eng_share_thread
+systemd-oom           0.0   1 107-03:55:34 systemd-oomd
+root                  0.0   6       00:55 kworker/u16:8-rpciod
+root                  0.0   2       00:55 kworker/u16:9-rpciod
+root                  0.0   5       02:12 kworker/u16:1-nfsiod
+root                  0.0   0       01:46 kworker/u16:5-xprtiod
+root                  0.0   5 107-03:55:42 vq1
+root                  0.0   1 107-03:55:42 vq0
+root                  0.0   3 107-03:55:24 bluetoothd
+root                  0.0   4       01:46 kworker/u16:7-rpciod

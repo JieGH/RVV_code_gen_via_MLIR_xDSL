@@ -1,0 +1,3 @@
+=== fp32_AXPY_FP32_Pack_vlen256_MR24NR8 ===
+▶ P0 (4800x16x32)        | best variant 24x8 [24 rows x 8 columns of C per tile] | 1.82 GOPs by mean time [whole GEMM call, packing included] | 1.82 GOPs median rep | 372 reps | ✅ C[217,1]: 8.58 == 8.58 [sample entry vs the naive scalar GEMM] (cache blocking mc:2560 nc:16 kc:32)
+
