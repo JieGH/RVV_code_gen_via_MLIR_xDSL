@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/94
 
 **Role / Label:** `needs-triage`. Opened 2026-11-18 at the user's request. Board runs on `jbpi`.
-**Status:** open. Board series done 2026-11-18 (18 of 18 launches ok, every row PASS). Report written and linked (§7); code review next.
+**Status:** open. Board series done 2026-11-18 (18 of 18 launches ok, every row PASS). Report written and linked (§7). Code review done (§7.1). Waiting for the user to close; then PR.
 **Report:** [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/report/issue94_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/report/issue94_report.tex), [README](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/README.md); folder `.scratch/reports/issue-94/`.
 **Branch:** `yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors`, cut from `pure-xdsl`.
 **Related:** #56 [[0040-parallel-gemm-design]] (ours, vector packer), #62 [[0045-read-hector-parallel-gemm]] (Héctor's `gemm.bin`), #83 [[0050-scalar-packing-rerun-of-yolo-and-paper-sweeps]] (scalar packer).
@@ -107,10 +107,24 @@ Series `issue94_2026-11-18_115554`, jbpi, 12:00-13:09. The board was idle before
   - 8T: V is highest at n = 4, 16 and 256; H at n = 8, 32, 64, 80 and 128.
   - S is below V at every n at 8T, and at every n except 256 at 1T.
 
+### 7.1 Code review (against `pure-xdsl`)
+
+Two reviews: standards and spec.
+
+- **Fixed:** `run_parallel_gemm.sh` printed "Issue #56" in its plan whatever `--issue` said. It now prints the given number. Test added.
+- **Checked, no change:**
+  - Héctor's plan prints `TIMIN=2` where the spec says `2.0`. His driver reads the value with `atof`, so both are the same.
+  - His 1T launches get `--omp-bind`. `run_hector_gemm.sh` sets the binding only when there is more than 1 thread.
+- **Left as is (judgement calls):**
+  - `busy_others`/`wait_idle` are copied from `run_issue83.sh`; this follows the house pattern, one script per issue.
+  - The steps are `"V 8"` strings.
+  - The "earlier runs" line quotes #56/#62 from committed logs. It is context for a rerun, not a new analysis.
+  - The launch-range column and the per-shape appendix follow the #91 report.
+
 ## 8. Closure
 
 - [x] Driver and host test, tests passing
 - [x] C1, C2 all PASS
 - [x] 18 launches done, logs committed
 - [x] Report written and linked (#94, #56, #62, #83)
-- [ ] Code review done, findings fixed
+- [x] Code review done, findings fixed (§7.1; host suite 646 passed)

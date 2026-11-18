@@ -98,7 +98,7 @@ busy() {
 }
 
 print_plan() {
-    echo "Issue #56: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (${SHAPES} shapes, every row checked)"
+    echo "Issue #${ISSUE}: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (${SHAPES} shapes, every row checked)"
     echo "  Settings : uninstrumented, reference protocol, --tmin ${TMIN}, --no-nc-overrides, ${PACKER}"
     echo "  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)"
     echo "  Order    : ${ORDER[*]} (threads per launch), one board: the first idle one of ${BOARDS}"

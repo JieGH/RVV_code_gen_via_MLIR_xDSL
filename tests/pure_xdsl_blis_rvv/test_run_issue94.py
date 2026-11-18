@@ -62,11 +62,12 @@ def test_series_calls_each_runner_with_its_setup(tmp_path: Path):
 
 def test_parallel_gemm_runs_one_thread_count_with_the_scalar_packer():
     pg = HERE / "run_parallel_gemm.sh"
-    done = subprocess.run(["bash", str(pg), "--threads", "8", "--launches", "1", "--scalar-pack", "--dry-run"],
+    done = subprocess.run(["bash", str(pg), "--threads", "8", "--launches", "1", "--scalar-pack", "--issue", "94", "--dry-run"],
                           capture_output=True, text=True, timeout=30)
     assert done.returncode == 0, done.stderr
     assert "scalar packer" in done.stdout and "Order    : 8 (threads" in done.stdout
+    assert "Issue #94:" in done.stdout and "Issue #56:" not in done.stdout
     default = subprocess.run(["bash", str(pg), "--dry-run"], capture_output=True, text=True, timeout=30).stdout
-    assert "vector packer" in default and "Order    : 1 8 8 1 1 8" in default
+    assert "vector packer" in default and "Order    : 1 8 8 1 1 8" in default and "Issue #56:" in default
     bad = subprocess.run(["bash", str(pg), "--threads", "4", "--dry-run"], capture_output=True, text=True, timeout=30)
     assert "--threads takes 1 or 8" in bad.stderr
