@@ -2,6 +2,8 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/60
 
+**Combined YOLO report (all findings, read first):** `.scratch/reports/yolo-multithread/report/yolo_report.pdf` ([LaTeX](../reports/yolo-multithread/report/yolo_report.tex)); index of every YOLO report, newest first: `.scratch/reports/yolo-multithread/README.md`.
+
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Spec + build in **our design** (Project Generator), no board until the correctness check.
 **Status:** ✅ Done 2026-11-15. Built (decisions §3); correctness pass on `jbpi`: 76 of 76 rows PASS (§4b).
 **Blocked by:** #59 (S1, dataset and tile list).

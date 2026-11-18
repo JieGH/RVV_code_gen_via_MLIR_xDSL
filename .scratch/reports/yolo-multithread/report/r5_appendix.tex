@@ -31,10 +31,10 @@ issue & what & board & run folders \\
 \cmidrule(lr){3-5}\cmidrule(l){6-8}
 layer & m $\times$ n $\times$ k & vector & scalar & s/v & vector & scalar & s/v \\
 \midrule\endhead
-\csname @@input\endcsname \D/yolo_sv_rows.tex
+\csname @@input\endcsname \G/yolo_sv_rows.tex
 \bottomrule
 \end{longtable}}
-\noindent Best tile and GOPs by mean time / by median rep, mean of 3 launches per side; s/v by mean time. Sorted by n, m, k. jbpi, 1T core 4, 8T cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}. Vector: \iss{61}, \iss{63} (15--17 Nov); scalar: \iss{83} T1, T2 (17 Nov); not interleaved.
+\noindent Best tile and GOPs by mean time, mean of 3 launches per side; s/v by mean time. Sorted by n, m, k. jbpi, 1T core 4, 8T cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}. Vector: \iss{61}, \iss{63} (15--17 Nov); scalar: \iss{83} T1, T2 (17 Nov); not interleaved.
 
 \section{YOLO, all 50 layers: cache blocking}\label{app:blk}
 mc / kc per layer and tile (nc = n on every layer), as printed in the run logs; a tile's blocking is the same at 1T and 8T and with either packer. 24x8: \S1.2 and the 1T best single tile; 16x8: H\'ector's tile in our GEMM. Best tiles as in Appendix~\ref{app:yolo}.
@@ -50,10 +50,10 @@ layer & m $\times$ n $\times$ k & 24x8 & 16x8 & 1T & 8T & 1T & 8T \\
 \end{longtable}}
 
 \section{\iss{85} GOPs, all points}\label{app:85}
-GOPs by mean time / by median rep, mean of 3 launches per packer (uninstrumented, reference protocol, \texttt{--tmin 3}); $^{\sim}$ = gap inside the launch range; s/v by mean time; 8T/1T crosses boards. Rows from \iss{85}'s script with the true mean time.
-\gopstable{\Pd/tab_pn.tex}{P-n: m = 1200, k = 256, tile 24x8}
-\gopstable{\Pd/tab_pm16.tex}{P-m: n = 16, k = 256, tile 24x8}
-\gopstable{\Pd/tab_pm256.tex}{P-m: n = 256, k = 256, tile 24x8}
-\gopstable{\Pd/tab_pk16.tex}{P-k: m = 1200, n = 16, tile 24x8}
-\gopstable{\Pd/tab_pk256.tex}{P-k: m = 1200, n = 256, tile 24x8}
-\gopstable{\Pd/tab_ptile.tex}{P-tile}
+GOPs by mean time, mean of 3 launches per packer (uninstrumented, reference protocol, \texttt{--tmin 3}); $^{\sim}$ = gap inside the launch range; s/v by mean time; 8T/1T crosses boards. Rows from \iss{85}'s script with the true mean time.
+\gopstable{\G/tab_pn.tex}{P-n: m = 1200, k = 256, tile 24x8}
+\gopstable{\G/tab_pm16.tex}{P-m: n = 16, k = 256, tile 24x8}
+\gopstable{\G/tab_pm256.tex}{P-m: n = 256, k = 256, tile 24x8}
+\gopstable{\G/tab_pk16.tex}{P-k: m = 1200, n = 16, tile 24x8}
+\gopstable{\G/tab_pk256.tex}{P-k: m = 1200, n = 256, tile 24x8}
+\gopstable{\G/tab_ptile.tex}{P-tile}

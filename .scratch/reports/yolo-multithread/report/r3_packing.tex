@@ -1,0 +1,189 @@
+\section{Part 3: vector against scalar packing (\iss{83}, \iss{85})}
+\begin{itemize}\setlength\itemsep{1pt}
+\item \textbf{Vector packer} (every sweep above): RVV loads/stores, 8 fp32 per instruction. \textbf{Scalar packer} (\texttt{--scalar-pack}): one float per load/store. Same layout, buffers, tiles and blocking.
+\item \textbf{\iss{83}} reran the YOLO (\iss{61}, \iss{63}) and paper (\iss{71}) sweeps with the scalar packer and compares the best tile per shape on each side. The vector side is the committed runs of 15--17 Nov, the scalar side ran on 17 Nov: not interleaved, so gaps under 3\% are not called a difference.
+\item \textbf{\iss{85}} changes one parameter at a time around a YOLO-like base point (m = 1200, n = 16 or 256, k = 256, tile 24x8), at 1T (jbpi) and 8T (jbpi2), vector and scalar interleaved (V S S V V S), \texttt{--tmin 3}, and times pack and compute in an instrumented build at both thread counts.
+\end{itemize}
+
+\subsection{Metric correction}\label{sec:metric}
+The \iss{83} and \iss{85} scripts read the raw column \texttt{KerGOPs\_Mean}, the average of each rep's GOPs, and call it ``GOPs by mean time''. The house metric is 2mnk $\div$ mean time per call, \texttt{KerGOPs\_Harmonic} (checked: equal to 2mnk $\div$ \texttt{RVV\_Time\_ms}). \texttt{deck/make\_data.py} recomputes every packing number from the same committed runs with \texttt{KerGOPs\_Harmonic}; the \iss{85} numbers come from \iss{85}'s own script with only that column swapped. Pack and compute times (instrumented build) are not affected.
+
+\begin{center}\small
+\begin{tabular}{@{}l ll@{}}
+\toprule
+ & \iss{83} / \iss{85} report & true mean time (this report) \\
+\midrule
+YOLO s/v median, 1T / 8T & 0.930 / 0.946 & 0.929 / 0.945 \\
+YOLO best tile changes, 1T / 8T & 14 / 17 & 13 / 20 \\
+BERT/Square s/v median, 8T & 0.987 & 0.992 \\
+YOLO Y34, 8T & 0.921 & 0.818 \\
+B3, 1T & 1.194 (called noise) & 1.227, steady (\S\ref{sec:paperpack}) \\
+\iss{85} model within 0.02, 1T / 8T & 25 / 25 of 46 & 24 / 20 of 46 \\
+\iss{85} 8T, 1200$\times$16$\times$256 & 0.944 & 0.982$^{\sim}$ \\
+\iss{85} 8T, 1200$\times$256$\times$256, 16x4 & 1.42 & 1.46 \\
+\bottomrule
+\end{tabular}
+\end{center}
+At 1T the ratios move by up to 0.02 (YOLO) and 0.03 (B3). At 8T, where a few slow reps per launch weigh on the mean time but not on the average of rep GOPs, they move by up to 0.10, and some \iss{85} gaps fall inside the launch range. The answers do not change. The \iss{83} and \iss{85} reports themselves are not yet corrected.
+
+\subsection{YOLO: the scalar packer is slower on almost every layer}
+\begin{center}\small
+\begin{tabular}{@{}rr l l@{}}
+\toprule
+ & & \multicolumn{1}{c}{1T (core 4)} & \multicolumn{1}{c}{8T (cores 0--7)} \\
+\cmidrule(lr){3-3}\cmidrule(l){4-4}
+n & layers & s/v (min--max) & s/v (min--max) \\
+\midrule
+4 & 3 & 0.589 (0.583--0.713) & 0.700 (0.649--0.817) \\
+8 & 1 & 0.894 & 0.939 \\
+16 & 10 & 0.906 (0.785--0.931) & 0.938 (0.836--0.957) \\
+32 & 6 & 0.928 (0.925--0.939) & 0.946 (0.861--0.957) \\
+64 & 10 & 0.941 (0.913--0.956) & 0.948 (0.769--1.044) \\
+80 & 6 & 0.933 (0.886--1.023) & 0.937 (0.818--0.965) \\
+128 & 9 & 0.945 (0.922--0.956) & 0.975 (0.896--1.003) \\
+256 & 5 & 0.968 (0.930--1.010) & 0.971 (0.884--1.000) \\
+\midrule
+all & 50 & 0.929 (0.583--1.023) & 0.945 (0.649--1.044) \\
+\bottomrule
+\end{tabular}
+\note{Median (min--max) over the layers with that n of scalar $\div$ vector GOPs, best tile each side, mean of 3 launches each (\texttt{deck/data/packing\_tables.md}). jbpi, uninstrumented, reference protocol, \texttt{--tmin 2}, 19 tiles. Vector: \iss{61}, \iss{63} runs; scalar: \iss{83} T1, T2. All 50 layers with their best tiles: Appendix~\ref{app:yolo}; cache blocking of those tiles: Appendix~\ref{app:blk}.}
+\end{center}
+
+\begin{itemize}\setlength\itemsep{1pt}
+\item Scalar packing costs YOLO a median 7\% (1T) and 5.5\% (8T), and up to 42\% on the n = 4 layers (Y14 4800$\times$4$\times$16: 0.583 at 1T).
+\item The best tile changes with the packer on 13 (1T) and 20 (8T) of 50 layers.
+\end{itemize}
+
+\subsection{BERT and Square}\label{sec:paperpack}
+\begin{center}\small
+\begin{tabular}{@{}l llr llr@{}}
+\toprule
+ & \multicolumn{3}{c}{1T (core 4)} & \multicolumn{3}{c}{8T (cores 0--7)} \\
+\cmidrule(lr){2-4}\cmidrule(l){5-7}
+shape & vector & scalar & s/v & vector & scalar & s/v \\
+\midrule
+\csname @@input\endcsname \G/paper_sv.tex
+\bottomrule
+\end{tabular}
+\note{Best tile and its GOPs by mean time, each side, mean of 3 launches; s/v by mean time. Cache blocking of each tile per shape: \S2 blocking table. Vector: \iss{71} on jbpi; scalar: \iss{83} T3 on jbpi2, a day later (same SoC; board and day gaps not measured). Uninstrumented, reference protocol, \texttt{--tmin 2}.}
+\end{center}
+\begin{itemize}\setlength\itemsep{1pt}
+\item s/v median 0.983 (1T) and 0.992 (8T); the best tile is unchanged except B3 at 1T. At 1T most shapes show a steady 1--3\% scalar loss, inside the 3\% board/day gap.
+\item \textbf{B3 at 1T (1.227) is real and steady.} B3 (64$\times$384$\times$384) is the shape where the vector packer is slow (\iss{36}): at 16x15 the vector side gives 4.98 GOPs, the scalar side 8.60 (launches 8.62, 8.66, 8.53); the vector side's best, 32x7, is steady at 7.01.
+\item B3 at 8T (0.941) is noise: one scalar launch gave 23.78 GOPs, the other two 27.40 and 27.23 (vector 27.42--28.02).
+\end{itemize}
+
+\subsection{Why: pack share $\times$ extra pack cost (\iss{83} T4)}
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}
+\begin{axis}[house, width=12cm, height=9cm, y dir=reverse, bar width=4pt,
+  ytick=data, yticklabels from table={\D/t4_time.csv}{label},
+  yticklabel style={align=right}, enlarge y limits={abs=0.6}, xmin=0, xmax=180,
+  xlabel={time per call, \% of the vector packer's total; dark = pack, light = compute},
+  legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}]
+\addplot[xbar, area legend, fill=vec!30, draw=none, bar shift=-2.2pt] table[y=idx, x expr=\thisrow{vpack}+\thisrow{vcomp}]{\D/t4_time.csv};
+\addplot[xbar, area legend, fill=vec, draw=none, bar shift=-2.2pt, forget plot] table[y=idx, x=vpack]{\D/t4_time.csv};
+\addplot[xbar, area legend, fill=scal!30, draw=none, bar shift=2.2pt] table[y=idx, x expr=\thisrow{spack}+\thisrow{scomp}]{\D/t4_time.csv};
+\addplot[xbar, area legend, fill=scal, draw=none, bar shift=2.2pt, forget plot] table[y=idx, x=spack]{\D/t4_time.csv};
+\legend{vector packer, scalar packer}
+\end{axis}
+\end{tikzpicture}
+\note{\iss{83} T4: jbpi2, instrumented build (timers cost 11--17\%, only shares and ratios used), warm-up protocol, 200 reps, 1T core 4, 2 launches per packer (V S S V); each shape on its 1T best tile. Axis label: shape, then the tile and the cache blocking that run used (from its log); pack shares in the table below.}
+\end{figure}
+
+\begin{center}\small
+\begin{tabular}{@{}l l l l rr r rr@{}}
+\toprule
+shape & m $\times$ n $\times$ k & tile & mc / nc / kc & \multicolumn{2}{c}{pack share} & extra pack & predicted & measured \\
+ & & & & vector & scalar & cost & s/v & s/v (1T) \\
+\midrule
+Y14 & 4800$\times$4$\times$16 & 24x4 & 4800/4/16 & 75\% & 83\% & 1.59 & 0.697 & 0.583 \\
+Y30 & 1200$\times$4$\times$16 & 32x4 & 1200/4/16 & 65\% & 74\% & 1.58 & 0.738 & 0.713 \\
+Y47 & 300$\times$4$\times$16 & 16x4 & 300/4/16 & 51\% & 66\% & 1.94 & 0.667 & 0.589 \\
+Y10 & 4800$\times$16$\times$32 & 24x8 & 2560/16/32 & 77\% & 80\% & 1.15 & 0.899 & 0.900 \\
+Y40 & 300$\times$16$\times$144 & 24x8 & 300/16/144 & 36\% & 50\% & 1.76 & 0.794 & 0.785 \\
+Y29 & 1200$\times$32$\times$64 & 32x4 & 1200/32/64 & 56\% & 60\% & 1.16 & 0.926 & 0.939 \\
+Y19 & 4800$\times$80$\times$64 & 32x7 & 1536/80/64 & 49\% & 52\% & 1.13 & 0.943 & 0.945 \\
+Y42 & 300$\times$256$\times$1152 & 24x8 & 300/256/170 & 23\% & 25\% & 1.12 & 0.971 & 0.968 \\
+B1 & 1024$\times$384$\times$1024 & 32x7 & 768/384/128 & 17\% & 19\% & 1.13 & 0.986 & 0.983 \\
+B2 & 384$\times$384$\times$64 & 16x15 & 384/384/64 & 7\% & 10\% & 1.55 & 0.970 & 0.961 \\
+S1 & 1000$^3$ & 32x7 & 768/1000/128 & 9\% & 9\% & 1.07 & 0.996 & 0.995 \\
+\bottomrule
+\end{tabular}
+\note{Pack share, extra pack cost and predicted from \iss{83} T4 (times, not affected by the metric). Measured: best tile each side, uninstrumented, GOPs by mean time recomputed; its best tiles can differ from the T4 tile.}
+\end{center}
+\begin{itemize}\setlength\itemsep{1pt}
+\item Compute time is the same for both packers; only the pack time grows.
+\item \textbf{Pack share is set by n}: each packed element of A is used n times. With the scalar packer: 50--83\% on the n = 4--32 shapes, 9--19\% on BERT and Square.
+\item \textbf{Extra pack cost}: 1.07--1.16$\times$ on large packs that wait on memory (Y10, Y19, Y29, Y42, B1, S1); 1.55--1.94$\times$ on small packs that stay in cache (Y14, Y30, Y47, Y40, B2), where the copy instructions are the limit.
+\item \textbf{The prediction} is within 0.01 of the measured ratio on 7 of 11 shapes, within 0.02 on 8. The misses are the three n = 4 shapes (calls of 16--540 µs, where the timers distort the split most) and Y29 (0.013).
+\end{itemize}
+
+\subsection{One parameter at a time (\iss{85})}
+Base point m = 1200, k = 256, tile 24x8, n = 16 or 256. Sweeps: P-n (n = 4--1024), P-m (m = 64--4800 at n = 16 and 256), P-k (k = 16--1152 at n = 16 and 256), P-tile (5 tiles on 1200$\times$4$\times$16, 1200$\times$16$\times$256, 1200$\times$256$\times$256). Correctness first: 30 of 30 PASS per packer on each board (oracle on, small shapes). One chart per sweep and thread count. Dot: scalar $\div$ vector GOPs by mean time; whisker: noise band (scalar min $\div$ vector max to scalar max $\div$ vector min); filled: gap outside the launch range, open: inside. Right of each chart: the point's tile and the cache blocking its log prints, then pack share vector / scalar (instrumented build). GOPs tables in Appendix~\ref{app:85}.
+
+\ratiofig{\Pd/pn_1t.csv}{5.2cm}{1.25}{P-n, 1T. \onet}
+\ratiofig{\Pd/pn_8t.csv}{5.2cm}{1.25}{P-n, 8T. \eightt\ One slow launch (vector at n = 16, either at 32, scalar at 64) puts them inside the noise.}
+\ratiofig{\Pd/pk16_1t.csv}{4.4cm}{1.1}{P-k, n = 16, 1T. \onet}
+\ratiofig{\Pd/pk16_8t.csv}{4.4cm}{1.1}{P-k, n = 16, 8T. \eightt}
+\ratiofig{\Pd/pk256_1t.csv}{4.4cm}{1.15}{P-k, n = 256, 1T. \onet}
+\ratiofig{\Pd/pk256_8t.csv}{4.4cm}{1.15}{P-k, n = 256, 8T. \eightt}
+\ratiofig{\Pd/pm16_1t.csv}{4.4cm}{1.1}{P-m, n = 16, k = 256, 1T. \onet}
+\ratiofig{\Pd/pm16_8t.csv}{4.4cm}{1.1}{P-m, n = 16, k = 256, 8T. \eightt}
+\ratiofig{\Pd/pm256_1t.csv}{4.4cm}{1.2}{P-m, n = 256, k = 256, 1T. \onet}
+\ratiofig{\Pd/pm256_8t.csv}{4.4cm}{1.2}{P-m, n = 256, k = 256, 8T. \eightt}
+\ratiofig{\Pd/ptile_1t.csv}{8cm}{1.5}{P-tile, 1T. \onet}
+\ratiofig{\Pd/ptile_8t.csv}{8cm}{1.5}{P-tile, 8T. \eightt}
+\clearpage
+
+\subsection{When does vector packing pay off?}
+{\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{5.0cm} >{\raggedright\arraybackslash}p{1.9cm} >{\raggedright\arraybackslash}p{1.9cm} X@{}}
+\toprule
+region (\iss{85} points) & s/v 1T & s/v 8T & use \\
+\midrule
+n $\le$ 16 and k $\le$ 64 (m = 1200, any tile; 8 points) & 0.67--0.89 & 0.75--0.84 & \textbf{vector}: 12--50\% more GOPs, every point above noise \\
+n $\le$ 16, m $\le$ 128 (2 points) & 0.73--0.74 & 0.87--0.96 & \textbf{vector} \\
+n $\le$ 32, k $\ge$ 144, m $\ge$ 300 (15 points) & 0.86--0.94 & 0.90--0.98 & \textbf{vector}: all above noise at 1T, 10 of 15 at 8T \\
+n = 256, m $\le$ 300 (3 points) & 0.92--0.96 & 0.97--1.05$^{\sim}$ & \textbf{vector} at 1T; either at 8T \\
+n = 64 (1 point) & 0.98$^{\sim}$ & 0.94$^{\sim}$ & either: inside the noise \\
+n $\ge$ 128, 8T (20 points) & & 0.93--1.09 & either: 17 of 20 inside the noise; above it 16x4 (1.46, below), 32x7 (1.02), n = 128 (0.99) \\
+n $\ge$ 128, k = 144--256, m = 1200--2400, 24x8, 1T (6 points) & 1.03--1.19 & & scalar measures faster (4 of 6 above noise); the loss is in compute, not packing \\
+n $\ge$ 128, k $\ge$ 576 or m = 4800, 1T (3 points) & 0.97--0.98 & & vector, by 2--3\% \\
+1200$\times$256$\times$256, 16x4, 8T & & 1.46 & scalar measures faster, uninstrumented build only \\
+\bottomrule
+\end{tabularx}
+\note{Ranges from \texttt{make\_data.py} (``decision-table regions'' in \texttt{packing\_tables.md}); $^{\sim}$ = inside the launch range. 1T jbpi core 4, 8T jbpi2 cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 3}, 3 launches per packer.}}
+
+\begin{itemize}\setlength\itemsep{1pt}
+\item \textbf{n sets the pack share} (k = 256, 1T): 87\% at n = 4, 77\% at n = 16, 48\% at n = 64, 7\% at n = 1024; 8T within a few points.
+\item \textbf{k and m set the extra pack cost}: scalar packing costs 1.2--3.0$\times$ the vector pack time at k $\le$ 64 on P-k (up to 3.4$\times$ on P-tile at 8T), 1.9$\times$ at m $\le$ 128 (1T), and only 1.02--1.12$\times$ at k $\ge$ 144, where both packers wait on memory.
+\item \textbf{At small n the tile hardly changes the ratio}: 1200$\times$4$\times$16 over 5 tiles gives 0.67--0.77 (1T) and 0.75--0.82 (8T). At 1200$\times$256$\times$256, 8T, it spans 0.98--1.46.
+\item \textbf{Threads:} on some small-n points the gain is a little smaller at 8T (1200$\times$4$\times$256: 0.91 at 1T, 0.94 at 8T), not on all.
+\end{itemize}
+
+\subsection{Does the model predict the slowdown?}
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}
+\begin{axis}[house, width=9cm, height=8cm, xmin=0.4, xmax=1.5, ymin=0.4, ymax=1.5, ymajorgrids,
+  xlabel={predicted s/v = (vector pack + compute) $\div$ (scalar pack + compute)}, ylabel={measured s/v, GOPs by mean time},
+  legend pos=north west]
+\addplot[muted, domain=0.4:1.5, samples=2, forget plot] {x};
+\addplot[only marks, mark=*, mark size=1.8pt, color=vec, fill opacity=0.7] table[x=pred, y=meas]{\Pd/model_1t.csv};
+\addplot[only marks, mark=square*, mark size=1.7pt, color=scal, fill opacity=0.7] table[x=pred, y=meas]{\Pd/model_8t.csv};
+\legend{1T, 8T}
+\end{axis}
+\end{tikzpicture}
+\note{\iss{85}: predicted from M2 (1T, jbpi) and M3 (8T, jbpi2), instrumented, 2 launches per packer; measured from M1, uninstrumented, 3 launches per packer, GOPs by mean time recomputed.}
+\end{figure}
+\begin{itemize}\setlength\itemsep{1pt}
+\item Predicted within 0.02 of measured on 24 (1T) and 20 (8T) of 46 points; within 0.05 on 38 and 34; median miss 0.016 and 0.025.
+\item Biggest misses at 8T: the 16x4 loss case (0.47) and the tiny 1200$\times$4$\times$16 calls (0.13--0.28), where threads wait 53--82\% of the call (wait share from M3, \iss{85} brief). At 1T: 128 and 600$\times$256$\times$256 (0.25, 0.17), where one instrumented vector launch was disturbed, and the 24x8 loss points (0.14--0.15).
+\end{itemize}
+
+\subsection{Two places where vector packing measures slower}
+\begin{enumerate}\setlength\itemsep{2pt}
+\item \textbf{1T, tile 24x8, m = 1200--2400, n $\ge$ 128, k = 144--256:} scalar 3--19\% faster on 6 points, 4 above noise (e.g.\ 1200$\times$1024$\times$256: 8.38 against 7.08 GOPs; 2400$\times$256$\times$256: 7.52 against 6.61). The instrumented build shows the vector pack still faster (1.05--1.13$\times$); the \emph{compute} phase after vector packing is 5--10\% slower at n = 128, 512 and 1024. Cause not measured.
+\item \textbf{8T, 1200$\times$256$\times$256, tile 16x4:} scalar 35.12 against vector 24.11 GOPs, scalar ahead in every launch. In the instrumented build both take the same time (5.25 / 5.21 ms), so the loss is tied to the uninstrumented binary or to the reference protocol. Not tested further.
+\end{enumerate}
+Neither comes from the pack itself, and neither changes the advice for YOLO, BERT or Square.

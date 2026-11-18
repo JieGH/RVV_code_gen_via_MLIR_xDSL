@@ -1,8 +1,6 @@
 shapes: 50; launches per setup and thread count: {'V': {1: 3, 8: 3}, 'S': {1: 3, 8: 3}, 'H': {1: 3, 8: 3}}
 V by mean time: 1T 697.2 ms 4.27 GOPs | 8T 155.2 ms 19.17 GOPs | 4.49x
-V by median rep: 1T 696.9 ms 4.27 GOPs | 8T 148.3 ms 20.06 GOPs | 4.70x
 S by mean time: 1T 733.9 ms 4.05 GOPs | 8T 160.6 ms 18.52 GOPs | 4.57x
-S by median rep: 1T 733.6 ms 4.05 GOPs | 8T 152.7 ms 19.48 GOPs | 4.81x
 H by mean time: 1T 583.4 ms 5.10 GOPs | 8T 156.6 ms 18.99 GOPs | 3.73x
 V without Y00: 1T 659.5 ms | 8T 148.4 ms; Y00 ms per launch 1T 38.8 38.6 35.7 8T 6.9 6.7 6.7
 S without Y00: 1T 694.1 ms | 8T 153.3 ms; Y00 ms per launch 1T 39.7 40.2 39.5 8T 7.4 7.3 7.2

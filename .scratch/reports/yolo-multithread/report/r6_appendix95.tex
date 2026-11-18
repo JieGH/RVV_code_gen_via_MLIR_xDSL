@@ -1,0 +1,16 @@
+\section{\iss{95}: all 50 shapes, gap and A pack order cost}\label{app:95}
+{\footnotesize\setlength\tabcolsep{4pt}
+\begin{longtable}{@{}ll rr rrr rrr@{}}
+\toprule
+ & & & & \multicolumn{3}{c}{GEMM per call, 1T, \iss{94}} & \multicolumn{3}{c}{A pack, pack test} \\
+\cmidrule(lr){5-7}\cmidrule(l){8-10}
+shape & m$\times$n$\times$k & mc & kc & ours ms & his ms & gap & our order & his order & order cost \\
+\midrule\endhead
+\csname @@input\endcsname \F/shape_rows.tex
+\bottomrule
+\end{longtable}}
+\noindent{\footnotesize\color{muted}Sorted by order cost. \onetp\ Same sources as the table in \S\ref{sec:95cause}.}
+
+\subsection*{\iss{95} logs}
+{\sloppy
+All under \texttt{tests/pure\_xdsl\_blis\_rvv/logs/}, committed: probe runs \texttt{issue95\_probe\_2026-11-18\_*} (each with \texttt{result.txt}, \texttt{ours.log}, \texttt{his.log}, \texttt{his.csv}, and its run folder named in \texttt{ours\_run.txt}); pack tests \texttt{issue95\_pack\_order\_2026-11-18\_140844.txt} (first version, full k; not used for the tables) and \input{\F/pack_file.tex}.\par}
