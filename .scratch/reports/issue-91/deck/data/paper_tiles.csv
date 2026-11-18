@@ -1,0 +1,13 @@
+# Source: .scratch/reports/issue-71/README.md "Per shape" table (= report/tile_search_{1t,8t}_3launches.md grids). GOPs by mean time, avg of 3 launches.
+# 1T: jbpi core 4; 8T: jbpi cores 0-7; uninstrumented, reference protocol, --tmin 2, vector packer, 19 tiles.
+idx,label,b1t,t1,a1_327,a1_1615,b8t,t8,a8_168,a8_327,a8_1615
+0,B1 1024x384x1024,8.06,32x7,8.06,6.30,47.44,16x8,47.44,42.31,38.77
+1,B2 384x384x64,12.58,16x15,11.76,12.58,81.99,16x12,76.65,59.13,81.12
+2,B3 64x384x384,7.01,32x7,7.01,4.98,27.78,8x24,23.30,16.59,24.80
+3,B4 4096x384x1024,8.12,32x7,8.12,6.56,49.33,16x8,49.33,42.84,43.45
+4,B5 1024x384x4096,7.80,32x7,7.80,6.03,43.64,16x8,43.64,40.28,36.93
+5,S1 1000\textsuperscript{3},8.84,32x7,8.84,7.24,44.70,16x8,44.70,44.21,42.33
+6,S2 2000\textsuperscript{3},9.28,32x7,9.28,7.78,47.33,16x8,47.33,43.38,45.23
+7,S3 3000\textsuperscript{3},9.54,32x7,9.54,7.42,49.76,16x8,49.76,44.79,44.36
+8,S4 4000\textsuperscript{3},9.40,32x7,9.40,7.74,50.99,16x8,50.99,43.50,45.26
+9,S5 5000\textsuperscript{3},9.66,32x7,9.66,7.36,46.83,16x8,46.83,44.35,45.12
