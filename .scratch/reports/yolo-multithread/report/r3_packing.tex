@@ -74,22 +74,7 @@ shape & vector & scalar & s/v & vector & scalar & s/v \\
 \end{itemize}
 
 \subsection{Why: pack share $\times$ extra pack cost (\iss{83} T4)}
-\begin{figure}[htbp]\centering
-\begin{tikzpicture}
-\begin{axis}[house, width=12cm, height=9cm, y dir=reverse, bar width=4pt,
-  ytick=data, yticklabels from table={\D/t4_time.csv}{label},
-  yticklabel style={align=right}, enlarge y limits={abs=0.6}, xmin=0, xmax=180,
-  xlabel={time per call, \% of the vector packer's total; dark = pack, light = compute},
-  legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}]
-\addplot[xbar, area legend, fill=vec!30, draw=none, bar shift=-2.2pt] table[y=idx, x expr=\thisrow{vpack}+\thisrow{vcomp}]{\D/t4_time.csv};
-\addplot[xbar, area legend, fill=vec, draw=none, bar shift=-2.2pt, forget plot] table[y=idx, x=vpack]{\D/t4_time.csv};
-\addplot[xbar, area legend, fill=scal!30, draw=none, bar shift=2.2pt] table[y=idx, x expr=\thisrow{spack}+\thisrow{scomp}]{\D/t4_time.csv};
-\addplot[xbar, area legend, fill=scal, draw=none, bar shift=2.2pt, forget plot] table[y=idx, x=spack]{\D/t4_time.csv};
-\legend{vector packer, scalar packer}
-\end{axis}
-\end{tikzpicture}
-\note{\iss{83} T4: jbpi2, instrumented build (timers cost 11--17\%, only shares and ratios used), warm-up protocol, 200 reps, 1T core 4, 2 launches per packer (V S S V); each shape on its 1T best tile. Axis label: shape, then the tile and the cache blocking that run used (from its log); pack shares in the table below.}
-\end{figure}
+\input{\G/t4_fig.tex}
 
 \begin{center}\small
 \begin{tabular}{@{}l l l l rr r rr@{}}
@@ -107,7 +92,7 @@ Y19 & 4800$\times$80$\times$64 & 32x7 & 1536/80/64 & 49\% & 52\% & 1.13 & 0.943 
 Y42 & 300$\times$256$\times$1152 & 24x8 & 300/256/170 & 23\% & 25\% & 1.12 & 0.971 & 0.968 \\
 B1 & 1024$\times$384$\times$1024 & 32x7 & 768/384/128 & 17\% & 19\% & 1.13 & 0.986 & 0.983 \\
 B2 & 384$\times$384$\times$64 & 16x15 & 384/384/64 & 7\% & 10\% & 1.55 & 0.970 & 0.961 \\
-S1 & 1000$^3$ & 32x7 & 768/1000/128 & 9\% & 9\% & 1.07 & 0.996 & 0.995 \\
+S1 & 1000$\times$1000$\times$1000 & 32x7 & 768/1000/128 & 9\% & 9\% & 1.07 & 0.996 & 0.995 \\
 \bottomrule
 \end{tabular}
 \note{Pack share, extra pack cost and predicted from \iss{83} T4 (times, not affected by the metric). Measured: best tile each side, uninstrumented, GOPs by mean time recomputed; its best tiles can differ from the T4 tile.}

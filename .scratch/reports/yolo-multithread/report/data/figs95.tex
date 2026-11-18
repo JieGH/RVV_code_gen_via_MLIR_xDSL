@@ -1,0 +1,21 @@
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}
+\begin{axis}[house, xbar, bar width=6pt, width=12cm, height=25.2cm, y dir=reverse, ytick={0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32}, yticklabels={{Y00 76800$\times$16$\times$27},{Y01 19200$\times$16$\times$72},{Y02 19200$\times$32$\times$144},{Y03 19200$\times$32$\times$32},{Y04 19200$\times$64$\times$48},{Y05 19200$\times$8$\times$144},{Y07 4800$\times$128$\times$96},{Y08 4800$\times$16$\times$144},{Y09 4800$\times$16$\times$288},{Y10 4800$\times$16$\times$32},{Y11 4800$\times$16$\times$576},{Y12 4800$\times$32$\times$144},{Y13 4800$\times$32$\times$32},{Y14 4800$\times$4$\times$16},{Y15 4800$\times$64$\times$256},{Y16 4800$\times$64$\times$576},{Y17 4800$\times$64$\times$64},{Y18 4800$\times$64$\times$96},{Y19 4800$\times$80$\times$64},{Y20 4800$\times$80$\times$80},{Y22 1200$\times$128$\times$1152},{Y23 1200$\times$128$\times$128},{Y24 1200$\times$128$\times$192},{Y25 1200$\times$128$\times$384},{Y26 1200$\times$16$\times$1152},{Y27 1200$\times$16$\times$144},{Y28 1200$\times$32$\times$288},{Y29 1200$\times$32$\times$64},{Y30 1200$\times$4$\times$16},{Y31 1200$\times$64$\times$576},{Y32 1200$\times$64$\times$64},{Y33 1200$\times$80$\times$128},{Y34 1200$\times$80$\times$80}}, enlarge y limits={abs=0.7}, xmin=-0.1, xmax=37.3, xlabel={ms per call, 1 thread (core 4)}, nodes near coords, nodes near coords style={font=\scriptsize, anchor=west, /pgf/number format/fixed, /pgf/number format/precision=1, /pgf/number format/zerofill}, legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}, reverse legend]
+\addplot[fill=vec, draw=none] coordinates {(31.10,2) (30.07,5) (27.29,15) (27.27,10) (22.56,0) (17.07,1) (13.82,8) (11.85,14) (10.91,4) (7.83,3) (7.52,11) (7.43,7) (5.38,17) (5.37,6) (4.27,19) (3.72,16) (3.71,18) (2.58,24) (2.57,20) (1.61,12) (1.57,29) (1.49,9) (1.05,23) (0.80,26) (0.68,22) (0.59,25) (0.48,31) (0.43,21) (0.25,32) (0.22,30) (0.21,27) (0.03,28) (-0.02,13)};
+\addplot[fill=his, draw=none] coordinates {(17.82,2) (21.76,5) (1.71,15) (2.86,10) (22.27,0) (13.22,1) (1.56,8) (1.07,14) (10.33,4) (7.62,3) (5.58,11) (5.60,7) (4.65,17) (4.24,6) (4.09,19) (3.41,16) (3.41,18) (0.11,24) (-0.11,20) (1.87,12) (0.13,29) (1.85,9) (0.91,23) (0.21,26) (1.03,22) (0.60,25) (0.34,31) (0.55,21) (0.65,32) (0.50,30) (0.51,27) (0.02,28) (0.16,13)};
+\legend{{A pack: our order $-$ his order},{1T gap: ours $-$ H\'ector's (\#94)}}
+\end{axis}
+\end{tikzpicture}
+\note{The 33 shapes with m $>$ 300, in H\'ector's layer order. Gap: \#94 times (GOPs by mean time, mean of 3 launches; ours uninstrumented, reference protocol, \texttt{--tmin 2}, tile 24x8; his \texttt{gemm.bin}, \texttt{TIMIN=2.0}). Order cost: \texttt{issue95\_pack\_order\_50\_2026-11-18\_141057.txt}, our model's mc and kc, MR 24.}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}
+\begin{axis}[house, xbar, bar width=6pt, width=12cm, height=4.3cm, y dir=reverse, ytick={0,1,2,3}, yticklabels={{Y00 A 76800$\times$27},{Y01 A 19200$\times$72},{Y05 A 19200$\times$144},{Y10 A 4800$\times$32}}, enlarge y limits={abs=0.7}, xmin=0.0, xmax=55.5, xlabel={ms to pack all of A, 1 thread (core 4)}, nodes near coords, nodes near coords style={font=\scriptsize, anchor=west, /pgf/number format/fixed, /pgf/number format/precision=1, /pgf/number format/zerofill}, legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}, reverse legend]
+\addplot[fill=vec, draw=none] coordinates {(12.13,0) (16.20,2) (6.88,1) (0.70,3)};
+\addplot[fill=scal, draw=none] coordinates {(34.69,0) (46.27,2) (23.95,1) (2.19,3)};
+\legend{{A pack, his order},{A pack, our order}}
+\end{axis}
+\end{tikzpicture}
+\note{Same bytes, same packed layout, same RVV copy; mc $\times$ kc blocks as the GEMM (\texttt{issue95\_pack\_order\_50\_2026-11-18\_141057.txt}).}
+\end{figure}
