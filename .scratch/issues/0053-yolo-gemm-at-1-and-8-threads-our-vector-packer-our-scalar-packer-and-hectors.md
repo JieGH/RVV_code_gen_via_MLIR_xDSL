@@ -6,8 +6,8 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/94
 
 **Role / Label:** `needs-triage`. Opened 2026-11-18 at the user's request. Board runs on `jbpi`.
 **Status:** open. Board series done 2026-11-18 (18 of 18 launches ok, every row PASS). Report written and linked (§7). Code review done (§7.1). Waiting for the user to close; then PR.
-**Report:** [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/report/issue94_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/report/issue94_report.tex), [README](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/README.md); folder `.scratch/reports/issue-94/`.
-**Final report (the #91 report with §1.2 redone from this rerun):** [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/final/issue94_final_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors/.scratch/reports/issue-94/final/issue94_final_report.tex).
+**Report:** [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-94/report/issue94_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-94/report/issue94_report.tex), [README](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-94/README.md); folder `.scratch/reports/issue-94/`.
+**Final report (the #91 report with §1.2 redone from this rerun):** [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-94/final/issue94_final_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-94/final/issue94_final_report.tex).
 **Branch:** `yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors`, cut from `pure-xdsl`.
 **Related:** #56 [[0040-parallel-gemm-design]] (ours, vector packer), #62 [[0045-read-hector-parallel-gemm]] (Héctor's `gemm.bin`), #83 [[0050-scalar-packing-rerun-of-yolo-and-paper-sweeps]] (scalar packer).
 
@@ -139,7 +139,7 @@ The user asked for one final report: the #91 report with its opening comparison 
 ### 7.3 Why ours trails at 1T (#95, 2026-11-18)
 
 - #95 found the main cause: our A packer reads A panel by panel, which costs a column jump per read. Héctor's packer reads it column by column.
-- Report: [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.tex).
+- Report: [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-95/report/issue95_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-95/report/issue95_report.tex).
 - The fix is pending in #96.
 - The final report's Part 4 has a short section on it.
 

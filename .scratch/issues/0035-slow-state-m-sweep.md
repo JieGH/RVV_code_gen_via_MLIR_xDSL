@@ -6,7 +6,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/51
 shows up in every shape with M up to 384 that ran on 16x15 and in none with M of 1000 or more, which all ran on 32x6/32x7).
 
 **Role / Label:** `needs-triage` — sub-issue of #48, priority 3 of the #48 follow-ups (opened 2026-10-14). Needs a new dataset file and a pinned-tile config, no generator change.
-**Status:** 🟢 Answered (§9, below). Board time: `jbpi` only, 25/25 runs, no red note (two earlier attempts on the same series were contaminated by another user's job and discarded — see §9).
+**Status:** ✅ Closed 2026-11-18 (housekeeping: answered, results merged). Was: 🟢 Answered (§9, below). Board time: `jbpi` only, 25/25 runs, no red note (two earlier attempts on the same series were contaminated by another user's job and discarded — see §9).
 **Target:** `jbpi` and `jbpi2`, core 4, quiet window, house rules of #39.
 **Shape(s):** new: M in {64, 128, 192, 256, 384, 512, 1000} with N=384 and K=384, and the same M at K=256. B2 as the steady control.
 **Primary Sources:**

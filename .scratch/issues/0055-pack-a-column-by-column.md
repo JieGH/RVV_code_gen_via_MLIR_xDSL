@@ -6,7 +6,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/96
 
 **Role / Label:** `needs-triage`. Opened 2026-11-18 at the user's request, from the #95 finding. **Pending: no implementation until the user says go.**
 **Status:** open, pending.
-**Related:** #95 [[0054-why-our-yolo-gemm-is-slower-than-hectors]] (the finding; report [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.tex)), #94 (the gap), #83/#85 (vector against scalar packer).
+**Related:** #95 [[0054-why-our-yolo-gemm-is-slower-than-hectors]] (the finding; report [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-95/report/issue95_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-95/report/issue95_report.tex)), #94 (the gap), #83/#85 (vector against scalar packer).
 
 ---
 

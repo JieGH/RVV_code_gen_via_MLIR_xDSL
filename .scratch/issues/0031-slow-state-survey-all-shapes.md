@@ -7,7 +7,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/47
 ([LaTeX source](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issues-31-43-engineering-report.tex)).
 
 **Role / Label:** `needs-triage` — follow-up of #41 (its §5, "what switches it"). Analysis only: no board time, no change to the generator or the driver.
-**Status:** ✅ Done 2026-09-29 (analysis only, no board time). Results in §7: the slow state is not only B3; it is in every shape with M up to 384 and K of 256 or more that ran on the 16x15 tile, and in none of the shapes with M of 1000 or more, which all ran on other tiles (32x6, 32x7), so the two cannot be told apart yet. It does not switch on at a fixed time, rep count or byte count.
+**Status:** ✅ Closed 2026-11-18 (housekeeping: answered, results merged). Was: ✅ Done 2026-09-29 (analysis only, no board time). Results in §7: the slow state is not only B3; it is in every shape with M up to 384 and K of 256 or more that ran on the 16x15 tile, and in none of the shapes with M of 1000 or more, which all ran on other tiles (32x6, 32x7), so the two cannot be told apart yet. It does not switch on at a fixed time, rep count or byte count.
 **Target:** the committed logs in `tests/pure_xdsl_blis_rvv/logs/`. No board.
 **Shape(s):** all: B1-B5, S1-S5, Reuse8/12/24, and the B3 variants (K256, N192-N320, `nc` sweeps).
 **Primary Sources:**

@@ -6,7 +6,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/52
 so the tile does not explain the gap) and #46 §7.2 (moving the buffers changes the reference's speed by about 30%).
 
 **Role / Label:** `needs-triage` — sub-issue of #48, priority 4 of the #48 follow-ups (opened 2026-10-14). Desk work: no board time, no code change. `ext/` stays read-only.
-**Status:** 🟡 Answered (§8-§10, below).
+**Status:** ✅ Closed 2026-11-18 (housekeeping: answered, results merged). Was: 🟡 Answered (§8-§10, below).
 **Target:** none (code read). A board test only as a later, separate step.
 **Shape(s):** B3 (64x384x384) and B3_K256, as built by each design.
 **Primary Sources:**
