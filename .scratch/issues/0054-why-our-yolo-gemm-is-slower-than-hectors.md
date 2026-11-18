@@ -3,7 +3,8 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/95
 
 **Role / Label:** `needs-triage`. Opened 2026-11-18 at the user's request. Diagnosis, board runs on `jbpi`.
-**Status:** open. Main cause found and measured (§7): our A packer reads A in a slow order. Fix not made; waiting for the user.
+**Status:** open. Main cause found and measured (§7): our A packer reads A in a slow order. Report written (§8). The fix is the pending issue #96, not started.
+**Report:** [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.tex), [README](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/README.md).
 **Branch:** `why-our-yolo-gemm-is-slower-than-hectors`, cut from the #94 branch (not `pure-xdsl`), because this work reads #94's committed logs, which are not on `pure-xdsl` until #94 merges.
 **Related:** #94 [[0053-yolo-gemm-at-1-and-8-threads-our-vector-packer-our-scalar-packer-and-hectors]] (the gap), #62 [[0045-read-hector-parallel-gemm]] (his code read), #79, #82.
 
@@ -159,12 +160,28 @@ All 50 shapes (`logs/issue95_pack_order_50_2026-11-18_*.txt`, our model's mc and
 | m > 300 (33) | 607.5 ms | 467.0 ms | 140.5 ms | 445.0 ms | 193.3 ms | 251.7 ms |
 | m = 300 (17) | 89.4 ms | 116.4 ms | -27.0 ms | 9.9 ms | 7.1 ms | 2.8 ms |
 
-- On the 33 shapes with m > 300, the read order alone costs 251.7 ms per pass. That is more than the whole 1T gap on those shapes (140.5 ms).
+- On the 33 shapes with m > 300, the pack test puts the read-order cost at 251.7 ms per pass, against a gap of 140.5 ms. **Correction (report step):** the test overstates absolute pack times. On Y01, Y05, Y09 and Y11 its pack time is above our whole call, and it overstates most on the k > kc shapes. Split by k:
+  - m > 300, k <= kc (23 shapes): gap 131.0 ms, order cost 162.2 ms. Same size; the test matches the GEMM best here.
+  - m > 300, k > kc (10 shapes): gap 9.5 ms, test order cost 89.5 ms. Not usable.
+  - So the gap sits on the large-m shapes where A is packed in one block of k, and there the order effect is the same size as the gap. The exact gain needs the in-GEMM change (#96).
 - On the m = 300 shapes A is small, the order costs little, and we are ahead.
 
 ### 7.4 Not yet measured
 
-- Our GEMM with a column-order A packer. This needs a change to the generated packer (the vector path), so it waits for the user.
+- Our GEMM with a column-order A packer. This needs a change to the generated packer (the vector path): pending issue #96.
 - 8 threads. The same packer runs per thread, but the 8T gap also includes Héctor's Y00 behaviour (#94).
 - MR 16 against MR 24 in his order: 0.34 ms against 0.71 ms for Y10's A. This is a smaller second effect.
 - H4 (compiler): not tested. The kernels already build at `-O3` (`CFLAGS`); only the driver and pack C++ build at `-O2`.
+
+## 8. Report
+
+`.scratch/reports/issue-95/report/issue95_report.pdf` (5 pages; [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.pdf), [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.tex)). Data from `report/make_data.py`, which reads only committed logs.
+
+It contains the answer, a glossary, where the gap is, the method, H1, H3, the cause with code side by side, two charts (gap against order cost per shape for m > 300; pack time in both orders for Y00, Y05, Y01, Y10), the group table split by k, the limits of the pack test, the not-measured list, and all 50 shapes.
+
+## 9. Closure
+
+- [x] Test loop, hypotheses, probes
+- [x] Cause found: A pack read order (§7)
+- [x] Report written and linked
+- [x] Pending fix issue opened: #96 (no implementation)

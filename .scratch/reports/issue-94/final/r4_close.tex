@@ -9,6 +9,9 @@
 \end{itemize}
 
 \section{Open items and limits}\label{sec:open}
+\subsection*{Why ours trails H\'ector's at 1 thread (\iss{95})}
+Our A packer reads the column-major A one MR-row panel at a time, jumping a full column per read; H\'ector's reads each column once. On jbpi at 1T the pack is 77\% of our time on Y10 and 90\% on Y05 (instrumented build, shares only), and the 1T gap sits on the 23 shapes with m $>$ 300 and k $\le$ kc (131.0 of 140.5 ms), where a board pack test puts the read-order cost at the same size (162.2 ms). Report: \texttt{.scratch/reports/issue-95/report/issue95\_report.pdf}. The fix (pack A column by column) is pending in \iss{96}, not started.
+
 \subsection*{One essential test, not yet run}
 \textbf{Our tile family inside H\'ector's GEMM} (\iss{82} \S1, \iss{79} part D). H\'ector's \texttt{gemm\_B3A2C0} (GEMMLib\_yolo \texttt{b292c92}) in a scratch copy, choosing by n among kernels H\'ector's library already has (32x8, 16x16; no new kernel code), timed against H\'ector's stock build: A-B-B-A (stock, patched, patched, stock), 8 threads, idle jbpi, \texttt{TIMIN=2.0}. Needed before ``use these tiles'' applies to H\'ector's code. Skip if H\'ector meant best tiles in any parallel GEMM; then \S4 keeps its caveat.
 

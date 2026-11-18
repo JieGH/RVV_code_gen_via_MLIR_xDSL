@@ -135,6 +135,13 @@ The user asked for one final report: the #91 report with its opening comparison 
 - Parts 2 and 3 are #91's, unchanged. The #91 slides are not updated.
 - #91's own report is left as committed; its issue gets a pointer here.
 
+### 7.3 Why ours trails at 1T (#95, 2026-11-18)
+
+- #95 found the main cause: our A packer reads A panel by panel, which costs a column jump per read. Héctor's packer reads it column by column.
+- Report: [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/why-our-yolo-gemm-is-slower-than-hectors/.scratch/reports/issue-95/report/issue95_report.tex).
+- The fix is pending in #96.
+- The final report's Part 4 has a short section on it.
+
 ## 8. Closure
 
 - [x] Driver and host test, tests passing
