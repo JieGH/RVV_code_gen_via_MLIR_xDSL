@@ -6,7 +6,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/53
 and the B3_K256 rows of the #48 report, where the scalar packer is slow at 16x14 and 16x15 (85-90% slow reps on `jbpi`).
 
 **Role / Label:** `needs-triage` — sub-issue of #48, priority 5 of the #48 follow-ups (opened 2026-10-14). Analysis only: no board time, no code change.
-**Status:** 🟡 Answered (§6-§7, below).
+**Status:** ✅ Closed 2026-11-18 (housekeeping: answered, results merged). Was: 🟡 Answered (§6-§7, below).
 **Target:** the committed #48 logs (`tests/pure_xdsl_blis_rvv/logs/issue48_2026-09-30_*`). No board.
 **Shape(s):** B3, B3_K256, B2, Reuse24 on the 7 tiles of the scalar arm: 16x8, 16x14, 16x15, 16x16, 8x15, 32x6, 4x4.
 **Primary Sources:**

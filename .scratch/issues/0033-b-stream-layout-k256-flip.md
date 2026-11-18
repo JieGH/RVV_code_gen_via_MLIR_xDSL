@@ -8,7 +8,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/49
 (`tests/pure_xdsl_blis_rvv/logs/issue48_2026-09-30_report.md`, "jbpi, B3_K256" and "jbpi2, B3_K256").
 
 **Role / Label:** `needs-triage` — sub-issue of #48, priority 1 of the #48 follow-ups (opened 2026-10-14). Step 1 (§8) and step 2 (§9/§11) are both done: H1 (stream count alone) is refuted, H2 (layout) holds but not as a simple monotone rule.
-**Status:** 🟢 Answered (§11, below). Board time: `jbpi` only, 12/12 runs, no red note.
+**Status:** ✅ Closed 2026-11-18 (housekeeping: answered, results merged). Was: 🟢 Answered (§11, below). Board time: `jbpi` only, 12/12 runs, no red note.
 **Target:** step 1 none (desk, done); step 2 `jbpi` and `jbpi2`, core 4, house rules of #39.
 **Shape(s):** B3 (64x384x384) and B3_K256 (64x384x256); B2 and Reuse24 as steady controls.
 **Primary Sources:**
