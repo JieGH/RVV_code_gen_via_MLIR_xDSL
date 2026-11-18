@@ -1,0 +1,265 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=1.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{pgfplots}
+\usepackage{hyperref}
+\hypersetup{colorlinks, linkcolor=black, urlcolor=blue!60!black}
+\pgfplotsset{compat=1.18, table/col sep=comma}
+\definecolor{vec}{HTML}{2A78D6}
+\definecolor{scal}{HTML}{EB6834}
+\definecolor{sq}{HTML}{1BAF7A}
+\definecolor{muted}{HTML}{6B6A64}
+\definecolor{gridc}{HTML}{E4E3DE}
+\pgfplotsset{house/.style={axis line style={muted}, tick style={muted}, tick label style={font=\scriptsize},
+  label style={font=\small}, title style={font=\small\bfseries, align=left}, legend style={font=\scriptsize, draw=none, fill=white},
+  legend cell align=left, xmajorgrids, grid style={gridc}},
+  keep real/.style={x filter/.expression={\thisrow{real}==#1 ? x : nan}, unbounded coords=discard}}
+\newcommand{\iss}[1]{\href{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/#1}{\##1}}
+\renewcommand{\arraystretch}{1.08}
+% \ratiochart{data file}{plot height}{title}: one row per point (first on top). Dot = scalar/vector GOPs (mean of
+% 3 launches each); whisker = noise band (scalar min / vector max .. scalar max / vector min). Filled dot = the gap is
+% larger than the wider launch range; open dot = inside it. Right margin: pack share vector / scalar (M2 or M3).
+\newcommand{\ratiochart}[3]{%
+\begin{tikzpicture}
+\begin{axis}[house, scale only axis, width=11.5cm, height=#2, y dir=reverse, clip=false,
+  ytick=data, yticklabels from table={#1}{label}, enlarge y limits={abs=0.6}, xmin=0.6, xmax=1.45,
+  xtick={0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4},
+  xlabel={scalar GOPs $\div$ vector GOPs (by mean time). Left of 1: vector packing is faster}, title={#3},
+  title style={at={(0,1)}, anchor=south west, xshift=-1.8cm, yshift=4pt}, axis y line*=left, axis x line*=bottom,
+  every node near coord/.append style={font=\scriptsize, anchor=west, xshift=2pt}]
+\addplot[draw=none, mark=none, forget plot] table[y=idx, x=ratio]{#1};% all rows, so ytick=data has every row
+\draw[muted, line width=0.8pt] ({axis cs:1,0} |- {rel axis cs:0,0}) -- ({axis cs:1,0} |- {rel axis cs:0,1});
+\addplot[only marks, mark=*, mark size=2.2pt, color=vec, keep real=1, error bars/.cd, x dir=both, x explicit,
+  error bar style={color=vec}] table[y=idx, x=ratio, x error minus=rlo, x error plus=rhi]{#1};
+\addplot[only marks, mark=o, mark size=2.2pt, color=muted, keep real=0, error bars/.cd, x dir=both, x explicit,
+  error bar style={color=muted}] table[y=idx, x=ratio, x error minus=rlo, x error plus=rhi]{#1};
+\addplot[only marks, mark=none, nodes near coords={\pgfmathprintnumber[fixed, fixed zerofill, precision=3]{\pgfplotspointmeta}}, point meta=explicit, forget plot]
+  table[y=idx, x expr=\thisrow{ratio}+\thisrow{rhi}, meta=ratio]{#1};
+\addplot[only marks, mark=none, nodes near coords, point meta=explicit symbolic, forget plot,
+  every node near coord/.append style={color=muted, anchor=west}]
+  table[y=idx, x expr=1.47, meta=shares]{#1};
+\end{axis}
+\end{tikzpicture}}
+\newcommand{\ratiofig}[4]{% file, height, title, caption
+\begin{figure}[htbp]\centering\ratiochart{#1}{#2}{#3}\\[2pt]
+{\footnotesize\color{muted} #4}\end{figure}}
+\newcommand{\onet}{1T: jbpi, core 4, uninstrumented build, reference protocol, \texttt{--tmin 3}, 3 launches per packer. Pack share from M2 (instrumented, warm-up protocol, 200 reps, 2 launches per packer).}
+\newcommand{\eightt}{8T: jbpi2, cores 0--7, uninstrumented build, reference protocol, \texttt{--tmin 3}, 3 launches per packer. Pack share from M3 (instrumented, mean over threads, 2 launches per packer).}
+% GOPs table for one sweep
+\newcommand{\gopstable}[2]{%
+\begin{longtable}{@{}l rrr rrr rr@{}}
+\caption*{\small\bfseries #2}\\
+\toprule
+ & \multicolumn{3}{c}{1T (jbpi, core 4)} & \multicolumn{3}{c}{8T (jbpi2, cores 0--7)} & \multicolumn{2}{c}{8T / 1T} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(l){8-9}
+point & vector & scalar & s/v & vector & scalar & s/v & vector & scalar \\
+\midrule\endhead
+\csname @@input\endcsname #1
+\bottomrule
+\end{longtable}}
+
+\begin{document}
+\begin{center}
+{\Large\bfseries When does vector packing pay off?}\\[4pt]
+Issue \iss{85}, sub-issue of \iss{83} \quad$\cdot$\quad BLIS-style FP32 GEMM on the SpacemiT K1 (X60, RVV, VLEN 256) \quad$\cdot$\quad 18 Nov 2026
+\end{center}
+
+\noindent \iss{83} found that scalar packing slows YOLO by 5--40\% but leaves BERT and Square alone, and explained it as
+\emph{pack share $\times$ extra pack cost}. Its shapes changed m, n, k and tile at once. This issue changes one
+parameter at a time around a YOLO-like base point (m = 1200, n = 16 or 256, k = 256, tile 24x8), at 1 and 8 threads,
+and times the pack and compute phases at both thread counts.
+
+\section*{Answer}
+\begin{itemize}\setlength\itemsep{2pt}
+\item \textbf{Vector packing pays off when n is small \emph{and} the packed blocks are small.} Pack share needs n small;
+the extra scalar cost needs small k (or small m). Their product is the slowdown:
+  \begin{itemize}\setlength\itemsep{1pt}
+  \item \textbf{n sets the pack share.} At k = 256: 87\% at n = 4, 77\% at n = 16, 48\% at n = 64, 7--11\% at n = 1024 (1T and 8T alike).
+  \item \textbf{k and m set the extra pack cost.} Scalar packing costs 1.2--3.4$\times$ the vector pack time when k $\le$ 64
+  (1.9$\times$ at m $\le$ 128, 1T), and only 1.02--1.12$\times$ when k $\ge$ 144: then the pack is limited by memory, not by
+  copy instructions.
+  \item \textbf{Largest gains} (scalar/vector GOPs): 1200$\times$4$\times$16 on every tile, 0.67--0.77 at 1T and 0.73--0.81 at 8T;
+  1200$\times$16$\times$16, 0.77 / 0.80; 64$\times$16$\times$256 at 1T, 0.73.
+  \end{itemize}
+\item \textbf{n = 16 with large k: a small, steady gain} (0.92--0.94 at 1T, 0.93--0.97 at 8T). Pack share is 80\% but scalar costs only 1.02--1.10$\times$ more.
+\item \textbf{n $\ge$ 128: no gain at 8T} (P-n: 0.99--1.00, inside the noise from n = 256; all n = 256 points 0.97--1.06 except the 16x4 case below). At 1T, n = 256 still gains at small m (0.92--0.96 at m = 64--300), where the packed blocks are small.
+\item \textbf{Tile barely matters.} Over the 5 tiles the ratio spans 0.67--0.77 at 1200$\times$4$\times$16 and 0.90--0.95 at 1200$\times$16$\times$256: the shape decides, not the tile.
+\item \textbf{Vector packing loses in two places. Both repeat in every launch, and neither is caused by packing:}
+  \begin{itemize}\setlength\itemsep{1pt}
+  \item 1T, tile 24x8, m = 1200--2400, n $\ge$ 128, k $\ge$ 144: scalar 3--17\% faster on 6 points (4 above the noise). M2 shows the vector pack is still faster (1.05--1.12$\times$); the \emph{compute} phase after vector packing is 5--10\% slower at n = 128, 512, 1024. The cause is not measured.
+  \item 8T, 1200$\times$256$\times$256, tile 16x4: scalar 42\% faster in M1 (35.3 against 24.8 GOPs, all 6 launches). In the instrumented build (M3) both take the same time (5.25 / 5.21 ms). The loss is tied to the uninstrumented binary or to the reference protocol; not tested further.
+  \end{itemize}
+\item \textbf{The \iss{83} model holds:} predicted scalar/vector (from M2/M3) is within 0.02 of the measured ratio on 25 of 46 points at each thread count, within 0.05 on 38 (1T) and 36 (8T). The misses are the two loss cases above, the tiny 1200$\times$4$\times$16 calls at 8T (threads wait 53--82\% of the call), and two 1T points where one M2 vector launch was disturbed (128 and 600$\times$256$\times$256).
+\item \textbf{Threads shrink the gain} at small n (n = 16, k = 256: 0.925 at 1T, 0.944 at 8T): each thread packs only its own rows of A.
+\end{itemize}
+
+\subsection*{Decision table}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.6cm} >{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}X@{}}
+\toprule
+region & scalar/vector & use \\
+\midrule
+n $\le$ 16 and k $\le$ 64 (any m, any tile) & 0.67--0.89 & \textbf{vector packing}: 12--50\% more GOPs, 1T and 8T \\
+n $\le$ 16, m $\le$ 128 (1T) & 0.73--0.74 & \textbf{vector packing} \\
+n $\le$ 32, k $\ge$ 144 & 0.90--0.97 & \textbf{vector packing}: 3--11\%, above noise \\
+n = 256, m $\le$ 300, 1T & 0.92--0.96 & \textbf{vector packing}: 4--9\% \\
+n = 64 & 0.97--0.98 & either: 2--3\%, at the noise at 1T \\
+n $\ge$ 128, 8T & 0.97--1.06 & either: mostly inside the noise \\
+n $\ge$ 128, k $\ge$ 144, m = 1200--2400, 1T, tile 24x8 & 1.03--1.17 & scalar measures faster; the loss is in compute, not packing (Part 3) \\
+1200$\times$256$\times$256, 8T, tile 16x4 & 1.42 & scalar measures faster in the uninstrumented build only (see Part 3) \\
+\bottomrule
+\end{tabularx}
+
+\section*{Glossary}
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}p{3.4cm} X@{}}
+vector / scalar packer & Code that copies a block of A or B into a contiguous buffer before the microkernel reads it. Vector: RVV loads and stores, 8 fp32 per instruction. Scalar (\texttt{--scalar-pack}): one float per load/store. Same layout and buffers. \\
+tile MRxNR & The microkernel's block of C: MR rows by NR columns. P-n, P-m, P-k use 24x8; P-tile tries five. \\
+m $\times$ n $\times$ k & C (m $\times$ n) += A (m $\times$ k) $\cdot$ B (k $\times$ n). \\
+mc, nc, kc & Cache blocking from the analytical model (\texttt{--no-nc-overrides}). nc = n at every point here, so each packed A element is used n times. \\
+pack share & Pack time $\div$ (pack + compute), from the instrumented build. A and B together. \\
+extra pack cost & Scalar pack time $\div$ vector pack time. \\
+predicted & (vector pack + compute) $\div$ (scalar pack + compute): the slowdown if only pack time changes. \\
+wait share (8T) & 1 $-$ (pack + compute) $\div$ wall time. Pack and compute are means over threads, so this is time spent at barriers. \\
+GOPs by mean time & 2$\cdot$m$\cdot$n$\cdot$k $\div$ mean time per call. The main metric. \\
+GOPs by median rep & Median over reps of each rep's GOPs. Less sensitive to a few slow reps. \\
+s/v & Scalar GOPs $\div$ vector GOPs, by mean time, mean of 3 launches each. Below 1: vector packing is faster. \\
+launch & One full run of the test: every point of every sweep. M1 has 3 launches per packer. \\
+A-B-B-A & Run order that interleaves the packers so slow drift hits both. M1: V S S V V S; M2/M3: V S S V. \\
+noise band, $\sim$ & Whisker = scalar min $\div$ vector max to scalar max $\div$ vector min, over launches. $\sim$ or an open dot: the gap is smaller than the wider launch range, so not a real difference. \\
+1T / 8T & 1 thread on core 4 (jbpi) / 8 threads on cores 0--7 (jbpi2; core 0 by the user's 8-thread exception, \iss{56}). \\
+uninstrumented build & \texttt{INSTRUMENTED=0}: no timers. All GOPs here come from it (M1). \\
+instrumented build & \texttt{--instr}: timers around pack and compute (M2, M3). Timers cost 11--17\% on short calls; only shares and ratios are used. \\
+reference / warm-up protocol & Reference: no warm-up, reps repeat until \texttt{--tmin} seconds pass (M1). Warm-up: warm-up, then 200 fixed reps (M2, M3). \\
+\end{tabularx}
+
+\section*{Runs}
+SpacemiT K1 boards, idle (other users checked before every launch). Logs in \texttt{tests/pure\_xdsl\_blis\_rvv/logs/}.
+
+\noindent\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+step & board & runs (\texttt{run\_2026-11-\ldots}) \\
+\midrule
+correctness 1T, oracle on, vector / scalar & jbpi & \texttt{17\_214311} (30/30 PASS), \texttt{17\_215328} (30/30 PASS) \\
+correctness 8T & jbpi2 & \texttt{17\_214206} (30/30 PASS), \texttt{17\_215120} (30/30 PASS) \\
+M1 1T, GOPs, V S S V V S & jbpi & \texttt{17\_220548}, \texttt{\_221808}, \texttt{\_223028}, \texttt{\_224248}, \texttt{\_225509}, \texttt{\_230730} \\
+M1 8T & jbpi2 & \texttt{17\_220239}, \texttt{\_221407}, \texttt{\_222532}, \texttt{\_223700}, \texttt{\_224829}, \texttt{\_225956} \\
+M2 1T, split, V S S V & jbpi & \texttt{17\_232351}, \texttt{\_234012}, \texttt{\_235635}, \texttt{18\_001255} \\
+M3 8T, split & jbpi2 & \texttt{17\_231101}, \texttt{\_232200}, \texttt{\_233258}, \texttt{\_234355} \\
+\bottomrule
+\end{tabularx}
+
+\medskip\noindent Correctness ran on small shapes under the oracle limit (\texttt{issue85\_correctness\_small.dat}: n = 4 and 1000, k = 16 and 1152, m = 4800, fringe rows and columns on all five tiles).
+
+\clearpage
+\section*{Part 1: scalar/vector by parameter}
+One chart per sweep and thread count. Right margin: pack share, vector / scalar packer.
+
+\ratiofig{data/pn_1t.csv}{5.2cm}{P-n, 1T: n varies, m = 1200, k = 256, tile 24x8}{\onet}
+\ratiofig{data/pn_8t.csv}{5.2cm}{P-n, 8T}{\eightt}
+\ratiofig{data/pk16_1t.csv}{4.0cm}{P-k, n = 16, 1T: k varies, m = 1200, tile 24x8}{\onet}
+\ratiofig{data/pk16_8t.csv}{4.0cm}{P-k, n = 16, 8T}{\eightt}
+\ratiofig{data/pk256_1t.csv}{4.0cm}{P-k, n = 256, 1T}{\onet}
+\ratiofig{data/pk256_8t.csv}{4.0cm}{P-k, n = 256, 8T}{\eightt}
+\ratiofig{data/pm16_1t.csv}{4.0cm}{P-m, n = 16, 1T: m varies, k = 256, tile 24x8}{\onet}
+\ratiofig{data/pm16_8t.csv}{4.0cm}{P-m, n = 16, 8T}{\eightt}
+\ratiofig{data/pm256_1t.csv}{4.0cm}{P-m, n = 256, 1T}{\onet}
+\ratiofig{data/pm256_8t.csv}{4.0cm}{P-m, n = 256, 8T}{\eightt}
+\ratiofig{data/ptile_1t.csv}{8.4cm}{P-tile, 1T: five tiles on three shapes (m = 1200; n, k = 4, 16 / 16, 256 / 256, 256)}{\onet}
+\ratiofig{data/ptile_8t.csv}{8.4cm}{P-tile, 8T}{\eightt}
+\clearpage
+
+\section*{Part 2: the cause}
+\subsection*{Which parameter sets what}
+\begin{tabularx}{\textwidth}{@{}l >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+parameter & pack share (vector packer) & extra pack cost (scalar $\div$ vector pack time) \\
+\midrule
+n (P-n) & falls with n: 87\% (n = 4), 77\% (16), 48\% (64), 30\% (128), 20\% (256), 7\% (1024) at 1T; same at 8T (87\%, 79\%, 52\%, 37\%, 25\%, 10\%) & flat, 1.05--1.12 (k = 256: memory-bound pack) \\
+k (P-k, n = 16) & 31\% (k = 16), 42\% (32), then 75--79\% from k = 64 at 1T; 16\%, 47\%, then 51--80\% at 8T & high at small k: 1.69 / 1.41 / 1.20 (k = 16 / 32 / 64) at 1T, 3.04 / 1.55 / 1.41 at 8T; 1.02--1.12 from k = 144 \\
+k (P-k, n = 256) & 3--6\% at k $\le$ 32, then 20--21\% (1T); 4--10\% at k $\le$ 64, then 22--25\% (8T) & 1.15--1.72 at k $\le$ 64, but the share is too small to matter \\
+m (P-m, n = 16) & 32--48\% at m $\le$ 600, 77--80\% at m $\ge$ 1200 (1T) & 1.9 at m = 64--128 (1T), 1.23--1.26 at m = 300--600, 1.03--1.10 above \\
+tile (P-tile) & 36--63\% (1200$\times$4$\times$16), 74--78\% (1200$\times$16$\times$256), 19--23\% (1200$\times$256$\times$256), 1T & 1.63--1.83, 1.10--1.14, 1.05--1.16: set by the shape, not the tile \\
+\bottomrule
+\end{tabularx}
+
+\medskip\noindent\textbf{Reading.} Pack share follows n: each packed A element is used n times. The extra cost follows
+the size of the packed block: when the block is small (small k, small m) it stays in cache, the copy instructions are
+the limit, and the vector packer moves 8 floats per instruction. When the block is large, both packers wait on memory
+and cost about the same. The product of the two is the slowdown, which is why n = 16 with k = 1152 (share 80\%, extra cost 1.02--1.10) gains only 3--8\%, while n = 16 with k = 16 gains 26--29\%.
+
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}
+\begin{axis}[house, width=0.62\textwidth, height=7.2cm, xmin=0.45, xmax=1.25, ymin=0.45, ymax=1.45, ymajorgrids,
+  xlabel={predicted scalar/vector (M2 / M3 pack and compute times)}, ylabel={measured scalar/vector (M1 GOPs)},
+  title={Does pack share $\times$ extra pack cost predict the slowdown?}, legend style={at={(0,1)}, anchor=north west}]
+\addplot[muted, domain=0.45:1.25, samples=2, forget plot] {x};
+\addplot[only marks, mark=*, mark size=1.8pt, color=vec, mark options={draw=white}] table[x=pred, y=meas]{data/model_1t.csv};
+\addplot[only marks, mark=square*, mark size=1.8pt, color=scal, mark options={draw=white}] table[x=pred, y=meas]{data/model_8t.csv};
+\legend{1T (jbpi), 8T (jbpi2)}
+\end{axis}
+\end{tikzpicture}\\[2pt]
+{\footnotesize\color{muted} One dot per point (46 per thread count). On the line: the pack-time change explains the GOPs change. Median miss 0.016 (1T) and 0.018 (8T). Far above the line: 8T 1200$\times$256$\times$256 16x4 (1.42 measured against 0.99 predicted) and the 1T 24x8 points with n $\ge$ 128 (Part 3).}
+\end{figure}
+
+\subsection*{8 threads: waiting}
+Wait share (8T, M3, vector packer): 10--38\% on most points; 48--82\% on the shortest calls (1200$\times$4$\times$16, 64$\times$16$\times$256, 1200$\times$16$\times$16, all under 0.06 ms) and 62\% at 64$\times$256$\times$256, where 8 threads share 64 rows. There the barriers, not packing, take most of the call, and the model misses by up to 0.25.
+
+\subsection*{8T/1T above 8}
+Only one point scales better than 8$\times$: 1200$\times$16$\times$64, 10.0$\times$ with vector packing and 9.6$\times$ with scalar (1T on jbpi, 8T on jbpi2). At 1T its pack share jumps from 42\% (k = 32) to 75\% (k = 64) and its GOPs halve (5.53 to 2.49); at 8T the share stays at 47--51\%. The 1T pack becomes slow past k = 32, the 8-thread one does not. That each thread's smaller slice of A fits in cache is the likely reason; cache misses were not counted.
+
+\section*{Part 3: where vector packing measures slower}
+\subsection*{1T, tile 24x8, n $\ge$ 128}
+GOPs by mean time per launch, M1 (jbpi, core 4):
+
+\begin{tabular}{@{}l l l r@{}}
+\toprule
+point & vector, 3 launches & scalar, 3 launches & s/v \\
+\midrule
+1200$\times$128$\times$256 & 5.57, 5.77, 5.77 & 5.97, 5.95, 5.97 & 1.046 \\
+1200$\times$512$\times$256 & 6.87, 6.96, 8.02 & 7.88, 7.93, 7.93 & 1.087 \\
+1200$\times$1024$\times$256 & 7.03, 7.16, 7.28 & 8.37, 8.39, 8.39 & 1.171 \\
+2400$\times$256$\times$256 & 6.70, 6.47, 6.92 & 7.54, 7.52, 7.49 & 1.122 \\
+\bottomrule
+\end{tabular}
+
+\medskip\noindent M2 (ms per call, launch 1 / launch 2): the vector pack is faster at every point (1.05--1.12$\times$),
+but the compute phase after vector packing is slower: 10.23 / 10.03 against 9.12 / 9.17 (n = 128), 39.2 / 40.1 against
+36.8 / 36.7 (n = 512), 78.5 / 76.8 against 73.6 / 73.6 (n = 1024). Same microkernel, same buffer layout. The vector side
+is also unsteady: its median rep is below its mean (n = 1024: 6.58 against 7.16), the scalar side's is not. At n = 256 (1200 and 2400 rows) M2 shows no compute
+difference, so the M1 loss there stays unexplained. Other tiles on 1200$\times$256$\times$256 (32x4, 32x7) favour vector packing. Not measured: why the microkernel runs slower on a
+buffer the vector packer filled (cache state after vector stores, or buffer placement).
+
+\subsection*{8T, 1200$\times$256$\times$256, tile 16x4}
+M1: vector 24.69, 24.90, 24.75 GOPs; scalar 35.29, 35.17, 35.28 (median rep 23.3 against 35.4). M3 (instrumented,
+warm-up protocol): vector 5.25 ms, scalar 5.21 ms per call, pack share 15\% / 17\%, wait share 13\% / 11\%. The packer
+change costs nothing measurable once timers and warm-up are in, so the M1 loss comes from the uninstrumented binary or
+from the reference protocol (no warm-up). One check would settle it: the uninstrumented build with the warm-up protocol
+(\texttt{--no-ref-protocol}) on this point. Not run.
+
+\section*{Limits}
+\begin{itemize}\setlength\itemsep{1pt}
+\item M2 and M3 are instrumented: timers cost 11--17\%. Only shares and ratios are used, never their GOPs. 2 launches per packer, so they carry no launch-range check.
+\item One board per thread count: 1T on jbpi, 8T on jbpi2 (same SoC). The 8T/1T column crosses boards.
+\item Pack time is A and B together. The sweeps separate them: P-n changes how often A is repacked, P-m how far B's pack is spread.
+\item Synthetic shapes around a YOLO-like base point, not real layers. One tile (24x8) outside P-tile.
+\item Two packers compared, not packing against no packing.
+\end{itemize}
+
+\clearpage
+\section*{Appendix: GOPs by mean time / by median rep}
+Best of the two packers in bold per thread count; $^{\sim}$: the gap is inside the launch range. Mean of 3 launches per packer.
+{\footnotesize\setlength\tabcolsep{4pt}
+\gopstable{data/tab_pn.tex}{P-n (m = 1200, k = 256, tile 24x8)}
+\gopstable{data/tab_pm16.tex}{P-m, n = 16 (k = 256, tile 24x8)}
+\gopstable{data/tab_pm256.tex}{P-m, n = 256 (k = 256, tile 24x8)}
+\gopstable{data/tab_pk16.tex}{P-k, n = 16 (m = 1200, tile 24x8)}
+\gopstable{data/tab_pk256.tex}{P-k, n = 256 (m = 1200, tile 24x8)}
+\gopstable{data/tab_ptile.tex}{P-tile}
+}
+\end{document}

@@ -1,0 +1,3 @@
+▶ T1 (1200x4x16)         | best variant 16x15 [16 rows x 15 columns of C per tile] | 4.89 GOPs by mean time [whole GEMM call, packing included] | 4.97 GOPs median rep | 95420 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:1200 nc:4 kc:16)
+▶ Pn16 (1200x16x256)     | best variant 16x15 [16 rows x 15 columns of C per tile] | 8.70 GOPs by mean time [whole GEMM call, packing included] | 8.86 GOPs median rep | 2656 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:768 nc:16 kc:128)
+▶ Pn256 (1200x256x256)   | best variant 16x15 [16 rows x 15 columns of C per tile] | 42.73 GOPs by mean time [whole GEMM call, packing included] | 43.09 GOPs median rep | 815 reps | ⏭️ SKIP [correctness not checked] (cache blocking mc:768 nc:256 kc:128)

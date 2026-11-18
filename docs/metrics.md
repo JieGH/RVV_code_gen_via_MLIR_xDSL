@@ -59,6 +59,8 @@ The timers above are not free. Every microkernel tile is bracketed by a
 | `KerGOPs_*` denominator | `kernel_time + rvv_pack_time` | that rep's own wall clock |
 | pack/compute breakdown, `*_Pack_GBs`, perf counters | yes | `nan` — they do not exist |
 
+**8 threads (`--threads N --instr`, issue #85):** each thread sums its own pack (A and B) and compute time; `Vector_Pack_Time_ms` / `Scalar_Pack_Time_ms` and `Compute_Time_ms` are the **mean over the threads**. Barrier waits count in neither, so pack + compute is less than `RVV_Time_ms`; the difference is the wait (load imbalance plus barriers). The instrumented `KerGOPs_*` divide by pack + compute and so leave the waits out: at 8 threads use the shares only, never those GOPs. No perf counters at 8 threads.
+
 Both builds do exactly the same arithmetic (verified `PASS` against the scalar
 reference either way) and run the same passes, including the scalar-pack pass,
 which doubles as the RVV loop's warm-up. They differ in the timers and nothing

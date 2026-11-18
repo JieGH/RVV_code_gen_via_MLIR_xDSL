@@ -1,0 +1,12 @@
+correctness	8t	vector	jbpi2	run_2026-11-17_214206
+correctness	8t	scalar	jbpi2	run_2026-11-17_215120
+M1-launch1	8t	vector	jbpi2	run_2026-11-17_220239
+M1-launch2	8t	scalar	jbpi2	run_2026-11-17_221407
+M1-launch3	8t	scalar	jbpi2	run_2026-11-17_222532
+M1-launch4	8t	vector	jbpi2	run_2026-11-17_223700
+M1-launch5	8t	vector	jbpi2	run_2026-11-17_224829
+M1-launch6	8t	scalar	jbpi2	run_2026-11-17_225956
+M3-launch1	8t	vector	jbpi2	run_2026-11-17_231101
+M3-launch2	8t	scalar	jbpi2	run_2026-11-17_232200
+M3-launch3	8t	scalar	jbpi2	run_2026-11-17_233258
+M3-launch4	8t	vector	jbpi2	run_2026-11-17_234355
