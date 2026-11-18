@@ -126,14 +126,16 @@ for name, f in REGIONS:
         print(f"| {name} | {th} | {len(rs)} | {min(r):.3f}-{max(r):.3f} | {sum(x['real'] for _, x in rs)} | "
               f"{min(rm):.3f}-{max(rm):.3f} |")
 
+
 # BERT/Square scalar/vector rows for the deck table: vector and scalar GOPs (mean time / median rep), s/v, 1T then 8T.
 P = {th: list(csv.DictReader(l for l in open(os.path.join(DATA, f"paper_{th}.csv")) if not l.startswith("#")))
      for th in ("1t", "8t")}
 with open(os.path.join(DATA, "paper_sv.tex"), "w") as f:
     for a, b in zip(P["1t"], P["8t"]):
         cells = [a["label"]]
-        for r in (a, b):
-            cells += [f"{r['vec']} / {r['vmed']}", f"{r['scal']} / {r['smed']}", f"{float(r['ratio']):.3f}"]
+        for r, th in ((a, "paper_1t"), (b, "paper_8t")):
+            vt, st_ = ALL[th][0][r["label"]][0], ALL[th][1][r["label"]][0]
+            cells += [f"{vt} {r['vec']} / {r['vmed']}", f"{st_} {r['scal']} / {r['smed']}", f"{float(r['ratio']):.3f}"]
         f.write(" & ".join(cells) + " \\\\\n")
 
 # Per-layer YOLO rows for the report appendix: tile and GOPs (mean time / median rep) per packer, s/v, 1T then 8T.
@@ -147,3 +149,124 @@ with open(os.path.join(DATA, "yolo_sv_rows.tex"), "w") as f:
             cells += [f"{vb[l][0]} {vb[l][1]:.2f} / {vb[l][2]:.2f}", f"{sb[l][0]} {sb[l][1]:.2f} / {sb[l][2]:.2f}",
                       f"{sb[l][1] / vb[l][1]:.3f}"]
         f.write(" & ".join(cells) + " \\\\\n")
+
+# Cache blocking (mc, nc, kc) for every chart label and table: read from the console logs (blocking.py).
+from blocking import blk  # noqa: E402
+
+
+def span(xs):
+    lo, hi = min(xs), max(xs)
+    return f"{lo}" if lo == hi else f"{lo}--{hi}"
+
+
+def blk_range(layers, dims, tile):
+    """'mc=a--b kc=c--d' over the layers at one tile; YOLO has nc = n on every layer (asserted)."""
+    bs = [blk(*dims[l], tile) for l in layers]
+    assert all(b[1] == dims[l][1] for b, l in zip(bs, layers)), tile
+    return f"mc={span([b[0] for b in bs])} kc={span([b[2] for b in bs])}"
+
+
+def readcsv(path):
+    lines = open(path).read().splitlines()
+    head = [l for l in lines if l.startswith("#")]
+    return head, list(csv.DictReader(l for l in lines if not l.startswith("#")))
+
+
+def writecsv(path, head, rows):
+    with open(path, "w") as f:
+        f.write("".join(h + "\n" for h in head))
+        w = csv.DictWriter(f, fieldnames=list(rows[0]), lineterminator="\n")
+        w.writeheader()
+        w.writerows(rows)
+
+
+v1, s1, ydims, yrows = ALL["yolo_1t"]
+v8, s8, _, _ = ALL["yolo_8t"]
+by_n = {}
+for l in yrows:
+    by_n.setdefault(ydims[l][1], []).append(l)
+_, t1 = readcsv(os.path.join(DATA, "tile1t_by_n.csv"))
+_, t8 = readcsv(os.path.join(DATA, "tile8t_by_n.csv"))
+with open(os.path.join(DATA, "yolo_blk_by_n.csv"), "w") as f:
+    f.write("# Made by make_data.py: cache blocking per n group and tile (logs via blocking.py); nc = n\n")
+    f.write("idx,n,b2408,b168,b164,best1,b1,best8,b8\n")
+    for i, (n, a, b) in enumerate(zip(sorted(by_n), t1, t8)):
+        L = by_n[n]
+        cells = [str(i), str(n)] + [blk_range(L, ydims, t) for t in ("24x8", "16x8", "16x4")]
+        cells += [a["tile"], blk_range(L, ydims, a["tile"]), b["t8"], blk_range(L, ydims, b["t8"])]
+        f.write(",".join(cells) + "\n")
+
+# YOLO per-layer blocking table (appendix): vector best tile each thread count, plus 24x8 and 16x8 of Part 1; mc/kc (nc = n).
+with open(os.path.join(DATA, "yolo_blk_rows.tex"), "w") as f:
+    for l in yrows:
+        m, n, k = ydims[l]
+        cell = lambda t: "{}/{}".format(*blk(m, n, k, t)[::2])
+        f.write(" & ".join([l, f"{m}$\\times${n}$\\times${k}", cell("24x8"), cell("16x8"),
+                            f"{v1[l][0]} {cell(v1[l][0])}", f"{v8[l][0]} {cell(v8[l][0])}",
+                            f"{s1[l][0]} {cell(s1[l][0])}", f"{s8[l][0]} {cell(s8[l][0])}"]) + " \\\\\n")
+
+# Paper shapes: chart labels per tile, and a blocking table for every tile the Part 2 tables name.
+head, prow = readcsv(os.path.join(DATA, "paper_tiles.csv"))
+PDIMS = [ALL["paper_1t"][2][r["label"].split()[0]] for r in prow]
+for r, d in zip(prow, PDIMS):
+    for col, t in (("l168", "16x8"), ("l327", "32x7"), ("l1615", "16x15")):
+        r[col] = "{} mc={} nc={} kc={}".format(t, *blk(*d, t))
+writecsv(os.path.join(DATA, "paper_tiles.csv"), head, prow)
+with open(os.path.join(DATA, "paper_blk_rows.tex"), "w") as f:
+    for r, d in zip(prow, PDIMS):
+        f.write(" & ".join([r["label"].split()[0], "$\\times$".join(map(str, d))]
+                           + ["{}/{}/{}".format(*blk(*d, t)) for t in ("32x7", "16x15", "16x8", "16x12", "8x24")]) + " \\\\\n")
+
+# #85 charts: right-margin label = tile and blocking, then pack share; dims from the matching table rows.
+import re  # noqa: E402
+DIMRE = re.compile(r"(\d+)\$\\times\$(\d+)\$\\times\$(\d+)(?:, (\d+x\d+))?")
+for sweep in ("pn", "pk16", "pk256", "pm16", "pm256", "ptile"):
+    pts = [DIMRE.search(l).groups() for l in open(os.path.join(out85, "data", f"tab_{sweep}.tex"))]
+    for th in ("1t", "8t"):
+        path = os.path.join(out85, "data", f"{sweep}_{th}.csv")
+        head, rows = readcsv(path)
+        assert len(rows) == len(pts), (sweep, th)
+        for r, (m, n, k, t) in zip(rows, pts):
+            t = t or "24x8"
+            r["shares"] = r["shares"].replace("%", r"\%")  # % starts a TeX comment once the column is not the last
+            r["blk"] = "{} mc={} nc={} kc={} \\textbar\\ {}".format(t, *blk(int(m), int(n), int(k), t), r["shares"])
+        writecsv(path, head, rows)
+
+# #83 T4 chart: shape, its T4 tile and blocking on the y label.
+T4TILE = {"Y47": "16x4", "Y14": "24x4", "Y30": "32x4", "Y40": "24x8", "Y10": "24x8", "Y29": "32x4", "Y19": "32x7",
+          "Y42": "24x8", "B2": "16x15", "B1": "32x7", "S1": "32x7"}
+head, rows = readcsv(os.path.join(REPO, ".scratch/reports/issue-83/report/data/t4_time.csv"))
+for r in rows:
+    name, dims = r["label"].split("\\\\")[0].split()
+    m, n, k = map(int, dims.split("x"))
+    r["label"] = "{} {}\\\\{} mc={} nc={} kc={}".format(name, dims, T4TILE[name], *blk(m, n, k, T4TILE[name]))
+writecsv(os.path.join(DATA, "t4_time.csv"), ["# Copy of issue-83/report/data/t4_time.csv; label carries the T4 tile and its blocking (make_data.py)"], rows)
+
+# Part 1 chart labels: tile and blocking range per n group (ours); his GEMM uses fixed MC = KC = 256, NC = n.
+for name, cols in (("engine_by_n.csv", (("lours", "24x8"),)),
+                   ("tile1t_by_n.csv", (("lbest", None), ("l168", "16x8"), ("l164", "16x4")))):
+    head, rows = readcsv(os.path.join(DATA, name))
+    for r, n in zip(rows, sorted(by_n)):
+        assert r["label"].startswith(f"n={n} "), (name, r["label"])
+        for col, t in cols:
+            t = t or r["tile"]
+            r[col] = f"{t} {blk_range(by_n[n], ydims, t)}"
+        if name == "engine_by_n.csv":
+            r["lhis"] = "16x4" if n == 4 else "16x8"
+    writecsv(os.path.join(DATA, name), head, rows)
+
+# #85 tables: drop the bold on the faster packer; keep the ~ on gaps inside the launch range.
+BOLD = re.compile(r"\\textbf\{([^}]*)\}(\$\^\{\\sim\}\$)?")
+for sweep in ("pn", "pk16", "pk256", "pm16", "pm256", "ptile"):
+    path = os.path.join(out85, "data", f"tab_{sweep}.tex")
+    rows = []
+    for line in open(path):
+        c = line.rstrip().removesuffix("\\\\").rstrip().split(" & ")
+        for a in (1, 4):
+            for i, j in ((a, a + 1), (a + 1, a)):
+                if mt := BOLD.fullmatch(c[i]):
+                    c[i] = mt.group(1) + (mt.group(2) or "")
+                    break
+        rows.append(" & ".join(c) + " \\\\\n")
+    assert not any("textbf" in r for r in rows), sweep
+    open(path, "w").writelines(rows)

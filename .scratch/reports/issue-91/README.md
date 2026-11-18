@@ -2,9 +2,10 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/91 · issue write-up: `.scratch/issues/0052-present-yolo-bert-square-and-packing-findings.md`.
 
-- **Report (PDF, A4, 19 pages):** [`report/issue91_report.pdf`](report/issue91_report.pdf) ([LaTeX](report/issue91_report.tex), parts `r0_answer` … `r5_appendix`): answer, glossary, setup, full tables per part, all #85 sweep charts, appendix with every run folder, all 50 YOLO layers and every #85 point.
+- **Report (PDF, A4, 21 pages):** [`report/issue91_report.pdf`](report/issue91_report.pdf) ([LaTeX](report/issue91_report.tex), parts `r0_answer` … `r5_appendix`): answer, glossary, setup, full tables per part, all #85 sweep charts, appendix with every run folder, all 50 YOLO layers and every #85 point.
 - **Deck (PDF):** [`deck/issue91_deck.pdf`](deck/issue91_deck.pdf) ([LaTeX](deck/issue91_deck.tex), sections `s1_setup_yolo.tex`, `s2_paper.tex`, `s3_packing.tex`, `s4_close.tex`)
 - **Data:** `deck/data/` (CSV files name their source in a `#` line); packing numbers from [`deck/make_data.py`](deck/make_data.py) → `deck/data/packing_tables.md`, `deck/data/p85_tables.md`, `deck/p85/data/`.
+- **Cache blocking:** every chart label gives the microkernel tile, then its mc / nc / kc, with no repeated GOPs value. [`deck/blocking.py`](deck/blocking.py) reads mc / nc / kc from the committed console logs (1,297 shape/tile pairs, one value each). The Python copy of the cache model does not always match the board's C model, so it is not used. Per-layer YOLO blocking: report Appendix C; per-shape BERT/Square blocking: report §2.
 - **No new board runs.** Every number comes from committed logs of #56, #61, #62, #63, #71, #79, #83, #85.
 
 Build: from `deck/`, `python3 make_data.py` (run from the repo root, see its docstring), then `tectonic -X compile issue91_deck.tex`.
@@ -12,7 +13,7 @@ Build: from `deck/`, `python3 make_data.py` (run from the repo root, see its doc
 ## Answers
 
 1. **YOLO tiles (Héctor, #58).**
-   - 1T: 24x8 for the whole network, 4.26 GOPs, against 3.79 for our GEMM at his 16x8 tile.
+   - 1T: 24x8 for the whole network, 4.26 GOPs, against 3.79 for our GEMM at Héctor's 16x8 tile.
    - 8T, in our GEMM, a family by n:
      - MR 32 / NR 4 for n ≤ 8
      - MR 32 / NR 6-7 for n = 16-64
@@ -51,5 +52,5 @@ Build: from `deck/`, `python3 make_data.py` (run from the repo root, see its doc
 
 ## Essential test (not run)
 
-- **The test:** our tile family inside Héctor's own GEMM (#82 §1). It is needed before "use these tiles" applies to his code.
-- **When to skip it:** if he meant best tiles in any parallel GEMM.
+- **The test:** our tile family inside Héctor's own GEMM (#82 §1). It is needed before "use these tiles" applies to Héctor's code.
+- **When to skip it:** if Héctor meant best tiles in any parallel GEMM.

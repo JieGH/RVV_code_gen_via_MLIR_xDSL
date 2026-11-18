@@ -19,6 +19,7 @@
 \definecolor{sq}{HTML}{1BAF7A}
 \definecolor{muted}{HTML}{6B6A64}
 \definecolor{gridc}{HTML}{E4E3DE}
+
 \pgfplotsset{house/.style={axis line style={muted}, tick style={muted}, tick label style={font=\scriptsize},
   label style={font=\small}, legend style={font=\scriptsize, draw=none, fill=white},
   legend cell align=left, xmajorgrids, grid style={gridc}},
@@ -30,10 +31,10 @@
 \renewcommand{\arraystretch}{1.08}
 % \ratiochart{file}{height}{xmax}: dot = scalar/vector GOPs by mean time (mean of 3 launches each); whisker = noise band
 % (scalar min / vector max .. scalar max / vector min); filled = gap outside the launch range, open = inside.
-% Right margin: pack share vector / scalar (instrumented build).
+% Right margin: tile and cache blocking (from the run logs), then pack share vector / scalar (instrumented build).
 \newcommand{\ratiochart}[3]{%
 \begin{tikzpicture}
-\begin{axis}[house, scale only axis, width=11cm, height=#2, y dir=reverse, clip=false,
+\begin{axis}[house, scale only axis, width=8.6cm, height=#2, y dir=reverse, clip=false,
   ytick=data, yticklabels from table={#1}{label}, enlarge y limits={abs=0.6}, xmin=0.6, xmax=#3,
   xlabel={scalar GOPs $\div$ vector GOPs (by mean time); left of 1: vector packing is faster},
   axis y line*=left, axis x line*=bottom,
@@ -44,11 +45,9 @@
   error bar style={color=vec}] table[y=idx, x=ratio, x error minus=rlo, x error plus=rhi]{#1};
 \addplot[only marks, mark=o, mark size=2.2pt, color=muted, keep real=0, error bars/.cd, x dir=both, x explicit,
   error bar style={color=muted}] table[y=idx, x=ratio, x error minus=rlo, x error plus=rhi]{#1};
-\addplot[only marks, mark=none, nodes near coords={\pgfmathprintnumber[fixed, fixed zerofill, precision=3]{\pgfplotspointmeta}}, point meta=explicit, forget plot]
-  table[y=idx, x expr=\thisrow{ratio}+\thisrow{rhi}, meta=ratio]{#1};
 \addplot[only marks, mark=none, nodes near coords, point meta=explicit symbolic, forget plot,
   every node near coord/.append style={color=muted, anchor=west}]
-  table[y=idx, x expr=#3+0.02, meta=shares]{#1};
+  table[y=idx, x expr=#3+0.02, meta=blk]{#1};
 \end{axis}
 \end{tikzpicture}}
 \newcommand{\ratiofig}[4]{% file, height, xmax, caption

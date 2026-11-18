@@ -49,12 +49,12 @@ best tile changes on & 13 & 20 \\
 \end{itemize}
 \end{column}
 \end{columns}
-\src{\iss{83}: jbpi, uninstrumented, reference protocol, \texttt{--tmin 2}, 19 tiles, 3 launches per side. Vector side = the \iss{61} (1T) and \iss{63} (8T) runs of 15--17 Nov; scalar side 17 Nov; not interleaved, so gaps under 3\% are not called a difference.}
+\src{\iss{83}: jbpi, uninstrumented, reference protocol, \texttt{--tmin 2}, 19 tiles, 3 launches per side. Vector side = the \iss{61} (1T) and \iss{63} (8T) runs of 15--17 Nov; scalar side 17 Nov; not interleaved, so gaps under 3\% are not called a difference. Best tiles vary by layer: tile and cache blocking per layer in the report, Appendix B and C.}
 \end{frame}
 
 \begin{frame}{BERT and Square: within the board/day gap, except B3 at 1T}
-\scriptsize
-\begin{tabular}{@{}l rrr rrr@{}}
+\tiny\setlength\tabcolsep{3pt}
+\begin{tabular}{@{}l llr llr@{}}
 \toprule
  & \multicolumn{3}{c}{1T (core 4)} & \multicolumn{3}{c}{8T (cores 0--7)} \\
 \cmidrule(lr){2-4}\cmidrule(l){5-7}
@@ -65,7 +65,7 @@ shape & vector & scalar & s/v & vector & scalar & s/v \\
 \end{tabular}
 
 \vspace{4pt}
-GOPs by mean time / by median rep, best tile each side, mean of 3 launches. s/v by mean time.
+Best tile and its GOPs by mean time / by median rep, each side, mean of 3 launches. s/v by mean time. Tile blocking per shape: report \S2.
 \begin{itemize}\setlength\itemsep{2pt}
 \item s/v median 0.983 (1T) and 0.992 (8T); best tile unchanged except B3 at 1T. At 1T, a steady 1--3\% scalar loss on most shapes, inside the 3\% board/day gap.
 \item B3 at 1T (1.227) is real and steady: B3 (64$\times$384$\times$384) is the shape where the vector packer is slow (\iss{36}). At 16x15 the vector side gives 4.98 GOPs, the scalar side 8.60; the vector side's best, 32x7, is steady at 7.01.
@@ -78,18 +78,15 @@ GOPs by mean time / by median rep, best tile each side, mean of 3 launches. s/v 
 \begin{columns}[T]
 \begin{column}{0.62\textwidth}
 \begin{tikzpicture}
-\begin{axis}[house, width=\linewidth, height=6.6cm, y dir=reverse, bar width=3.5pt,
-  ytick=data, yticklabels from table={../../issue-83/report/data/t4_time.csv}{label},
+\begin{axis}[house, width=0.66\linewidth, height=6.6cm, y dir=reverse, bar width=3.5pt,
+  ytick=data, yticklabels from table={data/t4_time.csv}{label},
   yticklabel style={align=right, font=\tiny}, enlarge y limits={abs=0.6}, xmin=0, xmax=185,
   xlabel={time per call, \% of the vector packer's total; dark = pack, light = compute},
   legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}]
-\addplot[xbar, area legend, fill=vec!30, draw=none, bar shift=-2pt] table[y=idx, x expr=\thisrow{vpack}+\thisrow{vcomp}]{../../issue-83/report/data/t4_time.csv};
-\addplot[xbar, area legend, fill=vec, draw=none, bar shift=-2pt, forget plot] table[y=idx, x=vpack]{../../issue-83/report/data/t4_time.csv};
-\addplot[xbar, area legend, fill=scal!30, draw=none, bar shift=2pt] table[y=idx, x expr=\thisrow{spack}+\thisrow{scomp}]{../../issue-83/report/data/t4_time.csv};
-\addplot[xbar, area legend, fill=scal, draw=none, bar shift=2pt, forget plot] table[y=idx, x=spack]{../../issue-83/report/data/t4_time.csv};
-\addplot[only marks, mark=none, nodes near coords={\pgfplotspointmeta\%}, point meta=explicit symbolic, forget plot,
-  every node near coord/.append style={font=\tiny, anchor=west, xshift=1pt}]
-  table[x expr=\thisrow{spack}+\thisrow{scomp}, y=idx, meta=sshare]{../../issue-83/report/data/t4_time.csv};
+\addplot[xbar, area legend, fill=vec!30, draw=none, bar shift=-2pt] table[y=idx, x expr=\thisrow{vpack}+\thisrow{vcomp}]{data/t4_time.csv};
+\addplot[xbar, area legend, fill=vec, draw=none, bar shift=-2pt, forget plot] table[y=idx, x=vpack]{data/t4_time.csv};
+\addplot[xbar, area legend, fill=scal!30, draw=none, bar shift=2pt] table[y=idx, x expr=\thisrow{spack}+\thisrow{scomp}]{data/t4_time.csv};
+\addplot[xbar, area legend, fill=scal, draw=none, bar shift=2pt, forget plot] table[y=idx, x=spack]{data/t4_time.csv};
 \legend{vector, scalar}
 \end{axis}
 \end{tikzpicture}
@@ -100,7 +97,7 @@ GOPs by mean time / by median rep, best tile each side, mean of 3 launches. s/v 
 \item Compute is the same for both packers; only the pack segment grows.
 \item \textbf{Pack share} is set by n: each packed element of A is used n times. 50--83\% at n = 4--32 (scalar side), 9--19\% for BERT/Square.
 \item \textbf{Extra pack cost:} 1.07--1.16$\times$ on large packs that wait on memory, 1.55--1.94$\times$ on small packs that stay in cache.
-\item Slowdown $\approx$ share $\times$ extra cost. Label = scalar pack share.
+\item Slowdown $\approx$ share $\times$ extra cost. Axis label: shape, then its tile and cache blocking.
 \end{itemize}
 \end{column}
 \end{columns}
@@ -110,7 +107,7 @@ GOPs by mean time / by median rep, best tile each side, mean of 3 launches. s/v 
 \begin{frame}{\iss{85}: n sets the pack share (1 thread)}
 \centering
 \ratiochart{p85/data/pn_1t.csv}{5.0cm}{1.25}
-\src{\iss{85} P-n, m = 1200, k = 256, tile 24x8. 1T: jbpi, core 4, uninstrumented, reference protocol, \texttt{--tmin 3}, 3 launches per packer (V S S V V S). Whisker = scalar min / vector max to scalar max / vector min; filled = gap outside the launch range, open = inside. Right: pack share vector / scalar (instrumented, 2 launches per packer).}
+\src{\iss{85} P-n, m = 1200, k = 256, tile 24x8. 1T: jbpi, core 4, uninstrumented, reference protocol, \texttt{--tmin 3}, 3 launches per packer (V S S V V S). Whisker = scalar min / vector max to scalar max / vector min; filled = gap outside the launch range, open = inside. Right: tile, cache blocking (from the logs), then pack share vector / scalar (instrumented, 2 launches per packer).}
 \end{frame}
 
 \begin{frame}{\iss{85}: n sets the pack share (8 threads)}

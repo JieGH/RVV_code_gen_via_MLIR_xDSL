@@ -2,7 +2,7 @@
 \begin{frame}{Answers}
 \small
 \begin{enumerate}\setlength\itemsep{6pt}
-\item \textbf{YOLO tiles.} 1T: 24x8 for the whole network (4.26 GOPs, against 3.79 for our GEMM at his 16x8). 8T, in our GEMM: a family by n: MR 32 / NR 4 for n $\le$ 8, MR 32 / NR 6--7 for n = 16--64, MR 16 / NR 12--15 for n $\ge$ 80. Best tile per shape: 134.1 ms per pass, against 145.6 ms for the best single tile (16x12) and 149.8 ms for 16x8.
+\item \textbf{YOLO tiles.} 1T: 24x8 for the whole network (4.26 GOPs, against 3.79 for our GEMM at H\'ector's 16x8). 8T, in our GEMM: a family by n: MR 32 / NR 4 for n $\le$ 8, MR 32 / NR 6--7 for n = 16--64, MR 16 / NR 12--15 for n $\ge$ 80. Best tile per shape: 134.1 ms per pass, against 145.6 ms for the best single tile (16x12) and 149.8 ms for 16x8.
 \item \textbf{Paper shapes.} 1T: the paper's 32x7 (and 16x15 for B2) still win among our 19 tiles. 8T: 16x8 wins 8 of 10 shapes (48.27 GOPs over the pass, against 44.07 for 32x7).
 \item \textbf{Packing.} Keep the vector packer. Scalar packing costs YOLO a median 7\% (1T) / 5.5\% (8T), up to 42\% at n = 4; BERT and Square stay within the 3\% board/day gap, except B3 at 1T (vector packer slow there, \iss{36}). Slowdown $\approx$ pack share (set by n) $\times$ extra pack cost (set by k and m). Vector packing pays off for n $\le$ 16 with small packed blocks; at n $\ge$ 128 on 8 threads the packers tie (17 of 20 points; one 16x4 exception).
 \end{enumerate}
@@ -13,11 +13,11 @@
 \begin{frame}{What to tell H\'ector}
 \small
 \begin{itemize}\setlength\itemsep{5pt}
-\item \textbf{1 thread:} in our GEMM, 24x8 gives 12\% more GOPs than his 16x8 tile over the 50 shapes (698.6 against 785.3 ms per pass). His own engine at 1T is faster than ours (583.3 ms).
-\item \textbf{8 threads}, in our GEMM: pick the tile by n (the family above). Against his 16x8 tile (149.8 ms): best single tile 16x12 is 3\% faster, best tile per shape 10\% faster (134.1 ms). Only n = 4, 8, 32 keep the same winner in all 3 launches. fp16 was not tested.
-\item \textbf{Caveat:} these tiles were timed in \emph{our} parallel GEMM. His GEMM has different blocking (MC = KC = 256), thread split and kernels (fp32: 32x8, 16x16, 8x16, also 16x8, 16x4, 8x8; none of our winners, no NR 4/6/7 kernel at MR 32). Tile for tile, without Y00, his engine is about 15\% faster than ours.
-\item \textbf{Keep a vector packer} (measured on ours against a scalar packer, not on his im2col + pack path): scalar packing gives YOLO 0.929 / 0.945 of the GOPs (1T / 8T), 0.58 at n = 4. Packing is 35--77\% of the time on 5 YOLO shapes with n $\le$ 16 (\iss{83} T4, instrumented, 1T, jbpi2).
-\item \textbf{Ask him:} did he mean ``best tiles in a parallel GEMM'' or ``best tiles for \emph{his} GEMM''? And the call count per shape, to weight the shapes.
+\item \textbf{1 thread:} in our GEMM, 24x8 gives 12\% more GOPs than H\'ector's 16x8 tile over the 50 shapes (698.6 against 785.3 ms per pass). H\'ector's own engine at 1T is faster than ours (583.3 ms).
+\item \textbf{8 threads}, in our GEMM: pick the tile by n (the family above). Against H\'ector's 16x8 tile (149.8 ms): best single tile 16x12 is 3\% faster, best tile per shape 10\% faster (134.1 ms). Only n = 4, 8, 32 keep the same winner in all 3 launches. fp16 was not tested.
+\item \textbf{Caveat:} these tiles were timed in \emph{our} parallel GEMM. H\'ector's GEMM has different blocking (MC = KC = 256), thread split and kernels (fp32: 32x8, 16x16, 8x16, also 16x8, 16x4, 8x8; none of our winners, no NR 4/6/7 kernel at MR 32). Tile for tile, without Y00, H\'ector's engine is about 15\% faster than ours.
+\item \textbf{Keep a vector packer} (measured on ours against a scalar packer, not on H\'ector's im2col + pack path): scalar packing gives YOLO 0.929 / 0.945 of the GOPs (1T / 8T), 0.58 at n = 4. Packing is 35--77\% of the time on 5 YOLO shapes with n $\le$ 16 (\iss{83} T4, instrumented, 1T, jbpi2).
+\item \textbf{Ask H\'ector:} did H\'ector mean ``best tiles in a parallel GEMM'' or ``best tiles for \emph{H\'ector's} GEMM''? And the call count per shape, to weight the shapes.
 \end{itemize}
 \src{Sources: \iss{61}, \iss{63}, \iss{79}, \iss{83}, \iss{85}; email thread \iss{58} \S1 and \S5.}
 \end{frame}
@@ -26,17 +26,17 @@
 \scriptsize
 \textbf{One essential test, not yet run} (\iss{82} \S1, \iss{79} part D)
 \begin{itemize}
-\item His \texttt{gemm\_B3A2C0} (\texttt{b292c92}) in a scratch copy, choosing by n among kernels his library already has (32x8, 16x16), against his stock build: A-B-B-A, 8 threads, idle jbpi, \texttt{TIMIN=2.0}. Needed before ``use these tiles'' applies to his code. Skip if he meant any parallel GEMM.
+\item H\'ector's \texttt{gemm\_B3A2C0} (\texttt{b292c92}) in a scratch copy, choosing by n among kernels H\'ector's library already has (32x8, 16x16), against H\'ector's stock build: A-B-B-A, 8 threads, idle jbpi, \texttt{TIMIN=2.0}. Needed before ``use these tiles'' applies to H\'ector's code. Skip if H\'ector meant any parallel GEMM.
 \end{itemize}
 \textbf{Not run, stated as limits}
 \begin{itemize}\setlength\itemsep{1pt}
-\item His Y00 swing (6.7--105.5 ms): ours-vs-his is quoted without Y00 (\iss{82} \S2).
+\item H\'ector's Y00 swing (6.7--105.5 ms): ours-vs-H\'ector's is quoted without Y00 (\iss{82} \S2).
 \item Our slow reps at 8T (core 0 takes the interrupts): they pull the mean time down, not the tile ranking (\iss{82} \S3).
 \item BERT/Square packer comparison crosses boards and days (vector jbpi, scalar jbpi2). \iss{85} confirms on one board that large n shows no packer difference at 8T.
 \item Two loss cases in \iss{85} (1T compute after vector packing; 8T 16x4 uninstrumented only): open, neither from the pack.
 \item 8T per-n winners: only n = 4, 8, 32 keep the same winner in all 3 launches; read as a family.
 \item The 8T/1T comparisons in \iss{85} cross boards (1T jbpi, 8T jbpi2). Synthetic \iss{85} shapes around one base point; packing compared against scalar packing, not against no packing.
-\item Pass times are unweighted sums over the 50 distinct shapes: calls per image are unknown (\iss{58} \S5.4). His fast path packs A inside im2col; ours always packs A, so our times include an A pack his pre-packed path skips (\iss{58} \S5.3).
+\item Pass times are unweighted sums over the 50 distinct shapes: calls per image are unknown (\iss{58} \S5.4). H\'ector's fast path packs A inside im2col; ours always packs A, so our times include an A pack H\'ector's pre-packed path skips (\iss{58} \S5.3).
 \item fp16 and n = 1 (GEMV) out of scope. This repo's design, not the paper's code: the paper's GFLOPS are not compared.
 \item \iss{83}/\iss{85} reports quote the average of rep GOPs as ``by mean time''; this deck corrects it (slide ``Packing: what was compared'').
 \end{itemize}

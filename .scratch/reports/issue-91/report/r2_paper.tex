@@ -3,18 +3,18 @@ The paper (arXiv 2603.17800v1, the user's published design) picks its tile from 
 
 \begin{figure}[htbp]\centering
 \begin{tikzpicture}
-\begin{axis}[house, xbar, bar width=4pt, width=13cm, height=10cm, y dir=reverse,
+\begin{axis}[house, xbar, bar width=6pt, width=13cm, height=15.5cm, y dir=reverse,
   ytick=data, yticklabels from table={\D/paper_tiles.csv}{label}, enlarge y limits={abs=0.6},
-  xmin=0, xmax=95, xlabel={GOPs by mean time, 8 threads},
-  nodes near coords, every node near coord/.append style={font=\scriptsize, anchor=west},
+  xmin=0, xmax=140, xtick={0,10,...,90}, xlabel={GOPs by mean time, 8 threads},
+  nodes near coords, point meta=explicit symbolic, every node near coord/.append style={font=\scriptsize, anchor=west},
   legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}]
-\addplot[fill=his, draw=none] table[y=idx, x=a8_168]{\D/paper_tiles.csv};
-\addplot[fill=vec, draw=none] table[y=idx, x=a8_327]{\D/paper_tiles.csv};
-\addplot[fill=sq, draw=none] table[y=idx, x=a8_1615]{\D/paper_tiles.csv};
+\addplot[fill=his, draw=none] table[y=idx, x=a8_168, meta=l168]{\D/paper_tiles.csv};
+\addplot[fill=vec, draw=none] table[y=idx, x=a8_327, meta=l327]{\D/paper_tiles.csv};
+\addplot[fill=sq, draw=none] table[y=idx, x=a8_1615, meta=l1615]{\D/paper_tiles.csv};
 \legend{16x8 (8T winner), 32x7 (paper), 16x15 (paper heatmap best)}
 \end{axis}
 \end{tikzpicture}
-\note{\iss{71}: jbpi, 8T cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}, \texttt{--no-nc-overrides}, vector packer, 19 tiles (the YOLO list, not the paper's full heatmap), 3 launches interleaved with the 1T launches (1T 8T 8T 1T 1T 8T). Core 0 takes the board's interrupts.}
+\note{\iss{71}: jbpi, 8T cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}, \texttt{--no-nc-overrides}, vector packer, 19 tiles (the YOLO list, not the paper's full heatmap), 3 launches interleaved with the 1T launches (1T 8T 8T 1T 1T 8T). Core 0 takes the board's interrupts. Bar label: tile, then the cache blocking that run used (from its log).}
 \end{figure}
 
 \begin{center}\small
@@ -53,6 +53,17 @@ tile & s (mean) & s (median rep) & GOPs & tile & s (mean) & s (median rep) & GOP
 \bottomrule
 \end{tabular}
 \note{\iss{71} single-tile rankings, same runs and settings. 16x15 over the 1T pass: 7.47 GOPs.}
+\end{center}
+
+\begin{center}\small
+\begin{tabular}{@{}l l lllll@{}}
+\toprule
+shape & m $\times$ n $\times$ k & 32x7 & 16x15 & 16x8 & 16x12 & 8x24 \\
+\midrule
+\csname @@input\endcsname \D/paper_blk_rows.tex
+\bottomrule
+\end{tabular}
+\note{Cache blocking mc / nc / kc of every tile named in this part, per shape, as printed in the run logs (\iss{71}, \iss{83}). It depends on shape and tile only: the same at 1T and 8T and with either packer. 32x7 and 16x15 share their blocking on every shape; nc $<$ n from S2 up.}
 \end{center}
 
 \begin{itemize}\setlength\itemsep{1pt}
