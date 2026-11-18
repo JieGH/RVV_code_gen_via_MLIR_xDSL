@@ -21,12 +21,12 @@ At 1T, \iss{94} measured our pass at 696.9 ms (4.27 GOPs) and H\'ector's at 583.
 
 \subsection{H1: the block size along m is a small effect}
 \begin{center}\small
-\begin{tabular}{@{}ll rrl rrr@{}}
+\begin{tabular}{@{}ll rrl rr@{}}
 \toprule
-probe run & shape & mc & kc & mc from & \multicolumn{2}{c}{ours, GOPs} & H\'ector's \\
- & & & & & by mean time & by median rep & by mean time \\
+probe run & shape & mc & kc & mc from & ours, GOPs & H\'ector's, GOPs \\
+ & & & & & mean time / median rep & mean time \\
 \midrule
-\csname @@input\endcsname \F/probe_rows.tex
+\csname @@input\endcsname \G/probe_rows.tex
 \bottomrule
 \end{tabular}
 \note{\onetp\ Uninstrumented build, reference protocol, \texttt{--tmin 1} on both sides. Run folders: \texttt{logs/issue95\_probe\_*}.}

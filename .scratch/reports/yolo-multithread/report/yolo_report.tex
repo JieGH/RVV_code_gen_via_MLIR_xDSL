@@ -28,6 +28,7 @@
 \newcommand{\D}{../../issue-91/deck/data}
 \newcommand{\E}{../../issue-94/report/data}
 \newcommand{\F}{../../issue-95/report/data}
+\newcommand{\G}{data}
 \newcommand{\Pd}{../../issue-91/deck/p85/data}
 \newcommand{\runs}{jbpi; ours: uninstrumented build (\texttt{INSTRUMENTED=0}), reference protocol, \texttt{--tmin 2}, \texttt{--no-nc-overrides}, tile 24x8; H\'ector's: \texttt{gemm.bin} at \texttt{b292c92}, \texttt{TIMIN=2.0}, his tiles. 1T on core 4, 8T on cores 0--7 with \texttt{OMP\_PROC\_BIND=close OMP\_PLACES=cores} on all three setups. 3 launches per setup per thread count, mixed in one series (\iss{94}).}
 \newcommand{\onetp}{jbpi, 1 thread on core 4, idle board. Ours: tile 24x8, vector packer, \texttt{--no-nc-overrides}. H\'ector's: \texttt{gemm.bin} build at \texttt{b292c92}, his code unchanged.}
@@ -83,9 +84,9 @@ Covers \iss{58} (parent), \iss{56}, \iss{61}--\iss{63}, \iss{71}, \iss{79}, \iss
 BLIS-style FP32 GEMM with a generated RVV microkernel) on the SpacemiT K1. Every number comes from a committed log. It is the \iss{94} final report (the \iss{91} report with \S\ref{sec:94} redone from the \iss{94} rerun) plus Part 5 (\S\ref{sec:95}), the \iss{95} study of why our GEMM trails H\'ector's at 1 thread. Parts 1--4 are read from \texttt{../../issue-94/final/} and \texttt{../../issue-91/report/}; Part 5 and its appendix from the \iss{95} data in \texttt{../../issue-95/report/data/}. The newest finding is Part 5.
 
 \input{r0_answer}
-\input{../../issue-94/final/r1_yolo}
-\input{../../issue-91/report/r2_paper}
-\input{../../issue-91/report/r3_packing}
+\input{r1_yolo}
+\input{r2_paper}
+\input{r3_packing}
 \input{r4_close}
 \input{../../issue-94/final/r5_appendix}
 \input{r6_appendix95}

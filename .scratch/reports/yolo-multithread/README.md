@@ -4,7 +4,7 @@ Owner issue: #58 (parent, https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/is
 
 ## Read this
 
-- **Combined report (PDF, A4, 28 pages):** [`report/yolo_report.pdf`](report/yolo_report.pdf) ([LaTeX](report/yolo_report.tex)).
+- **Combined report (PDF, A4, 27 pages):** [`report/yolo_report.pdf`](report/yolo_report.pdf) ([LaTeX](report/yolo_report.tex)).
   - Parts 1–4 come from the #94 final report: the YOLO tile search (1T / 8T), ours against Héctor's (#94 rerun), the paper shapes and vector against scalar packing.
   - Part 5 comes from #95: why ours trails Héctor's at 1 thread.
 
@@ -22,15 +22,18 @@ Owner issue: #58 (parent, https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/is
 
 ## Files
 
-- `report/yolo_report.tex`: main file. It inputs:
+- `report/yolo_report.tex`: main file. GOPs by mean time and by median rep share one cell, "mean / median" (Héctor's driver gives only the mean, so his cells show one value). It inputs:
   - `r0_answer.tex`: copy of #94's, plus the #95 answer and glossary terms.
-  - `../../issue-94/final/r1_yolo.tex`, `../../issue-91/report/r2_paper.tex` and `r3_packing.tex`, `../../issue-94/final/r5_appendix.tex`, all unchanged.
+  - `r1_yolo.tex`, `r2_paper.tex`, `r3_packing.tex`: copies of #94's / #91's Parts 1–3, with the two-metric columns merged into one.
+  - `../../issue-94/final/r5_appendix.tex`: unchanged; its tables already use "mean / median".
   - `r4_close.tex`: copy of #94's. The short #95 note now points to Part 5, and the file inputs `r5_why1t.tex`.
-  - `r5_why1t.tex`: Part 5, the #95 report body.
+  - `r5_why1t.tex`: Part 5, the #95 report body (probe table merged the same way).
   - `r6_appendix95.tex`: #95's all-50-shapes table and logs.
-- Data: `../issue-91/deck/data`, `../issue-94/report/data`, `../issue-95/report/data`. Build those first with each folder's `make_data.py` (see their READMEs).
+- `report/make_data.py` → `report/data/`: merges the #94 one-pass and by-n rows and the #95 probe rows into "mean / median" cells.
+- Data read in place: `../issue-91/deck/data`, `../issue-94/report/data`, `../issue-95/report/data`. Build those first with each folder's `make_data.py` (see their READMEs).
+- The per-issue reports (`../issue-91`, `../issue-94`, `../issue-95`) are not changed; they keep two columns.
 
-Build: from `report/`, run `tectonic -X compile yolo_report.tex`.
+Build: from `report/`, run `python3 make_data.py`, then `tectonic -X compile yolo_report.tex`.
 
 ## When new YOLO work lands
 

@@ -1,0 +1,76 @@
+\section{Part 2: the paper's BERT and Square shapes (\iss{71})}
+The paper (arXiv 2603.17800v1, the user's published design) picks its tile from a 1-core microkernel heatmap, whose best on the BPI was 16x15, and runs its GEMM on one core: S1--S5 at 32x7, BERT at 32x6, 16x15 and 32x7. \iss{71} asks which tile wins per shape at 1 and 8 threads in this repo's current design. The paper's GFLOPS (its own xDSL code and protocol) are not compared.
+
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}
+\begin{axis}[house, xbar, bar width=6pt, width=13cm, height=15.5cm, y dir=reverse,
+  ytick=data, yticklabels from table={\D/paper_tiles.csv}{label}, enlarge y limits={abs=0.6},
+  xmin=0, xmax=140, xtick={0,10,...,90}, xlabel={GOPs by mean time, 8 threads},
+  nodes near coords, point meta=explicit symbolic, every node near coord/.append style={font=\scriptsize, anchor=west},
+  legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}]
+\addplot[fill=his, draw=none] table[y=idx, x=a8_168, meta=l168]{\D/paper_tiles.csv};
+\addplot[fill=vec, draw=none] table[y=idx, x=a8_327, meta=l327]{\D/paper_tiles.csv};
+\addplot[fill=sq, draw=none] table[y=idx, x=a8_1615, meta=l1615]{\D/paper_tiles.csv};
+\legend{16x8 (8T winner), 32x7 (paper), 16x15 (paper heatmap best)}
+\end{axis}
+\end{tikzpicture}
+\note{\iss{71}: jbpi, 8T cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}, \texttt{--no-nc-overrides}, vector packer, 19 tiles (the YOLO list, not the paper's full heatmap), 3 launches interleaved with the 1T launches (1T 8T 8T 1T 1T 8T). Core 0 takes the board's interrupts. Bar label: tile, then the cache blocking that run used (from its log).}
+\end{figure}
+
+\begin{center}\small
+\begin{tabular}{@{}l l l l@{}}
+\toprule
+ & & \multicolumn{1}{c}{1T (core 4)} & \multicolumn{1}{c}{8T (cores 0--7)} \\
+\cmidrule(lr){3-3}\cmidrule(l){4-4}
+shape & m $\times$ n $\times$ k & best tile, GOPs: mean time / median rep & best tile, GOPs: mean time / median rep \\
+\midrule
+B1 & 1024$\times$384$\times$1024 & 32x7 8.06 / 8.06 & 16x8 47.44 / 47.81 \\
+B2 & 384$\times$384$\times$64 & 16x15 12.58 / 12.61 & 16x12 81.99 / 16x15 86.31 \\
+B3 & 64$\times$384$\times$384 & 32x7 7.01 / 16x12 7.23 & 8x24 27.78 / 28.08 \\
+B4 & 4096$\times$384$\times$1024 & 32x7 8.12 / 8.12 & 16x8 49.33 / 49.57 \\
+B5 & 1024$\times$384$\times$4096 & 32x7 7.80 / 7.80 & 16x8 43.64 / 43.89 \\
+S1 & 1000$^3$ & 32x7 8.84 / 8.84 & 16x8 44.70 / 49.80 \\
+S2 & 2000$^3$ & 32x7 9.28 / 9.28 & 16x8 47.33 / 50.15 \\
+S3 & 3000$^3$ & 32x7 9.54 / 9.54 & 16x8 49.76 / 49.85 \\
+S4 & 4000$^3$ & 32x7 9.40 / 9.40 & 16x8 50.99 / 50.99 \\
+S5 & 5000$^3$ & 32x7 9.66 / 9.66 & 16x8 46.83 / 46.83 \\
+\bottomrule
+\end{tabular}
+\note{GOPs, average of 3 launches (\iss{71} \texttt{report/tile\_search\_\{1t,8t\}\_3launches.md}). jbpi, 1T core 4, 8T cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}, vector packer. 1T B3 by median rep: launches 4.15--8.87.}
+\end{center}
+
+\begin{center}\small
+\begin{tabular}{@{}l rr@{\hspace{2em}}l rr@{}}
+\toprule
+\multicolumn{3}{@{}c}{1T, one pass over the 10 shapes} & \multicolumn{3}{c@{}}{8T, one pass over the 10 shapes} \\
+tile & s (mean / median rep) & GOPs & tile & s (mean / median rep) & GOPs \\
+\midrule
+32x7 & 48.01 / 48.01 & 9.53 & 16x8 & 9.47 / 9.45 & 48.27 \\
+32x6 & 51.78 / 51.78 & 8.83 & 16x15 & 10.17 / 10.16 & 44.96 \\
+24x9 & 53.28 / 53.28 & 8.58 & 16x12 & 10.22 / 10.22 & 44.74 \\
+16x6 & 53.90 / 53.90 & 8.48 & 32x7 & 10.38 / 10.37 & 44.07 \\
+24x8 & 54.83 / 54.83 & 8.34 & 16x14 & 10.47 / 10.47 & 43.67 \\
+\bottomrule
+\end{tabular}
+\note{\iss{71} single-tile rankings, same runs and settings. 16x15 over the 1T pass: 7.47 GOPs.}
+\end{center}
+
+\begin{center}\small
+\begin{tabular}{@{}l l lllll@{}}
+\toprule
+shape & m $\times$ n $\times$ k & 32x7 & 16x15 & 16x8 & 16x12 & 8x24 \\
+\midrule
+\csname @@input\endcsname \D/paper_blk_rows.tex
+\bottomrule
+\end{tabular}
+\note{Cache blocking mc / nc / kc of every tile named in this part, per shape, as printed in the run logs (\iss{71}, \iss{83}). It depends on shape and tile only: the same at 1T and 8T and with either packer. 32x7 and 16x15 share their blocking on every shape; nc $<$ n from S2 up.}
+\end{center}
+
+\begin{itemize}\setlength\itemsep{1pt}
+\item \textbf{1 thread: the paper's picks hold among our 19 tiles.} 32x7 is best on 9 of 10 shapes, 16x15 on B2 (12.58 against 11.76 for 32x7). By median rep the bests are the same except B3 (16x12, 7.23; its launches spread 4.15--8.87).
+\item \textbf{8 threads: 16x8 wins 8 of 10 shapes} and the pass (48.27 GOPs; the paper's 32x7 is 4th at 44.07). B2: 16x12 (81.99; 16x15 81.12), 16x15 by median rep (86.31). B3: 8x24.
+\item \textbf{The paper's 32x7 at 8T} is 8--13\% slower than the best on B1, B4, B5, 28\% on B2, 40\% on B3, and 1--15\% on S1--S5.
+\item \textbf{Mean time against median rep at 8T:} S1 and S2 give 49.80 and 50.15 GOPs by median rep against 44.70 and 47.33 by mean time; their launches hold a few much slower reps that pull the mean time down (the cause, likely core 0, is inferred from the YOLO runs, \iss{79} B6).
+\item 8T over 1T on the best single tile: 48.27 / 9.53 = 5.1$\times$. Why the winner changes with threads is not measured.
+\end{itemize}
+\noindent\textit{Limits:} the 19 tiles are the YOLO candidate list (\iss{59}), not the paper's full heatmap; S5 (5000$^3$) gets few reps per launch at 1T with \texttt{--tmin 2}.
