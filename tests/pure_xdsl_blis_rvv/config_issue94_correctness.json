@@ -1,0 +1,7 @@
+[
+    // Issue #94: correctness before timing. Tile 24x8 (the tile of config_parallel_gemm.json) with the scalar oracle
+    // on, on the small YOLO-like shapes of #83 C1/C2 (datasets/yolo_correctness_small.dat, under the B2 limit).
+    // run_issue94.sh runs it with --scalar-pack --tmin 0.2 at 1 thread (core 4) and 8 threads. Every row must PASS.
+    // Format: [datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run, iterations].
+    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["yolo_correctness_small.dat"], false, 5]
+]
