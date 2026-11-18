@@ -1,0 +1,61 @@
+\documentclass[aspectratio=169,10pt]{beamer}
+\usetheme{default}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{\hfill\scriptsize\color{muted}\insertframenumber\hspace{6pt}\vspace{4pt}}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{booktabs}
+\usepackage{colortbl}
+\usepackage{tabularx}
+\usepackage{pgfplots}
+\usepackage{tikz}
+\pgfplotsset{compat=1.18, table/col sep=comma, table/comment chars={\#}}
+\definecolor{vec}{HTML}{2A78D6}
+\definecolor{scal}{HTML}{EB6834}
+\definecolor{his}{HTML}{8A5CC2}
+\definecolor{sq}{HTML}{1BAF7A}
+\definecolor{muted}{HTML}{6B6A64}
+\definecolor{gridc}{HTML}{E4E3DE}
+
+\setbeamercolor{frametitle}{fg=black}
+\setbeamercolor{structure}{fg=vec!80!black}
+\setbeamerfont{frametitle}{series=\bfseries, size=\large}
+\pgfplotsset{house/.style={axis line style={muted}, tick style={muted}, tick label style={font=\scriptsize},
+  label style={font=\scriptsize}, legend style={font=\scriptsize, draw=none, fill=white},
+  legend cell align=left, xmajorgrids, grid style={gridc}},
+  keep real/.style={x filter/.expression={\thisrow{real}==#1 ? x : nan}, unbounded coords=discard}}
+\newcommand{\iss}[1]{\href{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/#1}{\##1}}
+% \src{...}: run setup and source line at the bottom of a slide
+\newcommand{\src}[1]{\par\vfill{\tiny\color{muted}#1\par}}
+\newcommand{\dd}{\textsuperscript{\(\dagger\)}}
+% \ratiochart{file}{height}{xmax}: #85-style dot + noise whisker; filled = real gap, open = inside the launch range
+\newcommand{\ratiochart}[3]{%
+\begin{tikzpicture}
+\begin{axis}[house, scale only axis, width=6.4cm, height=#2, y dir=reverse, clip=false,
+  ytick=data, yticklabels from table={#1}{label}, enlarge y limits={abs=0.6}, xmin=0.6, xmax=#3,
+  xlabel={scalar GOPs $\div$ vector GOPs (by mean time); left of 1: vector packing faster},
+  axis y line*=left, axis x line*=bottom,
+  every node near coord/.append style={font=\tiny, anchor=west, xshift=2pt}]
+\addplot[draw=none, mark=none, forget plot] table[y=idx, x=ratio]{#1};
+\draw[muted, line width=0.8pt] ({axis cs:1,0} |- {rel axis cs:0,0}) -- ({axis cs:1,0} |- {rel axis cs:0,1});
+\addplot[only marks, mark=*, mark size=2pt, color=vec, keep real=1, error bars/.cd, x dir=both, x explicit,
+  error bar style={color=vec}] table[y=idx, x=ratio, x error minus=rlo, x error plus=rhi]{#1};
+\addplot[only marks, mark=o, mark size=2pt, color=muted, keep real=0, error bars/.cd, x dir=both, x explicit,
+  error bar style={color=muted}] table[y=idx, x=ratio, x error minus=rlo, x error plus=rhi]{#1};
+\addplot[only marks, mark=none, nodes near coords, point meta=explicit symbolic, forget plot,
+  every node near coord/.append style={color=muted, anchor=west}]
+  table[y=idx, x expr=#3+0.02, meta=blk]{#1};
+\end{axis}
+\end{tikzpicture}}
+
+\title{Microkernel size and packing on the SpacemiT K1}
+\subtitle{H\'ector's YOLO request, the paper's BERT/Square shapes, vector against scalar packing}
+\date{18 Nov 2026 \quad$\cdot$\quad issue \iss{91}}
+
+\begin{document}
+\input{s1_setup_yolo}
+\input{s2_paper}
+\input{s3_packing}
+\input{s4_close}
+\input{s5_backup}
+\end{document}

@@ -1,0 +1,11 @@
+# Source: .scratch/reports/issue-63/report/issue-63-report.md section 2 (1T from #61, 8T from #63). GOPs by mean time, best tile per n.
+# 8T: jbpi, cores 0-7, uninstrumented, reference protocol, --tmin 2, 3 launches, vector packer.
+idx,label,t1,g1,t8,g8
+0,n=4 (3),24x4,2.50,32x4,12.24
+1,n=8 (1),24x9,1.12,32x4,6.04
+2,n=16 (10),24x9,2.12,32x7,10.09
+3,n=32 (6),24x9,3.21,32x7,17.68
+4,n=64 (10),24x8,4.97,32x6,25.24
+5,n=80 (6),32x7,5.90,16x15,29.88
+6,n=128 (9),32x7,6.61,16x15,30.60
+7,n=256 (5),24x8,7.60,16x14,29.34
