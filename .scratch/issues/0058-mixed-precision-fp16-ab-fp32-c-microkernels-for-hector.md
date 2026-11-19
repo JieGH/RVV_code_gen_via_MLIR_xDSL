@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/112
 
 **Role / Label:** `needs-triage`. Opened 2026-11-19 at the user's request, after a talk with Héctor about the YOLO collaboration.
-**Status:** open. Implemented, checked on `jbpi`, and audited by three independent agents (§11). Bundle ready to send to Héctor: `.scratch/reports/issue-112/handover/`, zipped as `.scratch/reports/issue-112/xdsl_ukernels_for_hector.zip`.
+**Status:** closed 2026-11-19. Merged into `pure-xdsl` and `main`. f16f16f32 is **half developed**: the microkernel is done and correct, but there is no RVV packer for FP16 yet (scalar packing only) and no trustworthy timing (user, 2026-11-19; `CONTEXT.md`). Hand-over: `.scratch/reports/issue-112/xdsl_ukernels_for_hector.zip`.
 **Branch:** `mixed-precision-fp16-ab-fp32-c-microkernels-for-hector`, cut from `pure-xdsl`.
 **Related:** #58 (parent, Héctor's YOLO request), #62 (his GEMM on our board).
 
@@ -133,7 +133,10 @@ All C runs on the board (jbpi / jbpi2), core 4, after the usual idle-board check
 - [x] Step 4: mixed full GEMM, scalar packing, board correctness (§9)
 - [x] Code review (§10)
 - [x] Bundle committed
-- [ ] The user sends `.scratch/reports/issue-112/handover/` to Héctor
+- [x] Hand-over zip ready for Héctor (the user sends it)
+- [x] Merged into `pure-xdsl` and `main`; branch deleted
+
+Follow-ups, not opened yet (only if the user asks): an RVV FP16 packer; cache blocking for 2-byte A/B; a proper FP16 timing run (idle board, 3 launches A-B-B-A, against FP32 with scalar packing).
 
 ## 9. Results (jbpi, core 4, correctness only, 2026-11-19)
 
