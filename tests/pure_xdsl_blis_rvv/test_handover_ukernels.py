@@ -43,7 +43,7 @@ def test_bundle_files(bundle):
     names = {p.name for p in bundle.iterdir()}
     assert names == {
         "xdsl_ukernels_fp32.c", "xdsl_ukernels_fp32.h", "xdsl_ukernels_f16f16f32.c", "xdsl_ukernels_f16f16f32.h",
-        "ref_ukernels.c", "ref_ukernels.h", "test_xdsl_ukernels.c", "Makefile", "README.md",
+        "ref_ukernels.c", "ref_ukernels.h", "test_xdsl_ukernels.c", "Makefile", "README.md", "README_es.md",
     }
 
 

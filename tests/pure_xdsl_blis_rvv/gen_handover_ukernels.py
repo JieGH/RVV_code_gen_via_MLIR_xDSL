@@ -160,7 +160,8 @@ def main():
     with open(os.path.join(args.out, "test_xdsl_ukernels.c"), "w") as f:
         f.write(render_test(tiles))
     for src, dst in (("handover_Makefile", "Makefile"), ("handover_ref_ukernels.c", "ref_ukernels.c"),
-                     ("handover_ref_ukernels.h", "ref_ukernels.h"), ("handover_README.md", "README.md")):
+                     ("handover_ref_ukernels.h", "ref_ukernels.h"), ("handover_README.md", "README.md"),
+                     ("handover_README_es.md", "README_es.md")):
         shutil.copy(os.path.join(HERE, "templates", src), os.path.join(args.out, dst))
     shutil.rmtree(work)
 

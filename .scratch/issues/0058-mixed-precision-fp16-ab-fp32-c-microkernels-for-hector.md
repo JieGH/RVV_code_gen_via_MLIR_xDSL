@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/112
 
 **Role / Label:** `needs-triage`. Opened 2026-11-19 at the user's request, after a talk with Héctor about the YOLO collaboration.
-**Status:** open. Implemented and checked on `jbpi` (§9). Bundle ready to send to Héctor: `.scratch/reports/issue-112/handover/`.
+**Status:** open. Implemented, checked on `jbpi`, and audited by three independent agents (§11). Bundle ready to send to Héctor: `.scratch/reports/issue-112/handover/`, zipped as `.scratch/reports/issue-112/xdsl_ukernels_for_hector.zip`.
 **Branch:** `mixed-precision-fp16-ab-fp32-c-microkernels-for-hector`, cut from `pure-xdsl`.
 **Related:** #58 (parent, Héctor's YOLO request), #62 (his GEMM on our board).
 
@@ -43,7 +43,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/112
       const fp16_t *Ar, const fp16_t *Br, float *Cr, float beta, int ldA, int ldB, int Clda);
   typedef _Float16 fp16_t;
   ```
-- **His `_fp16` kernels are already mixed precision:** FP16 A and B, FP32 C (`vle16` f16 A, `vfwmacc_vf_f32m2` with an FP16 B scalar). The `NQ_FP16` table in his `Makefile.inc` says "Micro:FP16", but the K1 code accumulates in FP32.
+- **His `_fp16` kernels take FP16 A and B and store FP32 C, but only two of them sum in FP32.** `16x8` and `16x4` use `vfwmacc_vf_f32m2` (FP32 sums). `32x8` and `32x4`, the ones his `NQ_FP16` GEMM uses by default (`YOLO_MR` = 32), sum in FP16 (`vfmacc_vf_f16m2`) and widen only at the store. *Corrected 2026-11-19 after the independent audit (§11); the first version said all of them sum in FP32.*
 - His `NQ_FP16` mode: input FP32, **pack converts to FP16**, kernel FP16×FP16→FP32, output FP32.
 - C is column-major: `Cr[j*Clda + i]`.
 - `beta == 0` → C starts at zero; any other `beta` → load C and add. The beta value itself is never used to scale. No `alpha`.
@@ -142,7 +142,9 @@ All C runs on the board (jbpi / jbpi2), core 4, after the usual idle-board check
 | Hand-over bundle: 64 FP32 + 64 f16f16f32 kernels against the naive reference, 1152 calls each (§5a) | bundle Makefile, gcc-14 14.2, `-O3 -march=rv64gcv_zfh_zvfh` | **PASS**, 0 kernels failed in both sets | `.scratch/reports/issue-112/handover/logs/board_jbpi_2026-11-19_145406.log` |
 | Same test with two planted bugs (b1 called for `beta = 0` in fp32 24x8; `Clda + 1` in f16f16f32 16x5), throwaway copy, not committed | as above | **FAIL** on exactly those two kernels (519 and 240 wrong elements): the test can fail | (scratch copy, deleted) |
 | Full GEMM FP32, unchanged design: `config_correctness.json` (16x15, 32x6, 32x7 × `correctness_small.dat`) | uninstrumented, reference protocol, `--tmin 0.2`, `--no-nc-overrides`, vector packing, default gcc 13.2 | **9 / 9 PASS** | `tests/pure_xdsl_blis_rvv/logs/run_2026-11-19_143324/` |
-| Full GEMM f16f16f32: `config_issue112_mixed_correctness.json` (16x15, 32x6, 32x7, 24x8 × `correctness_small.dat`) | as above but `--scalar-pack`, built with g++-14 `-march=rv64gcv_zfh_zvfh` (the build output shows it; the run's `provenance.txt` predates the g++-14 line added in §10 and names only gcc 13.2) | **12 / 12 PASS** | `tests/pure_xdsl_blis_rvv/logs/run_2026-11-19_144226/` |
+| ~~Full GEMM f16f16f32, first run~~ **VOID**: the driver filled the FP16 inputs with NaN and the check let NaN pass (§11.1); its 12 "PASS" rows compared `nan == nan`, and its GOPs were timed on NaN data | — | **void** | `tests/pure_xdsl_blis_rvv/logs/run_2026-11-19_144226/`, `.scratch/reports/issue-112/console/issue112_mixed_correctness.out` (kept as evidence) |
+| Full GEMM f16f16f32, rerun with the fixed driver: `config_issue112_mixed_correctness.json` (16x15, 32x6, 32x7, 24x8 × `correctness_small.dat`) | uninstrumented, reference protocol, `--tmin 0.2`, `--no-nc-overrides`, `--scalar-pack`, g++-14 `-march=rv64gcv_zfh_zvfh` (build output) | **12 / 12 PASS**, samples real (e.g. `33.47 == 33.47`) | `tests/pure_xdsl_blis_rvv/logs/run_2026-11-19_155626/`, `.scratch/reports/issue-112/console/issue112_mixed_correctness_v2.out` |
+| Full GEMM FP32 rerun with the fixed driver (`config_correctness.json`) | as the first FP32 run | **9 / 9 PASS**, same sample values as before | `tests/pure_xdsl_blis_rvv/logs/run_2026-11-19_160242/`, `.scratch/reports/issue-112/console/issue112_fp32_correctness_v2.out` |
 | f16f16f32 binary without `--scalar-pack` | as above | refused: "f16f16f32 runs with scalar packing only …" | — |
 | Host tests | — | 651 passed (full suite), then 71 passed after the §10 fixes (`test_handover_ukernels.py`, `test_board_pin.py`) | — |
 
@@ -161,3 +163,36 @@ Kept on purpose:
 - The bundle Makefile repeats the gcc-14 / Zvfh flags: Héctor gets that folder alone.
 - No kernel dataclass in `gen_handover_ukernels.py`: the 3 helpers are small.
 - The reference cast to `C_TYPE` in `gemm_ref` applies to every datatype: no change for fp32 and int8.
+
+## 11. Independent audit (2026-11-19, three agents, before the hand-over)
+
+Each agent started without this conversation and checked the committed files, Héctor's tree and the board, not our claims.
+
+### 11.1 Logic audit: one real bug, fixed
+
+- **Bug (full-GEMM driver, FP16 only):** `fill_random` did `static_cast<T>(rand()) / RAND_MAX`. With `T = _Float16`, `rand()` above 65504 and `RAND_MAX` become inf, so most inputs were inf/inf = NaN. The check `error > tol` is false for NaN, so NaN passed. Fixed in `templates/driver_benchmark.cpp`: divide in float, then convert (the same values as before for fp32); the check is now `!(error <= tol)`, so NaN fails for every datatype.
+- **Old tests not affected:** fp32 never overflowed (2^31 fits in float); int8 has its own fill. A scan of every log under `tests/pure_xdsl_blis_rvv/logs/` found no NaN or inf sample in any run other than #112's first mixed run (312 files with sample lines; 2442 PASS rows, none with NaN in the time or GOPs columns).
+- **Kernels:** all 128 generated kernels (b0 and b1) run through a C-subset interpreter, kc ∈ {1, 5, 16}: 768 cases bit-exact against numpy; vl, offsets, b0 never reading C, the Clda padding rows, the intrinsic argument order (RVV 1.0) all checked. fp32 path, Makefile switch and `gemm_ref` cast: no change for fp32 and int8.
+- Blind spots noted (not bugs): the bundle test passes `ldA = ldB = 0`; no NaN initial C in the bundle test (covered by 11.3); all MR are multiples of 8, so no partial-vl chunk; `get_optim_mc_nc_kc(sizeof(float), …)` ignores the 2-byte A/B (blocking only).
+
+### 11.2 Spec audit
+
+- All of §1 and §7 met; 64 + 64 tiles in the code, headers and test table; arguments, packed layout (`pack_generic_MRxkc_A`, `pack_generic_B`), the `Ctmp` edge path and his `betaI` use all match; no symbol clash.
+- Fixed: the README pointed to a `uk_selector` that does not exist; it now names `gemm_blis.c:858-863` and `972-977`. §2 and the README wrongly said all his `_fp16` kernels sum in FP32: his default `32x8` / `32x4` FP16 kernels sum in FP16 (checked: `vfmacc_vf_f16m2`, `uk.c:584-656`). Our results will differ from his, closer to FP32; the README says so.
+
+### 11.3 Independent board rerun (own test program, jbpi2, core 4)
+
+Own reference (double), own seed; kc ∈ {0, 1, 2, 3, 64, 513, 2000}; Clda ∈ {MR, MR + 17}; beta ∈ {0, 1, 0.5}; NaN in C before every beta = 0 call; negatives; FP16 values up to ±1000; guard zones around Ar, Br, Cr; Ar and Br unchanged. Files: `.scratch/reports/issue-112/audit/`.
+
+| set | compiler | calls | failed |
+|---|---|---|---|
+| fp32 | gcc-14 14.2 | 5376 | 0 |
+| f16f16f32 | gcc-14 14.2 | 8064 | 0 |
+| fp32 | gcc 13.2 | 5376 | 0 |
+| f16f16f32 | gcc 13.2 | — | does not compile (`vfloat16mf2_t` unknown), as the README says |
+
+### 11.4 Added after the audit
+
+- `README_es.md`: Spanish copy of the README in the bundle (user, 2026-11-19).
+- `.scratch/reports/issue-112/xdsl_ukernels_for_hector.zip`: the bundle as one zip.
+

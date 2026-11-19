@@ -196,7 +196,8 @@ void fill_random(T* ptr, size_t size) {
 #if defined(DTYPE_INT8)
         ptr[i] = static_cast<T>((rand() % 10) - 5);
 #else
-        ptr[i] = static_cast<T>(rand()) / RAND_MAX;
+        // Divide in float, then convert: rand() and RAND_MAX overflow _Float16 to inf (issue #112). Same values for fp32.
+        ptr[i] = static_cast<T>(static_cast<float>(rand()) / RAND_MAX);
 #endif
     }
 }
@@ -1005,7 +1006,7 @@ int main(int argc, char** argv) {
                 }
                 
                 double tol = GET_ERR_TOL(k);
-                if (error > tol) status = "FAIL";
+                if (!(error <= tol)) status = "FAIL";  // NaN fails too (issue #112)
                 else status = "PASS";
             };
             if (do_ref && !ref_protocol) check_against_reference();

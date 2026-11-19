@@ -7,7 +7,7 @@ These are our xDSL-generated RVV microkernels. Each one sits behind a wrapper th
 | file | what |
 |---|---|
 | `xdsl_ukernels_fp32.{c,h}` | FP32 A, B, C. `xdsl_ukernel_<MR>x<NR>_fp32` |
-| `xdsl_ukernels_f16f16f32.{c,h}` | FP16 A and B, FP32 C and FP32 sums (like your `_fp16` kernels on K1). `xdsl_ukernel_<MR>x<NR>_f16f16f32` |
+| `xdsl_ukernels_f16f16f32.{c,h}` | FP16 A and B, FP32 C, and every sum in FP32. `xdsl_ukernel_<MR>x<NR>_f16f16f32` |
 | `ref_ukernels.{c,h}` | naive reference: plain loops, no vector code, the same arguments |
 | `test_xdsl_ukernels.c` | checks every kernel against the reference |
 | `Makefile` | builds and runs the check |
@@ -27,7 +27,9 @@ void xdsl_ukernel_24x8_f16f16f32(int mr, int nr, int kc, const _Float16 *Ar, con
 - `beta == 0`: C = A·B. Any other `beta`: C += A·B (the value of beta is not used). There is no alpha.
 - Only the `xdsl_ukernel_*` names are exported. The kernels inside are `static`, so nothing clashes with your `ukernel_*`.
 
-To use one, point your selector at it. For example, in `uk_selector`, `*uk = xdsl_ukernel_24x8_fp32;` and build with `MR=24`, `NR=8`.
+To use one, set it where your GEMM picks its kernel (`src/GEMM/gemm_blis.c`, lines 858-863 and 972-977 at `b292c92`), with `MR` and `NR` to match. For example: `MR=24; NR=8; uk = xdsl_ukernel_24x8_fp32;`.
+
+**FP16: the results will differ from your default kernels.** In `NQ_FP16` your GEMM uses `ukernel_32x8_fp16` and `ukernel_32x4_fp16`, which sum in FP16 (`vfmacc_vf_f16m2`) and widen to FP32 only when storing C. Our `f16f16f32` kernels sum in FP32 (`vfwmacc_vf_f32m1`), as your `16x8` and `16x4` FP16 kernels do. Expect our results to be closer to an FP32 reference. A mismatch with your 32-row FP16 results is not a bug.
 
 ## Build and check
 
