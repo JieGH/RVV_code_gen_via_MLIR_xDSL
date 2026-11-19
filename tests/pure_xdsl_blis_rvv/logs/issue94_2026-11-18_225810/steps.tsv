@@ -1,0 +1,15 @@
+step	setup	threads	series	exit
+1	V	1	parallel_gemm_2026-11-18_230216	0
+2	S	1	parallel_gemm_2026-11-18_230438	0
+3	H	1	hector_gemm_2026-11-18_230657	0
+4	V	8	parallel_gemm_2026-11-18_231015	0
+5	S	8	parallel_gemm_2026-11-18_231226	0
+6	H	8	hector_gemm_2026-11-18_231436	0
+7	S	8	parallel_gemm_2026-11-18_231704	0
+8	H	8	hector_gemm_2026-11-18_231914	0
+9	V	8	parallel_gemm_2026-11-18_232142	0
+10	S	1	parallel_gemm_2026-11-18_232353	0
+11	H	1	hector_gemm_2026-11-18_232612	0
+12	V	1	parallel_gemm_2026-11-18_232841	0
+13	H	1	hector_gemm_2026-11-18_233102	0
+14	V	1	parallel_gemm_2026-11-18_233330	0

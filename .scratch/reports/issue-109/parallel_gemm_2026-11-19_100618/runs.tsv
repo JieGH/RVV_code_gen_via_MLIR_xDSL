@@ -1,0 +1,2 @@
+launch	threads	cores	board	result_dir	exit
+1	8	0-7	jbpi	run_2026-11-19_101043	0

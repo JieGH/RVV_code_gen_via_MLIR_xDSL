@@ -157,27 +157,30 @@ def main() -> None:
     nl = {s: {t: min(len(times[s][t][lb]) for lb in labels) for t in THREADS} for s in have}
 
     lines = [f"shapes: {len(labels)}; launches per setup and thread count: {nl}"]
-    pass_rows, pass_csv = [], ["idx,label,g1,g8,l1,l8"]
-    for i, s in enumerate(have):
-        for which, metric in ((0, "by mean time"),):
-            if s == "H" and which == 1:
-                continue
-            t = {th: pass_s(times[s][th], labels, which) for th in THREADS}
-            g = {th: total / t[th] / 1e9 for th in THREADS}
-            rng = {th: launch_range(times[s][th], shapes, labels) for th in THREADS} if which == 0 else None
-            r = (lambda th: f"{rng[th][0]:.2f}--{rng[th][1]:.2f}") if rng else (lambda th: "")
-            pass_rows.append(f"{NAMES[s]} & {t[1] * 1e3:.1f} & {g[1]:.2f} & {r(1)} & {t[8] * 1e3:.1f} & "
-                             f"{g[8]:.2f} & {r(8)} & {t[1] / t[8]:.2f}$\\times$ \\\\")
-            lines.append(f"{s} {metric}: 1T {t[1] * 1e3:.1f} ms {g[1]:.2f} GOPs | 8T {t[8] * 1e3:.1f} ms {g[8]:.2f} GOPs | {t[1] / t[8]:.2f}x")
-            if which == 0:
+    pass_csv = ["idx,label,g1,g8,l1,l8"]
+
+    def pass_table(ls: list[str], tag: str) -> list[str]:
+        out = []
+        for i, s in enumerate(have):
+            t = {th: pass_s(times[s][th], ls, 0) for th in THREADS}
+            g = {th: ops(shapes, ls) / t[th] / 1e9 for th in THREADS}
+            rng = {th: launch_range(times[s][th], shapes, ls) for th in THREADS}
+            out.append(f"{NAMES[s]} & {t[1] * 1e3:.1f} & {g[1]:.2f} & {rng[1][0]:.2f}--{rng[1][1]:.2f} & {t[8] * 1e3:.1f} & "
+                       f"{g[8]:.2f} & {rng[8][0]:.2f}--{rng[8][1]:.2f} & {t[1] / t[8]:.2f}$\\times$ \\\\")
+            lines.append(f"{s} by mean time{tag}: 1T {t[1] * 1e3:.1f} ms {g[1]:.2f} GOPs | 8T {t[8] * 1e3:.1f} ms {g[8]:.2f} GOPs | {t[1] / t[8]:.2f}x")
+            if not tag:
                 pass_csv.append(f"{i},{NAMES[s]},{g[1]:.2f},{g[8]:.2f},{g[1]:.2f},{g[8]:.2f}")
+        return out
+    pass_rows = pass_table(labels, "")
+    gemm = [lb for lb in labels if shapes[lb][1] > 1] or labels  # #109: the 50 layers of #94, without the n = 1 rows (#108: n = 1 only)
+    pass50_rows = pass_table(gemm, ", n > 1") if len(gemm) < len(labels) else pass_rows
 
     # #91 quotes ours against Héctor's without Y00 too (his Y00 time swings between launches, #82 §2)
-    nz = [lb for lb in labels if lb != "Y00"]
+    nz = [lb for lb in gemm if lb != "Y00"]  # without Y00 and (#109) without the n = 1 rows, as in #94
     wo = {s: {t: pass_s(times[s][t], nz, 0) for t in THREADS} for s in have}
     noy00_rows = [f"{NAMES[s]} & {wo[s][1] * 1e3:.1f} & {ops(shapes, nz) / wo[s][1] / 1e9:.2f} & {wo[s][8] * 1e3:.1f} & "
                   f"{ops(shapes, nz) / wo[s][8] / 1e9:.2f} & {wo[s][1] / wo[s][8]:.2f}$\\times$ \\\\" for s in have]
-    y00 = {s: {t: [x[0] * 1e3 for x in times[s][t]["Y00"]] for t in THREADS} for s in have}
+    y00 = {s: {t: [x[0] * 1e3 for x in times[s][t].get("Y00", [])] for t in THREADS} for s in have}  # no Y00 in the n = 1 series (#108)
     lines += [f"{s} without Y00: 1T {wo[s][1] * 1e3:.1f} ms | 8T {wo[s][8] * 1e3:.1f} ms; Y00 ms per launch 1T "
               f"{' '.join(f'{v:.1f}' for v in y00[s][1])} 8T {' '.join(f'{v:.1f}' for v in y00[s][8])}" for s in have]
 
@@ -214,13 +217,15 @@ def main() -> None:
     (a.out / "by_n_figs.tex").write_text("\n".join(nfigs))
     if a.series:
         plan = (a.series / "plan.txt").read_text()
+        issue = re.search(r"Issue #(\d+)", plan).group(1)
         cl = [ln for ln in plan.splitlines() if ln.startswith("[") and "PASS" in ln]
         rows = [r.split("\t") for r in (a.series / "steps.tsv").read_text().splitlines()[1:] if r.strip()]
         (a.out / "correctness.tex").write_text(
-            "Before timing, tile 24x8 with the scalar packer and the scalar oracle on, on the small YOLO-like set "
-            "(\\texttt{datasets/yolo\\_correctness\\_small.dat}, as \\iss{83} C1/C2), \\texttt{--tmin 0.2}:\n\\begin{itemize}\\setlength\\itemsep{0pt}\n"
+            "Before timing, ours with the scalar packer and the scalar oracle on, on the small YOLO-like set "
+            "(\\texttt{datasets/yolo\\_correctness\\_small.dat}, as \\iss{83} C1/C2" + (", plus the 3 n = 1 rows" if issue not in ("94", "108") else "")  # #108 checked the small set only
+            + "), \\texttt{--tmin 0.2}:\n\\begin{itemize}\\setlength\\itemsep{0pt}\n"
             + "".join(f"\\item {ln.split('] ', 1)[1].replace('_', '\\_')}\n" for ln in cl)
-            + "\\item Every timed launch of ours also checks all 50 shapes against the oracle:\n"
+            + f"\\item Every timed launch of ours also checks all {len(labels)} shapes against the oracle:\n"
             "\\begin{itemize}\\setlength\\itemsep{0pt}\\footnotesize\n"
             + "".join(f"\\item {c.replace('_', '\\_')}\n" for c in checks) + "\\end{itemize}\n"
             "\\item H\\'ector's launches, his own check (\\texttt{TEST=T}), rows marked OK in his log:\n"
@@ -230,14 +235,14 @@ def main() -> None:
         (a.out / "series.tex").write_text("\\texttt{" + a.series.name.replace("_", "\\_") + "}")
         (a.out / "logs.tex").write_text(
             "Series folder \\texttt{tests/pure\\_xdsl\\_blis\\_rvv/logs/" + a.series.name.replace("_", "\\_")
-            + "/} (plan, order, \\texttt{steps.tsv}); copies in \\texttt{.scratch/reports/issue-94/}. One row per launch:\n"
+            + "/} (plan, order, \\texttt{steps.tsv}); copies in \\texttt{.scratch/reports/issue-" + issue + "/}. One row per launch:\n"
             "{\\footnotesize\\begin{longtable}{@{}rllll@{}}\\toprule step & setup & threads & runner's series folder & run folder \\\\ \\midrule\n"
             + "".join(f"{i} & {sv} & {t}T & \\texttt{{{d.replace('_', '\\_')}}} & \\texttt{{{run_of(a.logs / d).replace('_', '\\_')}}} \\\\\n" for i, sv, t, d, _rc in rows)
             + "\\bottomrule\\end{longtable}}\n")
         import datetime
         (a.out / "date.tex").write_text(datetime.date.today().strftime("%-d %b %Y"))
     for name, body in (("pass_rows.tex", pass_rows), ("by_n_mean_rows.tex", by_n_mean), 
-                       ("shape_rows.tex", shape_rows), ("noy00_rows.tex", noy00_rows), ("pass.csv", pass_csv), ("by_n.csv", by_n_csv),
+                       ("shape_rows.tex", shape_rows), ("noy00_rows.tex", noy00_rows), ("pass50_rows.tex", pass50_rows), ("pass.csv", pass_csv), ("by_n.csv", by_n_csv),
                        ("checks.txt", checks), ("summary.txt", lines)):
         (a.out / name).write_text("\n".join(body) + "\n")
     print("\n".join(lines))

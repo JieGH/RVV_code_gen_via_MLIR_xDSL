@@ -1,0 +1,5 @@
+[
+    // Issue #109: ours at 8T, tile 32x7 (best single tile at 8T, the #109 re-search; ties 16x12, mean winner), all 53 YOLO26 layers, every row checked. Run by run_issue94.sh --config-8t.
+    // Format: [datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run, iterations].
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["yolo26_k1_53.dat"], false, 1000]
+]

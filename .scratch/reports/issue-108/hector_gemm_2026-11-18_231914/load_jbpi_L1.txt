@@ -1,0 +1,12 @@
+jlei                  100   1       00:00 bash
+jlei                 16.6   0       00:00 sshd
+root                 12.1   5       00:00 sshd
+root                  0.6   0 107-14:39:18 disp_eng_share_thread
+root                  0.3   0       16:58 kworker/0:0-events
+root                  0.1   4       00:07 kworker/u16:9-rpciod
+systemd-oom           0.0   7 107-14:39:25 systemd-oomd
+root                  0.0   2       20:53 kworker/u16:2-nfsiod
+root                  0.0   6 107-14:39:15 bluetoothd
+root                  0.0   1 107-14:39:33 vq1
+root                  0.0   1 107-14:39:33 vq0
+root                  0.0   5       18:55 kworker/u16:6-ext4-rsv-conversion

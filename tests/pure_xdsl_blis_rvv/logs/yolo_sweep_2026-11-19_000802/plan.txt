@@ -1,0 +1,9 @@
+Issue #109 Tile Search: 4 launches on the first idle board of jbpi, 4 tiles x datasets/yolo26_k1_53.dat
+  Threads   : 1 on core 4
+  Settings  : --cpu 4 --no-nc-overrides --tmin 2, uninstrumented, reference protocol, vector packer
+  Load      : the board's processes are read before every launch; another user's busy job means wait 10 min and read again
+  Launch 1  : starts at 24x8
+  Launch 2  : starts at 24x9
+  Launch 3  : starts at 32x7
+  Launch 4  : starts at 24x6
+[00:08] board: jbpi

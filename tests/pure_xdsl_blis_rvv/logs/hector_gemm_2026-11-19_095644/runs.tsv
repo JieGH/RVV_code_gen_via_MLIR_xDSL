@@ -1,0 +1,2 @@
+launch	threads	cpus	board	exit
+1	8	0-7	jbpi	0

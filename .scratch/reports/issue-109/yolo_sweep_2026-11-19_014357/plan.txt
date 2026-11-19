@@ -1,0 +1,11 @@
+Issue #109 Tile Search: 6 launches on the first idle board of jbpi, 8 tiles x datasets/yolo26_k1_53.dat
+  Threads   : 8 on cores 0-7 (core 0: user's exception, #63 §2)
+  Settings  : --threads 8 --no-nc-overrides --tmin 2, uninstrumented, reference protocol, vector packer
+  Load      : the board's processes are read before every launch; another user's busy job means wait 10 min and read again
+  Launch 1  : starts at 16x12
+  Launch 2  : starts at 16x14
+  Launch 3  : starts at 16x15
+  Launch 4  : starts at 16x8
+  Launch 5  : starts at 16x12
+  Launch 6  : starts at 16x14
+[01:43] board: jbpi

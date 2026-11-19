@@ -1,0 +1,12 @@
+jlei                  500   2       00:00 ps
+jlei                 33.3   6       00:00 bash
+jlei                 12.5   0       00:00 sshd
+root                 11.9   5       00:00 sshd
+root                  0.6   1 107-15:28:06 disp_eng_share_thread
+root                  0.2   0    01:05:46 kworker/0:0-events
+systemd-oom           0.0   3 107-15:28:13 systemd-oomd
+root                  0.0   3 107-15:28:03 bluetoothd
+root                  0.0   7 107-15:28:21 vq1
+root                  0.0   1 107-15:28:21 vq0
+messagebus            0.0   4 107-15:28:13 dbus-daemon
+cups-browsed          0.0   4       07:59 cups-browsed

@@ -1,0 +1,99 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,margin=1.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage{pgfplots}
+\usepackage{hyperref}
+\hypersetup{colorlinks, linkcolor=black, urlcolor=blue!60!black}
+\pgfplotsset{compat=1.18, table/col sep=comma}
+\definecolor{vec}{HTML}{2A78D6}
+\definecolor{scal}{HTML}{EB6834}
+\definecolor{muted}{HTML}{6B6A64}
+\newcommand{\iss}[1]{\href{https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/#1}{\##1}}
+\newcommand{\note}[1]{\\[2pt]{\footnotesize\color{muted}#1}}
+
+% s/v colour scale: blue = vector packing faster, white = equal, orange = scalar faster; fixed 0.6..1.4, centre 1
+\pgfplotsset{colormap={sv}{rgb255(0cm)=(42,120,214); rgb255(1cm)=(255,255,255); rgb255(2cm)=(235,104,52)}}
+\pgfplotsset{only/.style={x filter/.expression={#1 ? x : nan}, unbounded coords=discard}}
+
+% \svmap{csv}{y label}{y tick labels}: 9 x 7 cells of 1 cm; grey = not run, faded + ~ = inside the launch range
+\newcommand{\svmap}[3]{%
+\begin{tikzpicture}
+\begin{axis}[scale only axis, width=9cm, height=7cm,
+  xmin=-0.5, xmax=8.5, ymin=-0.5, ymax=6.5, axis line style={draw=none}, tick style={draw=none},
+  xtick={0,...,8}, xticklabels={4,8,16,32,64,128,256,512,1024}, ytick={0,...,6}, yticklabels={#3},
+  tick label style={font=\scriptsize}, label style={font=\small}, xlabel={n}, ylabel={#2},
+  colormap name=sv, point meta min=0.6, point meta max=1.4,
+  colorbar, colorbar style={width=0.3cm, ytick={0.6,0.8,1,1.2,1.4}, yticklabel style={font=\scriptsize},
+    title={\scriptsize s/v}}]
+% not run
+\addplot[only marks, mark=square*, mark size=0.48cm, mark options={fill=black!7, draw=white, line width=1.5pt},
+  only={\thisrow{run}==0}] table[x=x, y=y]{#1};
+% outside the launch range: full colour
+\addplot[scatter, only marks, mark=square*, mark size=0.48cm, point meta=explicit,
+  scatter/use mapped color={draw=white, line width=1.5pt, fill=mapped color},
+  only={\thisrow{run}==1 && \thisrow{noise}==0}] table[x=x, y=y, meta=sv]{#1};
+% inside the launch range: faded
+\addplot[scatter, only marks, mark=square*, mark size=0.48cm, point meta=explicit,
+  scatter/use mapped color={draw=white, line width=1.5pt, fill=mapped color!45!white},
+  only={\thisrow{run}==1 && \thisrow{noise}==1}] table[x=x, y=y, meta=sv]{#1};
+% cell text
+\addplot[only marks, mark=none, nodes near coords, point meta=explicit symbolic,
+  every node near coord/.append style={font=\scriptsize, anchor=center}] table[x=x, y=y, meta=label]{#1};
+\end{axis}
+\end{tikzpicture}}
+\newcommand{\src}{\iss{85} M1: GOPs by mean time, mean of 3 launches per packer, order V S S V V S; uninstrumented build, reference protocol, \texttt{--tmin 3}, tile 24x8, \texttt{--no-nc-overrides}.}
+
+\begin{document}
+\begin{center}
+{\Large\bfseries When does vector packing pay off? s/v heatmaps (trial)}\\[4pt]
+Trial chart for \S3.6 of the YOLO report v2, drawn from the \iss{85} one-parameter sweeps \quad$\cdot$\quad 19 Nov 2026
+\end{center}
+
+\noindent Each cell is one GEMM shape. Its colour is \textbf{s/v}, our GEMM's GOPs with the scalar packer divided by its GOPs with the vector packer. \textcolor{vec}{\textbf{Blue}}: vector packing is faster; \textbf{white}: equal; \textcolor{scal}{\textbf{orange}}: scalar measures faster. \iss{85} changed one parameter at a time around one base point (m = 1200, n = 16 or 256, k = 256), so only a cross of cells has data: 21 of 63 per chart. Grey cells were not run.
+
+\medskip
+{\small
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}p{4.2cm} X@{}}
+\toprule
+s/v & Scalar GOPs $\div$ vector GOPs, both by mean time. Below 1: vector packing is faster. \\
+GOPs by mean time & 2mnk $\div$ mean time per call. \\
+launch & One full run of the test over every shape. Each packer ran 3 launches. \\
+V S S V V S & Launch order: vector, scalar, scalar, vector, vector, scalar, so slow drift hits both packers. \\
+launch range, $\sim$, faded cell & The gap between the packers is smaller than the spread between launches: not called a difference. \\
+1T / 8T & 1 thread on core 4 of jbpi / 8 threads on cores 0--7 of jbpi2 (two boards, same K1 chip). \\
+tile 24x8 & The microkernel's block of C: 24 rows by 8 columns. Cache blocking comes from our cache model per shape. \\
+\bottomrule
+\end{tabularx}}
+
+\begin{figure}[htbp]\centering
+\svmap{nk_1t.csv}{k}{16,32,64,144,256,576,1152}
+\note{n $\times$ k at m = 1200, 1T (jbpi, core 4). \src}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+\svmap{nk_8t.csv}{k}{16,32,64,144,256,576,1152}
+\note{n $\times$ k at m = 1200, 8T (jbpi2, cores 0--7). \src}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+\svmap{nm_1t.csv}{m}{64,128,300,600,1200,2400,4800}
+\note{n $\times$ m at k = 256, 1T (jbpi, core 4). \src}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+\svmap{nm_8t.csv}{m}{64,128,300,600,1200,2400,4800}
+\note{n $\times$ m at k = 256, 8T (jbpi2, cores 0--7). \src}
+\end{figure}
+
+\paragraph{What the trial shows.}
+\begin{itemize}\setlength\itemsep{1pt}
+\item Vector packing wins most at small n with small k (n = 16, k = 16: 0.775 at 1T, 0.803 at 8T) and at small n with small m (n = 16, m = 64: 0.731 at 1T).
+\item As n grows the gain fades; at 1T, n $\ge$ 128 with k = 256 measures scalar faster (1.051--1.185; above the noise at n = 128 and 1024, inside it at 256 and 512), the loss case of \S3.8.
+\item The grey cells are the gap: the chart cannot say what happens away from n = 16, n = 256 and the base row. A full n $\times$ k grid run would fill them.
+\end{itemize}
+\end{document}

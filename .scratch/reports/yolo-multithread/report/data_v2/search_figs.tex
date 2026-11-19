@@ -1,0 +1,31 @@
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}
+\begin{axis}[house, width=11cm, height=4.6cm, y dir=reverse,
+  ytick={0,...,3}, yticklabels={24x8,24x9,32x7,24x6}, enlarge y limits={abs=0.6},
+  xmin=685, xmax=774, xlabel={ms per pass over the 50 layers with n $>$ 1, 1T (core 4); whisker: fastest to slowest launch},
+  every node near coord/.append style={font=\scriptsize, anchor=west, xshift=4pt},
+  legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}]
+\addplot[only marks, mark=*, mark size=2.4pt, color=muted, nodes near coords, point meta=explicit symbolic, error bars/.cd, x dir=both, x explicit, error bar style={color=muted, line width=0.8pt}] coordinates {(708.0,1) += (1.2,0) -= (2.3,0) [708.0 ms, 0 of 4 launches] (729.9,2) += (2.2,0) -= (2.2,0) [729.9 ms, 0 of 4 launches] (730.1,3) += (1.7,0) -= (1.8,0) [730.1 ms, 0 of 4 launches]};\addlegendentry{other candidates}
+\addplot[only marks, mark=*, mark size=2.4pt, color=sq, nodes near coords, point meta=explicit symbolic, error bars/.cd, x dir=both, x explicit, error bar style={color=sq, line width=0.8pt}] coordinates {(697.5,0) += (2.5,0) -= (2.1,0) [697.5 ms, 4 of 4 launches]};\addlegendentry{24x8 (shortest pass)}
+\end{axis}
+\end{tikzpicture}
+\note{\iss{109} re-search, 1T (core 4): jbpi, ours only, vector packer, uninstrumented, reference protocol, \texttt{--tmin 2}, \texttt{--no-nc-overrides}, 4 launches with the tile order rotated, every row checked by the oracle. Dot: mean over launches of each layer's mean time, summed over the 50 layers with n $>$ 1 (each layer once). Label: that pass, then how many launches the tile was fastest in.}
+\caption{Best single tile, 1T: the 4 re-searched tiles, shortest pass at the top.}\label{fig:search1}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}
+\begin{axis}[house, width=11cm, height=7.6cm, y dir=reverse,
+  ytick={0,...,7}, yticklabels={32x7,16x12,16x10,32x6,16x8,16x15,16x14,24x8}, enlarge y limits={abs=0.6},
+  xmin=138, xmax=175, xlabel={ms per pass over the 50 layers with n $>$ 1, 8T (cores 0--7); whisker: fastest to slowest launch},
+  every node near coord/.append style={font=\scriptsize, anchor=west, xshift=4pt},
+  legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}]
+\addplot[only marks, mark=*, mark size=2.4pt, color=muted, nodes near coords, point meta=explicit symbolic, error bars/.cd, x dir=both, x explicit, error bar style={color=muted, line width=0.8pt}] coordinates {(141.5,1) += (1.2,0) -= (1.3,0) [141.5 ms, 1 of 6 launches] (142.4,2) += (1.2,0) -= (1.0,0) [142.4 ms, 0 of 6 launches] (142.5,3) += (1.1,0) -= (0.6,0) [142.5 ms, 0 of 6 launches] (143.0,5) += (1.3,0) -= (1.0,0) [143.0 ms, 0 of 6 launches] (143.6,6) += (1.1,0) -= (1.4,0) [143.6 ms, 0 of 6 launches]};\addlegendentry{other candidates}
+\addplot[only marks, mark=*, mark size=2.4pt, color=his, nodes near coords, point meta=explicit symbolic, error bars/.cd, x dir=both, x explicit, error bar style={color=his, line width=0.8pt}] coordinates {(142.6,4) += (1.2,0) -= (1.4,0) [142.6 ms, 0 of 6 launches]};\addlegendentry{16x8 (H\'ector's tile size, in our GEMM)}
+\addplot[only marks, mark=*, mark size=2.4pt, color=vec, nodes near coords, point meta=explicit symbolic, error bars/.cd, x dir=both, x explicit, error bar style={color=vec, line width=0.8pt}] coordinates {(156.1,7) += (1.3,0) -= (0.9,0) [156.1 ms, 0 of 6 launches]};\addlegendentry{24x8}
+\addplot[only marks, mark=*, mark size=2.4pt, color=sq, nodes near coords, point meta=explicit symbolic, error bars/.cd, x dir=both, x explicit, error bar style={color=sq, line width=0.8pt}] coordinates {(140.6,0) += (0.7,0) -= (0.8,0) [140.6 ms, 5 of 6 launches]};\addlegendentry{32x7 (shortest pass)}
+\end{axis}
+\end{tikzpicture}
+\note{\iss{109} re-search, 8T (cores 0--7): jbpi, ours only, vector packer, uninstrumented, reference protocol, \texttt{--tmin 2}, \texttt{--no-nc-overrides}, 6 launches with the tile order rotated, every row checked by the oracle. Dot: mean over launches of each layer's mean time, summed over the 50 layers with n $>$ 1 (each layer once). Label: that pass, then how many launches the tile was fastest in.}
+\caption{Best single tile, 8T: the 8 re-searched tiles, shortest pass at the top.}\label{fig:search8}
+\end{figure}

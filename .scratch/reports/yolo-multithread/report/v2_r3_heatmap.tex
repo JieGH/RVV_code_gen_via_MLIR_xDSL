@@ -1,0 +1,38 @@
+% v2 only: s/v heatmaps for "When does vector packing pay off?", read by \svheatmaps in r3_packing.tex.
+% CSVs: heatmap_trial/make_heatmap.py ../data (the #85 tables in data/).
+\pgfplotsset{colormap={sv}{rgb255(0cm)=(42,120,214); rgb255(1cm)=(255,255,255); rgb255(2cm)=(235,104,52)}}
+\pgfplotsset{only/.style={x filter/.expression={#1 ? x : nan}, unbounded coords=discard}}
+% \svmap{csv}{y label}{y tick labels}{title}{style: svplain or svbar}: 9 x 7 cells; grey = not run, faded + ~ = inside the launch range
+\newcommand{\svmap}[5]{%
+\begin{tikzpicture}
+\begin{axis}[scale only axis, width=6.5cm, height=5.06cm, title={\small #4},
+  xmin=-0.5, xmax=8.5, ymin=-0.5, ymax=6.5, axis line style={draw=none}, tick style={draw=none},
+  xtick={0,...,8}, xticklabels={4,8,16,32,64,128,256,512,1024}, ytick={0,...,6}, yticklabels={#3},
+  tick label style={font=\scriptsize}, label style={font=\small}, xlabel={n}, ylabel={#2},
+  colormap name=sv, point meta min=0.6, point meta max=1.4, #5]
+\addplot[only marks, mark=square*, mark size=0.34cm, mark options={fill=black!7, draw=white, line width=1.2pt},
+  only={\thisrow{run}==0}] table[x=x, y=y]{#1};
+\addplot[scatter, only marks, mark=square*, mark size=0.34cm, point meta=explicit,
+  scatter/use mapped color={draw=white, line width=1.2pt, fill=mapped color},
+  only={\thisrow{run}==1 && \thisrow{noise}==0}] table[x=x, y=y, meta=sv]{#1};
+\addplot[scatter, only marks, mark=square*, mark size=0.34cm, point meta=explicit,
+  scatter/use mapped color={draw=white, line width=1.2pt, fill=mapped color!45!white},
+  only={\thisrow{run}==1 && \thisrow{noise}==1}] table[x=x, y=y, meta=sv]{#1};
+\addplot[only marks, mark=none, nodes near coords, point meta=explicit symbolic,
+  every node near coord/.append style={font=\tiny, anchor=center}] table[x=x, y=y, meta=label]{#1};
+\end{axis}
+\end{tikzpicture}}
+\pgfplotsset{svplain/.style={}, svbar/.style={colorbar, colorbar style={width=0.25cm, ytick={0.6,0.8,1,1.2,1.4}, yticklabel style={font=\scriptsize}, title={\scriptsize s/v}}}}
+\newcommand{\svsrc}{Each cell is one shape; colour = s/v (scalar GOPs $\div$ vector GOPs): \textcolor{vec}{blue} = vector packing faster, white = equal, \textcolor{scal}{orange} = scalar measures faster. Faded cell with $^{\sim}$ = inside the launch range. Grey = not run: \iss{85} changed one parameter at a time around m = 1200, k = 256, n = 16 / 256, so 21 of 63 cells have data. Tile 24x8; 1T jbpi core 4, 8T jbpi2 cores 0--7; uninstrumented, reference protocol, \texttt{--tmin 3}, 3 launches per packer (V S S V V S).}
+
+\begin{figure}[htbp]\centering
+\svmap{heatmap_trial/nk_1t.csv}{k}{16,32,64,144,256,576,1152}{1T}{svplain}\hfill
+\svmap{heatmap_trial/nk_8t.csv}{k}{16,32,64,144,256,576,1152}{8T}{svbar}
+\note{s/v over n $\times$ k at m = 1200. \svsrc}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+\svmap{heatmap_trial/nm_1t.csv}{m}{64,128,300,600,1200,2400,4800}{1T}{svplain}\hfill
+\svmap{heatmap_trial/nm_8t.csv}{m}{64,128,300,600,1200,2400,4800}{8T}{svbar}
+\note{s/v over n $\times$ m at k = 256. \svsrc}
+\end{figure}
