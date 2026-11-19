@@ -2,7 +2,7 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/61
 
-**Combined YOLO report (all findings, read first):** `.scratch/reports/yolo-multithread/report/yolo_report.pdf` ([LaTeX](../reports/yolo-multithread/report/yolo_report.tex)); index of every YOLO report, newest first: `.scratch/reports/yolo-multithread/README.md`.
+**Combined YOLO report (all findings, read first):** `.scratch/reports/yolo-multithread/report/yolo_report_v2.pdf` ([LaTeX](../reports/yolo-multithread/report/yolo_report_v2.tex)); index of every YOLO report, newest first: `.scratch/reports/yolo-multithread/README.md`.
 
 **Scalar-packing rerun #83 (2026-11-17):** brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-83/report/issue83_brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-83/report/issue83_brief.tex), report [`.scratch/reports/issue-83/`](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-83/README.md). Rerun of this sweep with the scalar packer: median 0.930 of vector GOPs (0.589-1.022), worst on n = 4 (Y14, Y30, Y47); best tile changes on 14 of 50 layers.
 

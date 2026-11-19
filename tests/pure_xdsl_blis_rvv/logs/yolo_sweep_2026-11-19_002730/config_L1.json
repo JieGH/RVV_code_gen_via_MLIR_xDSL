@@ -1,0 +1,7 @@
+[
+    // run_yolo_sweep.sh launch 1: config_yolo53_search_1t.json with the rows rotated (issue #61)
+    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["yolo26_k1_53.dat"], false, 1000],
+    ["fp32", "AXPY_FP32_Pack", [24, 9], 256, "jbpi2", ["yolo26_k1_53.dat"], false, 1000],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["yolo26_k1_53.dat"], false, 1000],
+    ["fp32", "AXPY_FP32_Pack", [24, 6], 256, "jbpi2", ["yolo26_k1_53.dat"], false, 1000]
+]

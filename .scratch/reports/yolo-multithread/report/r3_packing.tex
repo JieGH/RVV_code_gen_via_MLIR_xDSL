@@ -101,7 +101,7 @@ S1 & 1000$\times$1000$\times$1000 & 32x7 & 768/1000/128 & 9\% & 9\% & 1.07 & 0.9
 \item Compute time is the same for both packers; only the pack time grows.
 \item \textbf{Pack share is set by n}: each packed element of A is used n times. With the scalar packer: 50--83\% on the n = 4--32 shapes, 9--19\% on BERT and Square.
 \item \textbf{Extra pack cost}: 1.07--1.16$\times$ on large packs that wait on memory (Y10, Y19, Y29, Y42, B1, S1); 1.55--1.94$\times$ on small packs that stay in cache (Y14, Y30, Y47, Y40, B2), where the copy instructions are the limit.
-\item \textbf{The prediction} is within 0.01 of the measured ratio on 7 of 11 shapes, within 0.02 on 8. The misses are the three n = 4 shapes (calls of 16--540 µs, where the timers distort the split most) and Y29 (0.013).
+\item \textbf{The prediction} is within 0.01 of the measured ratio on 7 of 11 shapes, within 0.02 on 8. The misses are the three n = 4 shapes (calls of 16--540~$\mu$s, where the timers distort the split most) and Y29 (0.013).
 \end{itemize}
 
 \subsection{One parameter at a time (\iss{85})}
@@ -146,6 +146,7 @@ n $\ge$ 128, k $\ge$ 576 or m = 4800, 1T (3 points) & 0.97--0.98 & & vector, by 
 \item \textbf{At small n the tile hardly changes the ratio}: 1200$\times$4$\times$16 over 5 tiles gives 0.67--0.77 (1T) and 0.75--0.82 (8T). At 1200$\times$256$\times$256, 8T, it spans 0.98--1.46.
 \item \textbf{Threads:} on some small-n points the gain is a little smaller at 8T (1200$\times$4$\times$256: 0.91 at 1T, 0.94 at 8T), not on all.
 \end{itemize}
+\ifdefined\svheatmaps\svheatmaps\fi% v2 only: s/v heatmaps
 
 \subsection{Does the model predict the slowdown?}
 \begin{figure}[htbp]\centering

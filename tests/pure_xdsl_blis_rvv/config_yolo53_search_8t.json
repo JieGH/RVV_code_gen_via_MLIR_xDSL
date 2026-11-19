@@ -1,0 +1,12 @@
+[
+    // Issue #109: 8T re-search of the best single tile, top 7 of #63 + 24x8, all 53 YOLO26 layers, every row checked. Run: run_yolo_sweep.sh --config config_yolo53_search_8t.json --threads 8 --launches 6 --tmin 2 --issue 109.
+    // Format: [datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run, iterations].
+    ["fp32", "AXPY_FP32_Pack", [16, 12], 256, "jbpi2", ["yolo26_k1_53.dat"], false, 1000],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["yolo26_k1_53.dat"], false, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 14], 256, "jbpi2", ["yolo26_k1_53.dat"], false, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 10], 256, "jbpi2", ["yolo26_k1_53.dat"], false, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["yolo26_k1_53.dat"], false, 1000],
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["yolo26_k1_53.dat"], false, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 8], 256, "jbpi2", ["yolo26_k1_53.dat"], false, 1000],
+    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["yolo26_k1_53.dat"], false, 1000]
+]

@@ -2,7 +2,7 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/56
 
-**Combined YOLO report (all findings, read first):** `.scratch/reports/yolo-multithread/report/yolo_report.pdf` ([LaTeX](../reports/yolo-multithread/report/yolo_report.tex)); index of every YOLO report, newest first: `.scratch/reports/yolo-multithread/README.md`.
+**Combined YOLO report (all findings, read first):** `.scratch/reports/yolo-multithread/report/yolo_report_v2.pdf` ([LaTeX](../reports/yolo-multithread/report/yolo_report_v2.tex)); index of every YOLO report, newest first: `.scratch/reports/yolo-multithread/README.md`.
 **Rerun #94 (2026-11-18):** report [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-94/report/issue94_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-94/report/issue94_report.tex), [README](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-94/README.md). V (ours, vector packer), S (ours, scalar packer) and H (Héctor's `gemm.bin`) mixed in one series on jbpi, tile 24x8, 1T core 4 and 8T cores 0-7 (all bound), 3 launches each. GOPs by mean time, 1T / 8T: V 4.27 / 19.17, S 4.05 / 18.52, H 5.10 / 18.99.
 **Audit #79 (2026-11-17):** brief [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-79/issue-79-audit-brief.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-79/issue-79-audit-brief.tex), reports in `.scratch/reports/issue-79/`. Engine (#56): host tests and code read PASS; all 19 tiles at 8 threads PASS on the board (950/950).
 

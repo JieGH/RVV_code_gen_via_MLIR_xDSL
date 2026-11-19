@@ -1,0 +1,6 @@
+# YOLO26 on the K1: the n = 1 rows of HectorYolo/yolo26_k1_matrix_sizes.csv (rows 6, 21, 35), left out of
+# yolo26_k1.dat because Héctor runs them as a GEMV (issue #59). Ours runs them as a GEMM with an n-edge tile (#108).
+# layer   M       N     K
+Y06     4800    1     9
+Y21     1200    1     9
+Y35     300     1     9

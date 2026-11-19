@@ -23,6 +23,7 @@
 # Flags: --boards a,b (default jbpi: the board of the #62 series compared against; give --hector to match another)  --launches N (3)  --tmin S (2)  --wait-min M (10)  --workspace NAME
 #        --direct  --riscv-user U  --riscv-port P  --issue N (56)  --hector <#62 series folder>  --dry-run
 #        --threads 1|8 (run only that thread count, --launches of it; issue #94)  --scalar-pack (scalar packer; #83, #94)
+#        --config FILE (another config, e.g. config_yolo53_24x8.json; the shape count comes from its first dataset; #108, #109)
 # No tests or --dry-run of another wrapper meanwhile: they rewrite pj_gen/.
 # ============================================================
 
@@ -57,6 +58,7 @@ while [[ "$#" -gt 0 ]]; do
         --hector)      HECTOR="$2"; shift ;;
         --threads)     THREADS="$2"; shift ;;
         --scalar-pack) PACK_ARGS=(--scalar-pack); PACKER="scalar packer" ;;
+        --config)      CONFIG="$(realpath "$2")"; shift ;;
         --dry-run)     DRY_RUN=true ;;
         -h|--help)     sed -n '3,/^# ====*$/p' "$0" | sed '$d'; exit 0 ;;
         *) die "unknown parameter: $1" ;;
@@ -70,7 +72,9 @@ done
 IFS=',' read -ra BOARD_LIST <<< "${BOARDS}"
 [ -n "${BOARD_LIST[0]:-}" ] || die "--boards takes a comma-separated list"
 export REMOTE_PASS="${REMOTE_PASS-}" REMOTE_HOST="${REMOTE_HOST:-fej}" REMOTE_PORT="${REMOTE_PORT:-3322}"
-SHAPES="$(grep -c '^[A-Za-z0-9_]' "${HERE}/datasets/yolo26_k1.dat")"
+DATASET="$(grep -o '"[^"]*\.dat"' "${CONFIG}" | head -1 | tr -d '"')"
+[ -f "${HERE}/datasets/${DATASET}" ] || die "no dataset named in ${CONFIG}"
+SHAPES="$(grep -c '^[A-Za-z0-9_]' "${HERE}/datasets/${DATASET}")"
 
 # The order 1 8 8 1 1 8 ..., LAUNCHES of each.
 ORDER=()
@@ -98,7 +102,7 @@ busy() {
 }
 
 print_plan() {
-    echo "Issue #${ISSUE}: our GEMM (tile 24x8) at 1 and 8 threads on datasets/yolo26_k1.dat (${SHAPES} shapes, every row checked)"
+    echo "Issue #${ISSUE}: our GEMM (tile $(grep -oE '\[[0-9]+, [0-9]+\]' "${CONFIG}" | head -1 | tr -d '[] ' | tr , x)) at 1 and 8 threads on datasets/${DATASET} (${SHAPES} shapes, every row checked)"
     echo "  Settings : uninstrumented, reference protocol, --tmin ${TMIN}, --no-nc-overrides, ${PACKER}"
     echo "  Cores    : 1 thread on core 4; 8 threads on cores 0-7, OMP_PROC_BIND=close OMP_PLACES=cores (core 0: user's exception, #56 §5)"
     echo "  Order    : ${ORDER[*]} (threads per launch), one board: the first idle one of ${BOARDS}"

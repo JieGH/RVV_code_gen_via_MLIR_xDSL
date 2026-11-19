@@ -1,0 +1,12 @@
+root                 12.5   2       00:00 sshd
+root                  1.4   0       49:50 kworker/0:2-events
+root                  0.6   7 108-02:06:19 disp_eng_share_thread
+systemd-oom           0.0   3 108-02:06:26 systemd-oomd
+root                  0.0   5       06:49 kworker/u16:0-rpciod
+root                  0.0   5 108-02:06:16 bluetoothd
+root                  0.0   3       06:49 kworker/u16:2-rpciod
+root                  0.0   7       06:49 kworker/u16:1-ext4-rsv-conversion
+root                  0.0   1 108-02:06:34 vq1
+root                  0.0   6 108-02:06:34 vq0
+root                  0.0   4    01:07:00 kworker/u16:11-rpciod
+messagebus            0.0   4 108-02:06:26 dbus-daemon

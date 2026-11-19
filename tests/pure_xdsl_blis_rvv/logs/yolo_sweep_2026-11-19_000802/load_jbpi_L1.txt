@@ -1,0 +1,12 @@
+jlei                  500   1       00:00 ps
+jlei                 12.5   2       00:00 sshd
+root                 11.6   0       00:00 sshd
+root                  0.6   1 107-15:28:07 disp_eng_share_thread
+root                  0.2   0    01:05:47 kworker/0:0-cgroup_destroy
+systemd-oom           0.0   7 107-15:28:14 systemd-oomd
+root                  0.0   3 107-15:28:04 bluetoothd
+root                  0.0   7 107-15:28:22 vq1
+root                  0.0   1 107-15:28:22 vq0
+messagebus            0.0   6 107-15:28:13 dbus-daemon
+cups-browsed          0.0   4       07:59 cups-browsed
+root                  0.0   6 107-15:28:13 NetworkManager

@@ -1,0 +1,29 @@
+Before timing, ours with the scalar packer and the scalar oracle on, on the small YOLO-like set (\texttt{datasets/yolo\_correctness\_small.dat}, as \iss{83} C1/C2, plus the 3 n = 1 rows), \texttt{--tmin 0.2}:
+\begin{itemize}\setlength\itemsep{0pt}
+\item C1: 7 of 7 rows PASS (run\_2026-11-19\_093250)
+\item C2: 7 of 7 rows PASS (run\_2026-11-19\_093447)
+\item Every timed launch of ours also checks all 53 shapes against the oracle:
+\begin{itemize}\setlength\itemsep{0pt}\footnotesize
+\item V 1T run\_2026-11-19\_093923: 53 of 53 PASS
+\item S 1T run\_2026-11-19\_094405: 53 of 53 PASS
+\item V 8T run\_2026-11-19\_095156: 53 of 53 PASS
+\item S 8T run\_2026-11-19\_095633: 53 of 53 PASS
+\item S 8T run\_2026-11-19\_100338: 53 of 53 PASS
+\item V 8T run\_2026-11-19\_101043: 53 of 53 PASS
+\item S 1T run\_2026-11-19\_101529: 53 of 53 PASS
+\item V 1T run\_2026-11-19\_102238: 53 of 53 PASS
+\item V 1T run\_2026-11-19\_102950: 53 of 53 PASS
+\item S 1T run\_2026-11-19\_103431: 53 of 53 PASS
+\item V 8T run\_2026-11-19\_104133: 53 of 53 PASS
+\item S 8T run\_2026-11-19\_104610: 53 of 53 PASS
+\end{itemize}
+\item H\'ector's launches, his own check (\texttt{TEST=T}), rows marked OK in his log:
+\begin{itemize}\setlength\itemsep{0pt}\footnotesize
+\item H 1T hector\_gemm\_2026-11-19\_094411: 53 of 53 OK
+\item H 8T hector\_gemm\_2026-11-19\_095644: 53 of 53 OK
+\item H 8T hector\_gemm\_2026-11-19\_100349: 53 of 53 OK
+\item H 1T hector\_gemm\_2026-11-19\_101535: 53 of 53 OK
+\item H 1T hector\_gemm\_2026-11-19\_102246: 53 of 53 OK
+\item H 8T hector\_gemm\_2026-11-19\_103438: 53 of 53 OK
+\end{itemize}
+\end{itemize}

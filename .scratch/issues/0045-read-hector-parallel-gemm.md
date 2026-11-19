@@ -2,7 +2,7 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/62
 
-**Combined YOLO report (all findings, read first):** `.scratch/reports/yolo-multithread/report/yolo_report.pdf` ([LaTeX](../reports/yolo-multithread/report/yolo_report.tex)); index of every YOLO report, newest first: `.scratch/reports/yolo-multithread/README.md`.
+**Combined YOLO report (all findings, read first):** `.scratch/reports/yolo-multithread/report/yolo_report_v2.pdf` ([LaTeX](../reports/yolo-multithread/report/yolo_report_v2.tex)); index of every YOLO report, newest first: `.scratch/reports/yolo-multithread/README.md`.
 
 **Rerun #94 (2026-11-18):** report [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-94/report/issue94_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-94/report/issue94_report.tex), [README](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-94/README.md). V (ours, vector packer), S (ours, scalar packer) and H (Héctor's `gemm.bin`) mixed in one series on jbpi, tile 24x8, 1T core 4 and 8T cores 0-7 (all bound), 3 launches each. GOPs by mean time, 1T / 8T: V 4.27 / 19.17, S 4.05 / 18.52, H 5.10 / 18.99.
 **Role / Label:** `needs-triage`. Sub-issue of #58 ([[0041-yolo-best-microkernel-size-parent]]). Code read, plus board runs of his C code on `jbpi`/`jbpi2` (X60, the K1's chip). Changed 2026-11-15 (user): his C code can run on the board, so we run it there directly rather than guess, simulate or emulate (parent rule).
