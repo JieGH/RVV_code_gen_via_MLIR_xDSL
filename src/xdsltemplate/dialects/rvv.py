@@ -743,6 +743,54 @@ class vse32_v_f32m2Op(IRDLOperation):
         )
 
 
+@irdl_attr_definition
+class RVVFloat16Mf2Type(ParametrizedAttribute, TypeAttribute):
+    """Represents vfloat16mf2_t (issue #112: FP16 A widened into FP32 C)"""
+
+    name = "rvv.vfloat16mf2"
+
+
+@irdl_op_definition
+class vle16_v_f16mf2Op(IRDLOperation):
+    """
+    __riscv_vle16_v_f16mf2(&memref[offset], vl)
+    """
+
+    name = "rvv.vle16_v_f16mf2Op"
+    memref = operand_def(MemRefType)
+    offset = operand_def(IndexType)
+    avl = operand_def(IndexType)
+    result = result_def(RVVFloat16Mf2Type)
+
+    def __init__(self, memref: SSAValue, offset: SSAValue, avl: SSAValue):
+        super().__init__(
+            operands=[memref, offset, avl], result_types=[RVVFloat16Mf2Type()]
+        )
+
+
+@irdl_op_definition
+class vfwmacc_vf_f32m1Op(IRDLOperation):
+    """
+    Widening FMA: vd (f32) += memref[offset] (f16 scalar) * vs (f16 vector)
+    __riscv_vfwmacc_vf_f32m1(vd, B[off], A_reg, vl)
+    """
+
+    name = "rvv.vfwmacc_vf_f32m1Op"
+    vd = operand_def(RVVFloat32M1Type)
+    memref = operand_def(MemRefType)
+    offset = operand_def(IndexType)
+    vs = operand_def(RVVFloat16Mf2Type)
+    avl = operand_def(IndexType)
+    result = result_def(RVVFloat32M1Type)
+
+    def __init__(
+        self, vd: SSAValue, memref: SSAValue, offset: SSAValue, vs: SSAValue, avl: SSAValue
+    ):
+        super().__init__(
+            operands=[vd, memref, offset, vs, avl], result_types=[RVVFloat32M1Type()]
+        )
+
+
 # python -c "from xdsltemplate.dialects.rvv import vle8_v_i8m1Op, RVVInt8M1Type; print('OK')"
 RVV = Dialect(
     "rvv",
@@ -782,6 +830,9 @@ RVV = Dialect(
         vlse32_v_i32m1Op,
         vse32_v_i32m1Op,
         vmv_v_x_i32m1Op,
+        # MIXED PRECISION (f16->f32, issue #112)
+        vle16_v_f16mf2Op,
+        vfwmacc_vf_f32m1Op,
     ],
     [
         # FLOAT
@@ -795,5 +846,6 @@ RVV = Dialect(
         RVVInt8Mf4Type,
         RVVInt16Mf2Type,
         RVVInt32M1Type,
+        RVVFloat16Mf2Type,
     ],
 )

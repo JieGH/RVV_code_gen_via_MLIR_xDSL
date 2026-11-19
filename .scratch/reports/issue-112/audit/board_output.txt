@@ -1,0 +1,28 @@
+=== who/uptime
+ 15:47:38 up 108 days,  7:07,  3 users,  load average: 2.67, 2.26, 2.10
+USER     %CPU COMMAND
+jlei      500 ps
+jlei     25.0 bash
+root     11.6 sshd
+root      0.6 disp_eng_share_thread
+systemd+  0.0 systemd-oomd
+root      0.0 kworker/u16:4-xprtiod
+root      0.0 vq1
+root      0.0 vq0
+root      0.0 ksdioirqd/mmc1
+=== gcc-14 fp32
+fp32: 64 kernels, 5376 calls, 0 failed; kc0&beta0: 43520 cells zero, 0 nonzero; +-0 sign diffs (int mode): 0 -> PASS
+=== gcc-14 f16
+f16f16f32: 64 kernels, 8064 calls, 0 failed; kc0&beta0: 65280 cells zero, 0 nonzero; +-0 sign diffs (int mode): 0 -> PASS
+=== gcc-13 fp32
+fp32: 64 kernels, 5376 calls, 0 failed; kc0&beta0: 43520 cells zero, 0 nonzero; +-0 sign diffs (int mode): 0 -> PASS
+=== gcc-13 f16 compile
+xdsl_ukernels_f16f16f32.c: In function ‘gemm_microkernel_v_f16f16f32_8x1_b0’:
+xdsl_ukernels_f16f16f32.c:24:5: error: unknown type name ‘vfloat16mf2_t’; did you mean ‘vfloat32mf2_t’?
+   24 |     vfloat16mf2_t v26 = __riscv_vle16_v_f16mf2(v25, v24);
+      |     ^~~~~~~~~~~~~
+      |     vfloat32mf2_t
+xdsl_ukernels_f16f16f32.c:24:25: warning: implicit declaration of function ‘__riscv_vle16_v_f16mf2’; did you mean ‘__riscv_vle16_v_u16mf2’? [-Wimplicit-function-declaration]
+   24 |     vfloat16mf2_t v26 = __riscv_vle16_v_f16mf2(v25, v24);
+      |                         ^~~~~~~~~~~~~~~~~~~~~~
+rc=0

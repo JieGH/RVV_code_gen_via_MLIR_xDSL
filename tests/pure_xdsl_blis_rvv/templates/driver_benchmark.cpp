@@ -22,6 +22,15 @@
     #define B_CANARY ((B_TYPE)-123)
     #define C_CANARY ((C_TYPE)-123456)
     #define GET_ERR_TOL(k) 0.0
+#elif defined(DTYPE_F16F16F32)
+    // Issue #112: FP16 A and B, FP32 C. Same tolerance as fp32: the reference multiplies in C_TYPE.
+    typedef _Float16 A_TYPE;
+    typedef _Float16 B_TYPE;
+    typedef float C_TYPE;
+    #define A_CANARY ((A_TYPE)-1234.0f)
+    #define B_CANARY ((B_TYPE)-1234.0f)
+    #define C_CANARY -123456.0f
+    #define GET_ERR_TOL(k) (std::max(1e-5, (double)(k) * 1e-6))
 #else
     typedef float A_TYPE;
     typedef float B_TYPE;
@@ -187,7 +196,8 @@ void fill_random(T* ptr, size_t size) {
 #if defined(DTYPE_INT8)
         ptr[i] = static_cast<T>((rand() % 10) - 5);
 #else
-        ptr[i] = static_cast<T>(rand()) / RAND_MAX;
+        // Divide in float, then convert: rand() and RAND_MAX overflow _Float16 to inf (issue #112). Same values for fp32.
+        ptr[i] = static_cast<T>(static_cast<float>(rand()) / RAND_MAX);
 #endif
     }
 }
@@ -273,19 +283,19 @@ void gemm_ref( char orderA, char orderB, char orderC,
         tmp = 0; 
         if ( (orderA=='C')&&(orderB=='C') ) {
           for ( p=0; p<k; p++ )
-            tmp += Acol(i,p) * Bcol(p,j);
+            tmp += (C_TYPE)Acol(i,p) * (C_TYPE)Bcol(p,j);
         }
         else if ( (orderA=='C')&&(orderB=='R') ) {
           for ( p=0; p<k; p++ )
-            tmp += Acol(i,p) * Brow(p,j);
+            tmp += (C_TYPE)Acol(i,p) * (C_TYPE)Brow(p,j);
         }
         else if ( (orderA=='R')&&(orderB=='C') ) {
           for ( p=0; p<k; p++ )
-            tmp += Arow(i,p) * Bcol(p,j);
+            tmp += (C_TYPE)Arow(i,p) * (C_TYPE)Bcol(p,j);
         }
         else {
           for ( p=0; p<k; p++ )
-            tmp += Arow(i,p) * Brow(p,j);
+            tmp += (C_TYPE)Arow(i,p) * (C_TYPE)Brow(p,j);
         }
 
 	if ( beta==zero ) {
@@ -641,6 +651,14 @@ int main(int argc, char** argv) {
              << CONFIG_METHOD << "), whose dispatch clears no lines." << endl;
         return 1;
     }
+#if defined(DTYPE_F16F16F32)
+    // Issue #112: there is no FP16 vector packer yet; its symbols are stubs that stop the run.
+    if (!force_scalar_pack) {
+        cerr << "Error: f16f16f32 runs with scalar packing only (--scalar-pack or USE_SCALAR_PACK); "
+                "there is no FP16 vector packer yet (issue #112)." << endl;
+        return 1;
+    }
+#endif
     // Issue #55: the B packer variants are C intrinsics for fp32 AXPY. They are not combined with
     // the scalar packer (one of the two would not run), and the DOT and int8 dispatches ignore them.
     if (pack_b_variant != 0) {
@@ -988,7 +1006,7 @@ int main(int argc, char** argv) {
                 }
                 
                 double tol = GET_ERR_TOL(k);
-                if (error > tol) status = "FAIL";
+                if (!(error <= tol)) status = "FAIL";  // NaN fails too (issue #112)
                 else status = "PASS";
             };
             if (do_ref && !ref_protocol) check_against_reference();

@@ -16,6 +16,7 @@ SHOW_PASSES = False  # Set to True to see pass execution
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, memref, scf
 from xdsl.dialects.builtin import (
+    Float16Type,
     Float32Type,
     FloatAttr,
     FunctionType,
@@ -37,6 +38,8 @@ from xdsltemplate.dialects.rvv import (
     RVVInt32M1Type,
     vfmacc_vf_f32m1Op,
     vfmv_v_f_f32m1Op,
+    vfwmacc_vf_f32m1Op,
+    vle16_v_f16mf2Op,
     vle8_v_i8mf4Op,
     vle32_v_f32m1Op,
     vle32_v_i32m1Op,
@@ -561,14 +564,17 @@ def build_gemm(
     f32_t = Float32Type()
     memref_f32 = MemRefType(f32_t, [-1])
     rvv_vec_t = RVVFloat32M1Type()
+    # f16f16f32 (issue #112): A and B are FP16, C and the sums stay FP32 m1.
+    mixed = precision == "f16f16f32"
+    memref_ab = MemRefType(Float16Type(), [-1]) if mixed else memref_f32
 
     # Function arguments: (kc, alpha, A, lda, B, ldb, beta, C, ldc) -> ()
     input_types = [
         index_t,  # kc
         memref_f32,  # alpha
-        memref_f32,  # A
+        memref_ab,  # A
         index_t,  # lda
-        memref_f32,  # B
+        memref_ab,  # B
         index_t,  # ldb
         memref_f32,  # beta
         memref_f32,  # C
@@ -640,7 +646,12 @@ def build_gemm(
 
         # Use appropriate VL for this vector
         vl = lb.get_vl_for_m_vec(m)
-        A_regs.append(lb.vle32(A, a_offset, vl))
+        if mixed:
+            a_op = vle16_v_f16mf2Op(A, a_offset, vl)
+            loop_body.add_op(a_op)
+            A_regs.append(a_op.result)
+        else:
+            A_regs.append(lb.vle32(A, a_offset, vl))
     # B offsets: k * ldb + n
     k_mul_ldb = lb.muli(k, ldb)
     b_offsets = []
@@ -656,6 +667,11 @@ def build_gemm(
             # Use appropriate VL for this vector
             vl = lb.get_vl_for_m_vec(m)
 
+            if mixed:
+                fma = vfwmacc_vf_f32m1Op(c_regs[(n, m)], B, b_offsets[n], A_regs[m], vl)
+                loop_body.add_op(fma)
+                c_new[(n, m)] = fma.result
+                continue
             c_new[(n, m)] = lb.vfmacc(
                 c_regs[(n, m)],  # accumulator
                 B,  # B memory

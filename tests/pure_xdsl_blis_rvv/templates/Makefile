@@ -18,6 +18,15 @@ BUILD_DIR = build_instr$(INSTRUMENTED)
 CFLAGS = -O3 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -DRVV_INSTRUMENTED=$(INSTRUMENTED)
 CXXFLAGS = -O2 -std=c++17 -march=rv64gcv -mabi=lp64d -fno-strict-aliasing -fno-var-tracking-assignments --param ggc-min-expand=1 --param ggc-min-heapsize=32768 -DRVV_INSTRUMENTED=$(INSTRUMENTED)
 
+# Issue #112: an f16f16f32 project needs Zvfh and gcc-14 (gcc 13 does not declare the FP16 widening
+# intrinsics). Every other datatype keeps the default compiler and flags.
+ifeq ($(shell grep -qs DTYPE_F16F16F32 generated_kernels.h && echo y),y)
+CXX = g++-14
+CC = gcc-14
+CFLAGS := $(subst -march=rv64gcv ,-march=rv64gcv_zfh_zvfh ,$(CFLAGS))
+CXXFLAGS := $(subst -march=rv64gcv ,-march=rv64gcv_zfh_zvfh ,$(CXXFLAGS))
+endif
+
 # All generated files are C++ now, plus model_level.c
 CXX_SRCS = $(wildcard *.cpp)
 CXX_OBJS = $(addprefix $(BUILD_DIR)/,$(CXX_SRCS:.cpp=.o))
