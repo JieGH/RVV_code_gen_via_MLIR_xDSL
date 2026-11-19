@@ -13,6 +13,7 @@ from xdsl.context import Context
 from xdsl.dialects import arith, builtin, memref, scf
 from xdsl.dialects import func as func_dialect
 from xdsl.dialects.builtin import (
+    Float16Type,
     Float32Type,
     IndexType,
     MemRefType,
@@ -114,6 +115,8 @@ def generate_header(
         f.write(f"#define CONFIG_ITERATIONS {config.iterations}\n\n")
         if config.datatype in ("int8", "i8i8i32"):
             f.write("#define DTYPE_INT8 1\n\n")
+        elif config.datatype == "f16f16f32":
+            f.write("#define DTYPE_F16F16F32 1\n\n")
 
         if config.skip_ref_run:
             f.write("#define SKIP_REF_RUN 1\n\n")
@@ -225,6 +228,22 @@ static inline void pack_CB_scalar(int32_t mc, int32_t nc, {c_type_b}* M, int32_t
     }}
 }}
 """
+
+
+def write_f16_pack_stubs(out_dir: str, method: str, max_dim: int) -> None:
+    """Issue #112: the f16f16f32 vector pack symbols, as stubs that stop the run (scalar packing only)."""
+    lines = ['#include "gemm_headers.h"', "#include <cstdio>", "#include <cstdlib>", "", 'extern "C" {']
+    for dim in range(1, max_dim + 1):
+        for kind, rr in (("CB", "NR"), ("RB", "MR")):
+            for branch in ("if", "else"):
+                name = f"pack_{kind}_v_{branch}_{method}_f16f16f32_{rr}{dim}"
+                lines.append(
+                    f"void {name}(_Float16*, _Float16*, size_t, size_t, size_t) {{ "
+                    f'fprintf(stderr, "{name}: no FP16 vector packer (issue #112); run with --scalar-pack\\n"); abort(); }}'
+                )
+    lines.append("}")
+    with open(os.path.join(out_dir, "gemm_pack_xdsl.cpp"), "w") as f:
+        f.write("\n".join(lines) + "\n")
 
 
 def render_pad_zero(buf: str, cur: str, panel: str, c_type: str) -> str:
@@ -386,6 +405,13 @@ def build_project(config: BLISProjectConfig, args):
         c_type_a = c_type_b = "int8_t"
         c_type_c = "int32_t"
         c_type_alpha = "float"
+    elif config.datatype == "f16f16f32":
+        # Issue #112: FP16 A and B, FP32 C and sums.
+        elem_bytes = 2
+        mlir_type = Float16Type()
+        c_type_a = c_type_b = "_Float16"
+        c_type_c = "float"
+        c_type_alpha = "float"
     else:
         elem_bytes = 4
         mlir_type = Float32Type()
@@ -510,6 +536,10 @@ def build_project(config: BLISProjectConfig, args):
     pack_gen_dims = (
         sorted(set([pinned_mr, pinned_nr])) if is_pinned else range(1, max_dim + 1)
     )
+    # Issue #112: no FP16 vector packer yet; f16f16f32 runs with --scalar-pack only (the driver refuses
+    # otherwise), and the vector pack symbols are stubs that stop the run (written below).
+    if config.datatype == "f16f16f32":
+        pack_gen_dims = []
 
     for dim in pack_gen_dims:
         pack_mod = build_pack_module(
@@ -839,6 +869,8 @@ void gemm_blis_generic(int32_t m, int32_t n, int32_t k, {c_type_alpha} alpha, {c
     lower_modules(b1_modules, "gemm_b1_xdsl")
 
     lower_modules(pack_modules, "gemm_pack_xdsl")
+    if config.datatype == "f16f16f32":
+        write_f16_pack_stubs(out_dir, config.method, max_dim)
 
     # Generate the C++ header
     _pack_dims = sorted(set([pinned_mr, pinned_nr])) if is_pinned else None

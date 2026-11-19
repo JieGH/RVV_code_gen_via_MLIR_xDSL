@@ -38,6 +38,18 @@ Packing routine implemented with scalar loads and stores, executing without vect
 **RVV Packing**:
 Packing routine accelerated with RISC-V Vector unit-stride or strided load/store instructions (`vlse32`/`vse32`).
 
+**Mixed Precision (f16f16f32)**:
+A GEMM whose A and B are FP16 and whose C, and every sum into it, is FP32. Each FP16 product is exact in FP32.
+Half developed (#112): the Microkernel is done and correct, but there is no RVV Packing for FP16 yet, so it runs with Scalar Packing only, and it has no trustworthy timing yet.
+_Avoid_: FP16 GEMM, half precision (both suggest C is FP16 too)
+
+**Hand-over Kernel**:
+One of our Microkernels inside a thin wrapper that takes Héctor's microkernel arguments, so his GEMM can call it in place of his own. The kernel is our design under our own name (`xdsl_ukernel_<MR>x<NR>_<datatype>`); only the arguments are his.
+
+**Naive Reference Kernel**:
+A plain-loop Microkernel with no vector code and the same arguments as the Hand-over Kernels, shipped with them so their results can be checked against it.
+_Avoid_: Reference Design (that is the legacy baseline implementation)
+
 ### Workloads & Search
 
 **Workload**:
