@@ -1,6 +1,6 @@
 from xdsl.context import Context
 from xdsl.dialects import emitc
-from xdsl.dialects.builtin import Float32Type, IntegerType, ModuleOp, StringAttr
+from xdsl.dialects.builtin import Float16Type, Float32Type, IntegerType, ModuleOp, StringAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -681,6 +681,38 @@ class ConvertRVV_vse32_v_i32m1_ToEmitC(RewritePattern):
         rewriter.replace_op(op, call_op)
 
 
+class ConvertRVV_vle16_v_f16mf2_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vle16_v_f16mf2Op, rewriter: PatternRewriter):
+        subscript = EmitCSubscriptOp(op.memref, op.offset, emitc.EmitC_LValueType(Float16Type()))
+        ptr_ref = emitc.EmitC_ApplyOp(
+            operands=[subscript.result],
+            result_types=[op.memref.type],
+            attributes={"applicableOperator": StringAttr("&")},
+        )
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vle16_v_f16mf2",
+            call_args=[ptr_ref.result, op.avl],
+            result_types=[emitc.EmitC_OpaqueType(StringAttr("vfloat16mf2_t"))],
+        )
+        rewriter.replace_op(op, [subscript, ptr_ref, call_op])
+
+
+class ConvertRVV_vfwmacc_vf_f32m1_ToEmitC(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: vfwmacc_vf_f32m1Op, rewriter: PatternRewriter):
+        subscript = EmitCSubscriptOp(op.memref, op.offset, emitc.EmitC_LValueType(Float16Type()))
+        rewriter.insert_op_before_matched_op(subscript)
+        load_op = EmitCLoadOp(src=subscript.result, result_type=Float16Type())
+        rewriter.insert_op_before_matched_op(load_op)
+        call_op = emitc.EmitC_CallOpaqueOp(
+            callee="__riscv_vfwmacc_vf_f32m1",
+            call_args=[op.vd, load_op.result, op.vs, op.avl],
+            result_types=[emitc.EmitC_OpaqueType(StringAttr("vfloat32m1_t"))],
+        )
+        rewriter.replace_op(op, call_op)
+
+
 class RVVToEmitCPass(ModulePass):
     name = "rvv_to_emitc"
 
@@ -721,6 +753,9 @@ class RVVToEmitCPass(ModulePass):
             ConvertRVV_vlse32_v_i32m1_ToEmitC(),
             ConvertRVV_vse32_v_i32m1_ToEmitC(),
             ConvertRVV_vmv_v_x_i32m1_ToEmitC(),
+            # Mixed Precision f16 -> f32 (issue #112)
+            ConvertRVV_vle16_v_f16mf2_ToEmitC(),
+            ConvertRVV_vfwmacc_vf_f32m1_ToEmitC(),
         ]
         for pattern in patterns:
             PatternRewriteWalker(pattern, apply_recursively=True).rewrite_module(op)

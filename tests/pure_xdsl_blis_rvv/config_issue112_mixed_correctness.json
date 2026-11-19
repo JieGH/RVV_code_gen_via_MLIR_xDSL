@@ -1,0 +1,11 @@
+[
+    // Issue #112: correctness pass of the full GEMM in f16f16f32 (FP16 A and B in memory, FP32 C),
+    // scalar packing only (the driver refuses a run without --scalar-pack). Same shapes and oracle
+    // as config_correctness.json (skip_ref_run OFF), its three tiles plus 24x8, the YOLO 1-thread tile.
+    //
+    // Format: [datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run, iterations].
+    ["f16f16f32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi", ["correctness_small.dat"], false, 5],
+    ["f16f16f32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi", ["correctness_small.dat"], false, 5],
+    ["f16f16f32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi", ["correctness_small.dat"], false, 5],
+    ["f16f16f32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi", ["correctness_small.dat"], false, 5]
+]

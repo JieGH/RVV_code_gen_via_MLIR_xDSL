@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/112
 
 **Role / Label:** `needs-triage`. Opened 2026-11-19 at the user's request, after a talk with Héctor about the YOLO collaboration.
-**Status:** open. Understanding stage: no code yet. Decisions in §7 come first.
+**Status:** open. Implemented and checked on `jbpi` (§9). Bundle ready to send to Héctor: `.scratch/reports/issue-112/handover/`.
 **Branch:** `mixed-precision-fp16-ab-fp32-c-microkernels-for-hector`, cut from `pure-xdsl`.
 **Related:** #58 (parent, Héctor's YOLO request), #62 (his GEMM on our board).
 
@@ -18,6 +18,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/112
    - Mixed (A, B FP16; C FP32).
    - Each set: `mr` = 8, 16, 24, 32 and `nr` = 1 … 16 → 64 kernels per set, 128 in total.
 4. **His calling convention.** The hand-over kernels must take the same arguments as his. Our own design keeps its own calling method and arguments; only the hand-over files follow his.
+5. **A naive reference in the hand-over (user, 2026-11-19, added during implementation).** The bundle carries a very simple reference microkernel (plain triple loop, no vector code), with the same arguments, so Héctor can see for himself that our kernels compute the right result. The bundle's test checks every kernel against it.
 
 ## 2. What exists today
 
@@ -83,37 +84,80 @@ Per k-step, per C column `n`, per register `m`:
 
 ## 5. Plan (in order)
 
-1. **FP32 check, unchanged design.** Run the existing correctness config on the board for `mr` ∈ {8, 16, 24, 32}, `nr` ∈ 1…16. Confirms the baseline before any change.
-2. **FP32 hand-over file.** Emit `ukernels_fp32.c` + `.h` with his signature (64 kernels). Test it on the board with a small C driver: each kernel against a scalar reference, `beta` 0 and 1, `Clda` > MR.
-3. **Mixed kernel in the generator** (§4). Microkernel test on the board, all 64 tiles, `beta` 0 and 1.
-4. **Full GEMM, mixed, scalar packing.** Our GEMM with FP16 A and B in memory, scalar packer copying FP16, FP32 C. Correctness configs on the board (same shapes as `config_correctness.json` plus the YOLO shapes).
-5. **Mixed hand-over file.** `ukernels_fp16.c` + `.h`, his signature, tested as in step 2.
-6. **Optional, if the user wants it:** build his GEMMLib with `NQ_FP16` and our file in place of his kernels; run his `TEST=T` check. The strongest proof the signature fits.
-7. Vector packing for FP16: later, not in this issue.
+1. **FP32 baseline, unchanged design.** Existing `config_correctness.json` (tiles 16x15, 32x6, 32x7, `correctness_small.dat`, oracle on) on the board.
+2. **Mixed kernel in the generator** (§4): datatype `f16f16f32`.
+3. **Hand-over bundle** (`gen_handover_ukernels.py`): `xdsl_ukernels_fp32.{c,h}`, `xdsl_ukernels_f16f16f32.{c,h}` (64 tiles each), the naive reference `ref_ukernels.{c,h}`, `test_xdsl_ukernels.c`, `Makefile`, `README.md`. Test on the board (§5a).
+4. **Full GEMM, mixed, scalar packing.** `f16f16f32` in the pipeline: driver A/B `_Float16`, C `float`; scalar packer only (a run without `--scalar-pack` is refused); new `config_issue112_mixed_correctness.json` (16x15, 32x6, 32x7, 24x8 on `correctness_small.dat`, oracle on).
+5. Vector packing for FP16: later, not in this issue.
 
 All C runs on the board (jbpi / jbpi2), core 4, after the usual idle-board check. Correctness only: no timing runs in this issue.
 
+### 5a. The bundle test
+
+- Calls every wrapper through **his** typedefs (`uk_intrinsic_fp32`, `uk_intrinsic_fp16`, copied from `gemm_blis.h`): a signature mismatch does not compile.
+- Compares each kernel with the **naive reference** `ref_ukernel_fp32` / `ref_ukernel_f16f16f32` (same arguments; triple loop; FP32 sums).
+- `kc` ∈ {1, 7, 256}; `beta` ∈ {0, 1, 0.5} (0.5: his rule, C += A·B, value unused); `Clda` = MR + 3, and the 3 extra rows per column must stay untouched.
+- **Exact pass:** whole numbers −5…5; exact in FP16, products and sums exact in FP32: our result must equal the reference bit for bit.
+- **Random pass:** values in [0, 1), rounded to FP16 for the mixed kernels; relative norm error ≤ `max(1e-5, kc·1e-6)` (our GEMM driver's rule).
+- Built with **gcc-14**: the board's default gcc 13.2 does not declare the FP16 multiply-add intrinsic (`__riscv_vfwmacc_vf_f32m1` with an FP16 scalar), so the mixed file fails to compile there (seen on jbpi, 2026-11-19). Héctor builds with gcc-14 too.
+
 ## 6. Risks already seen
 
-- **Register pressure.** M1 accumulators: `mr/8 × nr` C registers + `mr/8` A registers. For 32×8 that is 32 + 4 > 32 vector registers; 32×16 needs 68. Large tiles will spill. Still correct, but slow. Héctor's own 32x8 uses `f32m4` (8 C registers): a different layout. Correctness is the aim here; flag it to Héctor.
-- **Name clash:** avoided by the `xdsl_` names (§3).
-- **His `NQ_FP16` packs FP32 input to FP16.** The user's plan reads FP16 input. For the hand-over files this does not matter (kernels only); for our full-GEMM test it does.
+- **Register pressure.** M1 accumulators: `mr/8 × nr` C registers + `mr/8` A registers. For 32×8 that is 32 + 4 > 32 vector registers; 32×16 needs 68. Large tiles will spill. Still correct, but slow. Héctor's own 32x8 uses `f32m4` (8 C registers): a different layout. The README warns about it.
+- **Name clash:** avoided by the `xdsl_` names (§3); our inner kernels are `static`, so only the wrappers are visible.
+- **His `NQ_FP16` packs FP32 input to FP16.** Our full-GEMM test reads FP16 input (§7.3). The hand-over files are kernels only, so this does not affect them.
 
-## 7. Decisions for the user
+## 7. Decisions (settled 2026-11-19)
 
-1. ~~Function names~~ **Decided (user, 2026-11-19):** our own names (`xdsl_ukernel_…`), his arguments, our kernel design (§3).
-2. **File split:** one `.c` + `.h` per precision (2 pairs), or one file per kernel (128)?
-3. **Input type for our full-GEMM test:** A and B already FP16 in memory (the user's words), or FP32 converted to FP16 during packing (his `NQ_FP16`)?
-4. **Datatype name in our generator:** `f16f16f32` (matches `i8i8i32`)?
-5. **Step 6** (build his GEMMLib with our kernels): in or out?
+1. **Names:** our own (`xdsl_ukernel_<MR>x<NR>_fp32`, `xdsl_ukernel_<MR>x<NR>_f16f16f32`), his arguments, our kernel design (§3).
+2. **Files:** one `.c` + `.h` pair per precision.
+3. **Full-GEMM input:** A and B already FP16 in memory.
+4. **Datatype name:** `f16f16f32`.
+5. **Building his GEMMLib with our kernels:** out (his code stays unchanged; he can run it himself).
+6. **Bundle test** on the board, also shipped to him (§5a).
+7. **His semantics in the wrapper:** `mr`, `nr`, `ldA`, `ldB` unused; `beta == 0` overwrites, other `beta` adds; no alpha.
+8. **FP16 type:** our header uses `_Float16` (the same type as his `fp16_t`); no typedef of ours.
+9. **Mixed kernel:** `vfloat16mf2` A, `vfwmacc_vf_f32m1` into our FP32 m1 accumulators, FP16 B scalar.
+10. **All 64 tiles shipped**, spilling ones included, with a README warning.
+11. **Full GEMM:** scalar packing only; runs as §5 step 1 and 4.
+12. **Locations:** generator `tests/pure_xdsl_blis_rvv/gen_handover_ukernels.py`; bundle committed in `.scratch/reports/issue-112/handover/`; the user sends it to Héctor.
+13. **Glossary:** *Mixed Precision (f16f16f32)* and *Hand-over Kernel* in `CONTEXT.md`.
+14. **Naive reference in the bundle** (§1.5).
 
 ## 8. Checklist
 
-- [ ] §7 decisions
-- [ ] Step 1: FP32 baseline correctness
-- [ ] Step 2: FP32 hand-over file + test
-- [ ] Step 3: mixed microkernel + test
-- [ ] Step 4: mixed full GEMM, scalar packing
-- [ ] Step 5: mixed hand-over file + test
-- [ ] Step 6 (if in)
-- [ ] Files handed to Héctor
+- [x] §7 decisions
+- [x] Step 1: FP32 baseline correctness on the board (§9)
+- [x] Step 2: mixed kernel in the generator
+- [x] Step 3: hand-over bundle + naive reference + board test (§9)
+- [x] Step 4: mixed full GEMM, scalar packing, board correctness (§9)
+- [x] Code review (§10)
+- [x] Bundle committed
+- [ ] The user sends `.scratch/reports/issue-112/handover/` to Héctor
+
+## 9. Results (jbpi, core 4, correctness only, 2026-11-19)
+
+| check | build | result | log |
+|---|---|---|---|
+| Hand-over bundle: 64 FP32 + 64 f16f16f32 kernels against the naive reference, 1152 calls each (§5a) | bundle Makefile, gcc-14 14.2, `-O3 -march=rv64gcv_zfh_zvfh` | **PASS**, 0 kernels failed in both sets | `.scratch/reports/issue-112/handover/logs/board_jbpi_2026-11-19_145406.log` |
+| Same test with two planted bugs (b1 called for `beta = 0` in fp32 24x8; `Clda + 1` in f16f16f32 16x5), throwaway copy, not committed | as above | **FAIL** on exactly those two kernels (519 and 240 wrong elements): the test can fail | (scratch copy, deleted) |
+| Full GEMM FP32, unchanged design: `config_correctness.json` (16x15, 32x6, 32x7 × `correctness_small.dat`) | uninstrumented, reference protocol, `--tmin 0.2`, `--no-nc-overrides`, vector packing, default gcc 13.2 | **9 / 9 PASS** | `tests/pure_xdsl_blis_rvv/logs/run_2026-11-19_143324/` |
+| Full GEMM f16f16f32: `config_issue112_mixed_correctness.json` (16x15, 32x6, 32x7, 24x8 × `correctness_small.dat`) | as above but `--scalar-pack`, built with g++-14 `-march=rv64gcv_zfh_zvfh` (the build output shows it; the run's `provenance.txt` predates the g++-14 line added in §10 and names only gcc 13.2) | **12 / 12 PASS** | `tests/pure_xdsl_blis_rvv/logs/run_2026-11-19_144226/` |
+| f16f16f32 binary without `--scalar-pack` | as above | refused: "f16f16f32 runs with scalar packing only …" | — |
+| Host tests | — | 651 passed (full suite), then 71 passed after the §10 fixes (`test_handover_ukernels.py`, `test_board_pin.py`) | — |
+
+No timing numbers are quoted from these runs: they are correctness runs (short `tmin`, board not checked idle).
+
+## 10. Code review (2026-11-19, Standards and Spec axes)
+
+Fixed:
+- `ref_baseline/generated/` side effects of the host tests restored (`git checkout`).
+- Board provenance now also records `g++-14` (`board_pin.sh`), since f16f16f32 projects build with it.
+- `run_issue112_handover.sh` uses the shared `pin_check` (core 0 refused unless `--allow-core-0`); its log header says correctness only and names the build.
+- f16f16f32 pack loop: `pack_gen_dims = []` up front instead of an inline conditional.
+- `mlir-translate` path kept in one place (`gen_handover_ukernels.DEFAULT_TRANSLATE`).
+
+Kept on purpose:
+- The bundle Makefile repeats the gcc-14 / Zvfh flags: Héctor gets that folder alone.
+- No kernel dataclass in `gen_handover_ukernels.py`: the 3 helpers are small.
+- The reference cast to `C_TYPE` in `gemm_ref` applies to every datatype: no change for fp32 and int8.
