@@ -1,5 +1,5 @@
 \section{Part 2: the paper's BERT and Square shapes (\iss{71})}
-The paper (arXiv 2603.17800v1, the user's published design) picks its tile from a 1-core microkernel heatmap, whose best on the BPI was 16x15, and runs its GEMM on one core: S1--S5 at 32x7, BERT at 32x6, 16x15 and 32x7. \iss{71} asks which tile wins per shape at 1 and 8 threads in this repo's current design. The first table lists the paper's own GFLOPS (Fig.~11, its own xDSL code and protocol) beside ours for reference; they are not a matched comparison.
+The paper (arXiv 2603.17800v1, the user's published design) picks its tile from a 1-core microkernel heatmap, whose best on the BPI was 16x15, and runs its GEMM on one core: S1--S5 at 32x7, BERT at 32x6, 16x15 and 32x7. \iss{71} asks which tile wins per shape at 1 and 8 threads in this repo's current design. The table after the chart lists the paper's own GFLOPS (Fig.~11, its own xDSL code and protocol) beside ours for reference; they are not a matched comparison.
 
 \begin{figure}[htbp]\centering
 \begin{tikzpicture}
@@ -10,7 +10,7 @@ The paper (arXiv 2603.17800v1, the user's published design) picks its tile from 
   legend style={at={(0.5,1.02)}, anchor=south, legend columns=-1}]
 \addplot[fill=his, draw=none] table[y=idx, x=a8_168, meta=l168]{\G/paper_tiles.csv};
 \addplot[fill=vec, draw=none] table[y=idx, x=a8_327, meta=l327]{\G/paper_tiles.csv};
-\legend{16x8 (8T winner), 32x7 (paper)}
+\legend{16x8 (8T pass winner), 32x7 (paper)}
 \end{axis}
 \end{tikzpicture}
 \note{\iss{71}: jbpi, 8T cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}, \texttt{--no-nc-overrides}, vector packer, 19 tiles (the YOLO list, not the paper's full heatmap), 3 launches interleaved with the 1T launches (1T 8T 8T 1T 1T 8T). Core 0 takes the board's interrupts. Bar label: tile, then the cache blocking that run used (from its log).}

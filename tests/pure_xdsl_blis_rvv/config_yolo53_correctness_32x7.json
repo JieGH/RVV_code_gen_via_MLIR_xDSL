@@ -1,0 +1,5 @@
+[
+    // Issue #109 C2: tile 32x7, scalar oracle on, small YOLO-like shapes + the 3 n = 1 rows. Run by run_issue94.sh --check-8t; every row must PASS.
+    // Format: [datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run, iterations].
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["yolo_correctness_small.dat", "yolo26_k1_n1.dat"], false, 5]
+]

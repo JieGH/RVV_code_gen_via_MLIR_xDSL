@@ -2,7 +2,7 @@
 
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/91
 
-**Combined YOLO report (all findings, read first):** `.scratch/reports/yolo-multithread/report/yolo_report.pdf` ([LaTeX](../reports/yolo-multithread/report/yolo_report.tex)); index of every YOLO report, newest first: `.scratch/reports/yolo-multithread/README.md`.
+**Combined YOLO report (all findings, read first):** `.scratch/reports/yolo-multithread/report/yolo_report_v2.pdf` ([LaTeX](../reports/yolo-multithread/report/yolo_report_v2.tex)); index of every YOLO report, newest first: `.scratch/reports/yolo-multithread/README.md`.
 
 **§1.2 redone in #94 (2026-11-18):** final report [PDF](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-94/final/issue94_final_report.pdf) / [LaTeX](https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/blob/pure-xdsl/.scratch/reports/issue-94/final/issue94_final_report.tex). It is this report with §1.2 (ours against Héctor's, #56/#62 run 8 h apart) replaced by #94's rerun: V, S and H mixed in one series, all 8T bound. 1T: H 5.10, V 4.27 GOPs. 8T: V 19.17, H 18.99; without Y00, H 22.98, V 19.59. This report is kept as committed.
 **Role / Label:** `needs-triage`. Write-up from committed data; no new code.

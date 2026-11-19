@@ -1,0 +1,78 @@
+\clearpage
+\appendix
+\section{Runs}\label{app:runs}
+All on the SpacemiT X60 boards, run folders under \texttt{tests/pure\_xdsl\_blis\_rvv/logs/}. Uninstrumented build and reference protocol unless named; every timing run on an idle board.
+{\footnotesize
+\begin{longtable}{@{}p{1.2cm} p{4.2cm} p{1.4cm} p{9.2cm}@{}}
+\toprule
+issue & what & board & run folders \\
+\midrule\endhead
+\iss{109} & re-search, 1T: 24x8, 24x9, 32x7, 24x6, 53 layers, oracle on & jbpi & series \texttt{yolo\_sweep\_2026-11-19\_002730}: \texttt{run\_2026-11-19\_004531}, \texttt{\_010359}, \texttt{\_012250}, \texttt{\_014147} \\
+\iss{109} & re-search, 8T: top 7 of \iss{63} + 24x8, 53 layers, oracle on & jbpi & series \texttt{yolo\_sweep\_2026-11-19\_014357}: \texttt{run\_2026-11-19\_021831}, \texttt{\_025434}, \texttt{\_033122}, \texttt{\_040858}, \texttt{\_044720}, \texttt{\_052630} \\
+\iss{109} & V, S (ours 24x8 at 1T, 32x7 at 8T) and H, 1T / 8T, mixed, 53 layers, 8T bound on all & jbpi & series \texttt{issue94\_2026-11-19\_093036} (\texttt{steps.tsv}); C1 \texttt{run\_2026-11-19\_093250}, C2 \texttt{\_093447}; ours \texttt{run\_2026-11-19\_093923} \ldots{} \texttt{\_104610} (12 launches); H\'ector's \texttt{hector\_gemm\_2026-11-19\_094411} \ldots{} \texttt{\_103438} (6) \\
+\iss{56} & our GEMM 24x8, 1T / 8T, 50 shapes, oracle on & jbpi & \texttt{run\_2026-11-16\_193618}, \texttt{\_194037}, \texttt{\_194504}, \texttt{\_194944}, \texttt{\_195424}, \texttt{\_195855} (1T 8T 8T 1T 1T 8T) \\
+\iss{62} & H\'ector's \texttt{gemm.bin}, 1T / 8T & jbpi, jbpi2 & \texttt{hector\_gemm\_2026-11-16\_111457} (jbpi), \texttt{hector\_gemm\_2026-11-16\_113052} (jbpi2) \\
+\iss{94} & V, S (ours 24x8, vector / scalar packer) and H (H\'ector's \texttt{gemm.bin}), 1T / 8T, mixed, 8T bound on all & jbpi & series \texttt{issue94\_2026-11-18\_115554} (\texttt{steps.tsv}); ours \texttt{run\_2026-11-18\_120426} \ldots{} \texttt{\_130928} (12 launches), C1 \texttt{\_115802}, C2 \texttt{\_115959}; H\'ector's \texttt{hector\_gemm\_2026-11-18\_120900} \ldots{} \texttt{\_125819} (6 launches) \\
+\iss{61} & 1T tile search, 19 tiles, \texttt{--tmin 2} & jbpi & \texttt{run\_2026-11-15\_220501}, \texttt{\_231549}, \texttt{run\_2026-11-16\_002638} \\
+\iss{63} & 8T tile search + H\'ector's GEMM, A-B-B-A & jbpi & ours \texttt{run\_2026-11-16\_222551}, \texttt{\_234245}, \texttt{run\_2026-11-17\_005337}; H\'ector's \texttt{hector\_gemm\_2026-11-16\_222943}, \texttt{\_223301}, \texttt{hector\_gemm\_2026-11-17\_005723} \\
+\iss{79} C3 & 8T correctness, 19 tiles $\times$ 50 shapes & jbpi & \texttt{run\_2026-11-17\_092354} (950/950 PASS) \\
+\iss{71} & paper shapes, 1T / 8T & jbpi & 1T \texttt{run\_2026-11-17\_020326}, \texttt{\_043612}, \texttt{\_053929}; 8T \texttt{\_024808}, \texttt{\_033254}, \texttt{\_062411} \\
+\iss{83} C1--C4 & scalar packer correctness & jbpi, jbpi2 & \texttt{run\_2026-11-17\_115404}, \texttt{\_122902} (jbpi, 76/76); \texttt{\_115336}, \texttt{\_122805} (jbpi2, 57/57) \\
+\iss{83} T1 & YOLO 1T, scalar & jbpi & \texttt{run\_2026-11-17\_171901}, \texttt{\_182951}, \texttt{\_194103} \\
+\iss{83} T2 & YOLO 8T, scalar & jbpi & \texttt{run\_2026-11-17\_133645}, \texttt{\_145239}, \texttt{\_160305} \\
+\iss{83} T3 & paper 1T / 8T, scalar & jbpi2 & 1T \texttt{run\_2026-11-17\_133114}, \texttt{\_160334}, \texttt{\_170643}; 8T \texttt{\_141548}, \texttt{\_150024}, \texttt{\_175117} \\
+\iss{83} T4 & pack/compute split, instrumented, 1T & jbpi2 & \texttt{run\_2026-11-17\_182435}, \texttt{\_185726}, \texttt{\_193019}, \texttt{\_200306} (V S S V) \\
+\iss{85} & correctness, M1 (GOPs), M2 / M3 (split) & jbpi (1T), jbpi2 (8T) & listed in \texttt{.scratch/reports/issue-85/README.md} (\S Runs) and each series' \texttt{runs.tsv} \\
+\bottomrule
+\end{longtable}}
+
+\section{YOLO, all layers: our variable and fixed tile against H\'ector's tile (table of \S\ref{sec:1t}, \S\ref{sec:8t})}\label{app:tiles}
+The numbers behind the per-layer charts of \S\ref{sec:1t} (1T) and \S\ref{sec:8t} (8T), same runs, same order, plus our fixed tile on every layer.
+{\footnotesize\setlength\tabcolsep{3pt}
+\begin{longtable}{@{}l l >{\columncolor{vec!14}}l>{\columncolor{vec!14}}r >{\columncolor{vec!32}}r >{\columncolor{his!24}}l>{\columncolor{his!24}}r >{\columncolor{vec!14}}l>{\columncolor{vec!14}}r >{\columncolor{vec!32}}r >{\columncolor{his!24}}l>{\columncolor{his!24}}r@{}}
+\toprule
+ & & \multicolumn{5}{c}{1T (jbpi, core 4), \iss{61}} & \multicolumn{5}{c}{8T (jbpi, cores 0--7), \iss{63}} \\
+\cmidrule(lr){3-7}\cmidrule(l){8-12}
+ & & \multicolumn{2}{>{\columncolor{vec!14}}c}{ours, per layer} & \multicolumn{1}{>{\columncolor{vec!32}}c}{ours, fixed} & \multicolumn{2}{>{\columncolor{his!24}}c}{H\'ector's tile} & \multicolumn{2}{>{\columncolor{vec!14}}c}{ours, per layer} & \multicolumn{1}{>{\columncolor{vec!32}}c}{ours, fixed} & \multicolumn{2}{>{\columncolor{his!24}}c}{H\'ector's tile} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-10}\cmidrule(l){11-12}
+layer & m $\times$ n $\times$ k & tile & GOPs & 24x8 GOPs & tile & GOPs & tile & GOPs & 32x7 GOPs & tile & GOPs \\
+\midrule\endhead
+\csname @@input\endcsname \V/tile_rows.tex
+\bottomrule
+\end{longtable}}
+\noindent{\footnotesize\color{muted}GOPs by mean time, mean of 3 launches. Light blue = ours, best of our 19 tiles on each layer (variable tile); dark blue = ours, one fixed tile on every layer (the best single tile, \S\ref{sec:best}: 24x8 at 1T, 32x7 at 8T); purple = H\'ector's tile size (16x8; 16x4 at n = 4). Both run in \emph{our} GEMM. Source: the sweep reports (\texttt{tile\_search\_report.md}, \texttt{tile\_search\_8t\_3launches.md}). Last row: accumulated pass of \S\ref{sec:1t} / \S\ref{sec:8t}. jbpi, uninstrumented, reference protocol, \texttt{--tmin 2}, vector packer. Blocking: Appendix~\ref{app:blk}.}
+
+\section{YOLO, all 50 layers: vector against scalar packer}\label{app:yolo}
+{\footnotesize\setlength\tabcolsep{3pt}
+\begin{longtable}{@{}l l ll r ll r@{}}
+\toprule
+ & & \multicolumn{3}{c}{1T (jbpi, core 4)} & \multicolumn{3}{c}{8T (jbpi, cores 0--7)} \\
+\cmidrule(lr){3-5}\cmidrule(l){6-8}
+layer & m $\times$ n $\times$ k & vector & scalar & s/v & vector & scalar & s/v \\
+\midrule\endhead
+\csname @@input\endcsname \G/yolo_sv_rows.tex
+\bottomrule
+\end{longtable}}
+\noindent Best tile and GOPs by mean time, mean of 3 launches per side; s/v by mean time. In H\'ector's layer order; Y06, Y21, Y35 (n = 1, GEMV) left out. jbpi, 1T core 4, 8T cores 0--7, uninstrumented, reference protocol, \texttt{--tmin 2}. Vector: \iss{61}, \iss{63} (15--17 Nov); scalar: \iss{83} T1, T2 (17 Nov); not interleaved.
+
+\section{YOLO, all 50 layers: cache blocking}\label{app:blk}
+mc / kc per layer and tile (nc = n on every layer), as printed in the run logs; a tile's blocking is the same at 1T and 8T and with either packer. 24x8: the 1T best single tile (\S\ref{sec:best}); 16x8: H\'ector's tile in our GEMM. For 32x7, the 8T best single tile, see the \S\ref{sec:109} chart labels. Best tiles as in Appendix~\ref{app:yolo}.
+{\footnotesize\setlength\tabcolsep{4pt}
+\begin{longtable}{@{}l l rr ll ll@{}}
+\toprule
+ & & & & \multicolumn{2}{c}{best tile, vector packer} & \multicolumn{2}{c}{best tile, scalar packer} \\
+\cmidrule(lr){5-6}\cmidrule(l){7-8}
+layer & m $\times$ n $\times$ k & 24x8 & 16x8 & 1T & 8T & 1T & 8T \\
+\midrule\endhead
+\csname @@input\endcsname \G/yolo_blk_rows.tex
+\bottomrule
+\end{longtable}}
+
+\section{\iss{85} GOPs, all points}\label{app:85}
+GOPs by mean time, mean of 3 launches per packer (uninstrumented, reference protocol, \texttt{--tmin 3}); $^{\sim}$ = gap inside the launch range; s/v by mean time; 8T/1T crosses boards. Rows from \iss{85}'s script with the true mean time.
+\gopstable{\G/tab_pn.tex}{P-n: m = 1200, k = 256, tile 24x8}
+\gopstable{\G/tab_pm16.tex}{P-m: n = 16, k = 256, tile 24x8}
+\gopstable{\G/tab_pm256.tex}{P-m: n = 256, k = 256, tile 24x8}
+\gopstable{\G/tab_pk16.tex}{P-k: m = 1200, n = 16, tile 24x8}
+\gopstable{\G/tab_pk256.tex}{P-k: m = 1200, n = 256, tile 24x8}
+\gopstable{\G/tab_ptile.tex}{P-tile}

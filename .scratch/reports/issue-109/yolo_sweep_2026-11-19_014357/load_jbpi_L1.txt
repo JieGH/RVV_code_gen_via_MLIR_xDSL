@@ -1,0 +1,12 @@
+root                 12.1   6       00:00 sshd
+root                  0.6   5 107-17:04:03 disp_eng_share_thread
+systemd-oom           0.0   0 107-17:04:10 systemd-oomd
+root                  0.0   0    02:41:43 kworker/0:0-cgwb_release
+root                  0.0   2 107-17:04:00 bluetoothd
+root                  0.0   7 107-17:04:18 vq1
+root                  0.0   7 107-17:04:18 vq0
+messagebus            0.0   6 107-17:04:10 dbus-daemon
+root                  0.0   4       16:08 kworker/u16:6-flush-179:0
+root                  0.0   7       16:08 kworker/u16:4-xprtiod
+root                  0.0   0 107-17:04:09 NetworkManager
+root                  0.0   5       44:35 kworker/u16:18-nfsiod

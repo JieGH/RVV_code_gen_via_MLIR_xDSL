@@ -71,3 +71,34 @@ def test_parallel_gemm_runs_one_thread_count_with_the_scalar_packer():
     assert "vector packer" in default and "Order    : 1 8 8 1 1 8" in default and "Issue #56:" in default
     bad = subprocess.run(["bash", str(pg), "--threads", "4", "--dry-run"], capture_output=True, text=True, timeout=30)
     assert "--threads takes 1 or 8" in bad.stderr
+
+
+def test_each_thread_count_runs_its_own_config(tmp_path: Path):
+    """#109: ours at 1T runs --config-1t, at 8T --config-8t; Héctor's steps get neither; C1/C2 name their own configs."""
+    calls = tmp_path / "calls.txt"
+    stub = tmp_path / "stub.sh"
+    stub.write_text(f'#!/bin/bash\necho "$(basename "$0") $*" >> {calls}\n')
+    stub.chmod(0o755)
+    ours, his = tmp_path / "ours.sh", tmp_path / "his.sh"
+    ours.symlink_to(stub)
+    his.symlink_to(stub)
+    c1, c8 = HERE / "config_yolo53_24x8.json", HERE / "config_yolo53_search_8t.json"  # any two configs with distinct tiles
+    flags = ("--src", "/his", "--config-1t", str(c1), "--config-8t", str(c8), "--issue", "109")
+    done = run(*flags, "--skip-correctness",
+               env={"ISSUE94_OURS": str(ours), "ISSUE94_HECTOR": str(his), "ISSUE94_LOGS": str(tmp_path / "logs"),
+                    "HECTOR_YOLO_DIR": str(tmp_path / "reports")})
+    assert done.returncode == 0, done.stdout + done.stderr
+    lines = calls.read_text().splitlines()
+    assert len(lines) == 18
+    for line, step in zip(lines, ROUNDS):
+        s, t = step.split()
+        assert "--issue 109" in line
+        want = "" if s == "H" else f"--config {c1 if t == '1' else c8}"
+        assert ("--config" in line) == bool(want) and want in line
+    assert (tmp_path / "reports" / "issue-109").is_dir()
+    plan = run(*flags, "--check-1t", str(HERE / "config_yolo53_correctness_24x8.json"), "--dry-run").stdout
+    assert "Ours 1T  : config_yolo53_24x8.json (tile 24x8)" in plan and "(tile 16x12)" in plan
+    assert "C1: config_yolo53_correctness_24x8.json" in plan and "C2: config_issue94_correctness.json" in plan
+    pg = subprocess.run(["bash", str(HERE / "run_parallel_gemm.sh"), "--config", str(c1), "--dry-run"],
+                        capture_output=True, text=True, timeout=30).stdout
+    assert "(tile 24x8)" in pg and "datasets/yolo26_k1_53.dat (53 shapes" in pg

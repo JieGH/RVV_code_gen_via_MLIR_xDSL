@@ -1,0 +1,6 @@
+[
+    // Issue #108: the n = 1 YOLO26 rows (datasets/yolo26_k1_n1.dat), tile 24x8 as config_parallel_gemm.json, every
+    // row checked against the scalar oracle. Run by run_issue94.sh --config config_yolo_n1.json.
+    // Format: [datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run, iterations].
+    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["yolo26_k1_n1.dat"], false, 1000]
+]

@@ -1,0 +1,12 @@
+jlei                  500   0       00:00 ps
+root                 11.9   5       00:00 sshd
+root                  0.7   0    05:26:37 kworker/0:0-events
+root                  0.6   4 108-00:59:31 disp_eng_share_thread
+root                  0.1   0       01:18 kworker/u16:8-rpciod
+systemd-oom           0.0   3 108-00:59:38 systemd-oomd
+root                  0.0   7       00:42 kworker/u16:9-nfsiod
+root                  0.0   6       08:44 kworker/u16:0-nfsiod
+root                  0.0   3       06:38 kworker/u16:5-nfsiod
+root                  0.0   7 108-00:59:28 bluetoothd
+root                  0.0   0 108-00:59:46 vq1
+root                  0.0   3 108-00:59:46 vq0

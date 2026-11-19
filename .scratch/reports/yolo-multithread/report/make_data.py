@@ -32,7 +32,7 @@ def main() -> None:
     t4_fig()
 
 
-# Héctor's n = 1 layers: run on his GEMV, not timed yet; shown as empty rows (user, 2026-11-18).
+# Héctor's n = 1 layers: run on his GEMV, left out of our results; shown as empty rows (user, 2026-11-18).
 UNTIMED = {"Y06": "4800$\\times$1$\\times$9", "Y21": "1200$\\times$1$\\times$9", "Y35": "300$\\times$1$\\times$9"}
 
 
@@ -105,7 +105,7 @@ def shape_figs() -> None:
             labels, bars = [], {c: [] for c in cols}
             for i, r in enumerate(chunk):
                 if r[0] in UNTIMED:  # empty row, data later
-                    labels.append(f"{{{r[0]} {r[1]}\\\\[-1pt]\\tiny n = 1, not timed yet}}")
+                    labels.append(f"{{{r[0]} {r[1]}\\\\[-1pt]\\tiny n = 1 (GEMV), left out}}")
                     continue
                 n = int(r[1].split("$\\times$")[1])
                 mc, kc = blk[r[0]].split("/")
@@ -128,7 +128,7 @@ def shape_figs() -> None:
 \\legend{{{{H: H\\'ector's}},{{S: ours, scalar packer}},{{V: ours, vector packer}}}}
 \\end{{axis}}
 \\end{{tikzpicture}}
-\\note{{Row label: H\\'ector's layer ID (Y06, Y21, Y35: n = 1, not timed yet, left empty), m$\\times$n$\\times$k, then our cache blocking for 24x8 (V and S share it; from the run logs). Bar label: tile, then GOPs. H\\'ector's blocking is fixed, MC = KC = 256, NC = n. \\runs}}
+\\note{{Row label: H\\'ector's layer ID (Y06, Y21, Y35: n = 1 (GEMV), left out), m$\\times$n$\\times$k, then our cache blocking for 24x8 (V and S share it; from the run logs). Bar label: tile, then GOPs. H\\'ector's blocking is fixed, MC = KC = 256, NC = n. \\runs}}
 \\end{{figure}}
 """)
     (OUT / "shape_figs.tex").write_text("\n".join(out))
@@ -171,7 +171,7 @@ def tile_figs() -> None:
             labels, best, his = [], [], []
             for i, y in enumerate(chunk):
                 if y in UNTIMED:
-                    labels.append(f"{{{y} {UNTIMED[y]}\\\\[-1pt]\\tiny n = 1, not timed yet}}")
+                    labels.append(f"{{{y} {UNTIMED[y]}\\\\[-1pt]\\tiny n = 1 (GEMV), left out}}")
                     continue
                 _, m, n, k, _, bt, g, *_r, ct, cg = rows[y]
                 tb = blk[y][bk]
@@ -197,7 +197,7 @@ def tile_figs() -> None:
 \\legend{{{{best of our 19 tiles (whisker: launch range)}},{{H\\'ector's tile (16x8; 16x4 at n = 4) in our GEMM}}}}
 \\end{{axis}}
 \\end{{tikzpicture}}
-\\note{{Row: H\\'ector's layer ID, m$\\times$n$\\times$k (Y06, Y21, Y35: n = 1, not timed yet, left empty). Bar label: tile, its cache blocking (from the run logs), GOPs by mean time, mean of 3 launches. {who}, uninstrumented, reference protocol, \\texttt{{--tmin 2}}, \\texttt{{--no-nc-overrides}}, 19 tiles, vector packer.}}
+\\note{{Row: H\\'ector's layer ID, m$\\times$n$\\times$k (Y06, Y21, Y35: n = 1 (GEMV), left out). Bar label: tile, its cache blocking (from the run logs), GOPs by mean time, mean of 3 launches. {who}, uninstrumented, reference protocol, \\texttt{{--tmin 2}}, \\texttt{{--no-nc-overrides}}, 19 tiles, vector packer.}}
 \\end{{figure}}
 """)
         (OUT / f"tile_figs_{key}.tex").write_text("\n".join(out))

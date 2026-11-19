@@ -1,0 +1,5 @@
+=== fp32_AXPY_FP32_Pack_vlen256_MR24NR8 ===
+▶ Y06 (4800x1x9)         | best variant 24x8 [24 rows x 8 columns of C per tile] | 0.40 GOPs by mean time [whole GEMM call, packing included] | 0.40 GOPs median rep | 9255 reps | ✅ C[39,0]: 2.95 == 2.95 [sample entry vs the naive scalar GEMM] (cache blocking mc:4800 nc:1 kc:9)
+▶ Y21 (1200x1x9)         | best variant 24x8 [24 rows x 8 columns of C per tile] | 0.35 GOPs by mean time [whole GEMM call, packing included] | 0.35 GOPs median rep | 32496 reps | ✅ C[510,0]: 3.15 == 3.15 [sample entry vs the naive scalar GEMM] (cache blocking mc:1200 nc:1 kc:9)
+▶ Y35 (300x1x9)          | best variant 24x8 [24 rows x 8 columns of C per tile] | 0.39 GOPs by mean time [whole GEMM call, packing included] | 0.39 GOPs median rep | 144142 reps | ✅ C[69,0]: 2.65 == 2.65 [sample entry vs the naive scalar GEMM] (cache blocking mc:300 nc:1 kc:9)
+
