@@ -4,7 +4,7 @@ config_yolo_search.json, each launch with the rows rotated, on the first idle bo
 while another user's job is busy on it.
 
 Same seam as test_run_issue51.py: the bench script is a stub (`YOLO_SWEEP_RUN`), the board's
-process list a canned one (`YOLO_SWEEP_PS_CMD`), the logs go to a temp dir. No board is touched.
+process list a canned one (`BOARD_PS_CMD`), the logs go to a temp dir. No board is touched.
 """
 
 import json
@@ -57,7 +57,7 @@ def run_series(tmp_path: Path, *extra: str, behaviour: str = "ok,ok,ok", dataset
     logs = tmp_path / "logs"
     logs.mkdir(exist_ok=True)
     env = {**os.environ, "YOLO_SWEEP_LOGS": str(logs), "YOLO_SWEEP_RUN": str(tmp_path / "run.sh"),
-           "YOLO_SWEEP_PS_CMD": str(tmp_path / "ps.sh"), "STUB_BEHAVIOUR": behaviour,
+           "BOARD_PS_CMD": str(tmp_path / "ps.sh"), "STUB_BEHAVIOUR": behaviour,
            "YOLO_SWEEP_REPORT": str(tmp_path / "report.sh"), "HECTOR_YOLO_DIR": str(tmp_path / "HectorYolo"), **env_extra}
     done = subprocess.run([str(SERIES), "--boards", "a,b", "--wait-min", "0", *extra],
                           env=env, capture_output=True, text=True, timeout=180, check=False)
@@ -119,7 +119,7 @@ def test_a_board_that_cannot_be_read_counts_as_busy(tmp_path: Path):
     (tmp_path / "fail.sh").chmod(0o755)
     (tmp_path / "logs").mkdir()
     env = {**os.environ, "YOLO_SWEEP_LOGS": str(tmp_path / "logs"), "YOLO_SWEEP_RUN": "/bin/false",
-           "YOLO_SWEEP_PS_CMD": str(tmp_path / "fail.sh"), "HECTOR_YOLO_DIR": str(tmp_path / "HectorYolo"),
+           "BOARD_PS_CMD": str(tmp_path / "fail.sh"), "HECTOR_YOLO_DIR": str(tmp_path / "HectorYolo"),
            "YOLO_SWEEP_REPORT": "/bin/true"}
     done = subprocess.run([str(SERIES), "--boards", "a", "--launches", "1", "--wait-min", "0"],
                           env=env, capture_output=True, text=True, timeout=60, check=False)

@@ -85,22 +85,6 @@ done
 args_of() { [ "$1" = 1 ] && echo "--cpu 4" || echo "--threads 8"; }
 cores_of() { [ "$1" = 1 ] && echo 4 || echo 0-7; }
 
-board_ps() {
-    if [ -n "${PARALLEL_GEMM_PS_CMD:-}" ]; then ${PARALLEL_GEMM_PS_CMD} "$1"; return; fi
-    local cmd='ps -eo user:20,pcpu,psr,etime,comm --sort=-pcpu --no-headers | head -12'
-    if [ "${MODE_ARG}" = "--direct" ]; then
-        ssh -p "${RISCV_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 "${RISCV_USER}@$1" "${cmd}"
-    else
-        sshpass -p "${REMOTE_PASS}" ssh -p "${REMOTE_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
-            "${RISCV_USER}@${REMOTE_HOST}" "ssh -p ${RISCV_PORT} -o StrictHostKeyChecking=no -o ConnectTimeout=15 $1 '${cmd}'"
-    fi
-}
-# busy <board> <file> -- prints another user's busy job, if any; a board that cannot be read counts as busy
-busy() {
-    board_ps "$1" > "$2" 2>&1 || { echo "cannot read the board's processes"; return; }
-    awk -v me="${RISCV_USER}" "${OTHER_USERS_AWK}" "$2"
-}
-
 print_plan() {
     echo "Issue #${ISSUE}: our GEMM (tile $(grep -oE '\[[0-9]+, [0-9]+\]' "${CONFIG}" | head -1 | tr -d '[] ' | tr , x)) at 1 and 8 threads on datasets/${DATASET} (${SHAPES} shapes, every row checked)"
     echo "  Settings : uninstrumented, reference protocol, --tmin ${TMIN}, --no-nc-overrides, ${PACKER}"
@@ -121,7 +105,7 @@ wait_s() { awk -v m="${WAIT_MIN}" 'BEGIN { printf "%d", m * 60 }'; }
 BOARD=""
 while [ -z "${BOARD}" ]; do
     for b in "${BOARD_LIST[@]}"; do
-        others="$(busy "${b}" "${SERIES}/load_${b}_pick.txt")"
+        others="$(board_busy "${b}" "${SERIES}/load_${b}_pick.txt")"
         if [ -z "${others}" ]; then BOARD="${b}"; break; fi
         echo "[$(date +%H:%M)] ${b} is busy: ${others}"
     done
@@ -149,7 +133,7 @@ OK=0; TOTAL=${#ORDER[@]}
 for ((l = 1; l <= TOTAL; l++)); do
     th="${ORDER[$((l - 1))]}"
     log="${SERIES}/L${l}_T${th}_${BOARD}.log"
-    while others="$(busy "${BOARD}" "${SERIES}/load_${BOARD}_L${l}.txt")"; [ -n "${others}" ]; do
+    while others="$(board_busy "${BOARD}" "${SERIES}/load_${BOARD}_L${l}.txt")"; [ -n "${others}" ]; do
         echo "[$(date +%H:%M)] launch ${l}: ${BOARD} is busy (${others}); waiting ${WAIT_MIN} min"
         sleep "$(wait_s)"
     done
@@ -172,7 +156,7 @@ for ((l = 1; l <= TOTAL; l++)); do
     [ "${rc}" -ne 0 ] && why="exit ${rc}"
     [ "${rows}" -ne "${SHAPES}" ] && why="${why:+${why}, }${rows} of ${SHAPES} shapes"
     [ "${fails}" -ne 0 ] && why="${why:+${why}, }${fails} FAIL rows"
-    others="$(busy "${BOARD}" "${SERIES}/load_${BOARD}_L${l}_after.txt")"
+    others="$(board_busy "${BOARD}" "${SERIES}/load_${BOARD}_L${l}_after.txt")"
     if [ -n "${others}" ]; then
         echo "$(date -Is) launch ${l} on ${BOARD}, read after: ${others}" >> "${SERIES}/load_warnings.txt"
         echo "    RED NOTE: another user's job was on ${BOARD} at the end of launch ${l}: ${others}"

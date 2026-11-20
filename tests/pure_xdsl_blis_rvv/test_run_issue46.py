@@ -3,7 +3,7 @@ Issue #46: `run_issue46.sh` runs ours, the reference unchanged and the reference
 in launches whose order changes, and says which runs it can trust.
 
 Both runners are replaced by stubs (`ISSUE46_OURS`, `ISSUE46_REF`), the board's process list by a
-canned one (`ISSUE46_PS_CMD`), and the logs go to a temp dir, so no board is touched. What is checked
+canned one (`BOARD_PS_CMD`), and the logs go to a temp dir, so no board is touched. What is checked
 is the loop: the order of the runs in each launch and the boards taking turns, the settings each run
 is given, that a run which exits non-zero or leaves its result out is named as failed and the series
 goes on, and that another user's heavy job is written down as a RED NOTE without stopping anything.
@@ -54,7 +54,7 @@ def run_series(tmp_path: Path, behaviour: str, *extra: str, ps: str = "") -> tup
     (logs / "refbase_issue33_2026-09-25").mkdir(exist_ok=True)
     (logs / "run_zz_old").mkdir(exist_ok=True)
     env = {**os.environ, "ISSUE46_LOGS": str(logs), "ISSUE46_OURS": str(tmp_path / "ours.sh"),
-           "ISSUE46_REF": str(tmp_path / "ref.sh"), "ISSUE46_PS_CMD": str(tmp_path / "ps.sh"),
+           "ISSUE46_REF": str(tmp_path / "ref.sh"), "BOARD_PS_CMD": str(tmp_path / "ps.sh"),
            "STUB_BEHAVIOUR": behaviour}
     done = subprocess.run([str(SERIES), "--boards", "a,b", "--launches", "2", *extra],
                           env=env, capture_output=True, text=True, timeout=120, check=False)

@@ -30,6 +30,7 @@
 set -u
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${HERE}/board_pin.sh"   # board access (issue #116)
 REPO_ROOT="$(cd "${HERE}/../.." && pwd)"
 BOARD="jbpi2"; LAUNCHES=3; TMIN=10; CPU=4
 IDLE_GAP=60; IDLE_POLL=300; IDLE_MAX_WAIT=10800; IDLE_MIN=85; IDLE_PROC_MAX=20
@@ -83,91 +84,17 @@ fi
 mkdir -p "${SERIES}"
 printf 'board\tlaunch\tposition\tarm\tresult_dir\texit\tstatus\n' > "${SERIES}/runs.tsv"
 
-# ---- board access and the idle gate (as run_issue55.sh) ----
-board_ssh() {
-    local board="$1"; shift
-    if [ "${MODE_ARG}" = "--direct" ]; then
-        ssh -p "${RISCV_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 "${RISCV_USER}@${board}" "$@"
-    else
-        local escaped; escaped=$(printf '%q ' "$@")
-        sshpass -p "${REMOTE_PASS}" ssh -p "${REMOTE_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
-            "${RISCV_USER}@${REMOTE_HOST}" "ssh -p ${RISCV_PORT} -o StrictHostKeyChecking=no -o ConnectTimeout=15 ${board} ${escaped}"
-    fi
-}
-top_summary() {
-    awk -v me="${RISCV_USER}" -v thr="${IDLE_PROC_MAX}" '
-        /^top - / { idle = ""; heavy = ""; root = ""; hdr = 0; next }
-        /Cpu\(s\)/ {
-            if (match($0, /[0-9]+[.,]?[0-9]* *%?id/)) {
-                s = substr($0, RSTART, RLENGTH); gsub(/[^0-9.,]/, "", s); gsub(",", ".", s); idle = s
-            }
-            next
-        }
-        /^ *PID +USER/ { for (i = 1; i <= NF; i++) { if ($i == "USER") uc = i; if ($i == "%CPU") cc = i } hdr = 1; next }
-        hdr && NF >= cc && $uc != "" {
-            c = $cc; gsub(",", ".", c)
-            if (c + 0 >= thr) {
-                item = sprintf("%s %s %s%%; ", $uc, $NF, c)
-                if ($uc == "root") root = root item
-                else if ($uc != me) heavy = heavy item
-            }
-        }
-        END { printf "%s|%s|%s\n", idle, heavy, root }
-    ' "$1"
-}
-READ_N=0
-one_reading() {   # <tag> <phase>; 0 if idle
-    local tag="$1" phase="$2" raw sum idle heavy root verdict
-    READ_N=$((READ_N + 1))
-    raw="$(mktemp)"
-    board_ssh "${BOARD}" "LC_ALL=C top -bn2 -d1" > "${raw}" 2>&1
-    sum="$(top_summary "${raw}")"
-    idle="${sum%%|*}"; sum="${sum#*|}"; heavy="${sum%%|*}"; root="${sum#*|}"
-    awk '/^top - / { n = 0; delete keep } { keep[n++] = $0 } END { for (i = 0; i < n && i < 30; i++) print keep[i] }' \
-        "${raw}" > "${SERIES}/idle_${BOARD}_${tag}_${phase}_${READ_N}.txt"
-    rm -f "${raw}"
-    READ_WHY=""
-    if [ -z "${idle}" ]; then
-        READ_WHY="no reading (could not read top)"
-    else
-        [ -n "${heavy}" ] && READ_WHY="other user busy: ${heavy}"
-        if awk -v i="${idle}" -v m="${IDLE_MIN}" 'BEGIN { exit !(i + 0 < m + 0) }'; then
-            READ_WHY="${READ_WHY:+${READ_WHY} }overall idle ${idle}% is under ${IDLE_MIN}%"
-        fi
-    fi
-    if [ -z "${READ_WHY}" ]; then verdict=idle; else verdict=BUSY; fi
-    printf '%s\t%s\t%s\t%s\tidle=%s%%\tother_users=%s\troot=%s\t%s\n' "$(date -Is)" "${BOARD}" "${tag}" "${phase}" \
-        "${idle:-?}" "${heavy:-none}" "${root:-none}" "${verdict}" >> "${SERIES}/idle_readings.txt"
-    [ -n "${heavy}" ] && echo "$(date -Is) ${BOARD} ${tag} (${phase}): ${heavy}" >> "${SERIES}/load_warnings.txt"
-    [ -z "${READ_WHY}" ]
-}
-idle_gate() {   # <tag>
-    local tag="$1" waited=0
-    while true; do
-        if one_reading "${tag}" pre; then
-            [ "${IDLE_GAP}" -gt 0 ] && sleep "${IDLE_GAP}"
-            if one_reading "${tag}" pre; then return 0; fi
-        fi
-        if [ $((waited + IDLE_POLL)) -gt "${IDLE_MAX_WAIT}" ]; then
-            echo "$(date -Is) ${BOARD} ${tag}: still busy after ${waited} s (${READ_WHY}); giving up" >> "${SERIES}/idle_waits.txt"
-            return 1
-        fi
-        echo "$(date -Is) ${BOARD} ${tag}: busy: ${READ_WHY}; waiting ${IDLE_POLL} s" >> "${SERIES}/idle_waits.txt"
-        sleep "${IDLE_POLL}"; waited=$((waited + IDLE_POLL))
-    done
-}
-
 # run_one <launch> <position> <arm> <extra args...>
 run_one() {
     local L="$1" P="$2" arm="$3"; shift 3
     local tag="L${L}_${P}_${arm}" log rc dir status
-    idle_gate "${tag}" || { echo "  board busy for too long before ${tag}: stopping"; exit 2; }
+    board_idle_gate "${BOARD}" "${tag}" || { echo "  board busy for too long before ${tag}: stopping"; exit 2; }
     log="${SERIES}/${BOARD}_${tag}.log"
     echo "$(date -Is) ${tag}: start"
     ( cd "${REPO_ROOT}" && ./tests/pure_xdsl_blis_rvv/ref_baseline/run_ref_baseline.sh "${MODE_ARG}" "${BASE[@]}" "$@" ) \
         > "${log}" 2>&1
     rc=$?
-    one_reading "${tag}" post || true
+    board_one_reading "${BOARD}" "${tag}" post || true
     dir="$(grep -o 'refbase_[0-9_-]*' "${log}" | tail -1)"
     status=ok
     [ "${rc}" -ne 0 ] && status=failed

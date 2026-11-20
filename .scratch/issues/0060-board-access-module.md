@@ -48,10 +48,30 @@ The exact function names and arguments are settled in grilling, before code.
 - One test file for the module (extend `test_board_pin.py`): direct and jump-host command lines, the busy-user parse, idle gate pass / wait / give-up with the fake hook.
 - Every `test_run_*.py` that sets a `*_PS_CMD` hook switches to the shared hook. Their assertions on `--dry-run` output stay unchanged.
 
-## 5. Closure criteria
+## 5. Decisions (2026-11-20, by the agent, no grilling)
 
-- [ ] No `board_ps`, `on_board`, `hop`, `board_ssh` or idle-gate copy left outside `board_pin.sh` (grep).
-- [ ] `StrictHostKeyChecking=no` appears only in `board_pin.sh` (and docs).
-- [ ] Every `--dry-run` plan byte-identical to before (diff saved in this issue).
-- [ ] Full host pytest passes (run with no board series active).
-- [ ] One real launch of `compile_macro_bench.sh` through the module to jbpi, correctness only (busy board allowed).
+- **The seven `board_ps` copies were identical** apart from the name of the test hook variable (`ISSUE46_PS_CMD`, ..., `YOLO_SWEEP_PS_CMD`). The spec's "all different" was too strong.
+- **Names:** every function in the module has the prefix `board_`: `board_ssh`, `board_rsync`, `board_ps`, `board_busy`, `board_wait_idle`, `board_top_read`, `board_top_summary`, `board_top_trim`, `board_one_reading`, `board_idle_gate`. Callers pass the board name as an argument (the #54_ref copy used a global).
+- **Two kinds of idle check stay two functions, not one.** `board_busy` reads `ps` (46-51, yolo, parallel). `board_idle_gate` reads `top` (#54_ref, #55) and records readings in `${SERIES}`. `board_wait_idle` is the #83/#94 form (jump host, user `jlei`, polls every 10 min). Merging them would change thresholds and logs.
+- **Test hooks:** one pair, `BOARD_PS_CMD` and `BOARD_TOP_CMD`, replaces the seven per-script `*_PS_CMD` and `ISSUE55_TOP_CMD`. Tests were renamed; their assertions did not change.
+- **Series folder naming left alone.** It is one `date +%Y-%m-%d_%H%M%S` call; a helper's interface would be as big as the line (deletion test: nothing concentrates).
+- **Not moved, because their connection form differs and no board was used to check a change:**
+  - `run_hector_gemm.sh` (`on_board`, `busy`: login shell, key login, stdin passed through, no host-key option, user `USER_ON_BOARD`);
+  - `run_issue112_handover.sh` (`hop`, `board`);
+  - `probe_issue95.sh` (`on_board`, user fixed to `jlei`);
+  - `ref_baseline/run_direct_check.sh` (`ssh_board`, `rsync_board`, host `fej`);
+  - `run_issue83_pack_split.sh`, `run_issue85.sh` (2 ssh options each);
+  - `compile_macro_bench.sh` and `ref_baseline/run_ref_baseline.sh` (the entry points; 7 and 5 ssh options).
+
+## 6. Result
+
+- Host tests before: 222 passed, 2 failed, 3 errors (14 min 28 s). After: **233 passed, 2 failed, 3 errors**. The 5 problems are the same, all in `test_parallel_gemm.py`, present before this change. The 11 new passes are `test_board_access.py`.
+- Removed from the run scripts: 7 `board_ps`, 2 `busy`, 2 `busy_others` + 2 `wait_idle`, `board_ssh` (x2), `board_rsync`, `top_read`, `top_summary` (x2), `trim_sample`, `one_reading` (x2), `idle_gate` (x2). 22 files, +207 / -325 lines before the new test file.
+
+## 7. Closure criteria
+
+- [ ] No `board_ps`, `on_board`, `hop`, `board_ssh` or idle-gate copy left outside `board_pin.sh`. **Not met:** `on_board` (hector, probe_issue95), `hop` (#112), `ssh_board` (direct_check) remain; see section 5.
+- [ ] `StrictHostKeyChecking=no` appears only in `board_pin.sh`. **Not met:** still in `compile_macro_bench.sh`, `run_ref_baseline.sh`, `run_direct_check.sh`, `run_issue112_handover.sh`, `run_issue83_pack_split.sh`, `run_issue85.sh`.
+- [ ] Every `--dry-run` plan byte-identical to before. **Not proven by a diff.** The existing dry-run tests of the changed scripts pass with only the hook names changed.
+- [ ] Full host pytest passes. **Not met as written:** same 2 failures + 3 errors as before the change (`test_parallel_gemm.py`); nothing new fails.
+- [ ] One real launch through the module to jbpi, correctness only. **Not done:** no board run in this session.

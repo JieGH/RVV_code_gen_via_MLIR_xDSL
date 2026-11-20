@@ -5,7 +5,7 @@ own single-row config (`config_issue51_<tile>.json`), so the rotation is real ra
 bundled into one multi-row sweep (the gap #50's code review found).
 
 Same seam as test_run_issue49.py: the bench script is replaced by a stub (`ISSUE51_RUN`), the
-board's process list by a canned one (`ISSUE51_PS_CMD`) and the logs go to a temp dir, so no
+board's process list by a canned one (`BOARD_PS_CMD`) and the logs go to a temp dir, so no
 board is touched. What is checked is the loop: the order of the tiles and the boards, that
 each tile gets its own config, that a failed or incomplete run is named and the series goes
 on, that another user's heavy job is a RED NOTE without stopping anything, and that a config
@@ -49,7 +49,7 @@ def run_series(tmp_path: Path, behaviour: str, *extra: str, ps: str = "") -> tup
     logs.mkdir(exist_ok=True)
     (logs / "run_zz_old").mkdir(exist_ok=True)  # sorts after every stamped folder: must not be taken for a result
     env = {**os.environ, "ISSUE51_LOGS": str(logs), "ISSUE51_RUN": str(tmp_path / "run.sh"),
-           "ISSUE51_PS_CMD": str(tmp_path / "ps.sh"), "STUB_BEHAVIOUR": behaviour}
+           "BOARD_PS_CMD": str(tmp_path / "ps.sh"), "STUB_BEHAVIOUR": behaviour}
     done = subprocess.run([str(SERIES), "--boards", "a,b", "--launches", "2", *extra],
                           env=env, capture_output=True, text=True, timeout=180, check=False)
     return done, logs

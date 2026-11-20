@@ -118,3 +118,159 @@ launch_conditions() {
     printf '  %-14s : %s\n' "raw events" "${1:-none}"
     printf '  %-14s : %s\n' "busy share" "${shares:-unavailable}"
 }
+
+# ---------------------------------------------------------------------------------------------
+# Board access module (issue #116). One place for how a run script reaches a board, reads who
+# else is using it, and waits for it to be idle. Before, each run script carried its own copy.
+#
+# Interface (the globals a caller sets before calling any of these):
+#   MODE_ARG                 "--direct" (the board is reachable from here) or anything else (jump host)
+#   RISCV_USER, RISCV_PORT   the account and ssh port on the board
+#   REMOTE_HOST, REMOTE_PORT, REMOTE_PASS   the jump host (unused with --direct)
+#   SERIES                   folder for the idle gate's readings (board_idle_gate, board_one_reading only)
+#   IDLE_GAP, IDLE_POLL, IDLE_MAX_WAIT, IDLE_MIN, IDLE_PROC_MAX   the idle gate's thresholds, in s / %
+# Test hooks (one pair for every script; each is an executable called as `<hook> <board>`):
+#   BOARD_PS_CMD   stands for `ps` on the board        BOARD_TOP_CMD   stands for `top -bn2 -d1`
+# ---------------------------------------------------------------------------------------------
+
+# board_ssh <board> <command...> -- runs the command on the board, directly or through the jump host
+board_ssh() {
+    local board="$1"; shift
+    if [ "${MODE_ARG}" = "--direct" ]; then
+        ssh -p "${RISCV_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 "${RISCV_USER}@${board}" "$@"
+    else
+        local escaped; escaped=$(printf '%q ' "$@")
+        sshpass -p "${REMOTE_PASS}" ssh -p "${REMOTE_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
+            "${RISCV_USER}@${REMOTE_HOST}" "ssh -p ${RISCV_PORT} -o StrictHostKeyChecking=no -o ConnectTimeout=15 ${board} ${escaped}"
+    fi
+}
+
+# board_rsync <board> <rsync args...> -- the target is written as @T@:path and becomes the right host
+board_rsync() {
+    local board="$1"; shift
+    local args=() a
+    if [ "${MODE_ARG}" = "--direct" ]; then
+        for a in "$@"; do args+=("${a//@T@/${RISCV_USER}@${board}}"); done
+        rsync -av -e "ssh -p ${RISCV_PORT} -o StrictHostKeyChecking=no" "${args[@]}"
+    else
+        for a in "$@"; do args+=("${a//@T@/${RISCV_USER}@${REMOTE_HOST}}"); done
+        sshpass -p "${REMOTE_PASS}" rsync -av -e "ssh -p ${REMOTE_PORT} -o StrictHostKeyChecking=no" "${args[@]}"
+    fi
+}
+
+# board_ps <board> -- the board's processes by CPU (user, %cpu, core, age, command), whoever's they are
+board_ps() {
+    if [ -n "${BOARD_PS_CMD:-}" ]; then ${BOARD_PS_CMD} "$1"; return; fi
+    local cmd='ps -eo user:20,pcpu,psr,etime,comm --sort=-pcpu --no-headers | head -12'
+    if [ "${MODE_ARG}" = "--direct" ]; then
+        ssh -p "${RISCV_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 "${RISCV_USER}@$1" "${cmd}"
+    else
+        sshpass -p "${REMOTE_PASS}" ssh -p "${REMOTE_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
+            "${RISCV_USER}@${REMOTE_HOST}" "ssh -p ${RISCV_PORT} -o StrictHostKeyChecking=no -o ConnectTimeout=15 $1 '${cmd}'"
+    fi
+}
+
+# board_busy <board> <file> -- reads the board's processes into the file; prints another user's busy job, if any.
+# A board that cannot be read counts as busy: no launch on a board we cannot see.
+board_busy() {
+    board_ps "$1" > "$2" 2>&1 || { echo "cannot read the board's processes"; return; }
+    awk -v me="${RISCV_USER}" "${OTHER_USERS_AWK}" "$2"
+}
+
+# board_wait_idle <board> -- blocks, polling every 10 min, while another user's process is above 20% CPU.
+# Used by the correctness-first scripts (#83, #94). Always the jump-host route, as before.
+board_wait_idle() {
+    local board="$1" b out
+    while true; do
+        if out=$(timeout 60 sshpass -p "${REMOTE_PASS}" ssh -p "${REMOTE_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
+            "jlei@${REMOTE_HOST}" "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 ${board} 'ps -eo user=,pcpu=,comm='" 2>/dev/null); then
+            b=$(echo "${out}" | awk '$1 != "jlei" && $1 != "root" && $2 > 20 {print $1 ":" $3 ":" $2}' | tr '\n' ' ')
+        else
+            b="unreadable"
+        fi
+        [ -n "${b}" ] || return 0
+        echo "[$(date +%H:%M)] ${board} busy (${b}); waiting 10 min"; sleep 600
+    done
+}
+
+# board_top_read <board> -- `top -bn2 -d1` on the board, raw
+board_top_read() {
+    if [ -n "${BOARD_TOP_CMD:-}" ]; then ${BOARD_TOP_CMD} "$1"; return; fi
+    board_ssh "$1" "LC_ALL=C top -bn2 -d1"
+}
+
+# board_top_summary <file> -- from the LAST sample of a `top -b` output: "idle|heavy|root".
+# idle = overall CPU idle %; heavy = processes of other users (not root, not us) at >= IDLE_PROC_MAX % of a core;
+# root = root's processes at or above the same mark (recorded, never a block).
+board_top_summary() {
+    awk -v me="${RISCV_USER}" -v thr="${IDLE_PROC_MAX}" '
+        /^top - / { idle = ""; heavy = ""; root = ""; hdr = 0; next }
+        /Cpu\(s\)/ {
+            if (match($0, /[0-9]+[.,]?[0-9]* *%?id/)) {
+                s = substr($0, RSTART, RLENGTH); gsub(/[^0-9.,]/, "", s); gsub(",", ".", s); idle = s
+            }
+            next
+        }
+        /^ *PID +USER/ { for (i = 1; i <= NF; i++) { if ($i == "USER") uc = i; if ($i == "%CPU") cc = i } hdr = 1; next }
+        hdr && NF >= cc && $uc != "" {
+            c = $cc; gsub(",", ".", c)
+            if (c + 0 >= thr) {
+                item = sprintf("%s %s %s%%; ", $uc, $NF, c)
+                if ($uc == "root") root = root item
+                else if ($uc != me) heavy = heavy item
+            }
+        }
+        END { printf "%s|%s|%s\n", idle, heavy, root }
+    ' "$1"
+}
+
+# board_top_trim <file> -- the last sample of a top output, its first 30 lines
+board_top_trim() {
+    awk '/^top - / { n = 0; delete keep } { keep[n++] = $0 } END { for (i = 0; i < n && i < 30; i++) print keep[i] }' "$1"
+}
+
+# board_one_reading <board> <tag> <phase> -- takes a reading, records it in ${SERIES}; returns 0 if the board is
+# idle, 1 if not (the reason is left in READ_WHY)
+READ_N=0
+board_one_reading() {
+    local board="$1" tag="$2" phase="$3" raw sum idle heavy root verdict
+    READ_N=$((READ_N + 1))
+    raw="$(mktemp)"
+    board_top_read "${board}" > "${raw}" 2>&1
+    sum="$(board_top_summary "${raw}")"
+    idle="${sum%%|*}"; sum="${sum#*|}"; heavy="${sum%%|*}"; root="${sum#*|}"
+    board_top_trim "${raw}" > "${SERIES}/idle_${board}_${tag}_${phase}_${READ_N}.txt"
+    rm -f "${raw}"
+    READ_WHY=""
+    if [ -z "${idle}" ]; then
+        READ_WHY="no reading (could not read top)"
+    else
+        if [ -n "${heavy}" ]; then READ_WHY="other user busy: ${heavy}"; fi
+        if awk -v i="${idle}" -v m="${IDLE_MIN}" 'BEGIN { exit !(i + 0 < m + 0) }'; then
+            READ_WHY="${READ_WHY:+${READ_WHY} }overall idle ${idle}% is under ${IDLE_MIN}%"
+        fi
+    fi
+    if [ -z "${READ_WHY}" ]; then verdict=idle; else verdict=BUSY; fi
+    printf '%s\t%s\t%s\t%s\tidle=%s%%\tother_users=%s\troot=%s\t%s\n' "$(date -Is)" "${board}" "${tag}" "${phase}" \
+        "${idle:-?}" "${heavy:-none}" "${root:-none}" "${verdict}" >> "${SERIES}/idle_readings.txt"
+    [ -n "${heavy}" ] && echo "$(date -Is) ${board} ${tag} (${phase}): ${heavy}" >> "${SERIES}/load_warnings.txt"
+    [ -z "${READ_WHY}" ]
+}
+
+# board_idle_gate <board> <tag> -- waits until two readings IDLE_GAP s apart both pass; 1 after IDLE_MAX_WAIT s of waiting
+board_idle_gate() {
+    local board="$1" tag="$2" waited=0
+    while true; do
+        if board_one_reading "${board}" "${tag}" pre; then
+            [ "${IDLE_GAP}" -gt 0 ] && sleep "${IDLE_GAP}"
+            if board_one_reading "${board}" "${tag}" pre; then return 0; fi
+        fi
+        if [ $((waited + IDLE_POLL)) -gt "${IDLE_MAX_WAIT}" ]; then
+            echo "$(date -Is) ${board} ${tag}: still busy after ${waited} s (${READ_WHY}); giving up" >> "${SERIES}/idle_waits.txt"
+            return 1
+        fi
+        echo "$(date -Is) ${board} ${tag}: busy: ${READ_WHY}; waiting ${IDLE_POLL} s (waited ${waited} of ${IDLE_MAX_WAIT} s)" >> "${SERIES}/idle_waits.txt"
+        sleep "${IDLE_POLL}"
+        waited=$((waited + IDLE_POLL))
+    done
+}

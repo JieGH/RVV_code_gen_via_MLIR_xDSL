@@ -4,7 +4,7 @@ launches (no setting to rotate: every launch is the same --instr --raw-events x6
 the four-tile config), letting the boards take turns.
 
 Same seam as test_run_issue48.py: the bench script is replaced by a stub (`ISSUE50_RUN`), the
-board's process list by a canned one (`ISSUE50_PS_CMD`) and the logs go to a temp dir, so no
+board's process list by a canned one (`BOARD_PS_CMD`) and the logs go to a temp dir, so no
 board is touched. What is checked is the loop: the boards take turns, every run gets
 --instr --raw-events, a failed or incomplete run is named and the series goes on, another
 user's heavy job is a RED NOTE without stopping anything, and the sweep config holds the four
@@ -47,7 +47,7 @@ def run_series(tmp_path: Path, behaviour: str, *extra: str, ps: str = "") -> tup
     logs.mkdir(exist_ok=True)
     (logs / "run_zz_old").mkdir(exist_ok=True)  # sorts after every stamped folder: must not be taken for a result
     env = {**os.environ, "ISSUE50_LOGS": str(logs), "ISSUE50_RUN": str(tmp_path / "run.sh"),
-           "ISSUE50_PS_CMD": str(tmp_path / "ps.sh"), "STUB_BEHAVIOUR": behaviour, "STUB_CONFIG_DIR": str(HERE)}
+           "BOARD_PS_CMD": str(tmp_path / "ps.sh"), "STUB_BEHAVIOUR": behaviour, "STUB_CONFIG_DIR": str(HERE)}
     done = subprocess.run([str(SERIES), "--boards", "a,b", "--launches", "2", *extra],
                           env=env, capture_output=True, text=True, timeout=180, check=False)
     return done, logs
