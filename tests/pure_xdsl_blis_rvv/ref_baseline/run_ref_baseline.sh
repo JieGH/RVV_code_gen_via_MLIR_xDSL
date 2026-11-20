@@ -108,27 +108,17 @@ REF_SRC="$(cd "${REPO_ROOT}/../ext/RVV_ukernels_benchmark" && pwd)"
 STAMP="$(date +%Y-%m-%d_%H%M%S)"
 RESULT_DIR="${REPO_ROOT}/tests/pure_xdsl_blis_rvv/logs/refbase_${STAMP}"
 
+MODE_ARG=--jump; [ "$USE_DIRECT" = true ] && MODE_ARG=--direct
+RISCV_PORT="${RISCV_SSH_PORT}"                    # the board access module (board_pin.sh) reads these
 if [ "$USE_DIRECT" = true ]; then
     echo ""; echo "  Mode: Direct"; echo ""
-    ssh_board()   { ssh -p "${RISCV_SSH_PORT}" -o StrictHostKeyChecking=no \
-                        "${RISCV_USER}@${RISCV_REMOTE_IP}" "$@"; }
-    rsync_board() { rsync -a -e "ssh -p ${RISCV_SSH_PORT} -o StrictHostKeyChecking=no" "$@"; }
-    RSYNC_TARGET="${RISCV_USER}@${RISCV_REMOTE_IP}"
 else
     echo ""; echo "  Mode: Jump-host (x86 -> ${REMOTE_HOST} -> ${RISCV_REMOTE_IP})"; echo ""
-    ssh_board() {
-        local escaped_args
-        escaped_args=$(printf '%q ' "$@")
-        sshpass -p "${REMOTE_PASS}" ssh -p "${REMOTE_PORT}" -o StrictHostKeyChecking=no \
-            "${RISCV_USER}@${REMOTE_HOST}" \
-            "ssh -p ${RISCV_SSH_PORT} -o StrictHostKeyChecking=no ${RISCV_REMOTE_IP} ${escaped_args}"
-    }
-    rsync_board() {
-        sshpass -p "${REMOTE_PASS}" rsync -a \
-            -e "ssh -p ${REMOTE_PORT} -o StrictHostKeyChecking=no" "$@"
-    }
-    RSYNC_TARGET="${RISCV_USER}@${REMOTE_HOST}"
 fi
+ssh_board()   { board_ssh "${RISCV_REMOTE_IP}" "$@"; }
+rsync_board() { board_rsync "${RISCV_REMOTE_IP}" "$@"; }
+RSYNC_LABEL="${RISCV_USER}@$([ "$USE_DIRECT" = true ] && echo "${RISCV_REMOTE_IP}" || echo "${REMOTE_HOST}")"  # for messages
+RSYNC_TARGET="@T@"                               # board_rsync turns it into user@board (direct) or user@jump-host
 
 echo "$SEP"; echo " Reference-design baseline"; echo "$SEP"
 echo "  Reference tree : ${REF_SRC}"
@@ -271,7 +261,7 @@ rsync_board --delete \
 rm -rf "${STAGE_K}"
 rsync_board "${HERE}/blis_shim/" "${RSYNC_TARGET}:${REMOTE_DIR}/blis_shim/"
 rsync_board "${HERE}/generated/" "${RSYNC_TARGET}:${REMOTE_DIR}/gemm_blis_family/xdsl_cases/"
-echo "  [OK] staged -> ${RSYNC_TARGET}:${REMOTE_DIR}/"
+echo "  [OK] staged -> ${RSYNC_LABEL}:${REMOTE_DIR}/"
 
 TEST_FLAG="F"; if [ "${CHECK}" = true ]; then TEST_FLAG="T"; fi
 

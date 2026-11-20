@@ -12,6 +12,7 @@
 # ============================================================
 set -o pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${HERE}/board_pin.sh"
 BOARD=""; WS=(); AFTER=""; DRY=false
 die() { echo "Error: $*" >&2; exit 1; }
 while [[ "$#" -gt 0 ]]; do
@@ -27,13 +28,6 @@ done
 [ -n "${BOARD}" ] || die "--board is required"
 
 export REMOTE_PASS="${REMOTE_PASS-}" REMOTE_HOST="${REMOTE_HOST:-fej}" REMOTE_PORT="${REMOTE_PORT:-3322}"
-busy_others() {  # other users' processes above 20% CPU on the board; unreadable counts as busy
-    local out
-    out=$(timeout 60 sshpass -p "${REMOTE_PASS}" ssh -p "${REMOTE_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
-        "jlei@${REMOTE_HOST}" "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 ${BOARD} 'ps -eo user=,pcpu=,comm='" 2>/dev/null) \
-        || { echo "unreadable"; return; }
-    echo "${out}" | awk '$1 != "jlei" && $1 != "root" && $2 > 20 {print $1 ":" $3 ":" $2}' | tr '\n' ' '
-}
 
 if [ -n "${AFTER}" ] && [ "${DRY}" != true ]; then
     echo "[$(date +%H:%M)] waiting for PID ${AFTER} to end"
@@ -45,7 +39,7 @@ for packer in vector scalar scalar vector; do
     flag=(); [ "${packer}" = scalar ] && flag=(--scalar-pack)
     echo "[$(date +%H:%M)] launch ${n}/4: ${packer} packer, --instr --cpu 4 on ${BOARD}"
     if [ "${DRY}" = true ]; then continue; fi
-    while b=$(busy_others); [ -n "${b}" ]; do echo "[$(date +%H:%M)] ${BOARD} busy (${b}); waiting 10 min"; sleep 600; done
+    board_wait_idle "${BOARD}" >&2
     (cd "${HERE}/../.." && "${HERE}/compile_macro_bench.sh" --jump --riscv-ip "${BOARD}" "${WS[@]}" --no-nc-overrides \
         --instr --cpu 4 "${flag[@]}" --config "${HERE}/config_issue83_pack_split.json") \
         || { echo "launch ${n} (${packer}) failed"; exit 1; }
