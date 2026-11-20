@@ -4,7 +4,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/116
 
 **Parent:** #115, codebase architecture optimization.
 **Role / Label:** `needs-triage`. Spec, 2026-11-20. Strength: **Strong**.
-**Status:** open. Module and 17 scripts done, tested, smoke-tested on jbpi (branch `board-access-module`). One closure box open: the two entry points keep their own ssh (section 5).
+**Status:** closed 2026-11-20. Board access module in `board_pin.sh`; every run script and both entry points use it.
 **Branch:** cut from `pure-xdsl` when work starts, named after this title.
 
 ---
@@ -65,13 +65,13 @@ The exact function names and arguments are settled in grilling, before code.
 - Host tests of the run scripts and the module (`test_board_access.py`, `test_run_*.py`, `test_*issue*.py`): **199 passed** after the second step, plus 1 new hook test (12 in `test_board_access.py`). The first step's full run was 233 passed; the 2 failures and 3 errors there were the missing `xdsl` in the conda Python, not code.
 - Dry-run plans, old copy vs new, byte-identical (times masked): `run_issue83_pack_split.sh`, `run_issue85.sh`. `run_hector_gemm.sh`'s plan is covered by its test file (passes). `run_issue112_handover.sh` and `probe_issue95.sh` have no `--dry-run`; `run_direct_check.sh` was not diffed.
 - Entry-point run (jbpi, quiet, core 4): `compile_macro_bench.sh --jump --config config_correctness.json --no-nc-overrides --cpu 4 --tmin 0.2`, exit 0, every row PASS, synced and fetched through the module (`logs/run_2026-11-20_215259`, correctness only, no timing quoted).
-- Full host suite in `.venv/bin/python`: 672 passed, 1 failed (a double space my tty change left in the remote command; fixed, 13 module tests pass). Not re-run in full after that fix and the 5-minute change.
+- Full host suite in `.venv/bin/python`, final tree: 673 passed, 1 failed (`test_house_rules.py`: it cites a run folder that was not committed). The folder is committed now and that test passes (18 passed with `test_board_access.py`).
 - Real board (jbpi, no other user, 2026-11-20), through the jump host with key login and empty `REMOTE_PASS`: `board_ssh jbpi hostname` -> `jbpi`; `board_ps`, `board_busy` (empty); `board_rsync` of a scratch folder to `~/issue116_smoke/`, `board_ssh` read it back and removed it. Correctness only, no benchmark launch.
 
 ## 7. Closure criteria
 
 - [x] No `board_ps`, `hop`, `ssh_board` or idle-gate copy of the ssh/idle logic left outside `board_pin.sh`. Remaining one-line wrappers (`ssh_board`, `rsync_board`, `on_board`) only call the module.
-- [ ] `StrictHostKeyChecking=no` appears only in `board_pin.sh`. **One line left:** `ssh -o StrictHostKeyChecking=no fej "rm -rf ..."` in `run_direct_check.sh`. It is a call to the jump host, not a board, so it is not in the module's scope.
+- [x] `StrictHostKeyChecking=no` appears only in `board_pin.sh` (the last `ssh fej "rm -rf"` line in `run_direct_check.sh` dropped the option; `fej` is a known host).
 - [x] `--dry-run` plans unchanged: diffed for #83 pack-split and #85, test-covered for hector (section 6).
 - [x] Host tests pass (section 6).
 - [x] One real launch through the module to jbpi, correctness only (section 6).
