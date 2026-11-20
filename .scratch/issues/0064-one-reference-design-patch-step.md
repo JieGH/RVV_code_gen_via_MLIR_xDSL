@@ -4,7 +4,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/120
 
 **Parent:** #115, codebase architecture optimization.
 **Role / Label:** `needs-triage`. Spec, 2026-11-20. Strength: **Speculative** (low churn, small gain).
-**Status:** open. **Analysed 2026-11-20, nothing built: the spec's premises are wrong** (section 6). Recommend `wontfix` + an ADR; waiting for the user.
+**Status:** open. **Analysed 2026-11-20, nothing built: the spec's premises are wrong** (section 6). **Closed `wontfix` 2026-11-20 (user: yes).** ADR: `docs/adr/0001-reference-design-patchers-stay-separate.md`.
 **Branch:** cut from `pure-xdsl` when work starts, named after this title.
 
 ---
@@ -56,4 +56,4 @@ Each claim in section 1 was checked against the files:
 
 So there is no loud-failure gap and no duplicated parse to remove. The tests cover the anchors (`test_ref_pack_fix.py`, `test_ref_per_rep.py`, `test_fringe_overhead.py`).
 
-**Recommendation:** close as `wontfix` and record in `docs/adr/` that the Reference Design patchers stay separate (one file each, each fails loudly on a changed anchor), so later architecture reviews skip them. Not done: the user decides, and the ADR is only written on a yes.
+**Recommendation:** close as `wontfix` and record in `docs/adr/` that the Reference Design patchers stay separate (one file each, each fails loudly on a changed anchor), so later architecture reviews skip them. Done 2026-11-20 after the user's yes.
