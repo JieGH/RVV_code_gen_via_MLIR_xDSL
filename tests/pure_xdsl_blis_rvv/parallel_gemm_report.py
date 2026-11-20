@@ -26,6 +26,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import hector_gemm_report  # noqa: E402
+import rawlog  # noqa: E402
 from reps_report import MIN_LAUNCHES, CaseStats, case_stats, conditions_lines, load_notes, read_reps, reps_files  # noqa: E402
 
 Shape = tuple[int, int, int]
@@ -37,13 +38,10 @@ def load(series: Path, logs: Path) -> tuple[dict[str, Shape], dict[int, dict[str
     shapes: dict[str, Shape] = {}
     stats: dict[int, dict[str, list[CaseStats]]] = {th: {} for th in THREADS}
     runs: list[tuple[str, str, Path]] = []
-    for row in (series / "runs.tsv").read_text().splitlines()[1:]:
-        if not row.strip():
+    for row in rawlog.read_tsv(series / "runs.tsv"):
+        if row["exit"] != "0":
             continue
-        launch, th, _cores, _board, run, rc = row.split("\t")
-        if rc != "0":
-            continue
-        run_dir = logs / run
+        launch, th, run_dir = row["launch"], row["threads"], logs / row["result_dir"]
         runs.append((launch, th, run_dir))
         for f in reps_files(run_dir):
             for (label, _nc), case in read_reps(f).items():
@@ -77,8 +75,7 @@ def _pass_ms(shapes: dict[str, Shape], labels: list[str], gops_of: dict[str, flo
 
 
 def _correctness(run_dir: Path) -> str:
-    rows = [ln.split(",") for f in run_dir.glob("all_raw_*.txt") for ln in f.read_text().splitlines()[1:] if ln]
-    status = [r[6] for r in rows if len(r) > 6]
+    status = [r["Status"] for f in rawlog.any_raw(run_dir) for r in rawlog.read_rows(f)]
     return f"{status.count('PASS')} PASS, {status.count('FAIL')} FAIL, {len(status) - status.count('PASS') - status.count('FAIL')} other"
 
 

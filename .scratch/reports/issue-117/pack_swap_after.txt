@@ -1,0 +1,15 @@
+e2e GOPs by mean time per GEMM call, packing included; vector runs: 2, scalar runs: 2
+
+| Case | Shape | Variant | vector GOPs | scalar GOPs | scalar vs vector | spread vec/scl | verdict |
+|---|---|---|---|---|---|---|---|
+| C_edges | 123x57x300 | MR16_NR15 | 8.56 / 8.57 (mean 8.56) | 7.69 / 7.73 (mean 7.71) | -10.0% | 0.2% / 0.4% | scalar pack slower |
+| C_edges | 123x57x300 | MR32_NR6 | 7.09 / 6.52 (mean 6.80) | 7.76 / 7.76 (mean 7.76) | +14.1% | 8.4% / 0.0% | scalar pack faster |
+| C_edges | 123x57x300 | MR32_NR7 | 7.44 / 7.33 (mean 7.39) | 7.74 / 7.72 (mean 7.73) | +4.6% | 1.5% / 0.2% | scalar pack faster |
+| C_full | 96x210x128 | MR16_NR15 | 11.94 / 12.18 (mean 12.06) | 11.02 / 11.04 (mean 11.03) | -8.6% | 2.0% / 0.1% | scalar pack slower |
+| C_full | 96x210x128 | MR32_NR6 | 7.47 / 5.95 (mean 6.71) | 11.21 / 11.26 (mean 11.23) | +67.5% | 22.6% / 0.4% | scalar pack faster |
+| C_full | 96x210x128 | MR32_NR7 | 10.43 / 10.54 (mean 10.49) | 11.33 / 11.46 (mean 11.39) | +8.6% | 1.1% / 1.1% | scalar pack faster |
+| C_tiny | 12x5x17 | MR16_NR15 | 1.22 / 1.22 (mean 1.22) | 1.05 / 1.06 (mean 1.05) | -13.6% | 0.0% / 1.2% | scalar pack slower |
+| C_tiny | 12x5x17 | MR32_NR6 | 1.19 / 1.19 (mean 1.19) | 1.15 / 1.14 (mean 1.15) | -4.0% | 0.1% / 0.3% | scalar pack slower |
+| C_tiny | 12x5x17 | MR32_NR7 | 1.11 / 1.12 (mean 1.12) | 1.11 / 1.10 (mean 1.10) | -1.1% | 1.2% / 0.8% | within noise |
+
+Only one side measured: C_edges/MR24_NR8, C_full/MR24_NR8, C_tiny/MR24_NR8
