@@ -118,18 +118,6 @@ build_cmd() {
     esac
 }
 
-# board_ps <board> -- the board's processes by CPU (user, %cpu, core, age, command), whoever's they are.
-board_ps() {
-    if [ -n "${ISSUE46_PS_CMD:-}" ]; then ${ISSUE46_PS_CMD} "$1"; return; fi
-    local cmd='ps -eo user:20,pcpu,psr,etime,comm --sort=-pcpu --no-headers | head -12'
-    if [ "${MODE_ARG}" = "--direct" ]; then
-        ssh -p "${RISCV_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 "${RISCV_USER}@$1" "${cmd}"
-    else
-        sshpass -p "${REMOTE_PASS}" ssh -p "${REMOTE_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
-            "${RISCV_USER}@${REMOTE_HOST}" "ssh -p ${RISCV_PORT} -o StrictHostKeyChecking=no -o ConnectTimeout=15 $1 '${cmd}'"
-    fi
-}
-
 # snapshot <board> <launch> <before|after> -- reads the board's processes into the series dir and
 # notes any other user's heavy job in load_warnings.txt. Never stops the run.
 snapshot() {

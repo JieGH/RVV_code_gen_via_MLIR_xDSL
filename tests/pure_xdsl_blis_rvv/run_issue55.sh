@@ -69,7 +69,7 @@
 # REMOTE_PORT (default 3322). Do not start other benchmarks, a wrapper's `--dry-run` or the test suite on the host
 # meanwhile: they rewrite pj_gen/ under a running series.
 #
-# Test hooks: ISSUE55_LOGS, ISSUE55_RUN (stands for compile_macro_bench.sh), ISSUE55_TOP_CMD <board> (stands for the
+# Test hooks: ISSUE55_LOGS, ISSUE55_RUN (stands for compile_macro_bench.sh), BOARD_TOP_CMD <board> (stands for the
 # board's `top -bn2 -d1`), ISSUE55_PO (stands for the pack-only board work: `prepare <board>` and
 # `run <board> M N K MR NR variant reps cpu`, output on stdout).
 # ============================================================
@@ -198,110 +198,8 @@ build_cmd() {
 
 # ---- board access (the same forms compile_macro_bench.sh uses; no new connection path) ----
 REMOTE_ROOT="${WORKSPACE:-xdsl_rvv_microkernel}/tests/pure_xdsl_blis_rvv"
-board_ssh() {   # <board> <command...>
-    local board="$1"; shift
-    if [ "${MODE_ARG}" = "--direct" ]; then
-        ssh -p "${RISCV_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 "${RISCV_USER}@${board}" "$@"
-    else
-        local escaped; escaped=$(printf '%q ' "$@")
-        sshpass -p "${REMOTE_PASS}" ssh -p "${REMOTE_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
-            "${RISCV_USER}@${REMOTE_HOST}" "ssh -p ${RISCV_PORT} -o StrictHostKeyChecking=no -o ConnectTimeout=15 ${board} ${escaped}"
-    fi
-}
-board_rsync() {  # <board> <rsync args...>; the target is written as @T@:path and becomes the right host
-    local board="$1"; shift
-    local args=() a
-    if [ "${MODE_ARG}" = "--direct" ]; then
-        for a in "$@"; do args+=("${a//@T@/${RISCV_USER}@${board}}"); done
-        rsync -av -e "ssh -p ${RISCV_PORT} -o StrictHostKeyChecking=no" "${args[@]}"
-    else
-        for a in "$@"; do args+=("${a//@T@/${RISCV_USER}@${REMOTE_HOST}}"); done
-        sshpass -p "${REMOTE_PASS}" rsync -av -e "ssh -p ${REMOTE_PORT} -o StrictHostKeyChecking=no" "${args[@]}"
-    fi
-}
-
-# top_read <board> -- `top -bn2 -d1` on the board, raw
-top_read() {
-    if [ -n "${ISSUE55_TOP_CMD:-}" ]; then ${ISSUE55_TOP_CMD} "$1"; return; fi
-    board_ssh "$1" "LC_ALL=C top -bn2 -d1"
-}
-
-# top_summary <file> -- from the LAST sample of a `top -b` output: "idle|heavy|root".
-# idle = overall CPU idle %; heavy = processes of other users (not root, not us) at >= IDLE_PROC_MAX % of a core;
-# root = root's processes at or above the same mark (recorded, never a block).
-top_summary() {
-    awk -v me="${RISCV_USER}" -v thr="${IDLE_PROC_MAX}" '
-        /^top - / { idle = ""; heavy = ""; root = ""; hdr = 0; next }
-        /Cpu\(s\)/ {
-            if (match($0, /[0-9]+[.,]?[0-9]* *%?id/)) {
-                s = substr($0, RSTART, RLENGTH); gsub(/[^0-9.,]/, "", s); gsub(",", ".", s); idle = s
-            }
-            next
-        }
-        /^ *PID +USER/ { for (i = 1; i <= NF; i++) { if ($i == "USER") uc = i; if ($i == "%CPU") cc = i } hdr = 1; next }
-        hdr && NF >= cc && $uc != "" {
-            c = $cc; gsub(",", ".", c)
-            if (c + 0 >= thr) {
-                item = sprintf("%s %s %s%%; ", $uc, $NF, c)
-                if ($uc == "root") root = root item
-                else if ($uc != me) heavy = heavy item
-            }
-        }
-        END { printf "%s|%s|%s\n", idle, heavy, root }
-    ' "$1"
-}
-
-# trim_sample <file> -- the last sample of a top output, its first 30 lines
-trim_sample() {
-    awk '/^top - / { n = 0; delete keep } { keep[n++] = $0 } END { for (i = 0; i < n && i < 30; i++) print keep[i] }' "$1"
-}
-
 # one_reading <board> <tag> <phase> -- takes a reading, records it; returns 0 if the board is idle, 1 if not
 # (the reason is left in READ_WHY)
-READ_N=0
-one_reading() {
-    local board="$1" tag="$2" phase="$3" raw sum idle heavy root verdict
-    READ_N=$((READ_N + 1))
-    raw="$(mktemp)"
-    top_read "${board}" > "${raw}" 2>&1
-    sum="$(top_summary "${raw}")"
-    idle="${sum%%|*}"; sum="${sum#*|}"; heavy="${sum%%|*}"; root="${sum#*|}"
-    trim_sample "${raw}" > "${SERIES}/idle_${board}_${tag}_${phase}_${READ_N}.txt"
-    rm -f "${raw}"
-    READ_WHY=""
-    if [ -z "${idle}" ]; then
-        READ_WHY="no reading (could not read top)"
-    else
-        if [ -n "${heavy}" ]; then READ_WHY="other user busy: ${heavy}"; fi
-        if awk -v i="${idle}" -v m="${IDLE_MIN}" 'BEGIN { exit !(i + 0 < m + 0) }'; then
-            READ_WHY="${READ_WHY:+${READ_WHY} }overall idle ${idle}% is under ${IDLE_MIN}%"
-        fi
-    fi
-    if [ -z "${READ_WHY}" ]; then verdict=idle; else verdict=BUSY; fi
-    printf '%s\t%s\t%s\t%s\tidle=%s%%\tother_users=%s\troot=%s\t%s\n' "$(date -Is)" "${board}" "${tag}" "${phase}" \
-        "${idle:-?}" "${heavy:-none}" "${root:-none}" "${verdict}" >> "${SERIES}/idle_readings.txt"
-    [ -n "${heavy}" ] && echo "$(date -Is) ${board} ${tag} (${phase}): ${heavy}" >> "${SERIES}/load_warnings.txt"
-    [ -z "${READ_WHY}" ]
-}
-
-# idle_gate <board> <tag> -- waits until two readings IDLE_GAP s apart both pass; 1 after IDLE_MAX_WAIT s of waiting
-idle_gate() {
-    local board="$1" tag="$2" waited=0
-    while true; do
-        if one_reading "${board}" "${tag}" pre; then
-            [ "${IDLE_GAP}" -gt 0 ] && sleep "${IDLE_GAP}"
-            if one_reading "${board}" "${tag}" pre; then return 0; fi
-        fi
-        if [ $((waited + IDLE_POLL)) -gt "${IDLE_MAX_WAIT}" ]; then
-            echo "$(date -Is) ${board} ${tag}: still busy after ${waited} s (${READ_WHY}); giving up" >> "${SERIES}/idle_waits.txt"
-            return 1
-        fi
-        echo "$(date -Is) ${board} ${tag}: busy: ${READ_WHY}; waiting ${IDLE_POLL} s (waited ${waited} of ${IDLE_MAX_WAIT} s)" >> "${SERIES}/idle_waits.txt"
-        sleep "${IDLE_POLL}"
-        waited=$((waited + IDLE_POLL))
-    done
-}
-
 # ---- the pack-only loop on a board ----
 po_prepare() {  # <board>
     if [ -n "${ISSUE55_PO:-}" ]; then ${ISSUE55_PO} prepare "$1"; return; fi
@@ -406,11 +304,11 @@ run_unit() {
         (
             flock -w 21600 9 || { echo "$(date -Is) gave up waiting for the lock"; exit 99; }
             echo "$(date -Is) got the lock for ${board}"
-            idle_gate "${board}" "${tag}" || { echo gave-up > "${SERIES}/.u_gate"; exit 98; }
+            board_idle_gate "${board}" "${tag}" || { echo gave-up > "${SERIES}/.u_gate"; exit 98; }
             start="$(date +%Y-%m-%d_%H%M%S)"; echo "${start}" > "${SERIES}/.u_start"
             cd "${HERE}/../.." && "${CMD[@]}"
             echo $? > "${SERIES}/.u_rc"
-            one_reading "${board}" "${tag}" post && echo ok > "${SERIES}/.u_post" || echo load > "${SERIES}/.u_post"
+            board_one_reading "${board}" "${tag}" post && echo ok > "${SERIES}/.u_post" || echo load > "${SERIES}/.u_post"
             exit 0
         ) 9>"${LOCK}" >> "${log}" 2>&1
         local lrc=$?
@@ -445,10 +343,10 @@ run_unit() {
         echo "[$(date +%H:%M)]   ${pos} pack-only ${v} ${shape} ${tile}$([ "${retry}" = 1 ] && echo ' (re-queued)'): ${out}"
         (
             flock -w 21600 9 || { echo "$(date -Is) gave up waiting for the lock"; exit 99; }
-            idle_gate "${board}" "${tag}" || { echo gave-up > "${SERIES}/.u_gate"; exit 98; }
+            board_idle_gate "${board}" "${tag}" || { echo gave-up > "${SERIES}/.u_gate"; exit 98; }
             po_run "${board}" "${M}" "${N}" "${K}" "${MR}" "${NR}" "${v}" "${PO_REPS}" 4 > "${SERIES}/${out}" 2>> "${log}"
             echo $? > "${SERIES}/.u_rc"
-            one_reading "${board}" "${tag}" post && echo ok > "${SERIES}/.u_post" || echo load > "${SERIES}/.u_post"
+            board_one_reading "${board}" "${tag}" post && echo ok > "${SERIES}/.u_post" || echo load > "${SERIES}/.u_post"
             exit 0
         ) 9>"${LOCK}" >> "${log}" 2>&1
         local lrc=$?

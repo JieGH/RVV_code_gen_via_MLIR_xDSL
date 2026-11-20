@@ -3,7 +3,7 @@ Issue #49: `run_issue49.sh` runs the decisive ldb-padding test as launches of pa
 128 elements), rotating the pads between launches and letting the boards take turns.
 
 Same seam as test_run_issue48.py: the bench script is replaced by a stub (`ISSUE49_RUN`), the
-board's process list by a canned one (`ISSUE49_PS_CMD`) and the logs go to a temp dir, so no
+board's process list by a canned one (`BOARD_PS_CMD`) and the logs go to a temp dir, so no
 board is touched. What is checked is the loop: the order of the pads and the boards, that
 --pad-ldb is given for every pad but 0 (today's behaviour), that a failed or incomplete run is
 named and the series goes on, that another user's heavy job is a RED NOTE without stopping
@@ -47,7 +47,7 @@ def run_series(tmp_path: Path, behaviour: str, *extra: str, ps: str = "") -> tup
     logs.mkdir(exist_ok=True)
     (logs / "run_zz_old").mkdir(exist_ok=True)  # sorts after every stamped folder: must not be taken for a result
     env = {**os.environ, "ISSUE49_LOGS": str(logs), "ISSUE49_RUN": str(tmp_path / "run.sh"),
-           "ISSUE49_PS_CMD": str(tmp_path / "ps.sh"), "STUB_BEHAVIOUR": behaviour, "STUB_CONFIG_DIR": str(HERE)}
+           "BOARD_PS_CMD": str(tmp_path / "ps.sh"), "STUB_BEHAVIOUR": behaviour, "STUB_CONFIG_DIR": str(HERE)}
     done = subprocess.run([str(SERIES), "--boards", "a,b", "--launches", "2", *extra],
                           env=env, capture_output=True, text=True, timeout=180, check=False)
     return done, logs

@@ -134,25 +134,6 @@ write_config() {
       printf '\n]\n'; } > "$2"
 }
 
-# board_ps <board> -- the board's processes by CPU, whoever's they are
-board_ps() {
-    if [ -n "${YOLO_SWEEP_PS_CMD:-}" ]; then ${YOLO_SWEEP_PS_CMD} "$1"; return; fi
-    local cmd='ps -eo user:20,pcpu,psr,etime,comm --sort=-pcpu --no-headers | head -12'
-    if [ "${MODE_ARG}" = "--direct" ]; then
-        ssh -p "${RISCV_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 "${RISCV_USER}@$1" "${cmd}"
-    else
-        sshpass -p "${REMOTE_PASS}" ssh -p "${REMOTE_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
-            "${RISCV_USER}@${REMOTE_HOST}" "ssh -p ${RISCV_PORT} -o StrictHostKeyChecking=no -o ConnectTimeout=15 $1 '${cmd}'"
-    fi
-}
-
-# busy <board> <file> -- reads the board's processes into the file; prints another user's busy job, if any.
-# A board that cannot be read counts as busy: no launch on a board we cannot see.
-busy() {
-    board_ps "$1" > "$2" 2>&1 || { echo "cannot read the board's processes"; return; }
-    awk -v me="${RISCV_USER}" "${OTHER_USERS_AWK}" "$2"
-}
-
 print_plan() {
     echo "Issue #${ISSUE} Tile Search: ${LAUNCHES} launches on the first idle board of ${BOARDS}, ${N} tiles x datasets/${DATASET}"
     echo "  Threads   : ${THREADS} on ${CORES}"
@@ -183,7 +164,7 @@ wait_s() { awk -v m="${WAIT_MIN}" 'BEGIN { printf "%d", m * 60 }'; }
 BOARD=""
 while [ -z "${BOARD}" ]; do
     for b in "${BOARD_LIST[@]}"; do
-        others="$(busy "${b}" "${SERIES}/load_${b}_pick.txt")"
+        others="$(board_busy "${b}" "${SERIES}/load_${b}_pick.txt")"
         if [ -z "${others}" ]; then BOARD="${b}"; break; fi
         echo "[$(date +%H:%M)] ${b} is busy: ${others}"
     done
@@ -219,7 +200,7 @@ for ((l = FIRST; l <= LAST; l++)); do
     write_config "${l}" "${cfg}"
     first="$(tile_of "${ROWS[$(( ((l - 1) * STEP) % N ))]}")"
     log="${SERIES}/${BOARD}_L${l}.log"
-    while others="$(busy "${BOARD}" "${SERIES}/load_${BOARD}_L${l}.txt")"; [ -n "${others}" ]; do
+    while others="$(board_busy "${BOARD}" "${SERIES}/load_${BOARD}_L${l}.txt")"; [ -n "${others}" ]; do
         echo "[$(date +%H:%M)] launch ${l}: ${BOARD} is busy (${others}); waiting ${WAIT_MIN} min"
         sleep "$(wait_s)"
     done
@@ -245,7 +226,7 @@ for ((l = FIRST; l <= LAST; l++)); do
         printf '%s\t%s\t%s\t%s\t%s\n' "${BOARD}" "${l}" "${first}" "$([ -n "${dir}" ] && basename "${dir}" || echo -)" "FAIL(${rc})" >> "${SERIES}/runs.tsv"
         break
     fi
-    others="$(busy "${BOARD}" "${SERIES}/load_${BOARD}_L${l}_after.txt")"
+    others="$(board_busy "${BOARD}" "${SERIES}/load_${BOARD}_L${l}_after.txt")"
     if [ -n "${others}" ]; then
         echo "$(date -Is) launch ${l} on ${BOARD}, read after: ${others}" >> "${SERIES}/load_warnings.txt"
         echo "    RED NOTE: another user's job was on ${BOARD} at the end of launch ${l}: ${others}"

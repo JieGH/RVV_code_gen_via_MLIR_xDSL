@@ -26,6 +26,7 @@
 # ============================================================
 set -o pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${HERE}/board_pin.sh"   # board access (issue #116)
 OURS="${ISSUE94_OURS:-${HERE}/run_parallel_gemm.sh}"      # ISSUE94_* let the order be tried against stubs
 HECTOR="${ISSUE94_HECTOR:-${HERE}/run_hector_gemm.sh}"
 LOGS="${ISSUE94_LOGS:-${HERE}/logs}"
@@ -63,23 +64,11 @@ for r in 0 1 2; do
 done
 
 export REMOTE_PASS="${REMOTE_PASS-}" REMOTE_HOST="${REMOTE_HOST:-fej}" REMOTE_PORT="${REMOTE_PORT:-3322}"
-busy_others() {  # other users' processes above 20% CPU on the board; unreadable counts as busy
-    local out
-    out=$(timeout 60 sshpass -p "${REMOTE_PASS}" ssh -p "${REMOTE_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
-        "jlei@${REMOTE_HOST}" "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 ${BOARD} 'ps -eo user=,pcpu=,comm='" 2>/dev/null) \
-        || { echo "unreadable"; return; }
-    echo "${out}" | awk '$1 != "jlei" && $1 != "root" && $2 > 20 {print $1 ":" $3 ":" $2}' | tr '\n' ' '
-}
-wait_idle() {
-    local b
-    while b=$(busy_others); [ -n "${b}" ]; do echo "[$(date +%H:%M)] ${BOARD} busy (${b}); waiting 10 min"; sleep 600; done
-}
-
 correctness() {  # $1 label, $2 config, rest: extra flags
     local label="$1" cfg="$2"; shift 2
     echo "[$(date +%H:%M)] ${label}: $(basename "${cfg}") on ${BOARD} $*, --scalar-pack, oracle on"
     [ "${DRY}" = true ] && return 0
-    wait_idle
+    board_wait_idle "${BOARD}"
     local before after pass total
     before=$(ls -d "${LOGS}"/run_* 2>/dev/null | sort | tail -1)
     (cd "${HERE}/../.." && "${HERE}/compile_macro_bench.sh" --jump --riscv-ip "${BOARD}" --no-nc-overrides \

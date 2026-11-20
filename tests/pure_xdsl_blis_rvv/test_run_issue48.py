@@ -3,7 +3,7 @@ Issue #48: `run_issue48.sh` runs the B3 tile sweep as launches of arms (vector, 
 rotating the arms between launches and letting the boards take turns.
 
 The bench script is replaced by a stub (`ISSUE48_RUN`), the board's process list by a canned one
-(`ISSUE48_PS_CMD`) and the logs go to a temp dir, so no board is touched. What is checked is the loop:
+(`BOARD_PS_CMD`) and the logs go to a temp dir, so no board is touched. What is checked is the loop:
 the order of the arms and the boards, the flags each arm is given, that a run which exits non-zero or
 leaves a tile out is named as failed and the series goes on, that another user's heavy job is written
 down as a RED NOTE without stopping anything, and that the arm configs hold the tiles the issue names.
@@ -46,7 +46,7 @@ def run_series(tmp_path: Path, behaviour: str, *extra: str, ps: str = "") -> tup
     logs.mkdir(exist_ok=True)
     (logs / "run_zz_old").mkdir(exist_ok=True)  # sorts after every stamped folder: must not be taken for a result
     env = {**os.environ, "ISSUE48_LOGS": str(logs), "ISSUE48_RUN": str(tmp_path / "run.sh"),
-           "ISSUE48_PS_CMD": str(tmp_path / "ps.sh"), "STUB_BEHAVIOUR": behaviour, "STUB_CONFIG_DIR": str(HERE)}
+           "BOARD_PS_CMD": str(tmp_path / "ps.sh"), "STUB_BEHAVIOUR": behaviour, "STUB_CONFIG_DIR": str(HERE)}
     done = subprocess.run([str(SERIES), "--boards", "a,b", "--launches", "2", *extra],
                           env=env, capture_output=True, text=True, timeout=180, check=False)
     return done, logs

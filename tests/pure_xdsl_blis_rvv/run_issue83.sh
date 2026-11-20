@@ -17,6 +17,7 @@
 # ============================================================
 set -o pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${HERE}/board_pin.sh"   # board access (issue #116)
 PART=""; BOARD=""; SRC=""; WS=(); SWS=(); DRY=false
 die() { echo "Error: $*" >&2; exit 1; }
 while [[ "$#" -gt 0 ]]; do
@@ -39,23 +40,11 @@ esac
 [ "${#WS[@]}" -eq 0 ] || [ "${PART}" = paper ] || die "--workspace is for the paper part only (run_issue63.sh has no workspace flag)"
 
 export REMOTE_PASS="${REMOTE_PASS-}" REMOTE_HOST="${REMOTE_HOST:-fej}" REMOTE_PORT="${REMOTE_PORT:-3322}"
-busy_others() {  # other users' processes above 20% CPU on the board; unreadable counts as busy
-    local out
-    out=$(timeout 60 sshpass -p "${REMOTE_PASS}" ssh -p "${REMOTE_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
-        "jlei@${REMOTE_HOST}" "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 ${BOARD} 'ps -eo user=,pcpu=,comm='" 2>/dev/null) \
-        || { echo "unreadable"; return; }
-    echo "${out}" | awk '$1 != "jlei" && $1 != "root" && $2 > 20 {print $1 ":" $3 ":" $2}' | tr '\n' ' '
-}
-wait_idle() {
-    local b
-    while b=$(busy_others); [ -n "${b}" ]; do echo "[$(date +%H:%M)] ${BOARD} busy (${b}); waiting 10 min"; sleep 600; done
-}
-
 correctness() {  # $1 label, rest: extra flags
     local label="$1"; shift
     echo "[$(date +%H:%M)] ${label}: ${CFG} on ${BOARD} $*, --scalar-pack, oracle on"
     [ "${DRY}" = true ] && return 0
-    wait_idle
+    board_wait_idle "${BOARD}"
     local before after dir pass total
     before=$(ls -d "${HERE}"/logs/run_* 2>/dev/null | sort | tail -1)
     (cd "${HERE}/../.." && "${HERE}/compile_macro_bench.sh" --jump --riscv-ip "${BOARD}" "${WS[@]}" --no-nc-overrides \

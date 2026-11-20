@@ -2,7 +2,7 @@
 Issue #55: `run_issue55.sh` runs the B packer variants (--pack-b) on the three tiles of #54 as launches of arms, rotating the
 arms between launches, letting the boards take turns, and refusing to time a board that is not idle.
 
-No board is touched: the bench script is a stub (`ISSUE55_RUN`), the board's `top -bn2 -d1` is canned (`ISSUE55_TOP_CMD`),
+No board is touched: the bench script is a stub (`ISSUE55_RUN`), the board's `top -bn2 -d1` is canned (`BOARD_TOP_CMD`),
 the pack-only board work is a stub (`ISSUE55_PO`), the logs go to a temp dir. What is checked: the order of arms and boards,
 the flags each arm is given, the lock, the idle gate (busy then idle waits and then runs; never idle stops the series
 without running; a busy reading after a run discards it and queues it once more; root and our own processes never block;
@@ -91,7 +91,7 @@ def run_series(tmp_path: Path, behaviour: str, *extra: str, top_seq: str = "idle
     logs.mkdir(exist_ok=True)
     (logs / "run_zz_old").mkdir(exist_ok=True)  # sorts after every stamped folder: must not be taken for a result
     env = {**os.environ, "ISSUE55_LOGS": str(logs), "ISSUE55_RUN": str(tmp_path / "run.sh"),
-           "ISSUE55_TOP_CMD": str(tmp_path / "top.sh"), "ISSUE55_PO": str(tmp_path / "po.sh"),
+           "BOARD_TOP_CMD": str(tmp_path / "top.sh"), "ISSUE55_PO": str(tmp_path / "po.sh"),
            "STUB_BEHAVIOUR": behaviour, "STUB_CONFIG_DIR": str(HERE), "STUB_CANNED": str(canned), "TOP_SEQ": top_seq,
            "PO_PREPARE_RC": po_rc}
     fast = ["--idle-gap", "0", "--idle-poll", "1", "--idle-max-wait", "3"] if gate else []
