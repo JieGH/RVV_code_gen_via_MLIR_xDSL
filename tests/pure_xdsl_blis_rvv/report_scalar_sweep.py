@@ -21,12 +21,13 @@ Without --sweep it takes the newest logs/sweep_scalar_*. Without --out it writes
 from __future__ import annotations
 
 import argparse
-import csv
 import re
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+
+import rawlog
 
 HERE = Path(__file__).resolve().parent
 LOGS = HERE / "logs"
@@ -36,8 +37,8 @@ LAYER_ORDER = ["S1", "S2", "S3", "S4", "S5", "B1", "B2", "B3", "B4", "B5"]
 PUBLISHED = {"S1": 8.5, "S2": 8.7, "S3": 8.9, "S4": 9.0, "S5": 9.0,
              "B1": 8.0, "B2": 12.5, "B3": 8.8, "B4": 8.5, "B5": 7.5}
 
-VECTOR_GLOB = "all_raw_*_noinstr_refproto_no_nc_override.txt"
-SCALAR_GLOB = "all_raw_*_noinstr_refproto_scalarpack_no_nc_override.txt"
+VECTOR_GLOB = rawlog.raw_glob(no_nc_override=True)
+SCALAR_GLOB = rawlog.raw_glob(scalar_pack=True, no_nc_override=True)
 
 
 @dataclass
@@ -73,19 +74,18 @@ def read_run(run_dir: Path, glob: str) -> dict[str, tuple[str, str, Point]]:
     """layer -> (shape, config, point) for one run dir."""
     out: dict[str, tuple[str, str, Point]] = {}
     for raw in sorted(run_dir.glob(glob)):
-        with raw.open() as fh:
-            for r in csv.DictReader(fh):
-                if r["Status"] == "FAIL" or not float(r["RVV_Time_ms"]) > 0:
-                    continue
-                m, n, k = int(r["M"]), int(r["N"]), int(r["K"])
-                cfg = re.match(r"MR(\d+)_NR(\d+)", r["Variant"])
-                out[r["Layer"]] = (
-                    f"{m}x{n}x{k}",
-                    f"{cfg.group(1)}x{cfg.group(2)}" if cfg else r["Variant"],
-                    Point(run_dir.name, board_of(run_dir), 2.0 * m * n * k / (float(r["RVV_Time_ms"]) * 1e6),
-                          float(r["KerGOPs_Median"]), float(r["KerGOPs_P5"]), float(r["KerGOPs_P95"]),
-                          float(r["KerGOPs_Max"]), int(r["N_Reps"])),
-                )
+        for r in rawlog.read_rows(raw):
+            if r["Status"] == "FAIL" or not float(r["RVV_Time_ms"]) > 0:
+                continue
+            m, n, k = int(r["M"]), int(r["N"]), int(r["K"])
+            cfg = re.match(r"MR(\d+)_NR(\d+)", r["Variant"])
+            out[r["Layer"]] = (
+                f"{m}x{n}x{k}",
+                f"{cfg.group(1)}x{cfg.group(2)}" if cfg else r["Variant"],
+                Point(run_dir.name, board_of(run_dir), 2.0 * m * n * k / (float(r["RVV_Time_ms"]) * 1e6),
+                      float(r["KerGOPs_Median"]), float(r["KerGOPs_P5"]), float(r["KerGOPs_P95"]),
+                      float(r["KerGOPs_Max"]), int(r["N_Reps"])),
+            )
     return out
 
 

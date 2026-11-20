@@ -48,13 +48,15 @@ from pathlib import Path
 
 from fringe import our_fringe
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import rawlog  # noqa: E402
+
 HERE = Path(__file__).resolve().parent
 LOGS = HERE.parent / "logs"
 
-# The merged per-run CSV that compile_macro_bench.sh writes. An uninstrumented build
-# writes the same schema under a `_noinstr` name; see --raw-name.
-DEFAULT_RAW_NAME = "all_raw_fp32_AXPY_FP32_Pack.txt"
-NO_NC_OVERRIDE_SUFFIX = "_no_nc_override.txt"
+# Without --raw-name, a run's merged CSV is the old instrumented name (rawlog.resolve_raw); a
+# Reference Protocol log is read only on request (issue #27).
+NO_NC_OVERRIDE_SUFFIX = rawlog.NO_NC_OVERRIDE_SUFFIX
 
 
 def load_plan(result_dir: Path) -> list[dict]:
@@ -119,26 +121,25 @@ def load_reference(result_dir: Path) -> dict[tuple[str, int], tuple[float, str]]
 
 
 def discover_runs(
-    explicit: list[str] | None, raw_name: str = DEFAULT_RAW_NAME
+    explicit: list[str] | None, raw_name: str | None = None
 ) -> list[Path]:
     if explicit:
         return [LOGS / r for r in explicit]
     runs = sorted(
-        (d for d in LOGS.glob("run_*") if (d / raw_name).is_file()),
+        (d for d in LOGS.glob("run_*") if rawlog.resolve_raw(d, raw_name)),
         key=lambda d: d.name,
     )
     return runs[-5:]
 
 
-def load_ours(runs: list[Path], raw_name: str = DEFAULT_RAW_NAME) -> dict[str, dict]:
+def load_ours(runs: list[Path], raw_name: str | None = None) -> dict[str, dict]:
     acc: dict[str, list[dict]] = {}
     for run in runs:
-        raw = run / raw_name
-        if not raw.is_file():
+        raw = rawlog.resolve_raw(run, raw_name)
+        if raw is None:
             continue
-        with raw.open() as fh:
-            for row in csv.DictReader(fh):
-                acc.setdefault(row["Layer"], []).append(row)
+        for row in rawlog.read_rows(raw):
+            acc.setdefault(row["Layer"], []).append(row)
     out: dict[str, dict] = {}
     for case, rows in acc.items():
         m, n, k = (int(rows[0][x]) for x in "MNK")
@@ -251,10 +252,10 @@ def main() -> int:
     )
     ap.add_argument(
         "--raw-name",
-        default=DEFAULT_RAW_NAME,
+        default=None,
         help=(
-            "merged raw CSV to read inside each run dir "
-            f"(default: {DEFAULT_RAW_NAME}; an uninstrumented run writes a _noinstr name)"
+            "merged raw CSV to read inside each run dir (default: the old instrumented name; "
+            "a Reference Protocol log is read only when named here, issue #27)"
         ),
     )
     args = ap.parse_args()
@@ -265,7 +266,7 @@ def main() -> int:
 
     # The driver's --no-nc-overrides run logs under this suffix (issue #16), and the
     # fringe column has to be computed at the same nc it ran at.
-    no_nc_overrides = args.raw_name.endswith(NO_NC_OVERRIDE_SUFFIX)
+    no_nc_overrides = (args.raw_name or "").endswith(NO_NC_OVERRIDE_SUFFIX)
 
     plan = load_plan(args.result_dir)
     ref = load_reference(args.result_dir)

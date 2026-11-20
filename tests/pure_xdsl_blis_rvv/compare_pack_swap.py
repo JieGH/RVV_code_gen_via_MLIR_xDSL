@@ -23,15 +23,14 @@ without --no-nc-overrides.
 from __future__ import annotations
 
 import argparse
-import csv
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+import rawlog
+
 HERE = Path(__file__).resolve().parent
 LOGS = HERE / "logs"
-
-PROTOCOL = "_noinstr_refproto"
 
 
 @dataclass
@@ -44,8 +43,7 @@ class Case:
 
 def raw_glob(scalar: bool, no_nc_overrides: bool) -> str:
     """The merged log a run leaves, named the way the driver names it."""
-    suffix = PROTOCOL + ("_scalarpack" if scalar else "") + ("_no_nc_override" if no_nc_overrides else "")
-    return f"all_raw_*{suffix}.txt"
+    return rawlog.raw_glob(scalar_pack=scalar, no_nc_override=no_nc_overrides)
 
 
 def load_side(
@@ -55,22 +53,18 @@ def load_side(
     of the numbers and named in `failed`, so a broken run cannot pass as a slow one."""
     cases: dict[tuple[str, str], Case] = {}
     for run in runs:
-        raws = sorted(run.glob(raw_glob(scalar, no_nc_overrides)))
-        if not raws:
-            raise SystemExit(f"{run}: no {raw_glob(scalar, no_nc_overrides)} to read")
-        for raw in raws:
-            with raw.open() as fh:
-                for row in csv.DictReader(fh):
-                    if row["Status"] == "FAIL":
-                        failed.append(f"{run.name}: {row['Layer']}/{row['Variant']}")
-                        continue
-                    m, n, k = int(row["M"]), int(row["N"]), int(row["K"])
-                    ms = float(row["RVV_Time_ms"])
-                    if not ms > 0:
-                        continue
-                    key = (row["Layer"], row["Variant"])
-                    case = cases.setdefault(key, Case(row["Layer"], row["Variant"], f"{m}x{n}x{k}", []))
-                    case.gops.append(2.0 * m * n * k / (ms * 1e6))
+        for raw in rawlog.require_raw(run, scalar_pack=scalar, no_nc_override=no_nc_overrides):
+            for row in rawlog.read_rows(raw):
+                if row["Status"] == "FAIL":
+                    failed.append(f"{run.name}: {row['Layer']}/{row['Variant']}")
+                    continue
+                m, n, k = int(row["M"]), int(row["N"]), int(row["K"])
+                ms = float(row["RVV_Time_ms"])
+                if not ms > 0:
+                    continue
+                key = (row["Layer"], row["Variant"])
+                case = cases.setdefault(key, Case(row["Layer"], row["Variant"], f"{m}x{n}x{k}", []))
+                case.gops.append(2.0 * m * n * k / (ms * 1e6))
     return cases
 
 
