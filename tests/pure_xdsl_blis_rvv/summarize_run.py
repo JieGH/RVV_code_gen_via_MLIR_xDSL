@@ -11,11 +11,12 @@ Usage: python3 summarize_run.py <run_dir>
 """
 
 import csv
-import glob
 import math
 import os
 import re
 import sys
+
+import rawlog
 
 VARIANT_RE = re.compile(r"MR(\d+)_NR(\d+)")
 
@@ -177,7 +178,7 @@ def main() -> int:
         print("usage: summarize_run.py <run_dir>", file=sys.stderr)
         return 1
     run_dir = sys.argv[1]
-    raw_files = sorted(glob.glob(os.path.join(run_dir, "all_raw_*.txt")))
+    raw_files = [str(p) for p in rawlog.any_raw(run_dir)]
     if not raw_files:
         print(f"no all_raw_*.txt found under {run_dir}", file=sys.stderr)
         return 1

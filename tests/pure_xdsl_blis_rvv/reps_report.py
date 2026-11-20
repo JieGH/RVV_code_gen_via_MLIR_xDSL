@@ -47,6 +47,8 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import rawlog
+
 MIN_LAUNCHES = 3  # issue #39, house rule 2
 TWO_SPEEDS_BELOW = 0.8  # slow group's mean under this fraction of the fast group's
 
@@ -182,7 +184,7 @@ def _packer(f: Path) -> str:
     row per built tile: "reference 16x14"."""
     if f.name.startswith("reps_ref_"):
         return "reference " + f.name.removeprefix("reps_ref_").split("_")[0]
-    return ("scalar" if "_scalarpack" in f.name else "vector") + ("+zeroline" if "_zeroline" in f.name else "")
+    return ("scalar" if rawlog.SCALAR_PACK_PART in f.name else "vector") + ("+zeroline" if rawlog.ZERO_LINE_PART in f.name else "")
 
 
 def _reps_files(target: Path) -> list[Path]:

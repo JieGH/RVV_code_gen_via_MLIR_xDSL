@@ -42,6 +42,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from reps_report import MIN_LAUNCHES, CaseStats, case_stats, packer_of, read_reps, reps_files, run_conditions  # noqa: E402
+import rawlog  # noqa: E402
 
 TWO_SPEED_SHARE = 0.05  # a launch is in a slow state when at least this share of its reps are slow
 ELEM_BYTES = 4  # fp32
@@ -151,7 +152,7 @@ def collect(logs: Path, until: str | None = None) -> tuple[list[Launch], list[In
             packer = packer_of(f)
             inventory.append(InventoryRow(
                 run_dir.name, board, cond.build.split(" ")[0].lower(), cond.protocol.split(" ")[0].lower(),
-                cond.core, packer, "_no_nc_override" in f.name,
+                cond.core, packer, rawlog.NO_NC_OVERRIDE_PART in f.name,
                 ",".join(sorted({_tile(c.variant) for c in cases.values()})),
                 [layer for layer, _ in cases], used))
             if used != "yes":
