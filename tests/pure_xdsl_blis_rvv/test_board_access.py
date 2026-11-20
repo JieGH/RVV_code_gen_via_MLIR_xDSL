@@ -132,3 +132,10 @@ def test_board_ssh_hook_gets_the_board_and_command_and_board_ps_goes_through_it(
     h.chmod(0o755)
     assert run(tmp_path, "board_ssh jbpi 'uname -a'", BOARD_SSH_CMD=str(h)).stdout == "hook jbpi uname -a\n"
     assert run(tmp_path, "board_ps jbpi2", BOARD_SSH_CMD=str(h)).stdout.startswith("hook jbpi2 ps -eo")
+
+
+def test_board_ssh_tty_switch_adds_t_on_both_hops_of_the_jump_route_only(tmp_path: Path):
+    out = run(tmp_path, 'MODE_ARG=--jump; board_ssh jbpi true', BOARD_SSH_TTY="1").stdout
+    assert "-o ConnectTimeout=15 -t jlei@fej ssh -p 22 -o StrictHostKeyChecking=no -o ConnectTimeout=15 -t jbpi true" in out
+    out = run(tmp_path, 'MODE_ARG=--direct; board_ssh jbpi true', BOARD_SSH_TTY="1").stdout
+    assert " -t " not in out

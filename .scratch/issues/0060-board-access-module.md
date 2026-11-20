@@ -57,18 +57,21 @@ The exact function names and arguments are settled in grilling, before code.
 - **Series folder naming left alone.** It is one `date +%Y-%m-%d_%H%M%S` call; a helper's interface would be as big as the line (deletion test: nothing concentrates).
 - **Second step (2026-11-20, same day): the remaining scripts moved too.** `board_ssh` got a third test hook, `BOARD_SSH_CMD` (`<hook> <board> <command...>`, stdin passed through); `board_ps` now calls `board_ssh`. Converted: `run_hector_gemm.sh` (its `HECTOR_GEMM_ON_BOARD` hook is now `BOARD_SSH_CMD`), `run_issue112_handover.sh`, `probe_issue95.sh`, `ref_baseline/run_direct_check.sh`, `run_issue83_pack_split.sh`, `run_issue85.sh` (the last two lost their `busy_others` copy and use `board_wait_idle`, its message to stderr because `launch` prints a path on stdout).
 - **Route differences accepted.** The key-login scripts (hector, probe95, direct_check) now go through `sshpass -p ""` and add `StrictHostKeyChecking=no`; `board_rsync` is `rsync -av`, so direct_check's and #112's rsync output is more verbose. Checked on jbpi: key login works through both.
-- **Left alone on purpose:** `compile_macro_bench.sh` and `ref_baseline/run_ref_baseline.sh`. They are the entry points: they set a tty (`-t`), take `--riscv-ip` and `RISCV_SSH_PORT`, and every logged number comes from them. Moving them is its own change. One plain `ssh fej "rm -rf ..."` line in `run_direct_check.sh` is not a board call.
+- **Entry points moved too (third step, user said "finish 116").** `compile_macro_bench.sh` and `ref_baseline/run_ref_baseline.sh` keep thin wrappers `ssh_board`/`rsync_board` over `board_ssh`/`board_rsync`. The jump route's `-t` on both hops stays: `BOARD_SSH_TTY=1` (module switch) for `ssh_board`; `ssh_board_no_tty` does not set it. `RSYNC_TARGET` is now the module's `@T@` placeholder; messages use `RSYNC_LABEL`. Accepted: `ConnectTimeout=15` is added, and `run_ref_baseline.sh`'s rsync is `-av` instead of `-a`.
+- **Idle wait 10 min -> 5 min (user, 2026-11-20).** `board_wait_idle` polls every 5 min and says so. The `--wait-min` defaults of `run_hector_gemm.sh` and `run_yolo_sweep.sh` (10) were not changed. One plain `ssh fej "rm -rf ..."` line in `run_direct_check.sh` is not a board call.
 
 ## 6. Result
 
 - Host tests of the run scripts and the module (`test_board_access.py`, `test_run_*.py`, `test_*issue*.py`): **199 passed** after the second step, plus 1 new hook test (12 in `test_board_access.py`). The first step's full run was 233 passed; the 2 failures and 3 errors there were the missing `xdsl` in the conda Python, not code.
 - Dry-run plans, old copy vs new, byte-identical (times masked): `run_issue83_pack_split.sh`, `run_issue85.sh`. `run_hector_gemm.sh`'s plan is covered by its test file (passes). `run_issue112_handover.sh` and `probe_issue95.sh` have no `--dry-run`; `run_direct_check.sh` was not diffed.
+- Entry-point run (jbpi, quiet, core 4): `compile_macro_bench.sh --jump --config config_correctness.json --no-nc-overrides --cpu 4 --tmin 0.2`, exit 0, every row PASS, synced and fetched through the module (`logs/run_2026-11-20_215259`, correctness only, no timing quoted).
+- Full host suite in `.venv/bin/python`: 672 passed, 1 failed (a double space my tty change left in the remote command; fixed, 13 module tests pass). Not re-run in full after that fix and the 5-minute change.
 - Real board (jbpi, no other user, 2026-11-20), through the jump host with key login and empty `REMOTE_PASS`: `board_ssh jbpi hostname` -> `jbpi`; `board_ps`, `board_busy` (empty); `board_rsync` of a scratch folder to `~/issue116_smoke/`, `board_ssh` read it back and removed it. Correctness only, no benchmark launch.
 
 ## 7. Closure criteria
 
-- [x] No `board_ps`, `hop`, `ssh_board`, `board_ssh` or idle-gate copy left in the run scripts. `probe_issue95.sh` keeps `on_board`, one line that calls `board_ssh`. The entry points keep their own (section 5).
-- [ ] `StrictHostKeyChecking=no` appears only in `board_pin.sh`. **Reworded, not met as written:** it also stays in the two entry points and one `ssh fej` line in `run_direct_check.sh` (section 5).
-- [x] `--dry-run` plans unchanged: diffed for #83 pack-split and #85, test-covered for hector; the other converted scripts have none (section 6).
+- [x] No `board_ps`, `hop`, `ssh_board` or idle-gate copy of the ssh/idle logic left outside `board_pin.sh`. Remaining one-line wrappers (`ssh_board`, `rsync_board`, `on_board`) only call the module.
+- [ ] `StrictHostKeyChecking=no` appears only in `board_pin.sh`. **One line left:** `ssh -o StrictHostKeyChecking=no fej "rm -rf ..."` in `run_direct_check.sh`. It is a call to the jump host, not a board, so it is not in the module's scope.
+- [x] `--dry-run` plans unchanged: diffed for #83 pack-split and #85, test-covered for hector (section 6).
 - [x] Host tests pass (section 6).
-- [x] The module reaches a real board and reads who is on it (section 6). A full benchmark launch was not run; the entry points that print timings are untouched.
+- [x] One real launch through the module to jbpi, correctness only (section 6).

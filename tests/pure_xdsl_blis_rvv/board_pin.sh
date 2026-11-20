@@ -130,6 +130,7 @@ launch_conditions() {
 #   SERIES                   folder for the idle gate's readings (board_idle_gate, board_one_reading only)
 #   IDLE_GAP, IDLE_POLL, IDLE_MAX_WAIT, IDLE_MIN, IDLE_PROC_MAX   the idle gate's thresholds, in s / %
 # Test hooks (one set for every script; each is an executable called as `<hook> <board> ...`):
+#   BOARD_SSH_TTY  set to 1: the jump-host route asks for a tty on both hops
 #   BOARD_SSH_CMD  stands for board_ssh itself: `<hook> <board> <command...>`, stdin passed through
 #   BOARD_PS_CMD   stands for `ps` on the board        BOARD_TOP_CMD   stands for `top -bn2 -d1`
 # ---------------------------------------------------------------------------------------------
@@ -138,12 +139,13 @@ launch_conditions() {
 board_ssh() {
     local board="$1"; shift
     if [ -n "${BOARD_SSH_CMD:-}" ]; then ${BOARD_SSH_CMD} "${board}" "$@"; return; fi
+    local t=(); [ "${BOARD_SSH_TTY:-}" = 1 ] && t=(-t)   # a tty on every hop (compile_macro_bench.sh); direct mode never had one
     if [ "${MODE_ARG}" = "--direct" ]; then
         ssh -p "${RISCV_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 "${RISCV_USER}@${board}" "$@"
     else
         local escaped; escaped=$(printf '%q ' "$@")
-        sshpass -p "${REMOTE_PASS}" ssh -p "${REMOTE_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
-            "${RISCV_USER}@${REMOTE_HOST}" "ssh -p ${RISCV_PORT} -o StrictHostKeyChecking=no -o ConnectTimeout=15 ${board} ${escaped}"
+        sshpass -p "${REMOTE_PASS}" ssh -p "${REMOTE_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 "${t[@]}" \
+            "${RISCV_USER}@${REMOTE_HOST}" "ssh -p ${RISCV_PORT} -o StrictHostKeyChecking=no -o ConnectTimeout=15 ${t[*]:+${t[*]} }${board} ${escaped}"
     fi
 }
 
@@ -173,7 +175,7 @@ board_busy() {
     awk -v me="${RISCV_USER}" "${OTHER_USERS_AWK}" "$2"
 }
 
-# board_wait_idle <board> -- blocks, polling every 10 min, while another user's process is above 20% CPU.
+# board_wait_idle <board> -- blocks, polling every 5 min, while another user's process is above 20% CPU.
 # Used by the correctness-first scripts (#83, #94). Always the jump-host route, as before.
 board_wait_idle() {
     local board="$1" b out
@@ -185,7 +187,7 @@ board_wait_idle() {
             b="unreadable"
         fi
         [ -n "${b}" ] || return 0
-        echo "[$(date +%H:%M)] ${board} busy (${b}); waiting 10 min"; sleep 600
+        echo "[$(date +%H:%M)] ${board} busy (${b}); waiting 5 min"; sleep 300
     done
 }
 

@@ -95,7 +95,7 @@ for BOARD in ${BOARDS}; do
     echo "============================================================"
     } | tee -a "${LOG}"
 
-    ssh -o StrictHostKeyChecking=no fej "rm -rf ${DEST} && mkdir -p ${DEST}/kernels/RVV_256_LDX/fp32"
+    ssh fej "rm -rf ${DEST} && mkdir -p ${DEST}/kernels/RVV_256_LDX/fp32"
     board_rsync "${BOARD}" "${REF_SRC}/gemm_blis_family/" "@T@:${DEST}/gemm_blis_family/" \
         --exclude 'build/' --exclude 'out_models/' --exclude 'output/'
     board_rsync "${BOARD}" "${REF_SRC}/kernels/RVV_256_LDX/fp32/32x6/" "@T@:${DEST}/kernels/RVV_256_LDX/fp32/32x6/"
