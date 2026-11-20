@@ -4,7 +4,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/120
 
 **Parent:** #115, codebase architecture optimization.
 **Role / Label:** `needs-triage`. Spec, 2026-11-20. Strength: **Speculative** (low churn, small gain).
-**Status:** open. Not started. Host-only.
+**Status:** open. **Analysed 2026-11-20, nothing built: the spec's premises are wrong** (section 6). **Closed `wontfix` 2026-11-20 (user: yes).** ADR: `docs/adr/0001-reference-design-patchers-stay-separate.md`.
 **Branch:** cut from `pure-xdsl` when work starts, named after this title.
 
 ---
@@ -42,3 +42,18 @@ Each takes a path and rewrites text. Each has its own test (`test_ref_pack_fix.p
 - [ ] Patched output byte-identical to today's for the pinned reference source.
 - [ ] Missing-match failure tested for every fix.
 - [ ] Host pytest passes.
+
+## 6. Findings (2026-11-20, agent, before writing any code)
+
+Each claim in section 1 was checked against the files:
+
+| Spec said | The code says |
+|---|---|
+| Four modules patch the Reference Design's C by string match | Three do, each a different file for a different issue: `ref_pack_fix.py` patches `gemm_blis.c` (#54), `ref_per_rep.py` patches `test_gemm.c` and converts rep logs (#54/#55), `repair_ref_kernels.py` restores 16 cut bytes in six kernel files. **`fringe.py` patches nothing**: it computes our fringe-tile extra multiply-adds. |
+| A missing match can pass silently and the run uses an unpatched file | `ref_pack_fix.patch_gemm_blis` raises `PatchError` unless the anchor occurs exactly once ("the reference changed"). `ref_per_rep._once` does the same for each of its five anchors. Both exit 1 with the message. `repair_ref_kernels.py` prints `[SKIP] <file>: unrecognised first line` on stderr and does not guess; that is on purpose (its docstring). |
+| The interface is as small as the implementation (shallow) | Each takes a path (or a source string in tests) and owns its own anchors and replacement text. Merging them gives one module with the union of three unrelated anchor sets: a bigger interface, no behaviour moves (deletion test: nothing concentrates). |
+| `compare_ref_baseline.py` and `compare_ref_sweep.py` parse the result CSVs separately | `compare_ref_sweep.py:42` imports `load_plan, load_reference, pin_of, pin_words, stamp_of` from `compare_ref_baseline.py`. One parser already. |
+
+So there is no loud-failure gap and no duplicated parse to remove. The tests cover the anchors (`test_ref_pack_fix.py`, `test_ref_per_rep.py`, `test_fringe_overhead.py`).
+
+**Recommendation:** close as `wontfix` and record in `docs/adr/` that the Reference Design patchers stay separate (one file each, each fails loudly on a changed anchor), so later architecture reviews skip them. Done 2026-11-20 after the user's yes.
