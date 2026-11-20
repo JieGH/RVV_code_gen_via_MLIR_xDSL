@@ -5,5 +5,8 @@
       "../llvm-project",
       "../xxxxxdsl-template"
     ]
+  },
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "35"
   }
 }

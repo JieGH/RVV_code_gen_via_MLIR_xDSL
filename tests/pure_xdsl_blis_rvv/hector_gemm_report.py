@@ -21,6 +21,8 @@ import argparse
 import statistics
 from pathlib import Path
 
+import rawlog
+
 
 def read_csv(path: Path) -> dict[int, tuple[int, int, int, float]]:
     """row -> (m, n, k, seconds per call)"""
@@ -37,11 +39,10 @@ Launches = dict[int, list[dict[int, tuple[int, int, int, float]]]]  # threads ->
 
 
 def load(series: Path) -> Launches:
-    runs = [r.split("\t") for r in (series / "runs.tsv").read_text().splitlines()[1:] if r.strip()]
     by_th: Launches = {1: [], 8: []}
-    for launch, th, _cpus, board, rc in runs:
-        if rc == "0":
-            by_th.setdefault(int(th), []).append(read_csv(series / f"L{launch}_T{th}_{board}.csv"))
+    for r in rawlog.read_tsv(series / "runs.tsv"):
+        if r["exit"] == "0":
+            by_th.setdefault(int(r["threads"]), []).append(read_csv(series / f"L{r['launch']}_T{r['threads']}_{r['board']}.csv"))
     return by_th
 
 
