@@ -1,0 +1,27 @@
+
+------------------------------------------------------------
+ Run overview   ([default] = not set by you)
+------------------------------------------------------------
+  Build          : UNINSTRUMENTED (INSTRUMENTED=0) -- comparable to the reference design   [default]
+  Protocol       : REFERENCE (matches the reference design's test_gemm.c)   [default]
+  Warm-up        : none: the cold first rep is inside the mean
+  Reps           : until tmin = 3.0 s has passed   [default]
+  Correctness    : checked AFTER timing (unless skip_ref_run in config_issue94_correctness.json)
+  Packing        : RVV vector packing   [default]
+  Pack lines     : not cleared: each line the packer writes is read from the L2 first   [default]
+  Pack B         : row (shipped xDSL packer)   [default]
+  Threads        : 1 (one core)   [default]
+  Cache blocking : analytical model   [default]
+                 : nc overrides: as listed in config_issue94_correctness.json, applied to the row with exactly that label   [default]
+                 : RVV_FORCE_NC: not set   [default]
+                 : RVV_FORCE_MC: not set   [default]
+  Pinning        : taskset -c 4 make run (the timed run only), cpu 4   [default]
+  Config         : config_issue94_correctness.json   [--config]
+  Board          : jlei@jbpi2:22, direct, workspace xdsl_rvv_microkernel
+  Logs           : raw_*_noinstr_refproto.txt
+                 : reps_*_noinstr_refproto.txt (every timed rep, in the order it ran)   [default]
+                 : raw events: none   [default]
+                 : busy share of every core during each timed run (make run), from /proc/stat -> provenance.txt   [default]
+  Driver args    : --save-reps
+------------------------------------------------------------
+  --dry-run: stopping here. Nothing was generated, synced or run, and no provenance or busy share recorded.
