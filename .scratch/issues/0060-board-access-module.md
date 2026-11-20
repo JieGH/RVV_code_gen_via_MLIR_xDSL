@@ -73,5 +73,5 @@ The exact function names and arguments are settled in grilling, before code.
 - [ ] No `board_ps`, `on_board`, `hop`, `board_ssh` or idle-gate copy left outside `board_pin.sh`. **Not met:** `on_board` (hector, probe_issue95), `hop` (#112), `ssh_board` (direct_check) remain; see section 5.
 - [ ] `StrictHostKeyChecking=no` appears only in `board_pin.sh`. **Not met:** still in `compile_macro_bench.sh`, `run_ref_baseline.sh`, `run_direct_check.sh`, `run_issue112_handover.sh`, `run_issue83_pack_split.sh`, `run_issue85.sh`.
 - [ ] Every `--dry-run` plan byte-identical to before. **Not proven by a diff.** The existing dry-run tests of the changed scripts pass with only the hook names changed.
-- [ ] Full host pytest passes. **Not met as written:** same 2 failures + 3 errors as before the change (`test_parallel_gemm.py`); nothing new fails.
+- [x] Full host pytest passes. The 2 failures + 3 errors in `test_parallel_gemm.py` were the conda Python lacking `xdsl`, not code (found 2026-11-20 while on #117): with `.venv/bin/python`, `test_parallel_gemm.py` and nine other `xdsl`-dependent files pass, 147 of 147. Tests of the changed scripts: 233 passed in the conda Python.
 - [ ] One real launch through the module to jbpi, correctness only. **Not done:** no board run in this session.
