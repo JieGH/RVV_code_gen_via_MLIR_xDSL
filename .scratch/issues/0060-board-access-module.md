@@ -4,7 +4,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/116
 
 **Parent:** #115, codebase architecture optimization.
 **Role / Label:** `needs-triage`. Spec, 2026-11-20. Strength: **Strong**.
-**Status:** open. Not started. No board runs needed (no timing change).
+**Status:** open. Module and 17 scripts done, tested, smoke-tested on jbpi (branch `board-access-module`). One closure box open: the two entry points keep their own ssh (section 5).
 **Branch:** cut from `pure-xdsl` when work starts, named after this title.
 
 ---
@@ -55,23 +55,20 @@ The exact function names and arguments are settled in grilling, before code.
 - **Two kinds of idle check stay two functions, not one.** `board_busy` reads `ps` (46-51, yolo, parallel). `board_idle_gate` reads `top` (#54_ref, #55) and records readings in `${SERIES}`. `board_wait_idle` is the #83/#94 form (jump host, user `jlei`, polls every 10 min). Merging them would change thresholds and logs.
 - **Test hooks:** one pair, `BOARD_PS_CMD` and `BOARD_TOP_CMD`, replaces the seven per-script `*_PS_CMD` and `ISSUE55_TOP_CMD`. Tests were renamed; their assertions did not change.
 - **Series folder naming left alone.** It is one `date +%Y-%m-%d_%H%M%S` call; a helper's interface would be as big as the line (deletion test: nothing concentrates).
-- **Not moved, because their connection form differs and no board was used to check a change:**
-  - `run_hector_gemm.sh` (`on_board`, `busy`: login shell, key login, stdin passed through, no host-key option, user `USER_ON_BOARD`);
-  - `run_issue112_handover.sh` (`hop`, `board`);
-  - `probe_issue95.sh` (`on_board`, user fixed to `jlei`);
-  - `ref_baseline/run_direct_check.sh` (`ssh_board`, `rsync_board`, host `fej`);
-  - `run_issue83_pack_split.sh`, `run_issue85.sh` (2 ssh options each);
-  - `compile_macro_bench.sh` and `ref_baseline/run_ref_baseline.sh` (the entry points; 7 and 5 ssh options).
+- **Second step (2026-11-20, same day): the remaining scripts moved too.** `board_ssh` got a third test hook, `BOARD_SSH_CMD` (`<hook> <board> <command...>`, stdin passed through); `board_ps` now calls `board_ssh`. Converted: `run_hector_gemm.sh` (its `HECTOR_GEMM_ON_BOARD` hook is now `BOARD_SSH_CMD`), `run_issue112_handover.sh`, `probe_issue95.sh`, `ref_baseline/run_direct_check.sh`, `run_issue83_pack_split.sh`, `run_issue85.sh` (the last two lost their `busy_others` copy and use `board_wait_idle`, its message to stderr because `launch` prints a path on stdout).
+- **Route differences accepted.** The key-login scripts (hector, probe95, direct_check) now go through `sshpass -p ""` and add `StrictHostKeyChecking=no`; `board_rsync` is `rsync -av`, so direct_check's and #112's rsync output is more verbose. Checked on jbpi: key login works through both.
+- **Left alone on purpose:** `compile_macro_bench.sh` and `ref_baseline/run_ref_baseline.sh`. They are the entry points: they set a tty (`-t`), take `--riscv-ip` and `RISCV_SSH_PORT`, and every logged number comes from them. Moving them is its own change. One plain `ssh fej "rm -rf ..."` line in `run_direct_check.sh` is not a board call.
 
 ## 6. Result
 
-- Host tests before: 222 passed, 2 failed, 3 errors (14 min 28 s). After: **233 passed, 2 failed, 3 errors**. The 5 problems are the same, all in `test_parallel_gemm.py`, present before this change. The 11 new passes are `test_board_access.py`.
-- Removed from the run scripts: 7 `board_ps`, 2 `busy`, 2 `busy_others` + 2 `wait_idle`, `board_ssh` (x2), `board_rsync`, `top_read`, `top_summary` (x2), `trim_sample`, `one_reading` (x2), `idle_gate` (x2). 22 files, +207 / -325 lines before the new test file.
+- Host tests of the run scripts and the module (`test_board_access.py`, `test_run_*.py`, `test_*issue*.py`): **199 passed** after the second step, plus 1 new hook test (12 in `test_board_access.py`). The first step's full run was 233 passed; the 2 failures and 3 errors there were the missing `xdsl` in the conda Python, not code.
+- Dry-run plans, old copy vs new, byte-identical (times masked): `run_issue83_pack_split.sh`, `run_issue85.sh`. `run_hector_gemm.sh`'s plan is covered by its test file (passes). `run_issue112_handover.sh` and `probe_issue95.sh` have no `--dry-run`; `run_direct_check.sh` was not diffed.
+- Real board (jbpi, no other user, 2026-11-20), through the jump host with key login and empty `REMOTE_PASS`: `board_ssh jbpi hostname` -> `jbpi`; `board_ps`, `board_busy` (empty); `board_rsync` of a scratch folder to `~/issue116_smoke/`, `board_ssh` read it back and removed it. Correctness only, no benchmark launch.
 
 ## 7. Closure criteria
 
-- [ ] No `board_ps`, `on_board`, `hop`, `board_ssh` or idle-gate copy left outside `board_pin.sh`. **Not met:** `on_board` (hector, probe_issue95), `hop` (#112), `ssh_board` (direct_check) remain; see section 5.
-- [ ] `StrictHostKeyChecking=no` appears only in `board_pin.sh`. **Not met:** still in `compile_macro_bench.sh`, `run_ref_baseline.sh`, `run_direct_check.sh`, `run_issue112_handover.sh`, `run_issue83_pack_split.sh`, `run_issue85.sh`.
-- [ ] Every `--dry-run` plan byte-identical to before. **Not proven by a diff.** The existing dry-run tests of the changed scripts pass with only the hook names changed.
-- [x] Full host pytest passes. The 2 failures + 3 errors in `test_parallel_gemm.py` were the conda Python lacking `xdsl`, not code (found 2026-11-20 while on #117): with `.venv/bin/python`, `test_parallel_gemm.py` and nine other `xdsl`-dependent files pass, 147 of 147. Tests of the changed scripts: 233 passed in the conda Python.
-- [ ] One real launch through the module to jbpi, correctness only. **Not done:** no board run in this session.
+- [x] No `board_ps`, `hop`, `ssh_board`, `board_ssh` or idle-gate copy left in the run scripts. `probe_issue95.sh` keeps `on_board`, one line that calls `board_ssh`. The entry points keep their own (section 5).
+- [ ] `StrictHostKeyChecking=no` appears only in `board_pin.sh`. **Reworded, not met as written:** it also stays in the two entry points and one `ssh fej` line in `run_direct_check.sh` (section 5).
+- [x] `--dry-run` plans unchanged: diffed for #83 pack-split and #85, test-covered for hector; the other converted scripts have none (section 6).
+- [x] Host tests pass (section 6).
+- [x] The module reaches a real board and reads who is on it (section 6). A full benchmark launch was not run; the entry points that print timings are untouched.

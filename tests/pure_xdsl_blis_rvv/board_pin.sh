@@ -129,13 +129,15 @@ launch_conditions() {
 #   REMOTE_HOST, REMOTE_PORT, REMOTE_PASS   the jump host (unused with --direct)
 #   SERIES                   folder for the idle gate's readings (board_idle_gate, board_one_reading only)
 #   IDLE_GAP, IDLE_POLL, IDLE_MAX_WAIT, IDLE_MIN, IDLE_PROC_MAX   the idle gate's thresholds, in s / %
-# Test hooks (one pair for every script; each is an executable called as `<hook> <board>`):
+# Test hooks (one set for every script; each is an executable called as `<hook> <board> ...`):
+#   BOARD_SSH_CMD  stands for board_ssh itself: `<hook> <board> <command...>`, stdin passed through
 #   BOARD_PS_CMD   stands for `ps` on the board        BOARD_TOP_CMD   stands for `top -bn2 -d1`
 # ---------------------------------------------------------------------------------------------
 
 # board_ssh <board> <command...> -- runs the command on the board, directly or through the jump host
 board_ssh() {
     local board="$1"; shift
+    if [ -n "${BOARD_SSH_CMD:-}" ]; then ${BOARD_SSH_CMD} "${board}" "$@"; return; fi
     if [ "${MODE_ARG}" = "--direct" ]; then
         ssh -p "${RISCV_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 "${RISCV_USER}@${board}" "$@"
     else
@@ -161,13 +163,7 @@ board_rsync() {
 # board_ps <board> -- the board's processes by CPU (user, %cpu, core, age, command), whoever's they are
 board_ps() {
     if [ -n "${BOARD_PS_CMD:-}" ]; then ${BOARD_PS_CMD} "$1"; return; fi
-    local cmd='ps -eo user:20,pcpu,psr,etime,comm --sort=-pcpu --no-headers | head -12'
-    if [ "${MODE_ARG}" = "--direct" ]; then
-        ssh -p "${RISCV_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 "${RISCV_USER}@$1" "${cmd}"
-    else
-        sshpass -p "${REMOTE_PASS}" ssh -p "${REMOTE_PORT}" -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
-            "${RISCV_USER}@${REMOTE_HOST}" "ssh -p ${RISCV_PORT} -o StrictHostKeyChecking=no -o ConnectTimeout=15 $1 '${cmd}'"
-    fi
+    board_ssh "$1" 'ps -eo user:20,pcpu,psr,etime,comm --sort=-pcpu --no-headers | head -12' < /dev/null
 }
 
 # board_busy <board> <file> -- reads the board's processes into the file; prints another user's busy job, if any.

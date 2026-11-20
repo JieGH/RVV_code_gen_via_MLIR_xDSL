@@ -26,11 +26,10 @@ done
 pin_check "$CPU_GIVEN" false "$CPU" "$ALLOW0" || exit 2
 : "${REMOTE_HOST:?set REMOTE_HOST}" "${REMOTE_PORT:?set REMOTE_PORT}"
 
-hop() { sshpass -p "${REMOTE_PASS:-}" ssh -p "$REMOTE_PORT" -o StrictHostKeyChecking=no "$USER_@$REMOTE_HOST" "$@"; }
-board() { hop "ssh -o StrictHostKeyChecking=no $BOARD '$*'"; }
+REMOTE_PASS="${REMOTE_PASS:-}"; MODE_ARG=--jump; RISCV_USER="$USER_"; RISCV_PORT=22
+board() { board_ssh "$BOARD" "$*"; }
 
-sshpass -p "${REMOTE_PASS:-}" rsync -a --delete --exclude logs -e "ssh -p $REMOTE_PORT -o StrictHostKeyChecking=no" \
-    "$BUNDLE/" "$USER_@$REMOTE_HOST:$DIR/"
+board_rsync "$BOARD" --delete --exclude logs "$BUNDLE/" "@T@:$DIR/"
 
 mkdir -p "$BUNDLE/logs"
 LOG="$BUNDLE/logs/board_${BOARD}_$(date +%Y-%m-%d_%H%M%S).log"

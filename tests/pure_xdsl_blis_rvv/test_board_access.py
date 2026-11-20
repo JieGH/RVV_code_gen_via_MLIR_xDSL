@@ -124,3 +124,11 @@ def test_idle_gate_refuses_a_board_that_is_not_idle_enough_even_with_no_other_us
     proc = run(tmp_path, 'board_idle_gate jbpi L1', BOARD_TOP_CMD=h)
     assert proc.returncode == 1
     assert "under 85%" in (tmp_path / "idle_waits.txt").read_text()
+
+
+def test_board_ssh_hook_gets_the_board_and_command_and_board_ps_goes_through_it(tmp_path: Path):
+    h = tmp_path / "ssh.sh"
+    h.write_text('#!/bin/bash\necho "hook $1 $2"\n')
+    h.chmod(0o755)
+    assert run(tmp_path, "board_ssh jbpi 'uname -a'", BOARD_SSH_CMD=str(h)).stdout == "hook jbpi uname -a\n"
+    assert run(tmp_path, "board_ps jbpi2", BOARD_SSH_CMD=str(h)).stdout.startswith("hook jbpi2 ps -eo")

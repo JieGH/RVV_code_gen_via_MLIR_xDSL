@@ -62,14 +62,7 @@ STAMP="$(date +%Y-%m-%d_%H%M%S)"
 LOG="${REPO_ROOT}/tests/pure_xdsl_blis_rvv/logs/issue30_direct_check_${STAMP}.txt"
 mkdir -p "$(dirname "${LOG}")"
 
-ssh_board() {  # ssh_board <board> <remote-shell-command-string>
-    local board="$1" cmd="$2"
-    ssh -o StrictHostKeyChecking=no fej "ssh -o StrictHostKeyChecking=no ${board} $(printf '%q' "${cmd}")"
-}
-rsync_board() {  # rsync_board <local-src> <remote-dest-path-on-fej> [rsync-flag...]
-    local src="$1" dest="$2"; shift 2
-    rsync -a -e "ssh -o StrictHostKeyChecking=no" "$@" "${src}" "fej:${dest}"
-}
+export REMOTE_HOST=fej REMOTE_PORT=3322 REMOTE_PASS=""; MODE_ARG=--jump; RISCV_PORT=22
 
 # Committed dataset, not regenerated here: tests/pure_xdsl_blis_rvv/datasets/*.dat are all
 # static, checked-in files in this project, and a run silently overwriting a hand-edited
@@ -103,22 +96,22 @@ for BOARD in ${BOARDS}; do
     } | tee -a "${LOG}"
 
     ssh -o StrictHostKeyChecking=no fej "rm -rf ${DEST} && mkdir -p ${DEST}/kernels/RVV_256_LDX/fp32"
-    rsync_board "${REF_SRC}/gemm_blis_family/" "${DEST}/gemm_blis_family/" \
+    board_rsync "${BOARD}" "${REF_SRC}/gemm_blis_family/" "@T@:${DEST}/gemm_blis_family/" \
         --exclude 'build/' --exclude 'out_models/' --exclude 'output/'
-    rsync_board "${REF_SRC}/kernels/RVV_256_LDX/fp32/32x6/" "${DEST}/kernels/RVV_256_LDX/fp32/32x6/"
-    rsync_board "${HERE}/blis_shim/" "${DEST}/blis_shim/"
-    rsync_board "${DATASET}" "${DEST}/gemm_blis_family/bert_b1_b5.dat"
+    board_rsync "${BOARD}" "${REF_SRC}/kernels/RVV_256_LDX/fp32/32x6/" "@T@:${DEST}/kernels/RVV_256_LDX/fp32/32x6/"
+    board_rsync "${BOARD}" "${HERE}/blis_shim/" "@T@:${DEST}/blis_shim/"
+    board_rsync "${BOARD}" "${DATASET}" "@T@:${DEST}/gemm_blis_family/bert_b1_b5.dat"
 
     echo "" | tee -a "${LOG}"
     echo "--- build: make MR=32 NR=6 OPT=LDX GATHER=2 SWAP=0 SIMD_MODE=RVV_EXO RUN_MODE=FAMILY_EXO INCLUDE=-I../blis_shim LIBS=-lm ---" | tee -a "${LOG}"
-    ssh_board "${BOARD}" \
+    board_ssh "${BOARD}" \
         "cd ${DEST}/gemm_blis_family && make clean >/dev/null 2>&1; make MR=32 NR=6 OPT=LDX GATHER=2 SWAP=0 SIMD_MODE=RVV_EXO RUN_MODE=FAMILY_EXO INCLUDE=-I../blis_shim LIBS=-lm" \
         2>&1 | tee -a "${LOG}"
 
     PIN_PREFIX="$(pin_prefix "${PIN_CPU}")"
     echo "" | tee -a "${LOG}"
     echo "--- run: ${PIN_PREFIX}./run_gemm.sh bert_b1_b5.dat result.csv ---" | tee -a "${LOG}"
-    ssh_board "${BOARD}" \
+    board_ssh "${BOARD}" \
         "cd ${DEST}/gemm_blis_family && ${PIN_PREFIX}./run_gemm.sh bert_b1_b5.dat result.csv && cat result.csv" \
         2>&1 | tee -a "${LOG}"
     echo "" | tee -a "${LOG}"

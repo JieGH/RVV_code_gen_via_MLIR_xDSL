@@ -51,7 +51,7 @@ set -o pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOGS="${HECTOR_GEMM_LOGS:-${HERE}/logs}"          # HECTOR_GEMM_* let the loop be tried against a stub
 WANT_COMMIT="b292c92"
-source "${HERE}/board_pin.sh"                    # OTHER_USERS_AWK
+source "${HERE}/board_pin.sh"                    # board access (issue #116)
 source "${HERE}/hector_yolo_dump.sh"
 PY="${HERE}/../../.venv/bin/python"; [ -x "${PY}" ] || PY=python3
 
@@ -87,21 +87,8 @@ COMMIT="${HECTOR_GEMM_COMMIT:-$(git -C "${SRC}" rev-parse --short=7 HEAD 2>/dev/
 [[ -z "${THREADS}" || "${THREADS}" =~ ^[18]$ ]] || die "--threads takes 1 or 8 (got '${THREADS}')"
 IFS=',' read -ra BOARD_LIST <<< "${BOARDS}"
 REMOTE_HOST="${REMOTE_HOST:-fej}"; REMOTE_PORT="${REMOTE_PORT:-3322}"
+REMOTE_PASS="${REMOTE_PASS-}"; MODE_ARG=--jump; RISCV_USER="${USER_ON_BOARD}"; RISCV_PORT=22
 
-# on_board <board> <command> -- runs the command in a login shell on the board, stdin passed through
-on_board() {
-    if [ -n "${HECTOR_GEMM_ON_BOARD:-}" ]; then "${HECTOR_GEMM_ON_BOARD}" "$1" "$2"; return; fi
-    ssh -p "${REMOTE_PORT}" -o ConnectTimeout=15 "${USER_ON_BOARD}@${REMOTE_HOST}" \
-        "ssh -p 22 -o ConnectTimeout=15 $1 $(printf '%q' "$2")"
-}
-
-# busy <board> <file> -- reads the board's processes into the file; prints another user's busy job, if any.
-# A board that cannot be read counts as busy.
-busy() {
-    on_board "$1" 'ps -eo user:20,pcpu,psr,etime,comm --sort=-pcpu --no-headers | head -12' < /dev/null > "$2" 2>&1 \
-        || { echo "cannot read the board's processes"; return; }
-    awk -v me="${USER_ON_BOARD}" "${OTHER_USERS_AWK}" "$2"
-}
 
 # The order 1 8 8 1 1 8 8 1 ..., LAUNCHES of each.
 ORDER=()
@@ -138,7 +125,7 @@ pick_board() {
     while true; do
         pick=""
         for b in "${BOARD_LIST[@]}"; do
-            who="$(busy "${b}" "${SERIES}/load_${b}_L${l}.txt")"
+            who="$(board_busy "${b}" "${SERIES}/load_${b}_L${l}.txt")"
             if [ -n "${who}" ]; then
                 echo "[$(date +%H:%M)] launch ${l}: ${b} busy: ${who}" >> "${NOTES}"
                 echo "[$(date +%H:%M)] launch ${l}: ${b} busy: ${who}" >&3
@@ -168,9 +155,9 @@ for ((l = 1; l <= TOTAL; l++)); do
     if [ "${BUILT}" = false ]; then
         echo "[$(date +%H:%M)] copying ${SRC} to ${board}:~/${DIR} and building (his Makefile)"
         tar -C "${SRC}" --exclude=.git -cf - . \
-            | on_board "${board}" "mkdir -p ~/${DIR} && tar -C ~/${DIR} -xf -" > "${SERIES}/build.log" 2>&1 \
+            | board_ssh "${board}" "mkdir -p ~/${DIR} && tar -C ~/${DIR} -xf -" > "${SERIES}/build.log" 2>&1 \
             || die "copy to ${board} failed: ${SERIES}/build.log"
-        on_board "${board}" "cd ~/${DIR} && gcc-14 --version | head -1 && make clean && make && make install" \
+        board_ssh "${board}" "cd ~/${DIR} && gcc-14 --version | head -1 && make clean && make && make install" \
             < /dev/null >> "${SERIES}/build.log" 2>&1 || die "build on ${board} failed: ${SERIES}/build.log"
         BUILT=true
     fi
@@ -184,13 +171,13 @@ for ((l = 1; l <= TOTAL; l++)); do
     cmd+=" && LD_LIBRARY_PATH=\$(pwd)/install/lib LD_PRELOAD=\$(pwd)/install/lib/libGEMM.so taskset -c ${cpus} ./build/gemm.x \"\" C C C N N 1.0 0.0"
     cmd+=" ${TIMIN} T gemm_study/yolo.dat output/${name}.csv ${th} 1 0 0 0 0 0 0"
     cmd+=" && echo ===CSV=== && cat output/${name}.csv"
-    on_board "${board}" "${cmd}" < /dev/null > "${SERIES}/${name}.raw" 2>&1
+    board_ssh "${board}" "${cmd}" < /dev/null > "${SERIES}/${name}.raw" 2>&1
     rc=$?
     sed '/^===CSV===$/,$d' "${SERIES}/${name}.raw" > "${SERIES}/${name}.log"
     sed '1,/^===CSV===$/d' "${SERIES}/${name}.raw" > "${SERIES}/${name}.csv"
     rm -f "${SERIES}/${name}.raw"
 
-    after="$(busy "${board}" "${SERIES}/load_${board}_L${l}_after.txt")"
+    after="$(board_busy "${board}" "${SERIES}/load_${board}_L${l}_after.txt")"
     [ -n "${after}" ] && echo "RED NOTE: another user's job was on ${board} at the end of launch ${l}: ${after}" | tee -a "${NOTES}"
 
     why=""

@@ -3,7 +3,7 @@ Issue #62: `run_hector_gemm.sh` builds Héctor's GEMMLib (unedited) on the board
 `gemm.bin` command line: 1 thread on core 4, 8 threads on cores 0-7, in the order 1T 8T 8T 1T 1T 8T, each launch
 on an idle board of jbpi/jbpi2, with a side note for a busy one.
 
-Seam: `HECTOR_GEMM_ON_BOARD` stands in for "run this shell command on board $1" (stdin passed through), so the
+Seam: `BOARD_SSH_CMD` stands in for "run this shell command on board $1" (stdin passed through), so the
 board's process list, the copy, the build and the runs are all canned. No board is touched.
 """
 
@@ -46,7 +46,7 @@ def run_series(tmp_path: Path, *extra: str, **env_extra: str) -> tuple[subproces
     (src / "gemm_study" / "yolo.dat").write_text("0\t300\t16\t144\n")
     logs = tmp_path / "logs"
     logs.mkdir(exist_ok=True)
-    env = {**os.environ, "HECTOR_GEMM_LOGS": str(logs), "HECTOR_GEMM_ON_BOARD": str(tmp_path / "stub.sh"),
+    env = {**os.environ, "HECTOR_GEMM_LOGS": str(logs), "BOARD_SSH_CMD": str(tmp_path / "stub.sh"),
            "HECTOR_GEMM_COMMIT": "b292c92",
            "HECTOR_YOLO_DIR": str(tmp_path / "HectorYolo"), **env_extra}
     done = subprocess.run([str(SERIES), "--src", str(src), "--boards", "a,b", "--wait-min", "0", *extra],

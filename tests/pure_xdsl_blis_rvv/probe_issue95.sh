@@ -10,6 +10,7 @@
 # logs/issue95_probe_<stamp>_<label>/. Refuses (exit 3) when another user's job is busy on the board.
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
+source "${HERE}/board_pin.sh"
 M="$1"; N="$2"; K="$3"; shift 3
 TILE="24x8"; TMIN=1; BOARD="jbpi"; LABEL="p"; EXTRA=()
 while [ $# -gt 0 ]; do
@@ -25,7 +26,8 @@ while [ $# -gt 0 ]; do
 done
 MR="${TILE%x*}"; NR="${TILE#*x}"
 export REMOTE_PASS="${REMOTE_PASS-}" REMOTE_HOST="${REMOTE_HOST:-fej}" REMOTE_PORT="${REMOTE_PORT:-3322}"  # as run_parallel_gemm.sh
-on_board() { ssh -p "${REMOTE_PORT}" -o ConnectTimeout=15 "jlei@${REMOTE_HOST}" "ssh -p 22 -o ConnectTimeout=15 ${BOARD} $(printf '%q' "$1")"; }
+MODE_ARG=--jump; RISCV_USER=jlei; RISCV_PORT=22
+on_board() { board_ssh "${BOARD}" "$1"; }
 
 OUT="${HERE}/logs/issue95_probe_$(date +%Y-%m-%d_%H%M%S)_${LABEL}"; mkdir -p "${OUT}"
 busy="$(on_board 'ps -eo user=,pcpu=,comm=' | awk '$1 != "jlei" && $1 != "root" && $2 > 20 {print $1 ":" $3 ":" $2}' | tr '\n' ' ')" \
