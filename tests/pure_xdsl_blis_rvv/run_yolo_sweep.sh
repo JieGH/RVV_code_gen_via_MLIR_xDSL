@@ -3,7 +3,7 @@
 # ============================================================
 # run_yolo_sweep.sh -- the Tile Search on the YOLO26 shapes: one core (#61) or 8 threads (#63)
 #
-# One LAUNCH is one compile_macro_bench.sh run of config_yolo_search.json (19 pinned rows, one per
+# One LAUNCH is one compile_macro_bench.sh run of configs/tile_search/config_yolo_search.json (19 pinned rows, one per
 # Candidate Tile, on datasets/yolo26_k1.dat), on one board, core 4, uninstrumented, reference
 # protocol, --no-nc-overrides. The tiles run in config order, so each launch gets its own copy of
 # the config with the rows rotated (launch l starts at tile (l-1) x ceil(19 / launches)): no tile
@@ -39,7 +39,7 @@
 #   --direct          reach the boards directly instead of through the jump host
 #   --riscv-user U --riscv-port P    (defaults jlei, 22)
 #   --issue N         .scratch/reports/issue-<N>/ folder for the report and logs (default 61)
-#   --config FILE     the search config (default config_yolo_search.json); every row runs the same one dataset
+#   --config FILE     the search config (default configs/tile_search/config_yolo_search.json); every row runs the same one dataset
 #   --scalar-pack     the scalar packer instead of the vector one (compile_macro_bench.sh --scalar-pack; issue #83)
 #   --dry-run         print the plan and the launch configs, then stop
 # After every finished launch: search_report.py over the launches so far (--compare 16x8 --compare n=4:16x4,
@@ -56,7 +56,7 @@ set -o pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOGS="${YOLO_SWEEP_LOGS:-${HERE}/logs}"                 # YOLO_SWEEP_* let the loop be tried against stubs
 BENCH_RUN="${YOLO_SWEEP_RUN:-${HERE}/compile_macro_bench.sh}"
-CONFIG="${HERE}/config_yolo_search.json"
+CONFIG="${HERE}/configs/tile_search/config_yolo_search.json"
 LOCK="${LOGS}/.cron_bench.lock"
 source "${HERE}/board_pin.sh"
 source "${HERE}/hector_yolo_dump.sh"

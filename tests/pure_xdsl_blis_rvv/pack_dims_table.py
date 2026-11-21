@@ -15,7 +15,7 @@ chunk still issues the chunk's ops with vl = 0. Everything here is worked out fo
 the way the driver's loop nest packs it; `pack_plan` is checked against the real builders in
 test_pack_dims_table.py.
 
-Usage: pack_dims_table.py [--config config_issue48_sweep.json] [--m 64 --n 384 --k 384]
+Usage: pack_dims_table.py [--config experiments/issue48/config_issue48_sweep.json] [--m 64 --n 384 --k 384]
 """
 
 from __future__ import annotations
@@ -163,7 +163,7 @@ def format_table(tiles: list[tuple[int, int]], m: int, n: int, k: int) -> str:
 
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--config", default=str(HERE / "config_issue48_sweep.json"))
+    ap.add_argument("--config", default=str(HERE / "experiments/issue48/config_issue48_sweep.json"))
     ap.add_argument("--m", type=int, default=64)
     ap.add_argument("--n", type=int, default=384)
     ap.add_argument("--k", type=int, default=384)
