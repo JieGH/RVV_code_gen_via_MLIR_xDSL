@@ -1,0 +1,16 @@
+case	run	passed	rows	verdict
+fp32-axpy-rvv-pack	run_2026-11-21_184415	9	9	PASS
+fp32-dot	run_2026-11-21_184616	3	3	PASS
+f16f16f32-scalar-pack	run_2026-11-21_185514	12	12	PASS
+int8	run_2026-11-21_185713	3	3	PASS
+fp32-scalar-pack	run_2026-11-21_190427	9	9	PASS
+pack-b-row-intr	run_2026-11-21_191043	9	9	PASS
+pack-b-col-g1	run_2026-11-21_191659	9	9	PASS
+pack-b-col-g2	run_2026-11-21_192318	9	9	PASS
+pack-b-col-g4	run_2026-11-21_192935	9	9	PASS
+pack-b-col-gall	run_2026-11-21_193552	9	9	PASS
+pack-b-col-g1-m4	run_2026-11-21_194208	9	9	PASS
+zero-pack-lines	run_2026-11-21_194824	9	9	PASS
+pad-ldb-16	run_2026-11-21_195439	9	9	PASS
+search-mode	run_2026-11-21_201243	1056	1056	PASS
+threads-8	run_2026-11-21_202309	9	9	PASS

@@ -1,37 +1,29 @@
-# Reference-design baseline
+# ref_baseline/: the Reference Design
 
-Reproduces **our exact benchmark problem** — same layers, same M/N/K, same pinned
-micro-kernel MR×NR — inside the real reference design at
-`ext/RVV_ukernels_benchmark/gemm_blis_family`, and emits a fresh baseline to
-compare against.
-
-This replaces `ext/bert_large_comparison.txt` / `ext/square_comparison.txt`. Those
-archived tables were **not** produced by this reference design: they came from an
-older xDSL sweep driver (`xdsl_sweep_driver/xdsl_test_gemm.c`), and they report
-*best-of-sweep* numbers. Their provenance is exactly what this directory removes
-from the loop.
+Runs the Reference Design (`../ext/RVV_ukernels_benchmark/gemm_blis_family`, a sibling of this repo) on our exact problems (same shapes, same pinned MRxNR) so its numbers can sit beside ours.
 
 ## Run it
 
+From the repo root, with `$CONN` set as in the [repo README](../../../README.md):
+
 ```bash
-# from the project root (RVV_code_gen_via_MLIR_xDSL/)
-REMOTE_PASS="<pw>" REMOTE_HOST="fej" REMOTE_PORT="3322" \
-  ./tests/pure_xdsl_blis_rvv/ref_baseline/run_ref_baseline.sh \
-    --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --bracket
+# Ours and the reference back to back on one core, then the comparison: use this for any number you quote
+./tests/pure_xdsl_blis_rvv/runners/run_head_to_head.sh $CONN --cpu 4
+
+# The reference alone
+./tests/pure_xdsl_blis_rvv/ref_baseline/run_ref_baseline.sh $CONN --bracket
+
+# Many reference runs over a night, for an error bar
+./tests/pure_xdsl_blis_rvv/runners/run_ref_sweep.sh --dry-run
 ```
 
-The timed runs are pinned to core 4 (`--cpu N` to change, `--no-pin` to turn off; issue #21) and the run's conditions are written into `provenance.txt`. For a number quoted against our side, use `../runners/run_head_to_head.sh`, which runs both sides back to back on one core instead of leaving them a day apart.
+`--dry-run` shows the plan without touching the board. Results: `tests/pure_xdsl_blis_rvv/logs/refbase_<stamp>/`. Timed runs pin core 4 (`--cpu N`, `--no-pin`).
 
-`--dry-run` stops after generating the datasets and run plan, without touching the
-board. Results land in `tests/pure_xdsl_blis_rvv/logs/refbase_<stamp>/`.
+The sweep (issue #29) runs the reference 16 times (both boards in turn, every 30 min, `--opt LDX --variants 2 --bracket`); `compare_ref_sweep.py` then sets the runs beside ours per layer: mean, range, and a faster / slower / within-noise call. `LDX` is the kernel set with runtime `lda`/`ldb` (`OPT` bakes them in); `macc` is the variant that matches ours (see "Variant selection").
 
-**Many runs, not one (issue #29).** One run has no error bar. `../runners/run_ref_sweep.sh` repeats
-this script 16 times on the schedule of the #26 sweeps of ours (both boards, every 30 min, core 4; core 0 before issue #39,
-`--tmin 10`; `--opt LDX --variants 2 --bracket`), then `compare_ref_sweep.py` puts the runs per
-layer beside our vector-pack and scalar-pack sets: mean, range, spread between runs, and
-`vector/ref` and `scalar/ref` with a faster / slower / "within noise" call. `LDX` is the kernel set whose `lda`/`ldb` are runtime
-arguments (the `OPT` set bakes them in as constants); `macc` is the `vfmacc.vf` variant, the
-one that matches ours (see "Variant selection" below).
+Do not compare with the archived `ext/bert_large_comparison.txt` / `ext/square_comparison.txt`: they came from an older sweep driver, not from this Reference Design, and report best-of-sweep numbers.
+
+The sections below say what is compared and the caveats to quote with any number.
 
 ## Files
 

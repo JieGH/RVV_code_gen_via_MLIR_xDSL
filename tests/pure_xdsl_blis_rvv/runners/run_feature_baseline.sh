@@ -63,6 +63,13 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
+# count_pass <run dir> -- "<rows that say PASS> <rows>" over every all_raw_*.txt; the Status column is found by its
+# header name (the merged log puts Project first, so its place differs from the per-project CSV).
+count_pass() {
+    awk -F, 'FNR == 1 { s = 0; for (i = 1; i <= NF; i++) if ($i == "Status") s = i; next }
+             s && NF >= s { n++; if ($s == "PASS") p++ } END { print p + 0, n + 0 }' "$1"/all_raw_*.txt 2>/dev/null
+}
+
 cd "${HERE}/../.." || exit 1   # compile_macro_bench.sh runs from the repo root
 STAMP="$(date +%Y-%m-%d_%H%M%S)"
 SUMMARY="${LOGS}/feature_baseline_${STAMP}.tsv"
@@ -73,7 +80,7 @@ for c in "${CASES[@]}"; do
     IFS='|' read -r name config flags <<< "${c}"
     [ -z "${ONLY}" ] || [[ "${ONLY}" == *",${name},"* ]] || continue
     # shellcheck disable=SC2206  # flags split on spaces on purpose
-    BENCH=("${HERE}/compile_macro_bench.sh" "${SHARED[@]}" --config "${config}" --no-nc-overrides --tmin 0.2 ${flags})
+    BENCH=("${HERE}/compile_macro_bench.sh" "${SHARED[@]}" --config "${config}" --no-nc-overrides --tmin 0.2 --no-save-reps ${flags})   # correctness only: per-rep logs not needed (search mode wrote 120 MB)
     [[ " ${flags} " == *" --threads "* ]] || BENCH+=(--cpu 4)   # --threads fixes its own cores
     echo ""; echo "=== ${name}: ${config##*/} ${flags} ==="
     if [ "${DRY_RUN}" = true ]; then
@@ -86,8 +93,7 @@ for c in "${CASES[@]}"; do
     if [ "${run}" = "${before}" ]; then
         printf '%s\t-\t0\t0\tNO RUN\n' "${name}" >> "${SUMMARY}"; FAILED=$((FAILED + 1)); continue
     fi
-    # Status is the 6th column of every all_raw_*.txt row; every row must say PASS.
-    read -r passed rows <<< "$(cat "${run}"/all_raw_*.txt 2>/dev/null | awk -F, '$1 != "Layer" && NF > 5 { n++; if ($6 == "PASS") p++ } END { print p + 0, n + 0 }')"
+    read -r passed rows <<< "$(count_pass "${run}")"
     verdict=PASS; { [ "${rows}" -gt 0 ] && [ "${passed}" -eq "${rows}" ]; } || { verdict=FAIL; FAILED=$((FAILED + 1)); }
     printf '%s\t%s\t%s\t%s\t%s\n' "${name}" "$(basename "${run}")" "${passed}" "${rows}" "${verdict}" | tee -a "${SUMMARY}"
 done

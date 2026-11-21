@@ -48,3 +48,23 @@ def test_only_runs_a_subset():
 def test_feature_config_generates(tmp_path: Path, config: str):
     rows = re.sub(r"//.*", "", (HERE / "configs" / "correctness" / config).read_text()).strip()
     _generate(tmp_path, rows.strip()[1:-1])
+
+
+def _count_pass(run: Path) -> tuple[int, int]:
+    fn = re.search(r"^count_pass\(\) \{.*?^\}", SCRIPT.read_text(), re.M | re.S)[0]
+    out = subprocess.run(["bash", "-c", f'{fn}\ncount_pass "$1"', "_", str(run)], capture_output=True, text=True).stdout.split()
+    return int(out[0]), int(out[1])
+
+
+def test_verdict_reads_the_status_column_by_name(tmp_path: Path):
+    # The merged all_raw log puts Project first, so Status is not the per-project CSV's 6th column.
+    header = "Project,Layer,M,N,K,Variant,Status,KerGOPs_Harmonic\n"
+    (tmp_path / "all_raw_fp32_x.txt").write_text(
+        header + "p,C_full,96,210,128,MR16_NR15,PASS,12.0\np,C_edges,123,57,300,MR16_NR15,FAIL,8.4\n")
+    (tmp_path / "all_raw_fp32_y.txt").write_text(header + "p,C_tiny,12,5,17,MR32_NR6,PASS,1.1\n")
+    assert _count_pass(tmp_path) == (2, 3)
+
+
+def test_verdict_on_a_real_run():
+    run = HERE / "logs" / "run_2026-11-21_184415"  # the fp32 AXPY case of the first feature baseline (issue #137)
+    assert _count_pass(run) == (9, 9)
