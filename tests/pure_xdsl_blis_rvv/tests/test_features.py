@@ -12,6 +12,7 @@ import pytest
 
 HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # P/tests, for sibling test modules
 
 from test_pad_zeroing import MLIR_TRANSLATE_CANDIDATES  # noqa: E402
 

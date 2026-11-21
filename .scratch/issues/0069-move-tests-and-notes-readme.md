@@ -4,7 +4,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/131
 
 **Parent:** #127, organize `tests/pure_xdsl_blis_rvv` by feature.
 **Role / Label:** `needs-triage`. Spec, 2026-11-20.
-**Status:** open. Blocked by #129 and #130.
+**Status:** closed 2026-11-21. 35 tests in `tests/`, 6 notes in `notes/`, folder `README.md` with the feature map.
 **Branch:** `organize-test-folder-by-feature`.
 
 ---
@@ -33,4 +33,12 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/131
 
 - [ ] Top level holds only the generator, bench, general runners and readers, `config.json`, `README.md` and the folders.
 - [ ] Snapshot compare clean; full host suite passes.
-- [ ] README reviewed by the user.
+- [ ] README reviewed by the user (left open for the user; not blocking).
+
+## 6. Results (2026-11-21)
+
+- Moves by a Sonnet subagent, checked here. Each moved test's `HERE` is `parents[1]` (still the project folder); tests that import another test's helpers (`test_pad_zeroing`, `test_ref_protocol`) add `tests/` to `sys.path`. `test_house_rules.py` also scans `notes/*.md`, so the moved notes stay in its cited-run-folder check. `pyproject.toml` ruff ignores and `docs/agents/execution.md` follow the new test paths.
+- `README.md` (written here): layout, feature -> entry point -> configs -> tests, the pinned/search row rule, how to run the host tests.
+- **Snapshot compare against the #128 baseline:** generated C and `--dry-run` overview identical for all 45 configs.
+- **Full host suite:** 681 passed (baseline 674, same IDs, + 7 feature smoke tests), 16.6 min. `ref_baseline/generated/` restored.
+- Top level now: 31 files (generator, bench, board module, general runners and readers, `config.json`, `README.md`) and 11 folders, from 152 files.
