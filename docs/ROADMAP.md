@@ -1,5 +1,7 @@
 # Project Roadmap & Research Tracks
 
+> **Historical (last updated 2026-09-16).** Track statuses are out of date: mixed precision (i8i8i32, f16f16f32, #112) and the correctness pass (#17, #24) have landed since. Current work lives in the GitHub issues; how to use what exists: [user_guide.md](user_guide.md).
+
 High-level development roadmap for `RVV_code_gen_via_MLIR_xDSL`. Tracks upcoming research, compiler dialect additions, and hardware optimizations.
 
 Each track is synchronized with an active GitHub issue. When an issue is worked on, the agent updates both the issue on GitHub and this document.

@@ -1,6 +1,6 @@
 # Pure xDSL BLIS for RVV: the Project Generator and its bench
 
-This folder generates GEMM projects for RISC-V Vector (packers, microkernel, fringe path, driver) from xDSL, runs them on the board, and reads the results. Terms (Microkernel, Candidate Tile, Tile Search, Reference Design, ...) are defined in the repo's `CONTEXT.md`. How to run on the board, and the house rules for a quoted number: `docs/agents/execution.md`.
+This folder generates GEMM projects for RISC-V Vector (packers, microkernel, fringe path, driver) from xDSL, runs them on the board, and reads the results. How to do each operation, step by step: [`docs/user_guide.md`](../../docs/user_guide.md). Terms (Microkernel, Candidate Tile, Tile Search, Reference Design, ...) are defined in the repo's `CONTEXT.md`. How to run on the board, and the house rules for a quoted number: `docs/agents/execution.md`.
 
 ## Layout
 
@@ -10,8 +10,10 @@ generate_pure_blis_project.py   the Project Generator (with pack_builder.py, con
 compile_macro_bench.sh          generate, build and run one config on the board
 board_pin.sh                    board access: ssh, pinning, other users, idle gate, series names
 run_*.sh                        general runners (Tile Search, threads, packing, Reference Design)
-*_report.py, reps_report.py,    readers of run folders and logs
-  rawlog.py, summarize_run.py
+cron_bench_run.sh, gather_sweep_report.sh   overnight sweep lock and its summary
+gen_handover_ukernels.py        hand-over microkernels for use outside the harness
+*_report.py, reps_report.py,    readers of run folders and logs (also compare_pack_swap.py,
+  rawlog.py, summarize_run.py     search_report.py, slow_state_survey.py, shape_breakdown.py)
 configs/                        correctness/, tile_search/, benchmark/  (configs/README.md)
 experiments/issueNN/            one folder per past issue: its run script, configs, report, tests
 tests/                          host tests (pytest)
@@ -34,7 +36,7 @@ modelLevel/  pack_only/         analytical cache model; pack-only bench
 | **Packing methods**: RVV pack, `--scalar-pack`, `--pack-b <variant>`, `--zero-pack-lines` | `compile_macro_bench.sh` flags, `run_pack_swap.sh` | `configs/benchmark/config_pack_swap*.json` | `test_pack_b_variants.py`, `test_pack_b_switch.py`, `test_pack_b_only.py`, `test_pack_dims_table.py`, `test_zero_pack_lines.py` |
 | **Threads and YOLO**: N-thread GEMM, Héctor's YOLO layers | `run_parallel_gemm.sh`, `run_hector_gemm.sh` | `configs/benchmark/config_parallel_gemm.json`, `config_yolo53_*.json`, `config_yolo_n1.json` | `test_parallel_gemm.py`, `test_parallel_gemm_report.py`, `test_run_hector_gemm.py`, `test_hector_gemm_report.py` |
 | **Reference Design** comparison | `run_head_to_head.sh`, `run_ref_sweep.sh`, `ref_baseline/` | `ref_baseline/cases*.tsv` | `test_compare_ref_baseline.py`, `test_compare_ref_sweep.py`, `test_ref_pack_fix.py`, `test_ref_per_rep.py`, `test_run_ref_sweep.py`, `test_fringe_overhead.py` |
-| **Measurement and house rules**: run protocol, per-rep logs, board access, provenance | `board_pin.sh`, `reps_report.py`, `rawlog.py` | none | `test_board_access.py`, `test_board_pin.py`, `test_house_rules.py`, `test_reps_report.py`, `test_rawlog.py`, `test_perf_counters.py`, `test_summarize_run.py` |
+| **Measurement and house rules**: run protocol, per-rep logs, board access, provenance | `board_pin.sh`, `reps_report.py`, `rawlog.py` | none | `test_board_access.py`, `test_board_pin.py`, `test_house_rules.py`, `test_reps_report.py`, `test_rawlog.py`, `test_perf_counters.py`, `test_summarize_run.py`, `test_slow_state_survey.py`, `test_shape_breakdown.py` |
 | **Past experiments** | `experiments/issueNN/run_*.sh` | `experiments/issueNN/` | `experiments/issueNN/test_*.py` |
 
 A config row is `[datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run, iterations]`. The 8th value (`iterations`) also makes the row **pinned**: one project for the first MRxNR only. Leave it out for search mode (one project with every tile up to the largest). See `test_features.py`.
@@ -45,4 +47,4 @@ A config row is `[datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_r
 cd tests/pure_xdsl_blis_rvv && ../../.venv/bin/python -m pytest
 ```
 
-Use the repo's `.venv` (the conda Python lacks `xdsl`). The full suite takes about 17 minutes (the idle-gate tests sleep). It rewrites `pj_gen/` and `ref_baseline/generated/`, and some tests start runners with `--dry-run`: never run it while a board series runs.
+Use the repo's `.venv` (the conda Python lacks `xdsl`). The full suite is 681 tests and takes about 17 minutes (the idle-gate tests sleep). It rewrites `pj_gen/` and `ref_baseline/generated/`, and some tests start runners with `--dry-run`: never run it while a board series runs.

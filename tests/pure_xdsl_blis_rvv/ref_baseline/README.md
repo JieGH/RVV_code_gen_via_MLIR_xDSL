@@ -46,21 +46,15 @@ one that matches ours (see "Variant selection" below).
 
 ## Three things to know before trusting the output
 
-### 1. The two harnesses do not report the same metric
+### 1. How the two harnesses compute GOPs
 
 | | formula | packing |
 |---|---|---|
 | reference | `2mnk / wall(gemm_blis_B3A2C0)` (`src/test_gemm.c:399-400`) | **included** |
-| ours | `2mnk / total_kernel_time` (`templates/driver_benchmark.cpp:695`) | **excluded** |
+| ours, `e2e` | `2mnk / RVV_Time_ms`, the wall clock of the whole call (`compare_ref_baseline.py`) | **included** |
+| ours, `KerGOPs_*` | uninstrumented build (the default): the rep's own wall clock; instrumented: pack + compute timers (`templates/driver_benchmark.cpp`, issues #13, #14) | **included** |
 
-The loop nests are otherwise the same B3A2C0 order with the same blocking model, so
-the *only* difference is instrumentation. `compare_ref_baseline.py` therefore prints
-both our `Ker` (pack-excluded, what the dashboards plot) and our `e2e`
-(`2mnk/(vector_pack+compute)`). **Only `e2e` is comparable to the reference column.**
-
-Because pack fraction varies a lot by shape (≈7% for Square, ≈15–16% for B1/B4/B5,
-≈41% for B3), comparing `Ker` against the reference silently flatters the
-pack-heavy shapes by 2–3× more than the pack-light ones.
+Both sides include packing since issue #13; `e2e` is the column to set beside the reference. Logs from before #13 (and the archived `ext/*_comparison.txt`) computed our `Ker` from compute time alone, which flattered the pack-heavy shapes (pack ≈7% of the time for Square, ≈15–16% for B1/B4/B5, ≈41% for B3): never mix them with current numbers.
 
 ### 2. The reference cannot build two of our three pinnings
 
@@ -191,7 +185,7 @@ families.
    uninstrumented numbers swing run-to-run (2.07-3.94 ms) rather than settling.
 
    So any pack-inclusive number we quote from an instrumented build is **deflated
-   by roughly 11-17%**, not 1-3%. Use `--no-instr` for a headline figure.
+   by roughly 11-17%**, not 1-3%. The uninstrumented build (the default of `compile_macro_bench.sh`) is the one for a headline figure.
 3. **The reference does no warm-up** and averages over however many reps fit in
    `TIMIN`. See the under-sampling warning `gen_ref_datasets.py` prints. Since
    issue #27 our uninstrumented build does the same **by default** (the reference

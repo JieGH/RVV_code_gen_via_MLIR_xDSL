@@ -1,3 +1,5 @@
+> **Historical report** (2026-03). Kept as written; paths and numbers may be out of date.
+
 # INT8 RVV Dialect Integration and Verification Report
 
 This report documents the extensions added to the `xdsltemplate` compiler to support INT8 tensor operations on RISC-V.
