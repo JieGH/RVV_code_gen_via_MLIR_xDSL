@@ -24,6 +24,50 @@ CONN="--jump --riscv-user jlei --riscv-ip jbpi --riscv-port 22"
 
 For a board you reach directly: `CONN="--direct --riscv-user <user> --riscv-ip <host> --riscv-port 22"`.
 
+## Run a model
+
+From the repo root. Each command generates, builds and times one model's GEMM layers on core 4.
+
+```bash
+B=./tests/pure_xdsl_blis_rvv/compile_macro_bench.sh
+
+# BERT-large, layers B1-B5 (tiles 16x15, 32x6, 32x7; about 7 minutes)
+$B $CONN --no-nc-overrides --cpu 4 --tmin 10 --config configs/benchmark/config_bert.json
+
+# Square, S1-S5 = 1000^3 to 5000^3 (tile 32x7; about 3 minutes)
+$B $CONN --no-nc-overrides --cpu 4 --tmin 10 --config configs/benchmark/config_square.json
+```
+
+## Feature examples
+
+Each command checks one feature against the scalar reference on small shapes. Each takes a few minutes, and every row must say `PASS`.
+
+```bash
+CHECK="$B $CONN --no-nc-overrides --tmin 0.2"
+C=configs/correctness
+
+# Data type and method
+$CHECK --cpu 4 --config $C/config_correctness.json                              # fp32, AXPY method
+$CHECK --cpu 4 --config $C/config_feature_dot.json                              # fp32, DOT method
+$CHECK --cpu 4 --config $C/config_feature_int8.json                             # int8
+$CHECK --cpu 4 --config $C/config_issue112_mixed_correctness.json --scalar-pack # f16 inputs, fp32 output
+
+# Packing method
+$CHECK --cpu 4 --config $C/config_correctness.json --scalar-pack     # scalar instead of RVV packing
+$CHECK --cpu 4 --config $C/config_correctness.json --pack-b col-g4   # another B packer
+$CHECK --cpu 4 --config $C/config_correctness.json --zero-pack-lines # clear the pack buffer first
+$CHECK --cpu 4 --config $C/config_correctness.json --pad-ldb 16      # pad B's leading dimension
+
+# Microkernel tile: forced, or swept
+$CHECK --cpu 4 --config $C/config_correctness.json    # forced: one project per tile (16x15, 32x6, 32x7)
+$CHECK --cpu 4 --config $C/config_feature_search.json # swept: every tile up to 32x7, best one reported (about 25 minutes)
+
+# Threads
+$CHECK --threads 8 --config $C/config_correctness.json
+```
+
+To change the problem shapes, list them in a dataset file (`label M N K`, one per line) under `tests/pure_xdsl_blis_rvv/datasets/` and name it in a config (see [Choosing what to generate](#choosing-what-to-generate)). `runners/run_feature_baseline.sh` runs all the checks above in one go.
+
 ## Essential commands
 
 All from the repo root.
