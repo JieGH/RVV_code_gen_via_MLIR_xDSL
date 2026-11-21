@@ -22,7 +22,7 @@ tests/pure_xdsl_blis_rvv/logs/run_<timestamp>/
   comparison.md                    # per-case table built from all_raw_*.txt, see below
 ```
 
-With `--save-reps`, each project directory also holds `reps_<dtype>_<method><suffix>.txt.gz`
+By default (`--save-reps`, issue #39), each project directory also holds `reps_<dtype>_<method><suffix>.txt.gz`
 (see "Per-rep log" below). It is gzipped on fetch and not merged into an `all_*` file.
 
 `comparison.md` is generated automatically by `summarize_run.py` at the end of the
@@ -36,8 +36,8 @@ python3 tests/pure_xdsl_blis_rvv/summarize_run.py tests/pure_xdsl_blis_rvv/logs/
 
 Each case runs `N_REPS` times (from `config.json`'s `iterations` field, or 5 by
 default), or, under the reference protocol (the default in the uninstrumented build, issue #27), for as many reps as fit in `tmin`, in which case `iterations` is unused. `KerGOPs_*` are computed per-rep from
-`2*M*N*K / (kernel_time + rvv_pack_time)`, i.e. microkernel compute **plus** the
-RVV pack. Since issue #13 packing time is included, so the number is comparable to
+`2*M*N*K / (kernel_time + rvv_pack_time)` in the instrumented build, i.e. microkernel compute **plus** the
+RVV pack, and from the rep's own wall clock in the uninstrumented build (the default; see the table below). Since issue #13 packing time is included, so the number is comparable to
 the reference design's `2mnk / wall(gemm_blis)`. Before #13 it was
 `2*M*N*K / kernel_time` (compute only), which overstated GOPs by
 `1 / (1 - pack_fraction)` — about +7-9% on Square and +18-20% on B1/B4/B5 (see
@@ -52,9 +52,9 @@ The timers above are not free. Every microkernel tile is bracketed by a
 `perf_event_open()` read. `make INSTRUMENTED=0` — or `compile_macro_bench.sh
 --no-instr` — compiles all of it out.
 
-|  | `INSTRUMENTED=1` (default) | `INSTRUMENTED=0` |
+|  | `INSTRUMENTED=1` (plain `make`; `compile_macro_bench.sh --instr`) | `INSTRUMENTED=0` (the default of `compile_macro_bench.sh`) |
 |---|---|---|
-| binary / logs | `test_gemm_*.x`, `raw_*.txt` | `test_gemm_*_noinstr.x`, `raw_*_noinstr.txt` |
+| binary / logs | `test_gemm_*.x`, `raw_*.txt` | `test_gemm_*_noinstr.x`, `raw_*_noinstr_refproto.txt` (reference protocol, the default) or `raw_*_noinstr.txt` (`--no-ref-protocol`) |
 | `RVV_Time_ms` | real, but 11-17% inflated by the timers | real, no timer tax |
 | `KerGOPs_*` denominator | `kernel_time + rvv_pack_time` | that rep's own wall clock |
 | pack/compute breakdown, `*_Pack_GBs`, perf counters | yes | `nan` — they do not exist |
@@ -205,7 +205,7 @@ be noisier" guess. The 32x6 default runs used `iterations=30`, not the
 | `fastest / median` (console only; formerly `mx/md`) | `Max / Median`. Above ~1.25 indicates extreme cache sensitivity (thrashing) — see `.scratch/issues/0001-b3-m7-packing-instability.md` |
 | `RVV_Pack_GBs` / `Scl_Pack_GBs` | Pack throughput (bytes packed / pack time), vector vs. scalar packer |
 | `RVV_Time_ms` | Total wall-clock per rep for the RVV pass (pack + compute + loop overhead + every timer and counter read the build contains). The only column that cannot lose time to the gaps between the inner timers, so it — not `Vector_Pack_Time_ms + Compute_Time_ms` — is what `compare_ref_baseline.py` puts against the reference (issue #14) |
-| `Ref_Time_ms` | Wall-clock for the single scalar reference GEMM run (`gemm_ref`), used only for correctness checking. `0` whenever `skip_ref_run: true` in `config.json` (true for every case in the current config, to keep board time bounded) |
+| `Ref_Time_ms` | Wall-clock for the single scalar reference GEMM run (`gemm_ref`), used only for correctness checking. `0` whenever `skip_ref_run: true` in `config.json` (true for every case of `config.json`, to keep board time bounded; the configs in `configs/correctness/` set it false) |
 | `Vector_Pack_Time_ms` / `Scalar_Pack_Time_ms` | Per-rep-averaged wall-clock pack time, RVV vs. scalar packer (issue #7) |
 | `Compute_Time_ms` | Per-rep-averaged wall-clock microkernel time, excluding packing (issue #2) |
 | `N_Reps` | Reps the RVV timing loop ran: `iterations` under the warm-up protocol, whatever fit in `tmin` under the reference protocol (issue #27) |
@@ -442,7 +442,7 @@ otherwise every perf column below reads `N/A`.
 | `Scalar Pack % of total` / `Vector Pack % of total` | `pack_ms / (pack_ms + Compute_Time_ms) × 100` — both use the same shared `Compute_Time_ms`, since scalar-pack-only reps don't separately measure kernel time |
 | `KerGOPs (this run)` | `KerGOPs_Median` from the raw log |
 | `KerGOPs Jitter [min, p5, p95, max, iqr, s, CV%, mx/md]` | Same bracket the console prints per case, rebuilt from the raw log's `KerGOPs_Min/P5/P95/Max/IQR/Std` — see the "Timing / GOPs metrics" section above for what each of these means |
-| `Ref GOPs` | `2*M*N*K / Ref_Time_ms`, or `N/A` when `skip_ref_run: true` (currently every case) |
+| `Ref GOPs` | `2*M*N*K / Ref_Time_ms`, or `N/A` when `skip_ref_run: true` (every case of `config.json`) |
 | `Δ vs ref` | `KerGOPs (this run) / Ref GOPs`, as a speedup multiplier (e.g. `10.0×`); `N/A` alongside `Ref GOPs` |
 | `Vector Pack Gain %` | `(Scalar Pack ms − Vector Pack ms) / Scalar Pack ms × 100`. Positive = vector packing faster; negative = vector packing slower (see `.scratch/issues/0003-scalar-vs-vector-pack-timing.md` for the B3 case where it's negative) |
 | `Counters Valid` | `yes`/`no` from the perf log's `Counters_Valid`, or `N/A` if no perf log was found for this run |
