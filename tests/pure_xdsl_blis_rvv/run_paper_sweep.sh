@@ -5,7 +5,7 @@
 # Square S1-S5) at 1 thread (core 4) and at 8 threads (cores 0-7), alternating, on one board.
 #
 # Steps, one launch each: 1T L1, 8T L1, 8T L2, 1T L2, 1T L3, 8T L3 (A-B-B-A, house rule 2). Each step is
-#   run_yolo_sweep.sh --config config_paper_search.json --threads <1|8> --launch <l>
+#   run_yolo_sweep.sh --config configs/tile_search/config_paper_search.json --threads <1|8> --launch <l>
 # (19 Candidate Tiles, rows rotated per launch, idle-board wait, report after every launch). The first failed
 # step stops the series. 8 threads use core 0: the user's exception for 8-thread runs (#63 §2).
 #
@@ -75,7 +75,7 @@ for ((i = 0; i < ${#THREADS[@]}; i++)); do
     t="${THREADS[$i]}"
     if [ "${t}" = 1 ]; then n1=$((n1 + 1)); l=${n1}; else n8=$((n8 + 1)); l=${n8}; fi
     echo "[$(date +%H:%M)] step $((i + 1))/${#THREADS[@]}: ${labels[$i]}"
-    "${SWEEP}" --config "${HERE}/config_paper_search.json" --threads "${t}" --launches "${LAUNCHES}" --launch "${l}" \
+    "${SWEEP}" --config "${HERE}/configs/tile_search/config_paper_search.json" --threads "${t}" --launches "${LAUNCHES}" --launch "${l}" \
         --boards "${BOARD}" --tmin "${TMIN}" --issue "${ISSUE}" "${EXTRA[@]}" \
         || { echo "step $((i + 1)) (${labels[$i]}) failed; stopping the series."; exit 1; }
 done

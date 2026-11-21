@@ -1,0 +1,9 @@
+diff -r -x pytest.log ../../.scratch/reports/issue-128/baseline/pytest.txt ../../.scratch/reports/issue-128/after130/pytest.txt
+125a126,132
+> PASSED test_features.py::test_kernel_generation_per_data_type[f16f16f32-AXPY_FP32_Pack-f16f16f32_AXPY_FP32_Pack_vlen256_MR16NR15]
+> PASSED test_features.py::test_kernel_generation_per_data_type[fp32-AXPY_FP32_Pack-fp32_AXPY_FP32_Pack_vlen256_MR16NR15]
+> PASSED test_features.py::test_kernel_generation_per_data_type[fp32-DOT_FP32_LANE_Pack-fp32_DOT_FP32_LANE_Pack_vlen256_MR16NR15]
+> PASSED test_features.py::test_kernel_generation_per_data_type[int8-AXPY_INT8_Pack-None]
+> PASSED test_features.py::test_pinned_rows_give_one_project_per_tile
+> PASSED test_features.py::test_pinned_row_with_a_family_uses_its_first_tile
+> PASSED test_features.py::test_search_row_builds_every_tile_up_to_the_largest

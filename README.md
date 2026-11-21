@@ -73,13 +73,13 @@ Our KerGOPs figure excludes packing while the reference's numbers include it. [d
 
 ### Finding the best microkernel size (Tile Search)
 
-A Tile Search times a list of Candidate Tiles on every shape of a dataset and names the fastest tile per shape. The config is one pinned row per tile (e.g. `config_yolo_search.json`, the 19 YOLO26 tiles of issue #59), so each tile times exactly as it does alone. Run it with the benchmark command plus `--config config_yolo_search.json`, three launches, then read the run folders:
+A Tile Search times a list of Candidate Tiles on every shape of a dataset and names the fastest tile per shape. The config is one pinned row per tile (e.g. `configs/tile_search/config_yolo_search.json`, the 19 YOLO26 tiles of issue #59), so each tile times exactly as it does alone. Run it with the benchmark command plus `--config configs/tile_search/config_yolo_search.json`, three launches, then read the run folders:
 
 ```bash
 python3 tests/pure_xdsl_blis_rvv/search_report.py logs/run_<A> logs/run_<B> logs/run_<C> --compare 16x8 --compare n=4:16x4
 ```
 
-It ranks by GOPs of the whole call (packing included) by mean time, with GOPs by median rep beside it, and adds the best single tile and the best tile per `n` over the dataset. It needs the per-rep logs (on by default; not with `--no-save-reps`). Check the tiles first with `--config config_yolo_correctness.json --tmin 0.2` (every row `PASS`).
+It ranks by GOPs of the whole call (packing included) by mean time, with GOPs by median rep beside it, and adds the best single tile and the best tile per `n` over the dataset. It needs the per-rep logs (on by default; not with `--no-save-reps`). Check the tiles first with `--config configs/correctness/config_yolo_correctness.json --tmin 0.2` (every row `PASS`).
 
 ## Generating without a board
 

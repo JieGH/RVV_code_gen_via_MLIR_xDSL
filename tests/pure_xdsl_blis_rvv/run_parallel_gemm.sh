@@ -3,7 +3,7 @@
 # ============================================================
 # run_parallel_gemm.sh -- our GEMM at 1 and 8 threads on the YOLO26 shapes (issue #56)
 #
-# One LAUNCH is one compile_macro_bench.sh run of config_parallel_gemm.json (tile 24x8, datasets/yolo26_k1.dat,
+# One LAUNCH is one compile_macro_bench.sh run of configs/benchmark/config_parallel_gemm.json (tile 24x8, datasets/yolo26_k1.dat,
 # every row checked), uninstrumented, reference protocol, --no-nc-overrides, --tmin 2. 1 thread runs on core 4
 # (--cpu 4); 8 threads run with --threads 8 (cores 0-7, OpenMP bound close to cores; core 0 by the user's
 # exception, #56 §5). Order 1 8 8 1 1 8 (--launches of each), all on one board: the first of --boards with no
@@ -23,7 +23,7 @@
 # Flags: --boards a,b (default jbpi: the board of the #62 series compared against; give --hector to match another)  --launches N (3)  --tmin S (2)  --wait-min M (10)  --workspace NAME
 #        --direct  --riscv-user U  --riscv-port P  --issue N (56)  --hector <#62 series folder>  --dry-run
 #        --threads 1|8 (run only that thread count, --launches of it; issue #94)  --scalar-pack (scalar packer; #83, #94)
-#        --config FILE (another config, e.g. config_yolo53_24x8.json; the shape count comes from its first dataset; #108, #109)
+#        --config FILE (another config, e.g. configs/benchmark/config_yolo53_24x8.json; the shape count comes from its first dataset; #108, #109)
 # No tests or --dry-run of another wrapper meanwhile: they rewrite pj_gen/.
 # ============================================================
 
@@ -32,7 +32,7 @@ set -o pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOGS="${PARALLEL_GEMM_LOGS:-${HERE}/logs}"
 BENCH_RUN="${PARALLEL_GEMM_RUN:-${HERE}/compile_macro_bench.sh}"
-CONFIG="${HERE}/config_parallel_gemm.json"
+CONFIG="${HERE}/configs/benchmark/config_parallel_gemm.json"
 LOCK="${LOGS}/.cron_bench.lock"
 source "${HERE}/board_pin.sh"
 source "${HERE}/hector_yolo_dump.sh"

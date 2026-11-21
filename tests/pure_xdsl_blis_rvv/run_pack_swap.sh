@@ -14,8 +14,8 @@ set -o pipefail
 # thermal state shows up as a gap between the two runs of the same side instead of hiding
 # inside the difference. Then compare_pack_swap.py prints the table.
 #
-# Cases: B3 (MR16_NR15) first, then S1 (MR32_NR7), from config_pack_swap.json; B2, B3 and B4
-# from config_pack_swap_b2b3b4.json (--config).
+# Cases: B3 (MR16_NR15) first, then S1 (MR32_NR7), from configs/benchmark/config_pack_swap.json; B2, B3 and B4
+# from configs/benchmark/config_pack_swap_b2b3b4.json (--config).
 # Defaults: --no-nc-overrides --cpu 4 --tmin 10 (core 4 since issue #39: never core 0).
 #
 # Usage (jump-host):
@@ -24,7 +24,7 @@ set -o pipefail
 #       --riscv-user jlei --riscv-ip jbpi --riscv-port 22
 #
 # Flags: --direct | --jump, --riscv-user/-ip/-port, --cpu N | --no-pin, --tmin <s>,
-# --config <file> (default config_pack_swap.json), --shipped-nc (keep the config's nc
+# --config <file> (default configs/benchmark/config_pack_swap.json), --shipped-nc (keep the config's nc
 # overrides instead of --no-nc-overrides), --dry-run (print each side's plan and stop).
 #
 # One four-run session takes about 4 x (B3 + S1 at tmin each + build), so 5-10 min per run.
@@ -45,7 +45,7 @@ CPU=""
 TMIN_ARGS=(--tmin 10)
 NC_ARGS=(--no-nc-overrides)
 COMPARE_ARGS=()
-CONFIG="config_pack_swap.json"
+CONFIG="configs/benchmark/config_pack_swap.json"
 DRY_RUN=false
 
 while [[ "$#" -gt 0 ]]; do

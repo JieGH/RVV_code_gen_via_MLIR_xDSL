@@ -81,10 +81,10 @@ ignore = [
 # those would just reformat generated-code text, not Python, so line length
 # isn't a meaningful signal here.
 "tests/pure_xdsl_blis_rvv/generate_pure_blis_project.py" = ["E501"]
-"tests/pure_xdsl_blis_rvv/test_pack_correctness.py" = ["E501"]
+"tests/pure_xdsl_blis_rvv/tests/test_pack_correctness.py" = ["E501"]
 # Embeds C++ stub kernels and a harness as string literals, like the file above.
-"tests/pure_xdsl_blis_rvv/test_pad_zeroing.py" = ["E501"]
-"tests/pure_xdsl_blis_rvv/test_correctness_pass.py" = ["E501"]
+"tests/pure_xdsl_blis_rvv/tests/test_pad_zeroing.py" = ["E501"]
+"tests/pure_xdsl_blis_rvv/tests/test_correctness_pass.py" = ["E501"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
