@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/127
 
 **Role / Label:** `needs-triage`. Parent issue. Opened 2026-11-20 at the user's request.
-**Status:** open 2026-11-20. Specs written for four sub-issues.
+**Status:** closed 2026-11-21. All four sub-issues done; behaviour unchanged (snapshot and test IDs); correctness pass on jbpi from the new layout all PASS.
 **Branch:** `organize-test-folder-by-feature`, cut from `board-access-module` (#116 is closed but not yet merged into `pure-xdsl`, and it edits every run script; cutting from it avoids conflicts). Sub-issues are worked on this branch in order, one commit series each.
 **Scope:** `tests/pure_xdsl_blis_rvv/` only, plus the docs that name its paths (`docs/agents/execution.md`, `docs/metrics.md`, `ref_baseline/README.md`).
 
@@ -90,8 +90,23 @@ Rule for each file:
 
 ## 7. Closure
 
-- [ ] All four sub-issues closed.
-- [ ] Snapshot after the last sub-issue matches the baseline (§4).
-- [ ] Full host suite: same passes as the baseline.
-- [ ] One correctness pass on jbpi from the new layout (`configs/correctness/config_correctness.json`, busy board allowed), all rows PASS.
+- [x] All four sub-issues closed.
+- [x] Snapshot after the last sub-issue matches the baseline (§4).
+- [x] Full host suite: same passes as the baseline.
+- [x] One correctness pass on jbpi from the new layout (`configs/correctness/config_correctness.json`, busy board allowed), all rows PASS.
 - [ ] Merged: branch -> `pure-xdsl` -> `main`.
+
+## 8. Results (2026-11-21)
+
+| Step | Result |
+|------|--------|
+| #128 baseline | snapshot of 45 configs (generated C hashes + `--dry-run` overview); 674 host tests passed on the unmoved tree; 7 feature smoke tests added |
+| #129 experiments | 57 files into `experiments/issueNN/` (20 issues); compare clean; 681 passed |
+| #130 configs | 22 configs into `configs/{correctness,tile_search,benchmark}/`; compare clean; 681 passed |
+| #131 tests, notes, README | 35 tests into `tests/`, 6 notes into `notes/`, folder `README.md`; compare clean; 681 passed |
+
+- 681 = the baseline's 674, same test IDs (folder part dropped), + the 7 smoke tests. Each full run about 16.6 min, `.venv` Python, `ref_baseline/generated/` saved and restored around it.
+- Top level: 152 files -> 31 files + 11 folders.
+- **Board check:** `compile_macro_bench.sh --jump ... --riscv-ip jbpi --no-nc-overrides --cpu 4 --config configs/correctness/config_correctness.json --tmin 0.2`, uninstrumented build, reference protocol, core 4, board idle (no other user's process, read just before). Run folder `tests/pure_xdsl_blis_rvv/logs/run_2026-11-21_021027/`: **9 of 9 rows PASS**. Correctness only, no timing number taken from it.
+- Moves for #129-#131 were done by Sonnet subagents and each checked here by the snapshot compare and the full suite before its commit.
+- Visible change for users: runners that print the config path they pass to the bench now print the new path (`configs/...`, `experiments/issueNN/...`). Old logs and issue files keep the old paths; `experiments/README.md` maps them.
