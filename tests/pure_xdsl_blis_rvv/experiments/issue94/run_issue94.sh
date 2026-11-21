@@ -20,7 +20,7 @@
 #       > tests/pure_xdsl_blis_rvv/logs/issue94.out 2>&1 < /dev/null &
 # Flags: --src DIR (his GEMMLib_yolo tree at b292c92, required)  --board B (jbpi)  --tmin S (2)  --skip-correctness
 #        --dry-run  --issue N (log folder issue-N; 94)
-#        --config-1t FILE / --config-8t FILE (ours at 1T / 8T runs this config; default config_parallel_gemm.json; #109)
+#        --config-1t FILE / --config-8t FILE (ours at 1T / 8T runs this config; default configs/benchmark/config_parallel_gemm.json; #109)
 #        --check-1t FILE / --check-8t FILE (C1 / C2 run this correctness config; default config_issue94_correctness.json; #109)
 # No tests or --dry-run of another wrapper meanwhile: they rewrite pj_gen/.
 # ============================================================
@@ -83,8 +83,8 @@ correctness() {  # $1 label, $2 config, rest: extra flags
 
 print_plan() {
     echo "Issue #${ISSUE}: YOLO26, V = ours vector packer, S = ours scalar packer, H = Héctor's gemm.x (b292c92)"
-    echo "  Ours 1T  : $(basename "${CFG1[1]:-config_parallel_gemm.json}") (tile $(tile_of "${CFG1[1]:-${HERE}/config_parallel_gemm.json}"))"
-    echo "  Ours 8T  : $(basename "${CFG8[1]:-config_parallel_gemm.json}") (tile $(tile_of "${CFG8[1]:-${HERE}/config_parallel_gemm.json}"))"
+    echo "  Ours 1T  : $(basename "${CFG1[1]:-configs/benchmark/config_parallel_gemm.json}") (tile $(tile_of "${CFG1[1]:-${HERE}/configs/benchmark/config_parallel_gemm.json}"))"
+    echo "  Ours 8T  : $(basename "${CFG8[1]:-configs/benchmark/config_parallel_gemm.json}") (tile $(tile_of "${CFG8[1]:-${HERE}/configs/benchmark/config_parallel_gemm.json}"))"
     echo "  Board    : ${BOARD}; 1T on core 4, 8T on cores 0-7 (core 0: user's 8-thread exception)"
     echo "  Ours     : uninstrumented, reference protocol, --tmin ${TMIN}, --no-nc-overrides, every row checked"
     echo "  Héctor   : TIMIN=${TMIN}, TEST=T, his tiles; 8T OMP_PROC_BIND=close OMP_PLACES=cores (as ours); built by his first launch, then reused"

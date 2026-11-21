@@ -2,9 +2,9 @@
 # ============================================================
 # run_issue83.sh -- the scalar-packing rerun (issue #83) on one board: correctness first, then timing.
 #
-#   --part yolo  : C1 YOLO 1T (core 4), C2 YOLO 8T, both oracle on (config_yolo_correctness.json); then T2 = run_issue63.sh --scalar-pack
+#   --part yolo  : C1 YOLO 1T (core 4), C2 YOLO 8T, both oracle on (configs/correctness/config_yolo_correctness.json); then T2 = run_issue63.sh --scalar-pack
 #                  (ours vs his gemm.x, A-B-B-A) and T1 = run_yolo_sweep.sh --threads 1 --scalar-pack (3 launches).
-#   --part paper : C3 paper 1T, C4 paper 8T, oracle on (config_paper_correctness.json); then T3 = run_paper_sweep.sh --scalar-pack.
+#   --part paper : C3 paper 1T, C4 paper 8T, oracle on (configs/correctness/config_paper_correctness.json); then T3 = run_paper_sweep.sh --scalar-pack.
 # The correctness configs keep to the scalar oracle's B2 size limit (docs/agents/execution.md, "Correctness pass").
 # A correctness pass with any row not PASS stops everything before timing. Every step checks the board first
 # and waits while another user's job is busy (the sweeps do this themselves; the correctness passes here).
@@ -33,8 +33,8 @@ while [[ "$#" -gt 0 ]]; do
 done
 [ -n "${BOARD}" ] || die "--board is required"
 case "${PART}" in
-    yolo)  [ -n "${SRC}" ] || die "--part yolo needs --src (his GEMMLib_yolo tree at b292c92)"; CFG="config_yolo_correctness.json" ;;
-    paper) CFG="config_paper_correctness.json" ;;
+    yolo)  [ -n "${SRC}" ] || die "--part yolo needs --src (his GEMMLib_yolo tree at b292c92)"; CFG="configs/correctness/config_yolo_correctness.json" ;;
+    paper) CFG="configs/correctness/config_paper_correctness.json" ;;
     *) die "--part takes yolo or paper" ;;
 esac
 [ "${#WS[@]}" -eq 0 ] || [ "${PART}" = paper ] || die "--workspace is for the paper part only (run_issue63.sh has no workspace flag)"

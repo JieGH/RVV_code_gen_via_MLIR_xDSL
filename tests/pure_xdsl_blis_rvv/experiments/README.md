@@ -23,4 +23,4 @@ One folder per past issue. Run scripts from the repo root by their new path. The
 | 85 | run_issue85.sh, config_issue85_correctness.json, config_issue85_sweep.json, test_run_issue85.py | issue85/ |
 | 94 | run_issue94.sh, config_issue94_correctness.json, test_run_issue94.py | issue94/ |
 | 95 | probe_issue95.sh, issue95/pack_order.c | issue95/ |
-| 112 | run_issue112_handover.sh (config_issue112_mixed_correctness.json stays at the top level) | issue112/ |
+| 112 | run_issue112_handover.sh (config_issue112_mixed_correctness.json is in configs/correctness/) | issue112/ |

@@ -82,7 +82,7 @@ def test_each_thread_count_runs_its_own_config(tmp_path: Path):
     ours, his = tmp_path / "ours.sh", tmp_path / "his.sh"
     ours.symlink_to(stub)
     his.symlink_to(stub)
-    c1, c8 = HERE / "config_yolo53_24x8.json", HERE / "config_yolo53_search_8t.json"  # any two configs with distinct tiles
+    c1, c8 = HERE / "configs/benchmark/config_yolo53_24x8.json", HERE / "configs/tile_search/config_yolo53_search_8t.json"  # any two configs with distinct tiles
     flags = ("--src", "/his", "--config-1t", str(c1), "--config-8t", str(c8), "--issue", "109")
     done = run(*flags, "--skip-correctness",
                env={"ISSUE94_OURS": str(ours), "ISSUE94_HECTOR": str(his), "ISSUE94_LOGS": str(tmp_path / "logs"),
@@ -96,7 +96,7 @@ def test_each_thread_count_runs_its_own_config(tmp_path: Path):
         want = "" if s == "H" else f"--config {c1 if t == '1' else c8}"
         assert ("--config" in line) == bool(want) and want in line
     assert (tmp_path / "reports" / "issue-109").is_dir()
-    plan = run(*flags, "--check-1t", str(HERE / "config_yolo53_correctness_24x8.json"), "--dry-run").stdout
+    plan = run(*flags, "--check-1t", str(HERE / "configs/correctness/config_yolo53_correctness_24x8.json"), "--dry-run").stdout
     assert "Ours 1T  : config_yolo53_24x8.json (tile 24x8)" in plan and "(tile 16x12)" in plan
     assert "C1: config_yolo53_correctness_24x8.json" in plan and "C2: config_issue94_correctness.json" in plan
     pg = subprocess.run(["bash", str(HERE / "run_parallel_gemm.sh"), "--config", str(c1), "--dry-run"],

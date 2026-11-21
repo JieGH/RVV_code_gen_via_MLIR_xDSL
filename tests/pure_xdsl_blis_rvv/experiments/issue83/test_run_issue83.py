@@ -16,13 +16,13 @@ def test_yolo_part_checks_correctness_at_1_and_8_threads_before_timing():
     assert done.returncode == 0, done.stderr
     steps = [ln.split("] ")[1].split(":")[0] for ln in done.stdout.splitlines() if ln.startswith("[")]
     assert steps == ["C1", "C2", "T2", "T1", "issue #83 yolo part finished."]
-    assert "config_yolo_correctness.json" in done.stdout and "--scalar-pack" in done.stdout
+    assert "configs/correctness/config_yolo_correctness.json" in done.stdout and "--scalar-pack" in done.stdout
 
 
 def test_paper_part_uses_the_oracle_sized_config():
     done = run("--part", "paper", "--board", "jbpi2", "--workspace", "w2", "--dry-run")
     assert done.returncode == 0, done.stderr
-    assert "config_paper_correctness.json" in done.stdout and "T3: run_paper_sweep.sh --scalar-pack" in done.stdout
+    assert "configs/correctness/config_paper_correctness.json" in done.stdout and "T3: run_paper_sweep.sh --scalar-pack" in done.stdout
 
 
 def test_refusals():

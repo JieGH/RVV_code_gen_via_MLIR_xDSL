@@ -41,7 +41,7 @@ def test_three_launches_each_alternate_1t_and_8t_abba_on_the_paper_config(tmp_pa
     assert done.returncode == 0, done.stdout + done.stderr
     assert [(arg(c, "--threads"), arg(c, "--launch")) for c in calls] == [
         ("1", "1"), ("8", "1"), ("8", "2"), ("1", "2"), ("1", "3"), ("8", "3")]
-    assert all(arg(c, "--config").endswith("config_paper_search.json") and arg(c, "--boards") == "jbpi"
+    assert all(arg(c, "--config").endswith("configs/tile_search/config_paper_search.json") and arg(c, "--boards") == "jbpi"
                and arg(c, "--launches") == "3" and arg(c, "--issue") == "71" for c in calls)
 
 

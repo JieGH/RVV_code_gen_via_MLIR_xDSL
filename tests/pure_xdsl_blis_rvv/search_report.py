@@ -3,7 +3,7 @@
 # (matplotlib ships partial types; the heatmap is its only use here)
 """
 Issue #60: read a Tile Search, one compile_macro_bench.sh run folder per launch of a search config (one pinned row per
-Candidate Tile, e.g. config_yolo_search.json), and name the fastest tile per shape.
+Candidate Tile, e.g. configs/tile_search/config_yolo_search.json), and name the fastest tile per shape.
 
   1. Per shape: the best tile by GOPs by mean time (average over launches, with the lowest and highest launch) and the
      best by GOPs by median rep, both of the whole call (packing included), and an optional compare tile.

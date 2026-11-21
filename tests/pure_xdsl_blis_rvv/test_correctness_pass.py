@@ -3,7 +3,7 @@ Issues #17 and #24: the correctness pass.
 
 Every row of the shipped `config.json` sets `skip_ref_run`, so every benchmark row logs
 `Status=SKIP` and nothing on the board has been checked against the scalar oracle in the
-shipped state. `config_correctness.json` is the pass that does the check: the same three
+shipped state. `configs/correctness/config_correctness.json` is the pass that does the check: the same three
 pinnings, `skip_ref_run` off, over `datasets/correctness_small.dat`.
 
 The scalar oracle (`gemm_ref`) is O(m*n*k), so the pass has to stay small. Three seams:
@@ -11,7 +11,7 @@ The scalar oracle (`gemm_ref`) is O(m*n*k), so the pass has to stay small. Three
 - the oracle: the real `templates/driver_benchmark.cpp` built on the host, `gemm_ref` called
   directly and compared with a naive triple loop. Guards the `beta == 0` handling #17
   reported as broken (it was already right at HEAD).
-- the config: `config_correctness.json` and its dataset are read the way the generator and
+- the config: `configs/correctness/config_correctness.json` and its dataset are read the way the generator and
   the driver read them.
 - the shapes: each pinning must reach the cases #24 says were never checked -- a partial
   panel that ends in the last vector chunk (the 3rd/4th chunk at MR=32), more than one K
@@ -38,9 +38,9 @@ TEMPLATES_DIR = HERE / "templates"
 MODEL_LEVEL_DIR = HERE / "modelLevel"
 DATASETS_DIR = HERE / "datasets"
 SHIPPED_CONFIG = HERE / "config.json"
-CORRECTNESS_CONFIG = HERE / "config_correctness.json"
-YOLO_CORRECTNESS_CONFIG = HERE / "config_yolo_correctness.json"  # issue #60
-PAPER_CORRECTNESS_CONFIG = HERE / "config_paper_correctness.json"  # issue #83
+CORRECTNESS_CONFIG = HERE / "configs/correctness/config_correctness.json"
+YOLO_CORRECTNESS_CONFIG = HERE / "configs/correctness/config_yolo_correctness.json"  # issue #60
+PAPER_CORRECTNESS_CONFIG = HERE / "configs/correctness/config_paper_correctness.json"  # issue #83
 ISSUE85_CONFIGS = [HERE / "experiments/issue85/config_issue85_correctness.json", HERE / "experiments/issue85/config_issue85_sweep.json"]  # issue #85
 
 # Elements per vector register at VLEN=256, fp32 (the generator's `vlen_elements`).

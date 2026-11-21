@@ -233,7 +233,7 @@ packing strategy on our microkernel.)
   `Compute_Time_ms` with a vector-live instrumented run shows whether the pack changes what
   is warm in cache. Instrumented numbers are never quoted against the reference.
 - **`run_pack_swap.sh`** runs vector, scalar, scalar, vector on one pinned core over B3 and
-  S1 (`config_pack_swap.json`); `compare_pack_swap.py` prints e2e GOPs for each side, the
+  S1 (`configs/benchmark/config_pack_swap.json`); `compare_pack_swap.py` prints e2e GOPs for each side, the
   difference, and the spread between repeats of the same side. A difference smaller than that
   spread is called "within noise".
 

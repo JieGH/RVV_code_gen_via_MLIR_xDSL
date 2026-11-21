@@ -1,6 +1,6 @@
 """
 Issue #61: `run_yolo_sweep.sh` runs the Tile Search on the YOLO shapes as launches of
-config_yolo_search.json, each launch with the rows rotated, on the first idle board, and waits
+configs/tile_search/config_yolo_search.json, each launch with the rows rotated, on the first idle board, and waits
 while another user's job is busy on it.
 
 Same seam as test_run_issue51.py: the bench script is a stub (`YOLO_SWEEP_RUN`), the board's
@@ -79,7 +79,7 @@ def test_three_launches_rotate_the_19_tiles_and_keep_the_approved_settings(tmp_p
     assert "Series finished: 3 of 3 launches ok on a." in done.stdout
 
     sd = series_dir(logs)
-    base = tiles(HERE / "config_yolo_search.json")
+    base = tiles(HERE / "configs/tile_search/config_yolo_search.json")
     orders = [tiles(sd / f"config_L{l}.json") for l in (1, 2, 3)]
     assert [o[0] for o in orders] == ["8x4", "16x8", "24x8"]  # offsets 0, 7, 14 of 19
     assert all(sorted(o) == sorted(base) and len(o) == 19 for o in orders)
@@ -208,7 +208,7 @@ def test_threads_other_than_1_or_8_is_refused(tmp_path: Path):
 
 # The paper's BERT and square shapes go through the same sweep with their own config.
 def test_config_runs_the_paper_shapes_on_the_19_tiles(tmp_path: Path):
-    done, logs = run_series(tmp_path, "--config", str(HERE / "config_paper_search.json"), "--launches", "1",
+    done, logs = run_series(tmp_path, "--config", str(HERE / "configs/tile_search/config_paper_search.json"), "--launches", "1",
                             behaviour="ok", dataset="paper_bert_square.dat")
     assert done.returncode == 0, done.stdout + done.stderr
     assert "19 tiles x datasets/paper_bert_square.dat" in done.stdout
@@ -218,7 +218,7 @@ def test_config_runs_the_paper_shapes_on_the_19_tiles(tmp_path: Path):
 
 def test_a_config_mixing_datasets_is_refused(tmp_path: Path):
     mixed = tmp_path / "mixed.json"
-    rows = [r for r in (HERE / "config_paper_search.json").read_text().splitlines() if r.lstrip().startswith('["')]
+    rows = [r for r in (HERE / "configs/tile_search/config_paper_search.json").read_text().splitlines() if r.lstrip().startswith('["')]
     mixed.write_text("[\n" + rows[0] + "\n" + rows[1].replace("paper_bert_square.dat", "yolo26_k1.dat") + "\n]\n")
     done, _ = run_series(tmp_path, "--config", str(mixed))
     assert done.returncode != 0 and "must run paper_bert_square.dat" in done.stderr

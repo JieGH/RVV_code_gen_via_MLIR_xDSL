@@ -20,7 +20,7 @@ S1_TILES = [(8, nr) for nr in (4, 8, 12, 16, 24)] + [(16, nr) for nr in (4, 6, 8
 
 
 def test_the_yolo_search_config_is_one_pinned_row_per_s1_tile_on_the_yolo_dataset():
-    cfgs = BLISProjectConfig.from_json(str(HERE / "config_yolo_search.json"))
+    cfgs = BLISProjectConfig.from_json(str(HERE / "configs/tile_search/config_yolo_search.json"))
     assert [c.mr_nr_family[0] for c in cfgs] == S1_TILES
     assert all(c.is_pinned and len(c.mr_nr_family) == 1 for c in cfgs)
     assert all(c.datasets == ["yolo26_k1.dat"] and c.skip_ref_run for c in cfgs)
@@ -28,7 +28,7 @@ def test_the_yolo_search_config_is_one_pinned_row_per_s1_tile_on_the_yolo_datase
 
 
 def test_the_yolo_correctness_config_checks_the_same_tiles_on_small_yolo_like_shapes():
-    cfgs = BLISProjectConfig.from_json(str(HERE / "config_yolo_correctness.json"))
+    cfgs = BLISProjectConfig.from_json(str(HERE / "configs/correctness/config_yolo_correctness.json"))
     assert [c.mr_nr_family[0] for c in cfgs] == S1_TILES
     assert all(c.is_pinned and not c.skip_ref_run for c in cfgs)
     assert all(c.datasets == ["yolo_correctness_small.dat"] for c in cfgs)

@@ -4,7 +4,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/130
 
 **Parent:** #127, organize `tests/pure_xdsl_blis_rvv` by feature.
 **Role / Label:** `needs-triage`. Spec, 2026-11-20.
-**Status:** open. Blocked by #128.
+**Status:** closed 2026-11-21. 22 configs in `configs/{correctness,tile_search,benchmark}/`; only `config.json` left at the top level.
 **Branch:** `organize-test-folder-by-feature`.
 
 ---
@@ -38,3 +38,10 @@ Then fix every caller: runner defaults (`run_yolo_sweep.sh`, `run_paper_sweep.sh
 
 - [ ] Only `config.json` left at the top level.
 - [ ] Snapshot compare clean; full host suite passes.
+
+## 6. Results (2026-11-21)
+
+- Moves done by a Sonnet subagent, checked here. Callers updated: runner defaults (`run_yolo_sweep.sh`, `run_paper_sweep.sh`, `run_parallel_gemm.sh`, `run_pack_swap.sh`, `experiments/issue83/run_issue83.sh`, `experiments/issue94/run_issue94.sh`), tests, `search_report.py` docstring, repo `README.md`, `docs/agents/execution.md`, `docs/metrics.md`. New `configs/README.md`.
+- Printed change: runners that print the config path they pass to the bench now print `configs/<purpose>/config_*.json`; `run_issue94.sh` prints the basename and is unchanged.
+- **Snapshot compare against the #128 baseline:** generated C and `--dry-run` overview identical for all 45 configs.
+- **Full host suite:** 681 passed (baseline 674, same IDs, + 7 feature smoke tests). `ref_baseline/generated/` restored.
