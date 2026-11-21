@@ -22,6 +22,7 @@ SERIES = HERE / "experiments/issue51/run_issue51.sh"
 DEFAULT_TILES = ("16x6", "32x6", "16x8", "16x15", "32x7")
 
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE / "readers"))
 
 from pack_dims_table import sweep_tiles  # noqa: E402
 

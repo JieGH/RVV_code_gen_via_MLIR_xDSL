@@ -1,0 +1,5 @@
+[
+    // Feature baseline (issue #137): int8 inputs, int32 C, correctness on the board.
+    // Format: [datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run, iterations].
+    ["int8", "AXPY_INT8_Pack", [16, 15], 256, "jbpi", ["correctness_small.dat"], false, 5]
+]

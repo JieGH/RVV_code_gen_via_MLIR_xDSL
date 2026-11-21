@@ -27,11 +27,11 @@
 set -o pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 source "${HERE}/board_pin.sh"   # board access (issue #116)
-OURS="${ISSUE94_OURS:-${HERE}/run_parallel_gemm.sh}"      # ISSUE94_* let the order be tried against stubs
-HECTOR="${ISSUE94_HECTOR:-${HERE}/run_hector_gemm.sh}"
+OURS="${ISSUE94_OURS:-${HERE}/runners/run_parallel_gemm.sh}"      # ISSUE94_* let the order be tried against stubs
+HECTOR="${ISSUE94_HECTOR:-${HERE}/runners/run_hector_gemm.sh}"
 LOGS="${ISSUE94_LOGS:-${HERE}/logs}"
 CHECK1="${HERE}/experiments/issue94/config_issue94_correctness.json"; CHECK8="${CHECK1}"
-source "${HERE}/hector_yolo_dump.sh"
+source "${HERE}/runners/hector_yolo_dump.sh"
 SRC=""; BOARD="jbpi"; TMIN=2; DRY=false; CHECK=true; ISSUE=94; CFG1=(); CFG8=()
 die() { echo "Error: $*" >&2; exit 1; }
 tile_of() { grep -oE '\[[0-9]+, [0-9]+\]' "$1" | head -1 | tr -d '[] ' | tr , x; }

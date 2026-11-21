@@ -8,7 +8,11 @@ from pathlib import Path
 
 import pytest
 
-import rawlog
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "readers"))
+
+import rawlog  # noqa: E402
 
 HERE = Path(__file__).resolve().parents[1]
 DRIVER = HERE / "templates" / "driver_benchmark.cpp"

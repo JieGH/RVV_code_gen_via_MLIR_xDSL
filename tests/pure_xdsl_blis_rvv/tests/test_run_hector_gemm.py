@@ -12,7 +12,7 @@ import subprocess
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parents[1]
-SERIES = HERE / "run_hector_gemm.sh"
+SERIES = HERE / "runners" / "run_hector_gemm.sh"
 
 # $1 board, $2 command. Records each call; answers ps with a busy line when the board is in BUSY_BOARDS or this
 # ps read's number is in BUSY_AT; prints a gemm.x result table and the CSV for a run (ERROR on the RUN_ERROR-th run).

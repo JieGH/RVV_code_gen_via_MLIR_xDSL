@@ -14,7 +14,7 @@ import subprocess
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parents[1]
-SERIES = HERE / "run_yolo_sweep.sh"
+SERIES = HERE / "runners" / "run_yolo_sweep.sh"
 
 # Records its arguments; leaves one per-rep file per row of the config it is given (none on exit1).
 STUB_RUN = r"""#!/bin/bash

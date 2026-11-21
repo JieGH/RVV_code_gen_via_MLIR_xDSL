@@ -25,6 +25,7 @@ import pytest
 HERE = Path(__file__).resolve().parents[1]
 sys.path.append(os.path.join(HERE, "ref_baseline"))
 sys.path.append(str(HERE))
+sys.path.append(str(HERE / "readers"))
 
 import ref_per_rep as rpr  # noqa: E402
 from reps_report import case_stats, read_reps  # noqa: E402

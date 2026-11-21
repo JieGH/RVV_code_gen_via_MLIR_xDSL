@@ -502,7 +502,7 @@ launch_conditions "${RAW_EVENTS}" "${RUN_DIR}" >> "${RUN_DIR}/provenance.txt"
 # speedup vs ref, Vector Pack Gain %) built from all_raw_*.txt. See docs/metrics.md.
 # A bug here must not fail the whole script: the board run and log fetch above
 # already succeeded and are safely on disk regardless of what happens next.
-if python3 tests/pure_xdsl_blis_rvv/summarize_run.py "${RUN_DIR}"; then
+if python3 tests/pure_xdsl_blis_rvv/readers/summarize_run.py "${RUN_DIR}"; then
     echo "  [OK] Wrote comparison table to ${RUN_DIR}/comparison.md"
 else
     echo "  [WARN] comparison.md generation failed (see above); raw logs are still in ${RUN_DIR}"

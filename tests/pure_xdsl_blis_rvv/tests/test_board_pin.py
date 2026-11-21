@@ -29,7 +29,7 @@ REPO_ROOT = HERE.parents[1]
 BOARD_PIN = HERE / "board_pin.sh"
 BENCH_SCRIPT = HERE / "compile_macro_bench.sh"
 REF_SCRIPT = HERE / "ref_baseline" / "run_ref_baseline.sh"
-H2H_SCRIPT = HERE / "run_head_to_head.sh"
+H2H_SCRIPT = HERE / "runners" / "run_head_to_head.sh"
 
 sys.path.append(str(HERE / "ref_baseline"))
 
@@ -193,9 +193,9 @@ def test_head_to_head_refuses_an_unknown_flag():
 # 5-10% slower). Every script refuses --cpu 0 while parsing its arguments, unless
 # --allow-core-0 says it is on purpose (to reproduce an old core-0 run).
 # ---------------------------------------------------------------------------
-PACK_SWAP_SCRIPT = HERE / "run_pack_swap.sh"
-SCALAR_SWEEP_SCRIPT = HERE / "run_scalar_pack_sweep.sh"
-REF_SWEEP_SCRIPT = HERE / "run_ref_sweep.sh"
+PACK_SWAP_SCRIPT = HERE / "runners" / "run_pack_swap.sh"
+SCALAR_SWEEP_SCRIPT = HERE / "runners" / "run_scalar_pack_sweep.sh"
+REF_SWEEP_SCRIPT = HERE / "runners" / "run_ref_sweep.sh"
 DIRECT_CHECK_SCRIPT = HERE / "ref_baseline" / "run_direct_check.sh"
 EVERY_SCRIPT = [
     BENCH_SCRIPT, REF_SCRIPT, H2H_SCRIPT, PACK_SWAP_SCRIPT,
@@ -242,7 +242,7 @@ def test_no_script_defaults_to_core_0(script: Path):
 
 
 def test_the_cron_wrapper_does_not_pin_to_core_0():
-    code = [ln for ln in (HERE / "cron_bench_run.sh").read_text().splitlines() if not ln.lstrip().startswith("#")]
+    code = [ln for ln in (HERE / "runners" / "cron_bench_run.sh").read_text().splitlines() if not ln.lstrip().startswith("#")]
     assert not any("--cpu 0" in ln for ln in code)
 
 

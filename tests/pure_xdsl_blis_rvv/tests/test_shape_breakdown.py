@@ -10,7 +10,12 @@ blocking a board run printed (`logs/run_2026-09-24_143441`, "cache blocking
 mc:768 nc:384 kc:128" for B4) -- not recomputed the way the module does.
 """
 
-from shape_breakdown import c_tile_lines_per_set, shape_breakdown
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "readers"))
+
+from shape_breakdown import c_tile_lines_per_set, shape_breakdown  # noqa: E402
 
 
 def test_b4_c_tile_columns_all_land_in_one_l1_set_pair():

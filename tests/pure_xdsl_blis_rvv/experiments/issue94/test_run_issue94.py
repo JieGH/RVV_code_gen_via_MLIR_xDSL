@@ -61,7 +61,7 @@ def test_series_calls_each_runner_with_its_setup(tmp_path: Path):
 
 
 def test_parallel_gemm_runs_one_thread_count_with_the_scalar_packer():
-    pg = HERE / "run_parallel_gemm.sh"
+    pg = HERE / "runners" / "run_parallel_gemm.sh"
     done = subprocess.run(["bash", str(pg), "--threads", "8", "--launches", "1", "--scalar-pack", "--issue", "94", "--dry-run"],
                           capture_output=True, text=True, timeout=30)
     assert done.returncode == 0, done.stderr
@@ -99,6 +99,6 @@ def test_each_thread_count_runs_its_own_config(tmp_path: Path):
     plan = run(*flags, "--check-1t", str(HERE / "configs/correctness/config_yolo53_correctness_24x8.json"), "--dry-run").stdout
     assert "Ours 1T  : config_yolo53_24x8.json (tile 24x8)" in plan and "(tile 16x12)" in plan
     assert "C1: config_yolo53_correctness_24x8.json" in plan and "C2: config_issue94_correctness.json" in plan
-    pg = subprocess.run(["bash", str(HERE / "run_parallel_gemm.sh"), "--config", str(c1), "--dry-run"],
+    pg = subprocess.run(["bash", str(HERE / "runners" / "run_parallel_gemm.sh"), "--config", str(c1), "--dry-run"],
                         capture_output=True, text=True, timeout=30).stdout
     assert "(tile 24x8)" in pg and "datasets/yolo26_k1_53.dat (53 shapes" in pg
