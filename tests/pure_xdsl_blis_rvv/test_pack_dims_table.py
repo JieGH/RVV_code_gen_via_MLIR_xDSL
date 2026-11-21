@@ -135,7 +135,7 @@ def test_a_panel_whose_size_is_not_a_whole_number_of_lines_is_reported_unaligned
 
 
 def test_the_table_lists_every_tile_of_the_sweep_config_with_the_blocking_the_cache_model_picks():
-    tiles = sweep_tiles(HERE / "config_issue48_sweep.json")
+    tiles = sweep_tiles(HERE / "experiments/issue48/config_issue48_sweep.json")
     text = format_table(tiles, m=64, n=384, k=384)
 
     assert (16, 15) in tiles and (16, 14) in tiles and (16, 16) in tiles

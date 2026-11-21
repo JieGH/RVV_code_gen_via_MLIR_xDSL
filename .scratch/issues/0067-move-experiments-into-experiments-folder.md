@@ -4,7 +4,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/129
 
 **Parent:** #127, organize `tests/pure_xdsl_blis_rvv` by feature.
 **Role / Label:** `needs-triage`. Spec, 2026-11-20.
-**Status:** open. Blocked by #128 (baseline first).
+**Status:** closed 2026-11-21. 57 files moved into `experiments/issueNN/` (20 issues); `experiments/README.md` maps old to new paths.
 **Branch:** `organize-test-folder-by-feature`.
 
 ---
@@ -51,3 +51,10 @@ Then fix every path that named them: `HERE`/`ROOT` lines in the moved files, cal
 
 - [ ] No `*issue[0-9]*` file left at the top level.
 - [ ] Snapshot compare clean; full host suite passes.
+
+## 6. Results (2026-11-21)
+
+- Moves done by a Sonnet subagent, checked here. Moved scripts keep `HERE` = the project folder (`/../..`), so shared tools, `logs/` and `board_pin.sh` resolve as before; only paths to moved files changed (configs passed as `experiments/issueNN/config_*.json`, `run_issue83.sh` -> `experiments/issue63/run_issue63.sh`, `pack_dims_table.py` default config, `test_correctness_pass.py` issue-85 configs, `docs/agents/execution.md`, `docs/metrics.md`).
+- Printed change: the dry-run `Config` line of `run_issue49.sh`/`run_issue50.sh` runs now shows `experiments/issueNN/config_*.json` (the path passed to the bench); tests updated to match.
+- **Snapshot compare against the #128 baseline:** generated C and `--dry-run` overview identical for all 45 configs (`.scratch/reports/issue-128/after129/`).
+- **Full host suite:** 681 passed = the baseline's 674 (same IDs) + the 7 feature smoke tests. 16.6 min. `ref_baseline/generated/` restored.

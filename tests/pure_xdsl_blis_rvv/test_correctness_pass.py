@@ -41,7 +41,7 @@ SHIPPED_CONFIG = HERE / "config.json"
 CORRECTNESS_CONFIG = HERE / "config_correctness.json"
 YOLO_CORRECTNESS_CONFIG = HERE / "config_yolo_correctness.json"  # issue #60
 PAPER_CORRECTNESS_CONFIG = HERE / "config_paper_correctness.json"  # issue #83
-ISSUE85_CONFIGS = [HERE / "config_issue85_correctness.json", HERE / "config_issue85_sweep.json"]  # issue #85
+ISSUE85_CONFIGS = [HERE / "experiments/issue85/config_issue85_correctness.json", HERE / "experiments/issue85/config_issue85_sweep.json"]  # issue #85
 
 # Elements per vector register at VLEN=256, fp32 (the generator's `vlen_elements`).
 VLEN_ELEMENTS = 8

@@ -256,7 +256,7 @@ when the packer then overwrites all 64 bytes of it (~1.0 `l2_load_access` per li
 - **Own logs.** `_zeroline` after `_scalarpack`, before `_no_nc_override`.
   `reps_report.py` reports such a launch as its own packer (`vector+zeroline`), so on and off
   never pool.
-- **Comparison.** `config_issue43_zero_lines.json` (B3 at `nc`=128 and 384, B3_K256, B2,
+- **Comparison.** `experiments/issue43/config_issue43_zero_lines.json` (B3 at `nc`=128 and 384, B3_K256, B2,
   Reuse24), switch off/on A-B-B-A-A-B on core 4: first `--instr --raw-events x60-l2` for the
   counts, then uninstrumented with `--tmin 10` for the speed.
 
@@ -295,9 +295,9 @@ number. `run_ref_baseline.sh --per-rep` stages a copy of `test_gemm.c` (never th
 that takes the clock read the driver already does after each call, and writes it out after the timed loop to
 `result_<tile>_<variant>.csv.reps`; `ref_baseline/ref_per_rep.py convert` turns that into `reps_ref_<tile>_<variant>.txt.gz`
 in the layout above (`Layer` as our label, `Pack_*`/`Compute_*` columns `nan`), and checks each case's total against the
-GFLOPS the driver printed (a mismatch over 2% or a full array is printed and makes `run_issue46.sh` fail the run).
+GFLOPS the driver printed (a mismatch over 2% or a full array is printed and makes `experiments/issue46/run_issue46.sh` fail the run).
 `reps_report.py` names these files "reference <tile>" (16x14 and 16x16 are different kernels and never pool). Cost inside
-the timed loop: one compare and one store per call. `run_issue46.sh` runs the unchanged driver in the same launches as the
+the timed loop: one compare and one store per call. `experiments/issue46/run_issue46.sh` runs the unchanged driver in the same launches as the
 control.
 
 `slow_state_survey.py` (issue #47) reads every per-rep log under `logs/run_*` and prints the inventory, the slow-rep
