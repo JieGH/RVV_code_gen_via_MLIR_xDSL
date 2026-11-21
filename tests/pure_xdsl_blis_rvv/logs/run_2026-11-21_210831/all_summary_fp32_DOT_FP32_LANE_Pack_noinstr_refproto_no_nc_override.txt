@@ -1,0 +1,5 @@
+=== fp32_DOT_FP32_LANE_Pack_vlen256_MR16NR15 ===
+▶ C_full (96x210x128)    | best variant 16x15 [16 rows x 15 columns of C per tile] | 3.71 GOPs by mean time [whole GEMM call, packing included] | 3.72 GOPs median rep | 144 reps | ✅ C[12,142]: 33.47 == 33.47 [sample entry vs the naive scalar GEMM] (cache blocking mc:96 nc:210 kc:128)
+▶ C_edges (123x57x300)   | best variant 16x15 [16 rows x 15 columns of C per tile] | 2.95 GOPs by mean time [whole GEMM call, packing included] | 2.96 GOPs median rep | 141 reps | ✅ C[82,7]: 78.11 == 78.11 [sample entry vs the naive scalar GEMM] (cache blocking mc:123 nc:57 kc:128)
+▶ C_tiny (12x5x17)       | best variant 16x15 [16 rows x 15 columns of C per tile] | 0.52 GOPs by mean time [whole GEMM call, packing included] | 0.53 GOPs median rep | 51435 reps | ✅ C[2,4]: 4.86 == 4.86 [sample entry vs the naive scalar GEMM] (cache blocking mc:12 nc:5 kc:17)
+
