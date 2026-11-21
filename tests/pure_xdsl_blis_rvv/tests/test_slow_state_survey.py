@@ -14,6 +14,7 @@ import pytest
 
 HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE / "readers"))
 
 import slow_state_survey as sss  # noqa: E402
 
@@ -216,7 +217,7 @@ def test_the_feature_table_counts_the_loop_blocks_and_the_packing_per_flop(tmp_p
 def test_the_command_line_prints_every_section_and_can_write_the_file(tmp_path: Path):
     three(tmp_path, "B3", TWO_SPEEDS)
     out = tmp_path / "survey.md"
-    done = subprocess.run([sys.executable, str(HERE / "slow_state_survey.py"), str(tmp_path), "--out", str(out), "--until", "2026-12-31_000000"],
+    done = subprocess.run([sys.executable, str(HERE / "readers" / "slow_state_survey.py"), str(tmp_path), "--out", str(out), "--until", "2026-12-31_000000"],
                           capture_output=True, text=True, check=True)
 
     for heading in ("## 1. Inventory", "## 2. Slow state per case", "## 3. Time, reps or bytes", "## 4. Shape features"):

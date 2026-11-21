@@ -49,6 +49,7 @@ from pathlib import Path
 from fringe import our_fringe
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "readers"))
 import rawlog  # noqa: E402
 
 HERE = Path(__file__).resolve().parent

@@ -2,7 +2,11 @@
 
 from pathlib import Path
 
-import parallel_gemm_report as r
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "readers"))
+
+import parallel_gemm_report as r  # noqa: E402
 
 HEADER = "Layer,M,N,K,Variant,MC,NC,KC,Rep,Seconds,Pack_Seconds,Compute_Seconds,Pack_Cycles,Compute_Cycles\n"
 

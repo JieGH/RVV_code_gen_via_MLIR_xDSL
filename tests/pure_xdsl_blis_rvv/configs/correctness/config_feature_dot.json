@@ -1,0 +1,5 @@
+[
+    // Feature baseline (issue #137): fp32 with the DOT (lane) method, correctness on the board.
+    // Format: [datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run, iterations].
+    ["fp32", "DOT_FP32_LANE_Pack", [16, 15], 256, "jbpi", ["correctness_small.dat"], false, 5]
+]

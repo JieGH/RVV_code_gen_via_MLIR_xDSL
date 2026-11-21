@@ -28,8 +28,8 @@
 set -o pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SWEEP="${ISSUE63_SWEEP:-${HERE}/run_yolo_sweep.sh}"      # ISSUE63_* let the order be tried against stubs
-HECTOR="${ISSUE63_HECTOR:-${HERE}/run_hector_gemm.sh}"
+SWEEP="${ISSUE63_SWEEP:-${HERE}/runners/run_yolo_sweep.sh}"      # ISSUE63_* let the order be tried against stubs
+HECTOR="${ISSUE63_HECTOR:-${HERE}/runners/run_hector_gemm.sh}"
 
 PACK_ARGS=(); ISSUE=63; SRC=""; BOARD="jbpi"; LAUNCHES=3; TMIN=2; DRY_RUN=false
 die() { echo "Error: $*" >&2; exit 1; }

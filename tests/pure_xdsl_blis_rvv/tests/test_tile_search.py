@@ -71,7 +71,7 @@ SPEEDS = {("16x8", "Y00"): 6.0, ("16x8", "Y01"): 2.0, ("16x4", "Y00"): 4.0, ("16
 
 
 def run_report(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run([sys.executable, str(HERE / "search_report.py"), *args], capture_output=True, text=True)
+    return subprocess.run([sys.executable, str(HERE / "readers" / "search_report.py"), *args], capture_output=True, text=True)
 
 
 def table_row(text: str, first_cell: str) -> list[str]:

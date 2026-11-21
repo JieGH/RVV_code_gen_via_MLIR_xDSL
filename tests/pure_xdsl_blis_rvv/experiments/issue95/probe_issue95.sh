@@ -44,7 +44,7 @@ before="$(ls -d "${HERE}"/logs/run_* | sort | tail -1)"
 run="$(ls -d "${HERE}"/logs/run_* | sort | tail -1)"
 [ "${run}" != "${before}" ] || { echo "no new run folder; see ${OUT}/ours.log"; exit 1; }
 echo "$(basename "${run}")" > "${OUT}/ours_run.txt"
-ours="$(cd "${HERE}" && python3 -c "
+ours="$(cd "${HERE}/readers" && python3 -c "
 import sys; from pathlib import Path
 from reps_report import case_stats, read_reps, reps_files
 for f in reps_files(Path(sys.argv[1])):

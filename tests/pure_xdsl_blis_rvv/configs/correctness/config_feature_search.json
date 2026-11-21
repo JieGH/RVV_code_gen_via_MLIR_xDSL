@@ -1,0 +1,6 @@
+[
+    // Feature baseline (issue #137): search mode. No 8th value, so one project holds every
+    // kernel MRxNR up to the largest of the family, and the driver sweeps them.
+    // Format: [datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run].
+    ["fp32", "AXPY_FP32_Pack", [[16, 15], [32, 6], [32, 7]], 256, "jbpi", ["correctness_small.dat"], false]
+]

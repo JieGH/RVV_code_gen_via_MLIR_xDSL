@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 HERE = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE / "runners"))
 from gen_handover_ukernels import DEFAULT_TRANSLATE  # noqa: E402
 
 TRANSLATE = Path(DEFAULT_TRANSLATE)
@@ -32,7 +32,7 @@ def bundle(tmp_path_factory):
         pytest.skip("mlir-translate not built")
     out = tmp_path_factory.mktemp("handover")
     subprocess.run(
-        [sys.executable, str(HERE / "gen_handover_ukernels.py"), "--out", str(out), "--mr", "8,24", "--nr-max", "2"],
+        [sys.executable, str(HERE / "runners" / "gen_handover_ukernels.py"), "--out", str(out), "--mr", "8,24", "--nr-max", "2"],
         check=True,
         cwd=HERE,
     )

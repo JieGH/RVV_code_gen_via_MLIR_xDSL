@@ -18,6 +18,7 @@ HERE = Path(__file__).resolve().parents[2]
 SERIES = HERE / "experiments/issue48/run_issue48.sh"
 
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE / "readers"))
 
 from pack_dims_table import pack_plan, sweep_tiles  # noqa: E402
 
