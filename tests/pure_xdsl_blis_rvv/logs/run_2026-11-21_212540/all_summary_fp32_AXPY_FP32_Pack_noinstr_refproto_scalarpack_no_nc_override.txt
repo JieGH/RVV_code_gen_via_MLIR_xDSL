@@ -1,0 +1,15 @@
+=== fp32_AXPY_FP32_Pack_vlen256_MR16NR15 ===
+▶ C_full (96x210x128)    | best variant 16x15 [16 rows x 15 columns of C per tile] | 10.22 GOPs by mean time [whole GEMM call, packing included] | 10.55 GOPs median rep | 397 reps | ✅ C[12,142]: 33.47 == 33.47 [sample entry vs the naive scalar GEMM] (cache blocking mc:96 nc:210 kc:128)
+▶ C_edges (123x57x300)   | best variant 16x15 [16 rows x 15 columns of C per tile] | 7.47 GOPs by mean time [whole GEMM call, packing included] | 7.53 GOPs median rep | 356 reps | ✅ C[82,7]: 78.11 == 78.11 [sample entry vs the naive scalar GEMM] (cache blocking mc:123 nc:57 kc:128)
+▶ C_tiny (12x5x17)       | best variant 16x15 [16 rows x 15 columns of C per tile] | 1.03 GOPs by mean time [whole GEMM call, packing included] | 1.04 GOPs median rep | 100564 reps | ✅ C[2,4]: 4.86 == 4.86 [sample entry vs the naive scalar GEMM] (cache blocking mc:12 nc:5 kc:17)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR32NR6 ===
+▶ C_full (96x210x128)    | best variant 32x6 [32 rows x 6 columns of C per tile] | 8.38 GOPs by mean time [whole GEMM call, packing included] | 8.41 GOPs median rep | 325 reps | ✅ C[12,142]: 33.47 == 33.47 [sample entry vs the naive scalar GEMM] (cache blocking mc:96 nc:210 kc:128)
+▶ C_edges (123x57x300)   | best variant 32x6 [32 rows x 6 columns of C per tile] | 6.39 GOPs by mean time [whole GEMM call, packing included] | 6.42 GOPs median rep | 304 reps | ✅ C[82,7]: 78.11 == 78.11 [sample entry vs the naive scalar GEMM] (cache blocking mc:123 nc:57 kc:128)
+▶ C_tiny (12x5x17)       | best variant 32x6 [32 rows x 6 columns of C per tile] | 1.09 GOPs by mean time [whole GEMM call, packing included] | 1.11 GOPs median rep | 107256 reps | ✅ C[2,4]: 4.86 == 4.86 [sample entry vs the naive scalar GEMM] (cache blocking mc:12 nc:5 kc:17)
+
+=== fp32_AXPY_FP32_Pack_vlen256_MR32NR7 ===
+▶ C_full (96x210x128)    | best variant 32x7 [32 rows x 7 columns of C per tile] | 9.13 GOPs by mean time [whole GEMM call, packing included] | 9.16 GOPs median rep | 354 reps | ✅ C[12,142]: 33.47 == 33.47 [sample entry vs the naive scalar GEMM] (cache blocking mc:96 nc:210 kc:128)
+▶ C_edges (123x57x300)   | best variant 32x7 [32 rows x 7 columns of C per tile] | 6.56 GOPs by mean time [whole GEMM call, packing included] | 6.62 GOPs median rep | 313 reps | ✅ C[82,7]: 78.11 == 78.11 [sample entry vs the naive scalar GEMM] (cache blocking mc:123 nc:57 kc:128)
+▶ C_tiny (12x5x17)       | best variant 32x7 [32 rows x 7 columns of C per tile] | 1.03 GOPs by mean time [whole GEMM call, packing included] | 1.04 GOPs median rep | 101413 reps | ✅ C[2,4]: 4.86 == 4.86 [sample entry vs the naive scalar GEMM] (cache blocking mc:12 nc:5 kc:17)
+

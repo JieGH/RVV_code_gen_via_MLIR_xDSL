@@ -78,4 +78,4 @@ Added during the issue, at the user's request (2026-11-21):
 
 - **Runner bug found and fixed:** the first version read the 6th column of the merged raw log as `Status`, but the merged log puts `Project` first, so it read `Variant` and counted the header: every case printed FAIL in the series console log (`logs/feature_baseline_issue137.out`, gitignored). The run folders were fine. Fixed to find `Status` by its header name; the `.tsv` was recomputed from the run folders; two tests pin it (a made-up log with a FAIL row, and the real `run_2026-11-21_184415`).
 - **Per-rep log too big for GitHub:** the search-mode run wrote a 120.7 MB `reps_*.txt.gz` (over the 100 MB limit), so it is gitignored and kept on this host only; the verdicts come from `all_raw_*.txt`, which is committed. The runner now passes `--no-save-reps` (correctness runs need no per-rep timings).
-- **Not done:** the user's crontab still has September entries pointing at the old `cron_bench_run.sh` path; left for the user.
+- **Not done:** the user's crontab still has September entries pointing at the old `cron_bench_run.sh` path. Removed in #140.

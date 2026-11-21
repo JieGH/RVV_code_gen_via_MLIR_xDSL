@@ -1,0 +1,5 @@
+# Benchmark 19-20 Sep 2026, boards take turns every 30 min: jbpi at :00, jbpi2 at :30, 23:00 to 06:30 (16 runs, 8 each). Lock in cron_bench_run.sh is a safety net.
+0 23 19 9 * /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/cron_bench_run.sh jbpi
+30 23 19 9 * /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/cron_bench_run.sh jbpi2
+0 0,1,2,3,4,5,6 20 9 * /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/cron_bench_run.sh jbpi
+30 0,1,2,3,4,5,6 20 9 * /home/jlei/Documents/ws_MLIR/repo_xdsl_microkernels/RVV_code_gen_via_MLIR_xDSL/tests/pure_xdsl_blis_rvv/cron_bench_run.sh jbpi2

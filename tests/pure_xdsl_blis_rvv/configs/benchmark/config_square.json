@@ -1,0 +1,5 @@
+[
+    // Square S1-S5 (1000^3 to 5000^3) on the 32x7 tile. Few iterations: S5 is 250 GFLOP per rep.
+    // Format: [datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run, iterations].
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi", ["square_s1_s5.dat"], true, 5]
+]
