@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "readers"))
 from hector_gemm_report import render  # noqa: E402
 
 HEAD = "#l;m;n;k;Gflops:time\n"

@@ -12,13 +12,13 @@ Everything the kernels do — the register-tiled microkernel, the RVV packing ro
 |---------|-------------|
 | Generate one GEMM project per microkernel tile (fp32; f16f16f32 mixed precision; int8) | `generate_pure_blis_project.py` |
 | Build and run it on the board, with a correctness check against a scalar oracle | `compile_macro_bench.sh` |
-| Compare against the Reference Design on the same core | `run_head_to_head.sh` |
-| Find the best MRxNR tile per shape (Tile Search) | `run_yolo_sweep.sh`, `run_paper_sweep.sh`, `search_report.py` |
-| Compare packers: RVV, scalar, B-pack variants, cleared pack lines | `--scalar-pack`, `--pack-b`, `--zero-pack-lines`, `run_pack_swap.sh` |
-| N-thread GEMM; Héctor's YOLO layers | `--threads N`, `run_parallel_gemm.sh`, `run_hector_gemm.sh` |
-| Hand-over microkernels for use outside the harness | `gen_handover_ukernels.py` |
+| Compare against the Reference Design on the same core | `runners/run_head_to_head.sh` |
+| Find the best MRxNR tile per shape (Tile Search) | `runners/run_yolo_sweep.sh`, `runners/run_paper_sweep.sh`, `readers/search_report.py` |
+| Compare packers: RVV, scalar, B-pack variants, cleared pack lines | `--scalar-pack`, `--pack-b`, `--zero-pack-lines`, `runners/run_pack_swap.sh` |
+| N-thread GEMM; Héctor's YOLO layers | `--threads N`, `runners/run_parallel_gemm.sh`, `runners/run_hector_gemm.sh` |
+| Hand-over microkernels for use outside the harness | `runners/gen_handover_ukernels.py` |
 
-All of these live in `tests/pure_xdsl_blis_rvv/`.
+All of these live in `tests/pure_xdsl_blis_rvv/`. Its top level holds only the main workflow (the generator and `compile_macro_bench.sh`); `runners/` holds the multi-run scripts and `readers/` the tools that read run logs.
 
 ## Layout
 
@@ -26,6 +26,8 @@ All of these live in `tests/pure_xdsl_blis_rvv/`.
 |---|---|
 | [src/xdsltemplate/](src/xdsltemplate/) | The xDSL backend. `dialects/` defines the RVV, GEMM and EmitC operations; `transforms/` lowers them to C++. |
 | [tests/pure_xdsl_blis_rvv/](tests/pure_xdsl_blis_rvv/) | The Project Generator, the bench, the runners and the readers. Its [README](tests/pure_xdsl_blis_rvv/README.md) maps each feature to its configs and tests. |
+| `tests/pure_xdsl_blis_rvv/runners/` | Multi-run scripts: Tile Search, threads, pack swap, Reference Design sweeps, hand-over kernels. Each wraps `compile_macro_bench.sh`. |
+| `tests/pure_xdsl_blis_rvv/readers/` | Read run folders and logs: per-run summary, per-rep stats, Tile Search report, pack comparison. |
 | `tests/pure_xdsl_blis_rvv/configs/` | Configs by purpose: `correctness/`, `tile_search/`, `benchmark/`. `config.json` beside them is the default. |
 | `tests/pure_xdsl_blis_rvv/experiments/issueNN/` | One folder per past investigation: its run script, configs, report and tests. |
 | `tests/pure_xdsl_blis_rvv/tests/` | Host tests. |
@@ -71,7 +73,7 @@ cd tests/pure_xdsl_blis_rvv && python3 generate_pure_blis_project.py --config co
 cd tests/pure_xdsl_blis_rvv && ../../.venv/bin/python -m pytest
 ```
 
-681 tests, about 17 minutes. Seven (`*_on_board`) compile on the board through `fej` and skip when it is not reachable; `-k "not on_board"` runs the host-only set. Several read real logs under `logs/` for their expected values, so those log folders must stay. Never run the tests during a board series: they rewrite `pj_gen/` and `ref_baseline/generated/`.
+681 tests, about 17 minutes. The full regime (host tests, snapshot compare, feature baseline on the board): [Test regime](tests/pure_xdsl_blis_rvv/README.md#test-regime). Seven (`*_on_board`) compile on the board through `fej` and skip when it is not reachable; `-k "not on_board"` runs the host-only set. Several read real logs under `logs/` for their expected values, so those log folders must stay. Never run the tests during a board series: they rewrite `pj_gen/` and `ref_baseline/generated/`.
 
 ## More
 

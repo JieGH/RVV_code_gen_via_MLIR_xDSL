@@ -20,12 +20,12 @@ REMOTE_PASS="<pw>" REMOTE_HOST="fej" REMOTE_PORT="3322" \
     --jump --riscv-user jlei --riscv-ip jbpi2 --riscv-port 22 --bracket
 ```
 
-The timed runs are pinned to core 4 (`--cpu N` to change, `--no-pin` to turn off; issue #21) and the run's conditions are written into `provenance.txt`. For a number quoted against our side, use `../run_head_to_head.sh`, which runs both sides back to back on one core instead of leaving them a day apart.
+The timed runs are pinned to core 4 (`--cpu N` to change, `--no-pin` to turn off; issue #21) and the run's conditions are written into `provenance.txt`. For a number quoted against our side, use `../runners/run_head_to_head.sh`, which runs both sides back to back on one core instead of leaving them a day apart.
 
 `--dry-run` stops after generating the datasets and run plan, without touching the
 board. Results land in `tests/pure_xdsl_blis_rvv/logs/refbase_<stamp>/`.
 
-**Many runs, not one (issue #29).** One run has no error bar. `../run_ref_sweep.sh` repeats
+**Many runs, not one (issue #29).** One run has no error bar. `../runners/run_ref_sweep.sh` repeats
 this script 16 times on the schedule of the #26 sweeps of ours (both boards, every 30 min, core 4; core 0 before issue #39,
 `--tmin 10`; `--opt LDX --variants 2 --bracket`), then `compare_ref_sweep.py` puts the runs per
 layer beside our vector-pack and scalar-pack sets: mean, range, spread between runs, and
@@ -41,7 +41,7 @@ one that matches ours (see "Variant selection" below).
 | `gen_ref_datasets.py` | splits `cases.tsv` into one `.dat` per built (MR,NR); reports kernel availability and predicted MC/NC/KC |
 | `run_ref_baseline.sh` | stages the reference tree on the board, builds one binary per (MR,NR), runs, retrieves, compares |
 | `compare_ref_baseline.py` | joins the reference CSVs against our `logs/run_*` data |
-| `compare_ref_sweep.py` | joins the many reference runs of `../run_ref_sweep.sh` against our vector-pack and scalar-pack sets, layer by layer (issue #29) |
+| `compare_ref_sweep.py` | joins the many reference runs of `../runners/run_ref_sweep.sh` against our vector-pack and scalar-pack sets, layer by layer (issue #29) |
 | `blis_shim/blis.h` | lets the reference build without a real BLIS install (valid for `FAMILY_EXO` only — see the header comment) |
 
 ## Three things to know before trusting the output

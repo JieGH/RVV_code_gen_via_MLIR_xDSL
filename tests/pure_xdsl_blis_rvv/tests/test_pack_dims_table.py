@@ -18,6 +18,7 @@ from xdsl.dialects.scf import ForOp
 from xdsl.ir import Operation
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "readers"))
 
 from pack_builder import build_pack_CB_v_if, build_pack_RB_v_if  # noqa: E402  # pyright: ignore[reportUnknownVariableType]
 from pack_dims_table import (  # noqa: E402

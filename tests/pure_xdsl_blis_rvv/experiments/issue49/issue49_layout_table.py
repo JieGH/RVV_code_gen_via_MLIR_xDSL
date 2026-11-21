@@ -24,6 +24,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE / "readers"))
 
 from cache_config import get_optim_mc_nc_kc  # noqa: E402
 from pack_dims_table import ARCH, ELEM, sweep_tiles  # noqa: E402

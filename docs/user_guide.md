@@ -98,6 +98,14 @@ Run it after any change to the generator, a template or a packer, and before eve
 
 A few minutes. **Read** the `Status` column of `logs/run_<stamp>/all_raw_*.txt`: `PASS` for all 9 rows (3 tiles x 3 shapes). `FAIL` prints the first mismatches; `SKIP` means the row had `skip_ref_run` on.
 
+To check every option at once (data types, packers, `--pack-b` variants, pinned and search tiles, threads), run the feature baseline, about an hour:
+
+```bash
+./tests/pure_xdsl_blis_rvv/runners/run_feature_baseline.sh $CONN      # --list names the 15 cases, --only NAME,... runs some
+```
+
+Each case is one run like the one above; the table of verdicts is in `logs/feature_baseline_<stamp>.tsv`.
+
 PASS means our whole `C` is within a relative error of `max(1e-5, k·1e-6)` of the oracle's. Other passes in `configs/correctness/`: `config_paper_correctness.json` (B2, B3, a 200³ square), `config_yolo_correctness.json` (the 19 YOLO tiles), `config_yolo_correctness_8t.json` (with `--threads 8`), `config_issue112_mixed_correctness.json` (f16f16f32, needs `--scalar-pack`).
 
 The bitwise check of the packed layout, per shipped `RR`, is a host test that compiles on the board: `pytest tests/pure_xdsl_blis_rvv/tests/test_pack_correctness.py` (skips when the board is not reachable).
@@ -141,7 +149,7 @@ Flags that change what a number means:
 Use this for any number quoted against the reference (the `RVV_ukernels_benchmark` tree in `../ext/`). A reference run from another day is not comparable: run both sides back to back on the same core.
 
 ```bash
-./tests/pure_xdsl_blis_rvv/run_head_to_head.sh $CONN --cpu 4
+./tests/pure_xdsl_blis_rvv/runners/run_head_to_head.sh $CONN --cpu 4
 ```
 
 Runs `compile_macro_bench.sh --no-nc-overrides`, then `ref_baseline/run_ref_baseline.sh --bracket`, then compares the pair. `--opt OPT|LDX` picks the reference kernel set. The reference side alone: `ref_baseline/run_ref_baseline.sh` (see [its README](../tests/pure_xdsl_blis_rvv/ref_baseline/README.md), which also covers how the two designs differ on fringe tiles). Overnight, reference only, both boards: `run_ref_sweep.sh`.
@@ -154,7 +162,7 @@ A Tile Search times every Candidate Tile on every shape of a dataset and names t
 2. **The series:** one board, three launches with the rows rotated, an idle-board wait before each, the report after each:
 
    ```bash
-   setsid nohup ./tests/pure_xdsl_blis_rvv/run_yolo_sweep.sh --tmin 2 \
+   setsid nohup ./tests/pure_xdsl_blis_rvv/runners/run_yolo_sweep.sh --tmin 2 \
      > tests/pure_xdsl_blis_rvv/logs/yolo_sweep.out 2>&1 < /dev/null &
    ```
 
@@ -162,7 +170,7 @@ A Tile Search times every Candidate Tile on every shape of a dataset and names t
 3. **Read it** (the sweep runs this itself into `logs/yolo_sweep_<stamp>/` and copies it to `.scratch/reports/issue-<N>/`):
 
    ```bash
-   python3 tests/pure_xdsl_blis_rvv/search_report.py logs/run_<A> logs/run_<B> logs/run_<C> \
+   python3 tests/pure_xdsl_blis_rvv/readers/search_report.py logs/run_<A> logs/run_<B> logs/run_<C> \
      --compare 16x8 --compare n=4:16x4 --heatmap heat.png
    ```
 
@@ -180,11 +188,11 @@ A Tile Search times every Candidate Tile on every shape of a dataset and names t
 Vector against scalar, end to end, alternating V S S V on one core:
 
 ```bash
-./tests/pure_xdsl_blis_rvv/run_pack_swap.sh $CONN          # B3 and S1; --config configs/benchmark/config_pack_swap_b2b3b4.json for B2-B4
-python3 tests/pure_xdsl_blis_rvv/compare_pack_swap.py --vector logs/run_<V1> logs/run_<V2> --scalar logs/run_<S1> logs/run_<S2>
+./tests/pure_xdsl_blis_rvv/runners/run_pack_swap.sh $CONN          # B3 and S1; --config configs/benchmark/config_pack_swap_b2b3b4.json for B2-B4
+python3 tests/pure_xdsl_blis_rvv/readers/compare_pack_swap.py --vector logs/run_<V1> logs/run_<V2> --scalar logs/run_<S1> logs/run_<S2>
 ```
 
-GOPs are `2·m·n·k / RVV_Time_ms`, packing included. What each packer does per tile: `python3 tests/pure_xdsl_blis_rvv/pack_dims_table.py`.
+GOPs are `2·m·n·k / RVV_Time_ms`, packing included. What each packer does per tile: `python3 tests/pure_xdsl_blis_rvv/readers/pack_dims_table.py`.
 
 ## 9. Other data types
 
@@ -199,14 +207,14 @@ Correctness of f16f16f32: §4 with `--config configs/correctness/config_issue112
 **Hand-over kernels:** standalone fp32 and f16f16f32 microkernels with Héctor's GEMM argument order, plus a naive reference and a test, for use outside this harness:
 
 ```bash
-cd tests/pure_xdsl_blis_rvv && python3 gen_handover_ukernels.py --out /tmp/handover
+python3 tests/pure_xdsl_blis_rvv/runners/gen_handover_ukernels.py --out /tmp/handover
 ```
 
 ## 10. Threads and the YOLO layers
 
 `compile_macro_bench.sh --threads N` runs each GEMM call on N OpenMP threads on cores 0..N-1 (fp32 AXPY only; `--threads 1` is the one-core code). It refuses `--cpu`, `--no-pin`, `--pack-b` other than `row`, and `--zero-pack-lines`.
 
-| Runner | What |
+| Runner (`runners/`) | What |
 |--------|------|
 | `run_parallel_gemm.sh` | our GEMM at 1 and 8 threads on the YOLO26 shapes, order 1T 8T 8T 1T 1T 8T, report after each launch (`parallel_gemm_report.py`) |
 | `run_hector_gemm.sh --src <clone>` | Héctor's GEMMLib_yolo (`b292c92`), unedited, at 1 and 8 threads, report after each launch (`hector_gemm_report.py`) |
@@ -216,7 +224,7 @@ Start them detached as in §7. 8-thread runs use cores 0-7, core 0 included: the
 
 ## 11. Read the results
 
-| Tool | Reads | Gives |
+| Tool (`readers/` unless noted) | Reads | Gives |
 |------|-------|-------|
 | `summarize_run.py <run dir>` | `all_raw_*`, `all_perf_*` | `comparison.md` (written by every run) |
 | `reps_report.py <run dir> [...]` | `reps_*.txt[.gz]` | per case: GOPs by mean time, CV, slow-rep share, then the average over launches with lowest and highest. Prints a WARNING under 3 launches and a 🔴 RED NOTE for a run made while another user was busy |
@@ -243,7 +251,7 @@ From [agents/execution.md](agents/execution.md), "House rules" (issue #39):
 cd tests/pure_xdsl_blis_rvv && ../../.venv/bin/python -m pytest
 ```
 
-681 tests, about 17 minutes (the idle-gate tests really sleep). Use the `.venv` Python; the conda one lacks `xdsl`. Seven tests (`*_on_board`, in `test_pack_correctness.py` and `test_perf_counters.py`) compile on the board through `fej` and skip when it is not reachable. Host only: `-k "not on_board"`. The feature smoke tests alone (seconds): `pytest tests/test_features.py`.
+681 tests, about 17 minutes (the idle-gate tests really sleep). The full regime (host tests, snapshot compare, feature baseline on the board): [Test regime](../tests/pure_xdsl_blis_rvv/README.md#test-regime). Use the `.venv` Python; the conda one lacks `xdsl`. Seven tests (`*_on_board`, in `test_pack_correctness.py` and `test_perf_counters.py`) compile on the board through `fej` and skip when it is not reachable. Host only: `-k "not on_board"`. The feature smoke tests alone (seconds): `pytest tests/test_features.py`.
 
 Where they are: `tests/` for the tools, `experiments/issueNN/` for each past investigation. The folder [README](../tests/pure_xdsl_blis_rvv/README.md) maps each feature to its tests.
 

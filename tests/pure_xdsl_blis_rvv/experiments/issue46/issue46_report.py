@@ -25,6 +25,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE / "readers"))
 sys.path.insert(0, str(HERE / "ref_baseline"))
 
 from ref_per_rep import load_labels  # noqa: E402  # pyright: ignore[reportMissingImports, reportUnknownVariableType]

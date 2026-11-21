@@ -13,6 +13,7 @@ import pytest
 
 HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE / "readers"))
 
 from reps_report import CounterRow, case_stats, counter_table, launch_table, read_reps, run_conditions  # noqa: E402
 
@@ -169,7 +170,7 @@ def test_the_reference_designs_per_rep_files_are_their_own_rows_per_built_tile(t
 def test_command_line_prints_a_markdown_table(tmp_path: Path):
     a = _run_dir(tmp_path, "run_a", False, _rows("B3_nc128", 128, [FAST] * 4))
     out = subprocess.run(
-        [sys.executable, str(HERE / "reps_report.py"), str(a)],
+        [sys.executable, str(HERE / "readers" / "reps_report.py"), str(a)],
         capture_output=True, text=True, check=True,
     ).stdout
     assert "| packer | layer | nc |" in out
@@ -213,7 +214,7 @@ def test_run_conditions_come_from_the_run_folders_provenance(tmp_path: Path):
 
 def _cli(*args: Path) -> str:
     return subprocess.run(
-        [sys.executable, str(HERE / "reps_report.py"), *map(str, args)],
+        [sys.executable, str(HERE / "readers" / "reps_report.py"), *map(str, args)],
         capture_output=True, text=True, check=True,
     ).stdout
 

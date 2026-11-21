@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "readers"))
 
 from summarize_run import build_comparison_rows
 

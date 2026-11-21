@@ -29,7 +29,7 @@ By default (`--save-reps`, issue #39), each project directory also holds `reps_<
 fetch step. To regenerate it by hand against an existing run directory:
 
 ```bash
-python3 tests/pure_xdsl_blis_rvv/summarize_run.py tests/pure_xdsl_blis_rvv/logs/run_<timestamp>
+python3 tests/pure_xdsl_blis_rvv/readers/summarize_run.py tests/pure_xdsl_blis_rvv/logs/run_<timestamp>
 ```
 
 ## Timing / GOPs metrics (raw log + console table)

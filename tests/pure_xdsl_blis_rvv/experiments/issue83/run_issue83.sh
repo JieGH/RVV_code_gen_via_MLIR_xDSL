@@ -64,11 +64,11 @@ if [ "${PART}" = yolo ]; then
     echo "[$(date +%H:%M)] T2: run_issue63.sh --scalar-pack --issue 83"
     [ "${DRY}" = true ] || "${HERE}/experiments/issue63/run_issue63.sh" --src "${SRC}" --board "${BOARD}" --scalar-pack --issue 83 || exit 1
     echo "[$(date +%H:%M)] T1: run_yolo_sweep.sh --threads 1 --scalar-pack --issue 83"
-    [ "${DRY}" = true ] || "${HERE}/run_yolo_sweep.sh" --boards "${BOARD}" --tmin 2 --scalar-pack --issue 83 || exit 1
+    [ "${DRY}" = true ] || "${HERE}/runners/run_yolo_sweep.sh" --boards "${BOARD}" --tmin 2 --scalar-pack --issue 83 || exit 1
 else
     correctness C3 --cpu 4
     correctness C4 --threads 8
     echo "[$(date +%H:%M)] T3: run_paper_sweep.sh --scalar-pack --issue 83"
-    [ "${DRY}" = true ] || "${HERE}/run_paper_sweep.sh" --board "${BOARD}" --scalar-pack --issue 83 "${SWS[@]}" || exit 1
+    [ "${DRY}" = true ] || "${HERE}/runners/run_paper_sweep.sh" --board "${BOARD}" --scalar-pack --issue 83 "${SWS[@]}" || exit 1
 fi
 echo "[$(date +%H:%M)] issue #83 ${PART} part finished."

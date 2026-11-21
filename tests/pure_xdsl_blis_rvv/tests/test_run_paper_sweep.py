@@ -9,7 +9,7 @@ import threading
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parents[1]
-SERIES = HERE / "run_paper_sweep.sh"
+SERIES = HERE / "runners" / "run_paper_sweep.sh"
 
 STUB = r"""#!/bin/bash
 echo "$*" >> "${PAPER_LOGS}/calls.txt"

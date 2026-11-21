@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 HERE = Path(__file__).resolve().parents[1]
-SWEEP = HERE / "run_ref_sweep.sh"
+SWEEP = HERE / "runners" / "run_ref_sweep.sh"
 
 # Two layers on one build, so "a row missing" is one line of the CSV, not a whole file.
 STUB = r"""#!/bin/bash

@@ -36,6 +36,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 BENCH_DIR = HERE.parent  # tests/pure_xdsl_blis_rvv
 sys.path.insert(0, str(BENCH_DIR))
+sys.path.insert(0, str(BENCH_DIR / "readers"))
 sys.path.insert(0, str(HERE))
 
 from compare_pack_swap import Case, load_side, mean, spread_pct  # noqa: E402
