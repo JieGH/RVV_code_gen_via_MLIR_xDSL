@@ -40,7 +40,7 @@ cmake -G Ninja ../llvm \
 cmake --build . --target check-mlir -j6
 ```
 
-Once built, the `mlir-translate` executable will be located at `llvm-project/build/bin/mlir-translate`.
+Once built, the `mlir-translate` executable will be located at `llvm-project/build/bin/mlir-translate`. The generator's default path to it is set in `tests/pure_xdsl_blis_rvv/generate_pure_blis_project.py` (`--mlir-translate`); point that flag, or the default, at your build.
 
 ---
 

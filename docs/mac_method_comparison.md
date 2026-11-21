@@ -1,3 +1,5 @@
+> **Historical report** (2026-03). Kept as written; paths and numbers may be out of date.
+
 # Comparison of RVV MAC Strategies (i8i8i32)
 
 This report analyzes three methods for achieving mixed-precision Multiply-Accumulate (MAC) on RISC-V Vector (RVV) hardware, focusing on performance and register pressure.
