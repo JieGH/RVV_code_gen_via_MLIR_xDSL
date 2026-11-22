@@ -1,4 +1,4 @@
 [
-    // Issue #51: the M sweep (datasets/issue51_m_sweep.dat) at 32x6, steady on B3 at K=384.
-    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["issue51_m_sweep.dat"], true, 1000]
+    // Issue #51: the M sweep (datasets/experiments/issue51_m_sweep.dat) at 32x6, steady on B3 at K=384.
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["experiments/issue51_m_sweep.dat"], true, 1000]
 ]

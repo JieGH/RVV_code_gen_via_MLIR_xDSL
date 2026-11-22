@@ -1,5 +1,5 @@
 # Single source of truth for the reference-baseline run.
-# Mirrors the issue #2 pinning in tests/pure_xdsl_blis_rvv/config.json + datasets/issue2_*.dat.
+# Mirrors the issue #2 pinning in tests/pure_xdsl_blis_rvv/config.json + datasets/bert_b2_b3.dat, bert_b1_b5.dat, square_bert_b4.dat (the old issue2_*.dat).
 # The reference driver parses its own .dat with atoi() on the label column, so each
 # case also carries a numeric id (BERT 1-5, Square 11-15) used in the generated .dat.
 #

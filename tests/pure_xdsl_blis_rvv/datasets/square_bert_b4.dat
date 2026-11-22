@@ -12,8 +12,8 @@
 #
 # Row order: BERT (B4) before Square (S1-S5), per user request to run the BERT
 # series before the Square matrix. B4 is the only BERT shape pinned to MR32_NR7 --
-# B1/B5 are pinned to MR32_NR6 and B2/B3 to MR16_NR15 (see issue2_bert_32x6.dat /
-# issue2_bert_16x15.dat), each compiling as its own project, so a single global
+# B1/B5 are pinned to MR32_NR6 and B2/B3 to MR16_NR15 (see bert_b1_b5.dat /
+# bert_b2_b3.dat), each compiling as its own project, so a single global
 # B1->B5 canonical order across all three pinnings isn't achievable in one run.
 # layer  M      N    K
 B4       4096   384   1024

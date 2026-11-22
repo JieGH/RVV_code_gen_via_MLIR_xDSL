@@ -1,5 +1,0 @@
-# Issue #85 P-tile: the three tile-sweep shapes, run on tiles 16x4, 32x4, 16x15, 32x7 (24x8 runs them in issue85_sweep.dat).
-# layer  M     N     K
-T1       1200  4     16
-Pn16     1200  16    256
-Pn256    1200  256   256

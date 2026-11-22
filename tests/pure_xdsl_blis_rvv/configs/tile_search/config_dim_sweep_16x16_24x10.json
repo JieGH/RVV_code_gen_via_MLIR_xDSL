@@ -9,7 +9,7 @@
     // Fixed 2048x2048x2048 fp32 input (datasets/2048_cube.dat) for both shapes, per the plan's
     // section 1 ask. skip_ref_run=true and a reduced iteration count keep the scalar oracle
     // (O(m*n*k), ~8.6e9 ops here) and board time bounded -- same reduced-cost knobs the other
-    // large-shape rows in this project use (e.g. B4's issue26_b4.dat row in config.json).
+    // large-shape rows in this project use (e.g. B4's bert_b4.dat row in config.json).
     //
     // Use with: run_pack_swap.sh --config config_dim_sweep_16x16_24x10.json --no-nc-overrides ...
     ["fp32", "AXPY_FP32_Pack", [16, 16], 256, "jbpi2", ["2048_cube.dat"], true, 5],

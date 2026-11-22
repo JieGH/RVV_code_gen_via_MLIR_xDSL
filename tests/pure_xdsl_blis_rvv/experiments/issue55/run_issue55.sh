@@ -5,7 +5,7 @@
 #
 # One LAUNCH is one run of every selected ARM on one board, back to back on core 4. An arm is one
 # compile_macro_bench.sh call over config_issue55_tiles.json (pinned 16x15, 16x8, 16x6, each on the four shapes of
-# datasets/issue46_ref_b3.dat: B3, B3_K256, B2, R24), always uninstrumented, reference protocol, --no-nc-overrides
+# datasets/b3_controls.dat: B3, B3_K256, B2, R24), always uninstrumented, reference protocol, --no-nc-overrides
 # --cpu 4 --tmin 10, plus the arm's packer:
 #   row        the shipped xDSL vector packer (no --pack-b)
 #   row-intr   --pack-b row-intr      today's order in C intrinsics (the control)

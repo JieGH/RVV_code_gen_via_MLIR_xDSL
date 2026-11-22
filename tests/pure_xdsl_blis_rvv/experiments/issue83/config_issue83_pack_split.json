@@ -3,10 +3,10 @@
     // DEBUG numbers only (timers cost 11-17%): used for the pack-time share, never quoted as GOPs against the
     // uninstrumented sweeps. Tiles: each shape's 1-thread best tile from #61 / #71 (24x4, 32x4, 16x4, 24x8, 32x7, 16x15).
     // Warm-up protocol, 200 reps. Run by run_issue83_pack_split.sh: vector, scalar, scalar, vector (A-B-B-A).
-    ["fp32", "AXPY_FP32_Pack", [16, 4], 256, "jbpi2", ["issue83_pack_split.dat"], true, 200],
-    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue83_pack_split.dat"], true, 200],
-    ["fp32", "AXPY_FP32_Pack", [24, 4], 256, "jbpi2", ["issue83_pack_split.dat"], true, 200],
-    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["issue83_pack_split.dat"], true, 200],
-    ["fp32", "AXPY_FP32_Pack", [32, 4], 256, "jbpi2", ["issue83_pack_split.dat"], true, 200],
-    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["issue83_pack_split.dat"], true, 200]
+    ["fp32", "AXPY_FP32_Pack", [16, 4], 256, "jbpi2", ["experiments/issue83_pack_split.dat"], true, 200],
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["experiments/issue83_pack_split.dat"], true, 200],
+    ["fp32", "AXPY_FP32_Pack", [24, 4], 256, "jbpi2", ["experiments/issue83_pack_split.dat"], true, 200],
+    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["experiments/issue83_pack_split.dat"], true, 200],
+    ["fp32", "AXPY_FP32_Pack", [32, 4], 256, "jbpi2", ["experiments/issue83_pack_split.dat"], true, 200],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["experiments/issue83_pack_split.dat"], true, 200]
 ]

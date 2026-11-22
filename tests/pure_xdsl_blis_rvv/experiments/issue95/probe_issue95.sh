@@ -4,7 +4,7 @@
 #   probe_issue95.sh M N K [--tile 24x8] [--tmin 1] [--board jbpi] [--label NAME] [-- <extra compile_macro_bench args>]
 #
 # Ours: compile_macro_bench.sh, uninstrumented build, reference protocol, --no-nc-overrides, vector packer
-# (as #94), one-row dataset datasets/issue95_probe.dat. Héctor's: his built gemm.x in ~/hector_gemmlib_b292c92
+# (as #94), one-row dataset datasets/experiments/issue95_probe.dat. Héctor's: his built gemm.x in ~/hector_gemmlib_b292c92
 # (built by run_hector_gemm.sh in #94; his code unchanged), TIMIN = --tmin, TEST=T, one-row dataset in ~/issue95/.
 # Prints "ours <GOPs> his <GOPs> ratio <ours/his> RED|GREEN" (RED when ratio < 0.8) and keeps everything in
 # logs/issue95_probe_<stamp>_<label>/. Refuses (exit 3) when another user's job is busy on the board.
@@ -35,8 +35,8 @@ busy="$(on_board 'ps -eo user=,pcpu=,comm=' | awk '$1 != "jlei" && $1 != "root" 
 [ -n "${busy}" ] && { echo "board ${BOARD} busy: ${busy}" | tee "${OUT}/busy.txt"; exit 3; }
 
 # ours
-printf '# issue #95 probe (one shape)\nP0 %s %s %s\n' "${M}" "${N}" "${K}" > "${HERE}/datasets/issue95_probe.dat"
-printf '[\n    ["fp32", "AXPY_FP32_Pack", [%s, %s], 256, "jbpi2", ["issue95_probe.dat"], false, 1000]\n]\n' "${MR}" "${NR}" > "${OUT}/config.json"
+printf '# issue #95 probe (one shape)\nP0 %s %s %s\n' "${M}" "${N}" "${K}" > "${HERE}/datasets/experiments/issue95_probe.dat"
+printf '[\n    ["fp32", "AXPY_FP32_Pack", [%s, %s], 256, "jbpi2", ["experiments/issue95_probe.dat"], false, 1000]\n]\n' "${MR}" "${NR}" > "${OUT}/config.json"
 TMIN_ARGS=(--tmin "${TMIN}"); [[ " ${EXTRA[*]} " == *" --instr "* ]] && TMIN_ARGS=()  # --instr runs the warm-up protocol
 before="$(ls -d "${HERE}"/logs/run_* | sort | tail -1)"
 ( cd "${HERE}/../.." && "${HERE}/compile_macro_bench.sh" --jump --riscv-user jlei --riscv-port 22 --riscv-ip "${BOARD}" \

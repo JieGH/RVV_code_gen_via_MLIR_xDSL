@@ -26,7 +26,7 @@ compile_macro_bench.sh          generate, build, check and time one config on th
 board_pin.sh                    board access, used by every board script
 config.json                     the default config
 configs/                        more configs: correctness/, tile_search/, benchmark/   (configs/README.md)
-datasets/                       problem shapes, one per line: label M N K
+datasets/                       problem shapes, one per line: label M N K; experiments/, unused/   (datasets/README.md)
 runners/                        multi-run scripts: Tile Search, threads, packers, Reference Design, feature baseline   (runners/README.md)
 readers/                        read run results: summaries, per-rep stats, reports   (readers/README.md)
 ref_baseline/                   the Reference Design, for comparison   (ref_baseline/README.md)
@@ -70,5 +70,5 @@ Run 1 and 2 after any change; 3 after any change to the generator, a template or
 | Threads and YOLO | `runners/run_parallel_gemm.sh`, `runners/run_hector_gemm.sh` | `configs/benchmark/` | `test_parallel_gemm.py`, `test_parallel_gemm_report.py`, `test_run_hector_gemm.py`, `test_hector_gemm_report.py` |
 | Reference Design | `runners/run_head_to_head.sh`, `runners/run_ref_sweep.sh`, `ref_baseline/` | `ref_baseline/cases*.tsv` | `test_compare_ref_baseline.py`, `test_compare_ref_sweep.py`, `test_ref_pack_fix.py`, `test_ref_per_rep.py`, `test_run_ref_sweep.py`, `test_fringe_overhead.py` |
 | Measurement and house rules | `board_pin.sh`, `readers/reps_report.py`, `readers/rawlog.py` | none | `test_board_access.py`, `test_board_pin.py`, `test_house_rules.py`, `test_reps_report.py`, `test_rawlog.py`, `test_perf_counters.py`, `test_summarize_run.py`, `test_slow_state_survey.py`, `test_shape_breakdown.py` |
-| Layout | the folders above | none | `test_layout_and_scripts.py` |
+| Layout | the folders above, `datasets/` subfolders, the issue index (`.scratch/issues/make_index.py`) | none | `test_layout_and_scripts.py`, `test_issue_index.py` |
 | Past experiments | `experiments/issueNN/run_*.sh` | `experiments/issueNN/` | `experiments/issueNN/test_*.py` |

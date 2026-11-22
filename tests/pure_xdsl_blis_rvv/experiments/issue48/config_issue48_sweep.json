@@ -2,7 +2,7 @@
     // Issue #48: the B3 microkernel-dimension sweep (MR x NR), read as speed, slow-rep share and (in the
     // instrumented build) pack and compute time apart. See .scratch/issues/0032-b3-microkernel-dimension-sweep-pack-and-compute.md.
     //
-    // One pinned row per tile. Every tile runs the same four shapes (datasets/issue46_ref_b3.dat: B3 64x384x384,
+    // One pinned row per tile. Every tile runs the same four shapes (datasets/b3_controls.dat: B3 64x384x384,
     // B3_K256, and the steady controls B2 and R24 = Reuse24), so each tile carries its own controls. Run it
     // through run_issue48.sh with --no-nc-overrides (B3 at nc=384, the reference's nc).
     //
@@ -17,29 +17,29 @@
     // The cache model picks mc/kc from the tile, so kc moves with it: kc = 128 for 16x12..16x16 and MR=32, 256 for
     // 16x4..16x8, 4x16 and 8x8..8x16, 170 for 8x24, 12x8 and MR=24, 132 for 8x31, 384 (the whole K) for 4x4, 4x8 and 8x4 (pack_dims_table.py prints it per tile). The reps
     // logs carry the real mc/kc of every tile.
-    ["fp32", "AXPY_FP32_Pack", [16, 6], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [16, 7], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [16, 8], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [16, 12], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [16, 14], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [16, 16], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [8, 8], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [8, 14], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [8, 15], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [8, 16], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [8, 24], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [8, 31], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [24, 6], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [24, 9], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [32, 4], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [4, 4], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [4, 8], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [4, 16], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [8, 4], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [16, 4], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [12, 8], 256, "jbpi2", ["issue46_ref_b3.dat"], true, 1000]
+    ["fp32", "AXPY_FP32_Pack", [16, 6], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 7], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 8], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 12], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 14], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 16], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 8], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 14], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 15], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 16], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 24], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 31], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [24, 6], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [24, 9], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [32, 4], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [4, 4], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [4, 8], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [4, 16], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [8, 4], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [16, 4], 256, "jbpi2", ["b3_controls.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [12, 8], 256, "jbpi2", ["b3_controls.dat"], true, 1000]
 ]

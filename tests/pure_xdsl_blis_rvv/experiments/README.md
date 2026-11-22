@@ -1,6 +1,6 @@
 # experiments/: past investigations
 
-One folder per past issue: its run script, configs, report and tests, kept so its results can be reproduced. You don't need these for normal use. The write-up of each is in `.scratch/issues/` and on GitHub.
+One folder per past issue: its run script, configs, report and tests, kept so its results can be reproduced. You don't need these for normal use. The write-up of each is in `.scratch/issues/` and on GitHub; [the issue index](../../../.scratch/issues/README.md) maps each folder to its write-up, which has a different (local) number. Inputs made for one experiment are in `../datasets/experiments/issueNN_*.dat` (issue #146).
 
 Run a script from the repo root; most take `--help` and `--dry-run`:
 

@@ -1,6 +1,6 @@
 [
-    // Issue #51: the M sweep (datasets/issue51_m_sweep.dat) at 16x6, steady on B3 at K=384.
+    // Issue #51: the M sweep (datasets/experiments/issue51_m_sweep.dat) at 16x6, steady on B3 at K=384.
     // One tile per config file (not bundled) so run_issue51.sh can rotate tile order between
     // launches (house rule 2), the same way run_issue49.sh rotates --pad-ldb.
-    ["fp32", "AXPY_FP32_Pack", [16, 6], 256, "jbpi2", ["issue51_m_sweep.dat"], true, 1000]
+    ["fp32", "AXPY_FP32_Pack", [16, 6], 256, "jbpi2", ["experiments/issue51_m_sweep.dat"], true, 1000]
 ]

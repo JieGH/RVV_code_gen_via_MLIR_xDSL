@@ -4,7 +4,7 @@
 # run_issue51.sh -- how small does M have to be? Sweep M at fixed tiles (issue #51)
 #
 # One LAUNCH is one run per TILE on one board, back to back on core 4: config_issue51_<tile>.json
-# (one pinned row each, all five over datasets/issue51_m_sweep.dat: M in {64, 128, 192, 256, 384,
+# (one pinned row each, all five over datasets/experiments/issue51_m_sweep.dat: M in {64, 128, 192, 256, 384,
 # 512, 1000} x K in {384, 256}, plus B2 as the steady control), uninstrumented, reference
 # protocol, vector packer, --no-nc-overrides. Five tiles: 16x6 and 32x6 (steady on B3), 16x8 and
 # 16x15 (two-speed on B3, 16x15 the shipped one), 32x7 (two-speed on B3, steady on the large
@@ -123,7 +123,7 @@ done
 export REMOTE_PASS="${REMOTE_PASS-}" REMOTE_HOST="${REMOTE_HOST:-fej}" REMOTE_PORT="${REMOTE_PORT:-3322}"
 
 # tile_rows <tile> -- the dataset's row count, the same for every tile (one shared dataset)
-tile_rows() { grep -c '^[A-Za-z0-9_]' "${HERE}/datasets/issue51_m_sweep.dat"; }
+tile_rows() { grep -c '^[A-Za-z0-9_]' "${HERE}/datasets/experiments/issue51_m_sweep.dat"; }
 
 # order_of <launch> -- the tiles of a launch, the list rotated left by launch-1
 order_of() {
@@ -165,7 +165,7 @@ print_plan() {
     echo "Issue #51 series: ${LAUNCHES} launches on each of ${BOARDS}, boards taking turns, tiles ${TILES} (${TOTAL} runs)"
     echo "  Start     : $(date -d "@${T0}" '+%a %d %b %H:%M')"
     echo "  Settings  : ${CPU_ARGS[*]} --no-nc-overrides --tmin ${TMIN}, vector packer"
-    echo "  Dataset   : datasets/issue51_m_sweep.dat ($(tile_rows) shapes: M in {64,128,192,256,384,512,1000} x K in {384,256}, plus B2)"
+    echo "  Dataset   : datasets/experiments/issue51_m_sweep.dat ($(tile_rows) shapes: M in {64,128,192,256,384,512,1000} x K in {384,256}, plus B2)"
     echo "  Load      : other users' processes are read before and after every run; a heavy one is flagged red, not a stop"
     local l
     for ((l = 1; l <= LAUNCHES; l++)); do echo "  Launch ${l}   : $(order_of "${l}")"; done

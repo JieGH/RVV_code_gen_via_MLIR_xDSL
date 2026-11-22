@@ -1,4 +1,4 @@
 # Issue #26 (pack swap): B4 alone, MR32_NR7 (B4 is the only BERT shape pinned to it; the Square
-# shapes S1-S5 that share its dataset in issue2_square_bert_32x7.dat are left out).
+# shapes S1-S5 that share its dataset in square_bert_b4.dat are left out).
 # layer  M     N    K
 B4       4096  384  1024

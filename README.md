@@ -106,7 +106,7 @@ A config is a JSON list of rows (`//` comments allowed). `--config` paths are re
 | data type, method | `fp32` with `AXPY_FP32_Pack` or `DOT_FP32_LANE_Pack`; `f16f16f32` with `AXPY_FP32_Pack` (run with `--scalar-pack`); `int8` with `AXPY_INT8_Pack` |
 | tile | `[MR, NR]`, or a list of tiles |
 | vlen, arch | `256`; the board name |
-| datasets | files in `datasets/`, one shape per line: `label M N K` |
+| datasets | files in `datasets/`, one shape per line: `label M N K`; a sub-path such as `experiments/issue85_sweep.dat` works ([datasets/README](tests/pure_xdsl_blis_rvv/datasets/README.md)) |
 | skip_ref_run | `false` checks every result against the scalar reference; `true` skips the check (timing runs) |
 | iterations | present: **pinned**, one project for the first tile. Left out: **search mode**, one project with every tile up to the largest |
 
@@ -144,6 +144,6 @@ Tools that read the results: [`readers/`](tests/pure_xdsl_blis_rvv/readers/READM
 | [tests/pure_xdsl_blis_rvv/](tests/pure_xdsl_blis_rvv/) | The generator, the bench, runners, readers, configs and tests. Start here. |
 | [src/xdsltemplate/](src/xdsltemplate/) | The xDSL backend: RVV, GEMM and EmitC dialects and their lowering to C++. |
 | [docs/](docs/) | [User guide](docs/user_guide.md), [metrics](docs/metrics.md), [board execution and house rules](docs/agents/execution.md), [roadmap](docs/ROADMAP.md), ADRs. |
-| `.scratch/issues/` | Write-ups of past investigations. |
+| `.scratch/issues/` | Write-ups of past investigations. [Its index](.scratch/issues/README.md) maps each GitHub issue to its write-up, experiment, datasets and reports. |
 
 Before quoting a number, read the house rules: [user guide §12](docs/user_guide.md#12-rules-for-a-number-you-quote).
