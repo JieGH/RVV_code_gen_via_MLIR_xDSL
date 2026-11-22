@@ -3,9 +3,9 @@
     // other four tiles on the three P-tile shapes. One config for both builds: the uninstrumented build (M1, reference
     // protocol, --tmin) ignores the 200; the instrumented one (M2 1T, M3 8T, warm-up protocol) runs 200 fixed reps.
     // Run by run_issue85.sh, --no-nc-overrides, vector and scalar packer in A-B-B-A order.
-    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["issue85_sweep.dat"], true, 200],
-    ["fp32", "AXPY_FP32_Pack", [16, 4], 256, "jbpi2", ["issue85_tile.dat"], true, 200],
-    ["fp32", "AXPY_FP32_Pack", [32, 4], 256, "jbpi2", ["issue85_tile.dat"], true, 200],
-    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue85_tile.dat"], true, 200],
-    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["issue85_tile.dat"], true, 200]
+    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["experiments/issue85_sweep.dat"], true, 200],
+    ["fp32", "AXPY_FP32_Pack", [16, 4], 256, "jbpi2", ["experiments/issue85_tile.dat"], true, 200],
+    ["fp32", "AXPY_FP32_Pack", [32, 4], 256, "jbpi2", ["experiments/issue85_tile.dat"], true, 200],
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["experiments/issue85_tile.dat"], true, 200],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["experiments/issue85_tile.dat"], true, 200]
 ]

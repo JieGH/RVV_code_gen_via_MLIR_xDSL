@@ -1,7 +1,7 @@
 # Issues #35 step 2 / #36 step 1: where the time goes, in the instrumented (--instr) build, at MR16_NR15.
 # B3 and Reuse24 at nc = 128 and 384 (override per label in config_issue36_instr_split.json), and
 # issue #34's B3_N320 / B3_K256 at the model's nc (= N). B3 at 16x14 and 16x16 comes from the
-# config's other two rows (issue2_bert_16x15.dat, model nc = 384).
+# config's other two rows (bert_b2_b3.dat, model nc = 384).
 # layer        M     N     K
 B3_nc384       64    384   384
 B3_nc128       64    384   384

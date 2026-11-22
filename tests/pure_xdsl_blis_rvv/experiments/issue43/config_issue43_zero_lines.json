@@ -8,5 +8,5 @@
     // then the speed (uninstrumented, reference protocol):
     //   compile_macro_bench.sh --config config_issue43_zero_lines.json --cpu 4 --tmin 10 [--zero-pack-lines]
     // then: reps_report.py <the six run folders> (a zero-lines launch is its own "vector+zeroline" row)
-    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi", ["issue43_zero_lines.dat"], true, 1000, {"B3_nc128": 128}]
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi", ["experiments/issue43_zero_lines.dat"], true, 1000, {"B3_nc128": 128}]
 ]

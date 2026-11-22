@@ -383,7 +383,7 @@ def test_the_config_holds_the_three_pinned_tiles_on_the_b3_dataset():
     assert len(rows) == 3
     tiles = [r.split("[", 2)[2].split("]")[0] for r in rows]
     assert tiles == ["16, 15", "16, 8", "16, 6"]
-    assert all('"AXPY_FP32_Pack"' in r and '"issue46_ref_b3.dat"' in r for r in rows)
+    assert all('"AXPY_FP32_Pack"' in r and '"b3_controls.dat"' in r for r in rows)
     assert "#54" in (HERE / CONFIG).read_text() and "#55" in (HERE / CONFIG).read_text()
     # the same columns as the #50 sweep's rows
     ref = [ln.strip() for ln in (HERE / "experiments/issue50/config_issue50_sweep.json").read_text().splitlines() if ln.strip().startswith('["fp32"')][0]
@@ -398,4 +398,4 @@ def test_the_config_parses_with_the_projects_own_config_reader():
     assert len(cfgs) == 3
     assert [(c.datatype, c.method) for c in cfgs] == [("fp32", "AXPY_FP32_Pack")] * 3
     assert [c.mr_nr_family for c in cfgs] == [[(16, 15)], [(16, 8)], [(16, 6)]] and all(c.is_pinned for c in cfgs)
-    assert all(c.datasets == ["issue46_ref_b3.dat"] for c in cfgs)
+    assert all(c.datasets == ["b3_controls.dat"] for c in cfgs)

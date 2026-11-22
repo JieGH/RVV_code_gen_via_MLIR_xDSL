@@ -1,4 +1,4 @@
-# Square S1-S5 alone (the shapes of issue2_square_bert_32x7.dat without B4), for configs/benchmark/config_square.json.
+# Square S1-S5 alone (the shapes of square_bert_b4.dat without B4), for configs/benchmark/config_square.json.
 # layer  M      N    K
 S1       1000   1000  1000
 S2       2000   2000  2000

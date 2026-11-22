@@ -5,7 +5,7 @@
 #
 # One LAUNCH is one run of every selected ARM on one board, back to back on core 4. An arm is one
 # compile_macro_bench.sh call over a whole sweep config (one pinned row per tile, each tile on the four shapes of
-# datasets/issue46_ref_b3.dat: B3, B3_K256, B2, R24), always with --no-nc-overrides (B3 at nc=384):
+# datasets/b3_controls.dat: B3, B3_K256, B2, R24), always with --no-nc-overrides (B3 at nc=384):
 #   vec           config_issue48_sweep.json          uninstrumented, reference protocol, vector packer   (speed, slow-rep share)
 #   scalar        config_issue48_sweep_scalar.json   uninstrumented, reference protocol, --scalar-pack   (packer against tile)
 #   vec-instr     config_issue48_sweep.json          --instr (warm-up protocol, 1000 reps), vector packer (pack and compute per rep)

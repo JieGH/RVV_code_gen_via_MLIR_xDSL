@@ -1,4 +1,4 @@
-# B1 and B5 pinned to MR32_NR7, mirroring issue2_bert_32x6.dat's shapes exactly, so 32x6 and 32x7
+# B1 and B5 pinned to MR32_NR7, mirroring bert_b1_b5.dat's shapes exactly, so 32x6 and 32x7
 # are compared on identical (M, N, K) inputs. Used by config_b1b5_nr7_first.json and
 # config_b1b5_nr6_first.json (the #37 test, extended to the two BERT layers #37 left out).
 # layer  M      N    K

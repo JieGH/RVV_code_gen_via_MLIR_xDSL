@@ -1,9 +1,9 @@
 [
     // Issue #85: the correctness pass before timing, oracle on: the five tiles of config_issue85_sweep.json on
-    // datasets/issue85_correctness_small.dat (under the oracle's B2 limit). Vector and scalar packer, 1T and 8T, --tmin 0.2.
-    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["issue85_correctness_small.dat"], false, 200],
-    ["fp32", "AXPY_FP32_Pack", [16, 4], 256, "jbpi2", ["issue85_correctness_small.dat"], false, 200],
-    ["fp32", "AXPY_FP32_Pack", [32, 4], 256, "jbpi2", ["issue85_correctness_small.dat"], false, 200],
-    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["issue85_correctness_small.dat"], false, 200],
-    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["issue85_correctness_small.dat"], false, 200]
+    // datasets/experiments/issue85_correctness_small.dat (under the oracle's B2 limit). Vector and scalar packer, 1T and 8T, --tmin 0.2.
+    ["fp32", "AXPY_FP32_Pack", [24, 8], 256, "jbpi2", ["experiments/issue85_correctness_small.dat"], false, 200],
+    ["fp32", "AXPY_FP32_Pack", [16, 4], 256, "jbpi2", ["experiments/issue85_correctness_small.dat"], false, 200],
+    ["fp32", "AXPY_FP32_Pack", [32, 4], 256, "jbpi2", ["experiments/issue85_correctness_small.dat"], false, 200],
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi2", ["experiments/issue85_correctness_small.dat"], false, 200],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi2", ["experiments/issue85_correctness_small.dat"], false, 200]
 ]

@@ -4,7 +4,7 @@
 # run_issue50.sh -- prefetcher counters at the four tiles that flip the slow state of #48 (issue #50)
 #
 # One LAUNCH is one instrumented run on one board, back to back on core 4: config_issue50_sweep.json
-# (16x6, 16x7, 16x8, the shipped 16x15, each on the three shapes of datasets/issue46_ref_b3.dat: B3,
+# (16x6, 16x7, 16x8, the shipped 16x15, each on the three shapes of datasets/b3_controls.dat: B3,
 # B3_K256, B2 -- cut from config_issue48_sweep.json to just these four rows), --instr (warm-up
 # protocol, 1000 reps), vector packer, --no-nc-overrides (B3 at nc=384), --raw-events x60-l2 by
 # default (#42: the X60's L2 and L1D-prefetch events, per rep, pack and compute apart).
