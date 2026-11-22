@@ -32,7 +32,7 @@ readers/                        read run results: summaries, per-rep stats, repo
 ref_baseline/                   the Reference Design, for comparison   (ref_baseline/README.md)
 tests/                          host tests (pytest)
 templates/                      driver, Makefile and headers copied into every project
-logs/                           run results, committed
+logs/                           run results, committed; per-rep logs reps_* stay local (#143)
 pj_gen/                         generated projects, gitignored, rebuilt on every run
 experiments/  notes/            past investigations and old notes, kept for history
 modelLevel/  pack_only/         analytical cache model; pack-only bench

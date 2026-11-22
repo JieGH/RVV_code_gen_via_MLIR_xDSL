@@ -495,6 +495,9 @@ for proj_dir in "${RUN_DIR}"/*/; do
     echo "  [OK] Fetched logs to ${proj_dir}"
 done
 echo "  [OK] Merged cross-project results into ${RUN_DIR}/all_*.txt"
+if [ "${SAVE_REPS}" = true ]; then
+    echo "  [OK] Per-rep logs ${RUN_DIR}/*/reps_*.txt.gz stay on this machine; .gitignore keeps them out of git (issue #143)"
+fi
 # Issue #42: what the launch counted, and how busy each core was during each timed run.
 launch_conditions "${RAW_EVENTS}" "${RUN_DIR}" >> "${RUN_DIR}/provenance.txt"
 

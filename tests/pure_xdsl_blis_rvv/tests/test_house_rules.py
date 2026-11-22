@@ -6,7 +6,8 @@ Issue #39: the house rules for a benchmark result, as tests.
 2. One launch is not a result: the per-rep log is on by default (test_ref_protocol.py) and
    reps_report.py warns below 3 launches (test_reps_report.py).
 3. Every quoted number comes from a committed log: here, every run folder an issue file, a
-   report or a doc cites is committed.
+   report or a doc cites is committed. Except the per-rep logs (reps_*) and pid files: those
+   stay on the dev machine and are never committed (issue #143).
 4. Name build, protocol and core: provenance.txt and reps_report.py (test_reps_report.py).
 
 Seam: the repo's own files and `git ls-files`. No board needed.
@@ -50,6 +51,29 @@ def test_every_cited_run_folder_is_committed():
         if name not in committed
     )
     assert not missing, "cited but not committed (issue #39, rule 3):\n" + "\n".join(missing)
+
+
+PRIVATE_FILE = re.compile(r"(?:^|/)reps_[^/]*\.txt(?:\.gz)?$|^tests/pure_xdsl_blis_rvv/logs/[^/]*\.pid$")
+
+
+def test_no_per_rep_log_or_pid_file_is_committed():
+    # Issue #143: per-rep logs (reps_*, reps_ref_*) are 82% of the repo and stay on the dev machine.
+    listed = subprocess.run(
+        ["git", "ls-files"], cwd=REPO_ROOT, capture_output=True, text=True, check=True
+    ).stdout.splitlines()
+    tracked = [p for p in listed if PRIVATE_FILE.search(p)]
+    assert not tracked, f"{len(tracked)} private files tracked (issue #143), e.g.:\n" + "\n".join(tracked[:5])
+
+
+@pytest.mark.parametrize("path", [
+    "tests/pure_xdsl_blis_rvv/logs/run_2099-01-01_000000/p/reps_fp32_x.txt.gz",
+    "tests/pure_xdsl_blis_rvv/logs/refbase_2099-01-01_000000/reps_ref_32x7_B3.txt.gz",
+    ".scratch/reports/issue-999/runs/run_2099-01-01_000000/reps_fp32_x.txt",
+    "tests/pure_xdsl_blis_rvv/logs/new_series.pid",
+])
+def test_new_per_rep_logs_and_pid_files_are_ignored(path: str):
+    ignored = subprocess.run(["git", "check-ignore", "-q", "--no-index", path], cwd=REPO_ROOT)
+    assert ignored.returncode == 0, f"git would pick up {path} (issue #143)"
 
 
 @pytest.mark.parametrize("doc", COMMAND_DOCS, ids=lambda p: str(p.relative_to(REPO_ROOT)))
