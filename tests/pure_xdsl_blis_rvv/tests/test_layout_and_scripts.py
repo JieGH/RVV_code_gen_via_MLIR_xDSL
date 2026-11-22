@@ -18,6 +18,8 @@ import pytest
 
 HERE = Path(__file__).resolve().parents[1]  # the project folder
 REPO = HERE.parents[1]
+needs_ref = pytest.mark.skipif(not (REPO.parent / "ext" / "RVV_ukernels_benchmark").is_dir(),
+                            reason="needs ../ext/RVV_ukernels_benchmark (README: Reference Design)")  # issue #149
 
 TOP_LEVEL = {
     "generate_pure_blis_project.py", "pack_builder.py", "config.py", "cache_config.py",
@@ -112,7 +114,7 @@ def test_python_script_help(script: Path):
     assert done.returncode == 0, done.stdout + done.stderr
 
 
-@pytest.mark.parametrize("name", sorted(DRY_RUN))
+@pytest.mark.parametrize("name", [pytest.param(n, marks=needs_ref) if n == "run_head_to_head.sh" else n for n in sorted(DRY_RUN)])
 def test_runner_dry_run(name: str):
     done = subprocess.run(["bash", str(HERE / "runners" / name), *DRY_RUN[name], "--dry-run"],
                           cwd=REPO, capture_output=True, text=True, timeout=600)
