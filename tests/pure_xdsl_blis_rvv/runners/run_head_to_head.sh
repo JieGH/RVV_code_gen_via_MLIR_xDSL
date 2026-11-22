@@ -67,6 +67,10 @@ newest_since() {
     echo "${d}"
 }
 
+# Issue #149: fail before our side runs, not after it, when the Reference Design is missing.
+REF_TREE="$(cd "${HERE}/../.." && pwd)/../ext/RVV_ukernels_benchmark"
+[ -d "${REF_TREE}" ] || { echo "  [FAIL] Reference Design not found at ${REF_TREE}; see README.md (Reference Design)"; exit 1; }
+
 START="$(date +%Y-%m-%d_%H%M%S)"
 
 echo ""; echo "=== [1/3] our side ==="

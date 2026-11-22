@@ -146,7 +146,7 @@ Flags that change what a number means:
 
 ## 6. Compare against the Reference Design
 
-Use this for any number quoted against the reference (the `RVV_ukernels_benchmark` tree in `../ext/`). A reference run from another day is not comparable: run both sides back to back on the same core.
+Use this for any number quoted against the reference (the `RVV_ukernels_benchmark` tree in `../ext/`; the README's Reference Design section says how to get it). A reference run from another day is not comparable: run both sides back to back on the same core.
 
 ```bash
 ./tests/pure_xdsl_blis_rvv/runners/run_head_to_head.sh $CONN --cpu 4
