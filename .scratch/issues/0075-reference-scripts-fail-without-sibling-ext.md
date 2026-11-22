@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/149
 
 **Role / Label:** `needs-triage`. Found 2026-11-22 during a newcomer walk-through of the README (fresh clone, no board).
-**Status:** open. Diagnosis done, nothing fixed.
+**Status:** fixed on branch `reference-scripts-fail-without-sibling-ext` (`450b3813`), not merged yet. Both closure criteria met (section 7).
 **Target:** host only (no board used).
 **Primary Sources:** `tests/pure_xdsl_blis_rvv/ref_baseline/run_ref_baseline.sh`, `ref_baseline/run_direct_check.sh`, `runners/run_head_to_head.sh`, `tests/test_board_pin.py`, `tests/test_layout_and_scripts.py`, `README.md`
 
@@ -59,5 +59,22 @@ The Reference Design source is not in the repo. Two scripts find it by a fixed p
 
 ## 6. Closure criteria
 
-- [ ] A fresh clone without `../ext/` runs the host tests with 0 failures (skips allowed).
-- [ ] The README says which workflows need `../ext/` and how to get it.
+- [x] A fresh clone without `../ext/` runs the host tests with 0 failures (skips allowed).
+- [x] The README says which workflows need `../ext/` and how to get it.
+
+## 7. Fix (2026-11-22)
+
+Options A, B and C, plus one change the options did not list:
+
+- **C, scripts.** `run_ref_baseline.sh`, `run_direct_check.sh` and `run_head_to_head.sh` print one line when the tree is missing: `[FAIL] Reference Design not found at <path>; see README.md (Reference Design)`.
+  - `run_direct_check.sh` now looks the tree up after the core-0 refusal, so the refusal still comes first. This fixes `test_every_script_refuses_core_0_before_anything_runs[run_direct_check.sh]` without a skip.
+  - `run_head_to_head.sh` checks before our side runs. Before, a real run would benchmark our side on the board and fail only at the reference step.
+- **B, tests.** The two head-to-head `--dry-run` tests skip with a `needs_ref` marker when `../ext/RVV_ukernels_benchmark` is missing.
+- **A, docs.** The README has a new "Reference Design" section: clone `https://github.com/adcastel/RVV_ukernels_benchmark.git` into `../ext/` and check out `eb84ded`, the commit in our `../ext/`. The head-to-head row and the host-test line point to it, and so does `docs/user_guide.md`.
+
+**Checks (host only, no board):**
+
+- Fresh `git clone` of `450b3813`, no `../ext/`: `804 passed, 5 skipped in 976.41s`. The skips are the 2 new head-to-head ones plus 3 older ones (`test_ref_pack_fix.py` x2, `test_ref_per_rep.py`) that already skipped without the tree.
+- Normal checkout (with `../ext/`): `test_board_pin.py` + `test_layout_and_scripts.py`, 161 passed.
+
+**Not done:** no test checks the new `[FAIL]` line; it was checked by hand. The path and message are written out in all three scripts, not shared.
