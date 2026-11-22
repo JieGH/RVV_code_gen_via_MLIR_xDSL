@@ -123,7 +123,7 @@ Generates every row of the config, syncs to the board, builds, runs each project
 | File | What |
 |------|------|
 | `all_raw_<dt>_<method>_<suffix>.txt` | one row per case: shape, mc/nc/kc, `RVV_Time_ms` (mean time per whole call), GOPs, Status |
-| `reps_*.txt.gz` (per project) | every timed rep, in the order the reps ran |
+| `reps_*.txt.gz` (per project) | every timed rep, in the order the reps ran; stays on the dev machine, not in git (#143) |
 | `comparison.md` | the table `summarize_run.py` writes |
 | `provenance.txt` | pin, governor, compiler, load, other users' busy processes, per-core busy share |
 
@@ -231,7 +231,7 @@ Start them detached as in §7. 8-thread runs use cores 0-7, core 0 included: the
 | `search_report.py` | a Tile Search's run folders | §7 |
 | `compare_pack_swap.py` | vector and scalar runs | §8 |
 | `ref_baseline/compare_ref_baseline.py` | our run and a reference run | per-case comparison, with a WARNING when pins differ or the runs are over an hour apart |
-| `slow_state_survey.py` | every committed per-rep log | the B3 two-speed survey (#47) |
+| `slow_state_survey.py` | every per-rep log on the dev machine (not in git, #143) | the B3 two-speed survey (#47) |
 
 Quote **GOPs by mean time**: total operations over total time of the whole call, packing included, as the reference computes it. Say next to it which build, protocol, core and board it came from.
 

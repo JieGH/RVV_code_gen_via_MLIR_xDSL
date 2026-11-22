@@ -247,6 +247,9 @@ tests/pure_xdsl_blis_rvv/pj_gen/
 # cron_bench_run.sh lock; only meaningful while a run is going
 tests/pure_xdsl_blis_rvv/logs/.cron_bench.lock
 
-# issue #137: per-rep log of the feature-baseline search-mode run, 120 MB (over GitHub's 100 MB limit); kept locally only
-tests/pure_xdsl_blis_rvv/logs/run_2026-11-21_201243/fp32_AXPY_FP32_Pack_vlen256/reps_fp32_AXPY_FP32_Pack_noinstr_refproto_no_nc_override.txt.gz
-tests/pure_xdsl_blis_rvv/logs/run_2026-11-21_220847/fp32_AXPY_FP32_Pack_vlen256/reps_fp32_AXPY_FP32_Pack_noinstr_refproto_no_nc_override.txt.gz
+# issue #143: per-rep logs (ours and the reference's reps_ref_*) are private to the dev machine, never on GitHub
+reps_*.txt
+reps_*.txt.gz
+
+# pid files of scheduled runs; only meaningful while the run is going
+tests/pure_xdsl_blis_rvv/logs/*.pid

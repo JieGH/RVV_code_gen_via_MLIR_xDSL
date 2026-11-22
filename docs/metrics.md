@@ -23,7 +23,8 @@ tests/pure_xdsl_blis_rvv/logs/run_<timestamp>/
 ```
 
 By default (`--save-reps`, issue #39), each project directory also holds `reps_<dtype>_<method><suffix>.txt.gz`
-(see "Per-rep log" below). It is gzipped on fetch and not merged into an `all_*` file.
+(see "Per-rep log" below). It is gzipped on fetch and not merged into an `all_*` file. It stays on the dev
+machine: `.gitignore` keeps every `reps_*` file out of git (issue #143).
 
 `comparison.md` is generated automatically by `summarize_run.py` at the end of the
 fetch step. To regenerate it by hand against an existing run directory:
@@ -300,7 +301,7 @@ GFLOPS the driver printed (a mismatch over 2% or a full array is printed and mak
 the timed loop: one compare and one store per call. `experiments/issue46/run_issue46.sh` runs the unchanged driver in the same launches as the
 control.
 
-`slow_state_survey.py` (issue #47) reads every per-rep log under `logs/run_*` and prints the inventory, the slow-rep
+`slow_state_survey.py` (issue #47) reads every per-rep log under `logs/run_*` on the dev machine (not in git, #143) and prints the inventory, the slow-rep
 share per case, the reps, seconds and bytes packed before the first slow rep, and the shape features beside the share.
 Bytes packed per rep = `4 * (K*N + M*K*ceil(N/nc))` (fp32), from the loop nest (jc over N by `nc`, pc over K by `kc`, pack
 the B block, ic over M by `mc`, pack the A block).
