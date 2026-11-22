@@ -104,7 +104,9 @@ GATHER_FIRST="${GATHER_LIST%% *}"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${HERE}/../../.." && pwd)"                       # RVV_code_gen_via_MLIR_xDSL
-REF_SRC="$(cd "${REPO_ROOT}/../ext/RVV_ukernels_benchmark" && pwd)"
+# Issue #149: the Reference Design is not in this repo; README.md "Reference Design" says where to get it.
+REF_SRC="$(cd "${REPO_ROOT}/../ext/RVV_ukernels_benchmark" 2>/dev/null && pwd)" \
+    || { echo "  [FAIL] Reference Design not found at ${REPO_ROOT}/../ext/RVV_ukernels_benchmark; see README.md (Reference Design)"; exit 1; }
 STAMP="$(date +%Y-%m-%d_%H%M%S)"
 RESULT_DIR="${REPO_ROOT}/tests/pure_xdsl_blis_rvv/logs/refbase_${STAMP}"
 

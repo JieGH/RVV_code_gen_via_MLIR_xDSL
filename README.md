@@ -87,7 +87,7 @@ $B $CONN --no-nc-overrides --cpu 4 --tmin 10
 # 4. Check every feature on the board (about an hour)
 ./tests/pure_xdsl_blis_rvv/runners/run_feature_baseline.sh $CONN
 
-# 5. Host tests (about 17 minutes)
+# 5. Host tests (about 17 minutes; a few skip without ../ext/, see Reference Design below)
 cd tests/pure_xdsl_blis_rvv && ../../.venv/bin/python -m pytest
 ```
 
@@ -130,12 +130,23 @@ Scripts in `tests/pure_xdsl_blis_rvv/runners/` ([README](tests/pure_xdsl_blis_rv
 | Task | Script |
 |------|--------|
 | Find the best tile per shape (Tile Search) | `run_yolo_sweep.sh`, `run_paper_sweep.sh` |
-| Compare with the Reference Design on the same core | `run_head_to_head.sh` |
+| Compare with the Reference Design on the same core (needs `../ext/`, below) | `run_head_to_head.sh` |
 | Vector against scalar packing | `run_pack_swap.sh` |
 | 1 and 8 threads on the YOLO layers | `run_parallel_gemm.sh`, `run_hector_gemm.sh` |
 | Standalone microkernels to hand over | `gen_handover_ukernels.py` |
 
 Tools that read the results: [`readers/`](tests/pure_xdsl_blis_rvv/readers/README.md).
+
+### Reference Design
+
+The Reference Design is not in this repo. `run_head_to_head.sh`, `run_ref_sweep.sh` and `ref_baseline/` read it from a fixed path beside the repo. Clone it there once, from the repo root, at the commit we use:
+
+```bash
+git clone https://github.com/adcastel/RVV_ukernels_benchmark.git ../ext/RVV_ukernels_benchmark
+git -C ../ext/RVV_ukernels_benchmark checkout eb84ded
+```
+
+Without it these scripts stop with `Reference Design not found`, and the host tests that run them are skipped.
 
 ## Layout
 

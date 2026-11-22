@@ -30,6 +30,8 @@ BOARD_PIN = HERE / "board_pin.sh"
 BENCH_SCRIPT = HERE / "compile_macro_bench.sh"
 REF_SCRIPT = HERE / "ref_baseline" / "run_ref_baseline.sh"
 H2H_SCRIPT = HERE / "runners" / "run_head_to_head.sh"
+needs_ref = pytest.mark.skipif(not (REPO_ROOT.parent / "ext" / "RVV_ukernels_benchmark").is_dir(),
+                            reason="needs ../ext/RVV_ukernels_benchmark (README: Reference Design)")  # issue #149
 
 sys.path.append(str(HERE / "ref_baseline"))
 
@@ -227,7 +229,7 @@ def test_every_script_takes_core_0_when_told_it_is_on_purpose(script: Path):
     assert "Unknown parameter" not in proc.stdout + proc.stderr
 
 
-@pytest.mark.parametrize("script", [H2H_SCRIPT, PACK_SWAP_SCRIPT], ids=lambda p: p.name)
+@pytest.mark.parametrize("script", [pytest.param(H2H_SCRIPT, marks=needs_ref), PACK_SWAP_SCRIPT], ids=lambda p: p.name)
 def test_a_wrapper_passes_allow_core_0_on_to_the_scripts_it_runs(script: Path):
     proc = _script(script, "--dry-run", "--cpu", "0", "--allow-core-0")
     assert proc.returncode == 0, proc.stdout + proc.stderr

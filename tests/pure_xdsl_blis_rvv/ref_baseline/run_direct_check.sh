@@ -33,7 +33,6 @@ set -eu
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${HERE}/../../.." && pwd)"
-REF_SRC="$(cd "${REPO_ROOT}/../ext/RVV_ukernels_benchmark" && pwd)"
 
 source "${HERE}/../board_pin.sh"
 
@@ -57,6 +56,9 @@ done
 
 # Issue #21's rationale, reused here: refuse a bad core now, not after staging both boards.
 pin_check "${CPU_FLAG}" false "${PIN_CPU}" "${ALLOW_CORE0}" || exit 1
+# Issue #149: the Reference Design is not in this repo; README.md "Reference Design" says where to get it.
+REF_SRC="$(cd "${REPO_ROOT}/../ext/RVV_ukernels_benchmark" 2>/dev/null && pwd)" \
+    || { echo "  [FAIL] Reference Design not found at ${REPO_ROOT}/../ext/RVV_ukernels_benchmark; see README.md (Reference Design)"; exit 1; }
 
 STAMP="$(date +%Y-%m-%d_%H%M%S)"
 LOG="${REPO_ROOT}/tests/pure_xdsl_blis_rvv/logs/issue30_direct_check_${STAMP}.txt"

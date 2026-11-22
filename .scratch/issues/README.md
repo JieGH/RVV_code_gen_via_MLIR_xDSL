@@ -68,6 +68,7 @@ Issue files use a local number; everything else uses the GitHub number.
 | #140 | Stale crontab entries call cron_bench_run.sh at its old path | [0072-stale-crontab-entries-old-cron-path.md](0072-stale-crontab-entries-old-cron-path.md) |  |  | [reports/issue-140/](../reports/issue-140/) |
 | #143 | Per-rep logs fill most of the repo | [0073-per-rep-logs-fill-the-repo.md](0073-per-rep-logs-fill-the-repo.md) |  |  |  |
 | #146 | One issue's files are spread over five places | [0074-issue-files-spread-over-five-places.md](0074-issue-files-spread-over-five-places.md) |  |  |  |
+| #149 | Reference Design scripts fail on a fresh clone: they need `../ext/`, which the README never mentions | [0075-reference-scripts-fail-without-sibling-ext.md](0075-reference-scripts-fail-without-sibling-ext.md) |  |  |  |
 
 ## Local only (no `GitHub:` line)
 
