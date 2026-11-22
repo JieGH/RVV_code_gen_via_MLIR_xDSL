@@ -1,7 +1,7 @@
 [
     // BERT-large B1-B5, each layer on its usual pinned tile (as in ../../config.json).
     // Format: [datatype, method, [MR, NR], vlen, arch, [datasets], skip_ref_run, iterations, {nc overrides}].
-    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi", ["issue2_bert_16x15.dat"], true, 1000, {"B3": 128}],
-    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi", ["issue2_bert_32x6.dat"], true, 1000],
-    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi", ["issue26_b4.dat"], true, 1000]
+    ["fp32", "AXPY_FP32_Pack", [16, 15], 256, "jbpi", ["bert_b2_b3.dat"], true, 1000, {"B3": 128}],
+    ["fp32", "AXPY_FP32_Pack", [32, 6], 256, "jbpi", ["bert_b1_b5.dat"], true, 1000],
+    ["fp32", "AXPY_FP32_Pack", [32, 7], 256, "jbpi", ["bert_b4.dat"], true, 1000]
 ]

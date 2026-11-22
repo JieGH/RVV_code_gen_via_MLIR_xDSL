@@ -5,7 +5,7 @@
 #
 # One LAUNCH is one run per PAD on one board, back to back on core 4: config_issue49_sweep.json
 # (16x6 and 16x8, the two tiles that flip in opposite directions between K=384 and K=256, each on
-# the four shapes of datasets/issue46_ref_b3.dat: B3, B3_K256, B2, R24), uninstrumented, reference
+# the four shapes of datasets/b3_controls.dat: B3, B3_K256, B2, R24), uninstrumented, reference
 # protocol, vector packer, --no-nc-overrides (B3 at nc=384), one of four pads of ldb
 # (--pad-ldb <elements>, k unchanged, data unchanged, the correctness check unchanged):
 #   pad0    ldb = k                (today's behaviour)

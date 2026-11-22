@@ -1,6 +1,6 @@
-# Issue #37: B4 + Square (S1-S5) pinned to MR32_NR6, mirroring issue2_square_bert_32x7.dat's
+# Issue #37: B4 + Square (S1-S5) pinned to MR32_NR6, mirroring square_bert_b4.dat's
 # shape set exactly so the two tiles are compared on identical (M, N, K) inputs. Used together
-# with issue2_square_bert_32x7.dat by config_issue37_nr6_vs_nr7.json, which puts both tiles in
+# with square_bert_b4.dat by config_issue37_nr6_vs_nr7.json, which puts both tiles in
 # one launch (two pinned rows -> two pj_gen/ dirs, built and run back to back).
 #
 # skip_ref_run=true, iterations=5 in the config row: same cost-saving knobs as the shipped

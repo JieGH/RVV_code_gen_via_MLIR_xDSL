@@ -13,6 +13,8 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
+**Finding an issue's files:** local issue files in `.scratch/issues/` use their own number (`0051-...md` is #85); experiments, one-issue datasets and reports use the GitHub number. `.scratch/issues/README.md` maps one to the other. After adding an issue file, an `experiments/issueNN/` folder, a `datasets/experiments/issueNN_*.dat` or a report, rerun `python .scratch/issues/make_index.py` (`test_issue_index.py` fails while the index is stale).
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_

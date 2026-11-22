@@ -1,6 +1,6 @@
 # Issue #46: does the reference design's B3 also have two speeds?
 # B3 is the shape under test; B2, B3_K256 and R24 (Reuse24) are the controls of #43, so the reference
-# is read on the same four shapes as ours (datasets/issue46_ref_b3.dat). Same columns as cases.tsv.
+# is read on the same four shapes as ours (datasets/b3_controls.dat). Same columns as cases.tsv.
 # Used with: run_ref_baseline.sh --cases ref_baseline/cases_issue46.tsv --no-compare
 # case	numid	M	N	K	MR	NR
 B2	2	384	384	64	16	15

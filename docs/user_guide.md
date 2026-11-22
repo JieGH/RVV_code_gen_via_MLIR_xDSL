@@ -70,7 +70,7 @@ A config is a JSON list of rows (comments with `//` are allowed):
 | datatype | `fp32`, `f16f16f32` (FP16 A and B, FP32 C), `int8`, `i8i8i32` |
 | method | `AXPY_FP32_Pack` (the main kernel), `DOT_FP32_LANE_Pack`, `AXPY_INT8_Pack` |
 | `[MR, NR]` | the microkernel tile |
-| datasets | file names in `tests/pure_xdsl_blis_rvv/datasets/`; each line is `label m n k` |
+| datasets | file names in `tests/pure_xdsl_blis_rvv/datasets/`; each line is `label m n k`. Shared workloads sit at the top, one-issue inputs in `experiments/` (name them as `experiments/<file>`), unused shapes in `unused/`; see `datasets/README.md` (issue #146) |
 | skip_ref_run | `true`: no correctness check (timing configs); `false`: check against the scalar oracle. The oracle is O(m·n·k): only shapes up to B2 (384x384x64) |
 | iterations | rep count for the warm-up protocol. **Its presence also pins the row:** one project for the first MRxNR only. Leave it out (7 values) for search mode: one project holding every tile up to the largest |
 | nc overrides | optional `{label: nc}`; ignored with `--no-nc-overrides` |

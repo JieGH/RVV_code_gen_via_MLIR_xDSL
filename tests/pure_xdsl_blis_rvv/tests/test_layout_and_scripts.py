@@ -54,6 +54,25 @@ def test_top_level_holds_only_the_main_workflow():
     assert files == TOP_LEVEL, f"unexpected: {files - TOP_LEVEL}, missing: {TOP_LEVEL - files}"
 
 
+CONFIGS = sorted([HERE / "config.json", *(HERE / "configs").rglob("*.json"), *(HERE / "experiments").rglob("*.json")])
+
+
+@pytest.mark.parametrize("cfg", CONFIGS, ids=lambda p: str(p.relative_to(HERE)))
+def test_every_config_names_datasets_that_exist(cfg: Path):
+    from config import BLISProjectConfig
+
+    missing = [d for c in BLISProjectConfig.from_json(str(cfg)) for d in (c.datasets or [])
+               if not (HERE / "datasets" / d).is_file()]
+    assert not missing, f"{cfg.name} names datasets that don't exist: {missing}"
+
+
+def test_top_level_datasets_hold_only_shared_workloads():
+    # Issue #146: one-issue inputs live in datasets/experiments/, unused ones in datasets/unused/.
+    one_issue = sorted(p.name for p in (HERE / "datasets").glob("issue*.dat"))
+    assert not one_issue, f"one-issue datasets at the top of datasets/: {one_issue}"
+    assert (HERE / "datasets" / "README.md").is_file(), "datasets/README.md (old -> new names) is missing"
+
+
 def test_no_broken_paths_in_code_or_docs():
     full = re.compile(r"tests/pure_xdsl_blis_rvv/([\w./-]+\.(?:sh|py|json|md|dat|tsv))")
     here = re.compile(r"\$\{HERE\}/([\w./-]+\.(?:sh|py|json|dat|tsv))")
