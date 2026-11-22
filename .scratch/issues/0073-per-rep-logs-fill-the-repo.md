@@ -4,7 +4,7 @@ GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/143
 
 **Role / Label:** `needs-triage`. Drafted 2026-11-22 at the user's request, from a walk through the project's structure. Audited the same day by a subagent; its findings are folded in.
 **Branch:** per-rep-logs-fill-the-repo, cut from pure-xdsl
-**Status:** implemented 2026-11-22 on branch `per-rep-logs-fill-the-repo`; open until the user closes it. Option chosen: C (see §5).
+**Status:** closed 2026-11-22 (PR #144). Option chosen: C (see §5).
 
 ---
 
