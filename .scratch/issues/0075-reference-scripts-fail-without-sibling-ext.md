@@ -3,7 +3,7 @@
 GitHub: https://github.com/JieGH/RVV_code_gen_via_MLIR_xDSL/issues/149
 
 **Role / Label:** `needs-triage`. Found 2026-11-22 during a newcomer walk-through of the README (fresh clone, no board).
-**Status:** fixed on branch `reference-scripts-fail-without-sibling-ext` (`450b3813`), not merged yet. Both closure criteria met (section 7).
+**Status:** closed 2026-11-22. Options done: A + B + C (see §7).
 **Target:** host only (no board used).
 **Primary Sources:** `tests/pure_xdsl_blis_rvv/ref_baseline/run_ref_baseline.sh`, `ref_baseline/run_direct_check.sh`, `runners/run_head_to_head.sh`, `tests/test_board_pin.py`, `tests/test_layout_and_scripts.py`, `README.md`
 
