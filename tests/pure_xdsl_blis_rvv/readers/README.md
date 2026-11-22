@@ -15,7 +15,7 @@ Each reader takes run folders under `../logs/` and prints or writes a table. Non
 | `parallel_gemm_report.py <series>` | a `run_parallel_gemm.sh` series | 1- and 8-thread GOPs per YOLO layer, against Héctor's |
 | `hector_gemm_report.py <series>` | a `run_hector_gemm.sh` series | Héctor's GOPs per YOLO layer |
 | `report_scalar_sweep.py` | a scalar-pack sweep so far | per-layer report against the vector-pack sweep |
-| `slow_state_survey.py` | every committed per-rep log | the two-speed survey (#47). Slow: reads all of `../logs/` |
+| `slow_state_survey.py` | every per-rep log under `../logs/` (on the dev machine only, #143) | the two-speed survey (#47). Slow: reads all of `../logs/` |
 | `shape_breakdown.py <dataset> --mr M --nr N` | a dataset file | blocking, reuse and L1 set use per shape (#34) |
 | `pack_dims_table.py` | `../experiments/issue48/` config | what each vector packer does per MR and NR (#48) |
 | `rawlog.py` | (library) | how the driver names and lays out a run's raw CSV; the other readers import it |
