@@ -15,14 +15,14 @@ Step by step: **[user guide](docs/user_guide.md)**. Terms: [CONTEXT.md](CONTEXT.
 make install        # creates .venv
 ```
 
-Set the board connection once per shell (jump host `fej`, board `jbpi`):
+Set the board connection once per shell. Through a jump host:
 
 ```bash
-export REMOTE_PASS="" REMOTE_HOST="fej" REMOTE_PORT="3322"
-CONN="--jump --riscv-user jlei --riscv-ip jbpi --riscv-port 22"
+export REMOTE_PASS="" REMOTE_HOST="<jump-host>" REMOTE_PORT="<jump-port>"
+CONN="--jump --riscv-user <user> --riscv-ip <board> --riscv-port 22"
 ```
 
-For a board you reach directly: `CONN="--direct --riscv-user <user> --riscv-ip <host> --riscv-port 22"`.
+For a board you reach directly: `CONN="--direct --riscv-user <user> --riscv-ip <board> --riscv-port 22"`.
 
 ## Run a model
 

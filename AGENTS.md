@@ -21,3 +21,6 @@ Single-context layout (`CONTEXT.md` and `docs/adr/`). See `docs/agents/domain.md
 
 ### Execution
 Running the pipeline against the RISC-V board (direct vs. jump-host, entry-point scripts, reference command). See `docs/agents/execution.md`.
+
+### Board connection
+The real user, host, port and board names live in `docs/agents/board.local.md` (gitignored, local only). Read it before any board run and use it to fill the `<...>` placeholders in README.md. If it is missing, ask the user for the values.
