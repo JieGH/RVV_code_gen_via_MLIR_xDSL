@@ -253,3 +253,6 @@ reps_*.txt.gz
 
 # pid files of scheduled runs; only meaningful while the run is going
 tests/pure_xdsl_blis_rvv/logs/*.pid
+
+# personal board connection details; read by agents (AGENTS.md), never on GitHub
+docs/agents/board.local.md
